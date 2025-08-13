@@ -1,0 +1,607 @@
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitGym Pro - سازنده برنامه حرفه‌ای</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts - Vazirmatn -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- jsPDF and html2canvas for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: #111827;
+            color: #E5E7EB;
+        }
+        .card {
+            background-color: #1F2937;
+            border: 1px solid #374151;
+        }
+        .day-card {
+            padding: 0;
+            overflow: hidden;
+        }
+        .stepper-item {
+            transition: all 0.3s ease;
+            border-right: 4px solid transparent;
+        }
+        .stepper-item.active {
+            border-right-color: #FBBF24;
+            background-color: rgba(251, 191, 36, 0.1);
+        }
+        .stepper-item.nutrition.active {
+            border-right-color: #22C55E;
+             background-color: rgba(34, 197, 94, 0.1);
+        }
+        .stepper-item.completed .step-circle {
+            background-color: #FBBF24;
+            color: #1F2937;
+        }
+         .stepper-item.nutrition.completed .step-circle {
+            background-color: #22C55E;
+        }
+        .stepper-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .step-circle {
+            transition: all 0.3s ease;
+            background-color: #374151;
+            color: #9ca3af;
+        }
+        .form-section { display: none; animation: fadeIn 0.5s ease-in-out; }
+        .form-section.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .input-field {
+            background-color: #111827;
+            border: 1px solid #4B5563;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            width: 100%;
+            color: #E5E7EB;
+            transition: all 0.2s ease;
+        }
+        .input-field[readonly] {
+            background-color: #374151;
+            cursor: not-allowed;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #FBBF24;
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2);
+        }
+        .primary-button { 
+            background-color: #FBBF24; 
+            color: #111827;
+            transition: all 0.3s ease;
+        }
+        .primary-button:hover:not(:disabled) {
+            background-color: #F59E0B;
+        }
+        .secondary-button { background-color: #374151; }
+        .primary-button:disabled, .secondary-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .word-button {
+            background-color: #2b579a;
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+        .word-button:hover:not(:disabled) {
+            background-color: #204071;
+        }
+        .gradient-text { background: linear-gradient(90deg, #FBBF24, #F59E0B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .superset-btn.active { color: #FBBF24; }
+        .exercise-row.is-superset {
+            border-left: 4px solid #FBBF24;
+            background-color: rgba(251, 191, 36, 0.05);
+        }
+        
+        .range-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #374151;
+            border-radius: 4px;
+            outline: none;
+            transition: background 0.2s ease;
+        }
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border: 3px solid #111827;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            border-radius: 50%;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+        .range-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border: 3px solid #111827;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .radio-group-label { transition: all 0.2s ease-in-out; background-color: #111827; border: 1px solid #4B5563; }
+        .radio-group-input:checked + .radio-group-label { background-color: #FBBF24; color: #111827; border-color: #FBBF24; }
+        
+        /* Professional Preview Styles */
+        #program-sheet-container { 
+            background-color: #fff;
+            color: #111827;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        }
+        .preview-vitals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            background-color: #F3F4F6;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #E5E7EB;
+        }
+        .preview-vitals-grid div { font-size: 0.875rem; }
+        .preview-vitals-grid span { display: block; color: #6B7280; }
+        .preview-vitals-grid strong { color: #1F2937; font-size: 1.125rem; font-weight: 700; }
+        .preview-table-pro { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .preview-table-pro th, .preview-table-pro td { padding: 0.75rem 1rem; text-align: right; border-bottom: 1px solid #E5E7EB; vertical-align: middle; }
+        .preview-table-pro th { background-color: #F9FAFB; font-weight: 600; color: #374151; font-size: 0.8rem; text-transform: uppercase; }
+        .preview-table-pro td { color: #000; }
+        .preview-table-pro tbody tr:nth-child(even) { background-color: #F9FAFB; }
+        .preview-table-pro .superset-group-pro { border-right: 4px solid #FBBF24; }
+        .preview-table-pro .superset-label-pro { font-size: 0.75rem; font-weight: bold; color: #D97706; background-color: #FEF3C7; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-left: 8px; }
+        .preview-notes-pro { background-color: #F3F4F6; border-right: 4px solid #60A5FA; padding: 1rem; margin-top: 1rem; font-size: 0.9rem; color: #374151; border-radius: 0 0.5rem 0.5rem 0; white-space: pre-wrap; }
+        .preview-footer-pro { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #E5E7EB; text-align: center; font-size: 0.8rem; color: #6B7280; }
+        
+        .tooltip { position: relative; display: inline-block; }
+        .tooltip .tooltiptext { visibility: hidden; width: 220px; background-color: #111827; color: #fff; text-align: center; border-radius: 6px; padding: 8px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; border: 1px solid #4B5563; font-size: 0.8rem; }
+        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+        .custom-checkbox-label { display: flex; align-items: center; cursor: pointer; gap: 0.75rem; }
+        .custom-checkbox { -webkit-appearance: none; appearance: none; background-color: #374151; width: 1.25rem; height: 1.25rem; border-radius: 0.25rem; position: relative; transition: all 0.2s ease; }
+        .custom-checkbox:checked { background-color: #22C55E; border-color: #22C55E; }
+        .custom-checkbox:checked::after { content: '\\2713'; position: absolute; color: white; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.8rem; font-weight: bold; }
+
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .loader-icon { display: none; animation: spin 1s linear infinite; }
+        .is-loading .loader-icon { display: inline-block; }
+        .is-loading .button-text { display: none; }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="mb-8">
+            <h1 class="text-4xl font-extrabold text-white">سازنده برنامه <span class="gradient-text">FitGym Pro</span></h1>
+            <p class="text-gray-400 mt-2">ابزار مدرن و هوشمند طراحی برنامه تمرینی و مکمل‌ها</p>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Stepper Navigation -->
+            <aside class="lg:w-1/4">
+                 <div id="stepper" class="card rounded-xl p-4 space-y-2">
+                    <div id="step-1" class="stepper-item active completed p-4 rounded-lg cursor-pointer">
+                        <div class="flex items-center gap-4"><div class="step-circle w-10 h-10 rounded-full flex items-center justify-center font-bold">۱</div><div><h3 class="font-bold text-white">اطلاعات شاگرد</h3><p class="text-xs text-gray-400">اطلاعات پایه و شخصی</p></div></div>
+                    </div>
+                    <div id="step-2" class="stepper-item p-4 rounded-lg cursor-pointer">
+                        <div class="flex items-center gap-4"><div class="step-circle w-10 h-10 rounded-full flex items-center justify-center font-bold">۲</div><div><h3 class="font-bold text-white">طراحی تمرین</h3><p class="text-xs text-gray-400">چیدمان حرکات</p></div></div>
+                    </div>
+                    <div id="step-3" class="stepper-item nutrition p-4 rounded-lg cursor-pointer">
+                        <div class="flex items-center gap-4"><div class="step-circle w-10 h-10 rounded-full flex items-center justify-center font-bold">۳</div><div><h3 class="font-bold text-white">مکمل‌ها</h3><p class="text-xs text-gray-400">ویتامین و مواد معدنی</p></div></div>
+                    </div>
+                    <div id="step-4" class="stepper-item p-4 rounded-lg cursor-pointer">
+                        <div class="flex items-center gap-4"><div class="step-circle w-10 h-10 rounded-full flex items-center justify-center font-bold">۴</div><div><h3 class="font-bold text-white">پیش‌نمایش و ارسال</h3><p class="text-xs text-gray-400">برگه نهایی برنامه</p></div></div>
+                    </div>
+                </div>
+            </aside>
+            
+            <!-- Form Area -->
+            <main class="lg:w-3/4">
+                <form id="program-builder-form" class="card rounded-xl flex flex-col" style="min-height: calc(100vh - 150px);">
+                    <div class="flex-grow overflow-y-auto p-6 sm:p-8">
+                        <!-- Section 1: Client Info -->
+                        <section id="section-1" class="form-section active">
+                             <h2 class="text-2xl font-bold text-white mb-6">۱. اطلاعات پایه و شخصی</h2>
+                             <div class="flex items-center gap-6 mb-6">
+                                <label class="cursor-pointer">
+                                    <img id="profile-pic-preview" src="https://placehold.co/100x100/374151/E5E7EB?text=عکس" alt="عکس پروفایل" class="w-24 h-24 rounded-full object-cover border-2 border-gray-600 hover:border-yellow-400 transition-all">
+                                    <input type="file" id="profile-pic-input" class="hidden" accept="image/*">
+                                </label>
+                                <div class="flex-grow">
+                                    <label for="client-name-input" class="font-semibold text-sm">نام و نام خانوادگی شاگرد</label>
+                                    <input type="text" id="client-name-input" class="input-field mt-1 text-lg font-bold" placeholder="نام شاگرد...">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-8">
+                                <div><label for="client-email-input" class="font-semibold text-sm">ایمیل شاگرد</label><input type="email" id="client-email-input" class="input-field mt-1" placeholder="email@example.com"></div>
+                                <div><label for="coach-name-input" class="font-semibold text-sm">نام مربی</label><input type="text" id="coach-name-input" class="input-field mt-1" placeholder="نام شما..."></div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 mb-8">
+                                <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm">سن</label><span id="age-value" class="font-bold text-lg text-orange-400">25</span></div><input type="range" id="age-slider" min="15" max="80" value="25" class="range-slider"></div>
+                                <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm">قد (cm)</label><span id="height-value" class="font-bold text-lg text-pink-400">180 cm</span></div><input type="range" id="height-slider" min="140" max="220" value="180" class="range-slider"></div>
+                                <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm">وزن (kg)</label><span id="weight-value" class="font-bold text-lg text-yellow-400">80 kg</span></div><input type="range" id="weight-slider" min="40" max="150" value="80" class="range-slider"></div>
+                            </div>
+                            
+                            <div class="mb-8">
+                                <h3 class="font-semibold text-lg text-white mb-4">اندازه‌های بدن (برای تخمین چربی)</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
+                                    <div><label for="neck-input" class="font-semibold text-sm">دور گردن (cm)</label><input type="number" id="neck-input" class="input-field mt-1" placeholder="مثال: 40"></div>
+                                    <div><label for="waist-input" class="font-semibold text-sm">دور کمر (cm)</label><input type="number" id="waist-input" class="input-field mt-1" placeholder="مثال: 85"></div>
+                                    <div id="hip-input-container" class="hidden"><label for="hip-input" class="font-semibold text-sm">دور باسن (cm)</label><input type="number" id="hip-input" class="input-field mt-1" placeholder="مثال: 95"></div>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-b border-gray-700 py-6 my-6">
+                                <h3 class="font-semibold text-lg text-white mb-4">شاخص‌های کلیدی بدن (محاسبه خودکار)</h3>
+                                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    <div><label class="font-semibold text-sm">BMI</label><input type="text" id="bmi-input" class="input-field mt-1 bg-gray-900" readonly></div>
+                                    <div><label class="font-semibold text-sm">BMR (kcal)</label><input type="text" id="bmr-input" class="input-field mt-1 bg-gray-900" readonly></div>
+                                    <div><label class="font-semibold text-sm">TDEE (kcal)</label><input type="text" id="tdee-input" class="input-field mt-1 bg-gray-900" readonly></div>
+                                    <div><label class="font-semibold text-sm">چربی بدن (%)</label><input type="text" id="bodyfat-input" class="input-field mt-1 bg-gray-900" readonly></div>
+                                    <div><label class="font-semibold text-sm">توده بدون چربی (kg)</label><input type="text" id="lbm-input" class="input-field mt-1 bg-gray-900" readonly></div>
+                                    <div class="col-span-2"><label class="font-semibold text-sm">محدوده وزن ایده‌آل (kg)</label><input type="text" id="ideal-weight-input" class="input-field mt-1 bg-gray-900" readonly></div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-6 mb-8">
+                               <div><label class="font-semibold text-sm mb-2 block">جنسیت</label><div class="grid grid-cols-2 gap-2"><div><input type="radio" name="gender" value="مرد" id="male" class="sr-only radio-group-input" checked><label for="male" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer">مرد</label></div><div><input type="radio" name="gender" value="زن" id="female" class="sr-only radio-group-input"><label for="female" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer">زن</label></div></div></div>
+                               <div>
+                                    <label class="font-semibold text-sm mb-2 block">سطح فعالیت روزانه</label>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                                        <div><input type="radio" name="activity-level" value="1.2" id="sedentary" class="sr-only radio-group-input" checked><label for="sedentary" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">بی‌تحرک</label></div>
+                                        <div><input type="radio" name="activity-level" value="1.375" id="light" class="sr-only radio-group-input"><label for="light" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">کم</label></div>
+                                        <div><input type="radio" name="activity-level" value="1.55" id="moderate" class="sr-only radio-group-input"><label for="moderate" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">متوسط</label></div>
+                                        <div><input type="radio" name="activity-level" value="1.725" id="active" class="sr-only radio-group-input"><label for="active" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">زیاد</label></div>
+                                        <div class="col-span-2 lg:col-span-1"><input type="radio" name="activity-level" value="1.9" id="very-active" class="sr-only radio-group-input"><label for="very-active" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">بسیار زیاد</label></div>
+                                    </div>
+                               </div>
+                            </div>
+                        </section>
+                        
+                        <!-- Section 2: Workout Day Designer -->
+                        <section id="section-2" class="form-section">
+                            <h2 class="text-2xl font-bold text-white mb-6">۲. طراحی روزهای تمرین</h2>
+                            <div id="workout-days-container" class="space-y-6"></div>
+                            <button type="button" id="add-day-btn" class="mt-6 secondary-button text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-600"><i data-lucide="plus-circle"></i>اضافه کردن روز تمرین</button>
+                        </section>
+
+                        <!-- Section 3: Supplements Plan -->
+                        <section id="section-3" class="form-section">
+                            <h2 class="text-2xl font-bold text-white mb-6">۳. انتخاب مکمل‌ها، ویتامین‌ها و مواد معدنی</h2>
+                            <div class="relative margin-bottom: 1.5rem;">
+                                 <i data-lucide="search" class="absolute top-1/2 right-3 -translate-y-1/2 text-gray-500"></i>
+                                <input type="text" id="supplement-search" class="input-field pr-10" placeholder="جستجوی مکمل...">
+                            </div>
+                             <div id="supplements-container" class="space-y-6 mt-6">
+                                <!-- Fieldsets will be generated by JS -->
+                             </div>
+                        </section>
+                        
+                        <!-- Section 4: Preview and Actions -->
+                        <section id="section-4" class="form-section">
+                            <h2 class="text-2xl font-bold text-white mb-6">۴. پیش‌نمایش و ارسال برنامه</h2>
+                            <div class="mb-6">
+                               <label for="general-notes-input" class="font-semibold text-lg text-white mb-3 block">یادداشت‌های کلی مربی</label>
+                               <textarea id="general-notes-input" class="input-field" rows="4" placeholder="توصیه‌های کلی، نکات ریکاوری، هیدراتاسیون و..."></textarea>
+                            </div>
+                            <div id="program-sheet-container">
+                                <!-- Professional preview will be generated here by JS -->
+                            </div>
+                             <div class="mt-8 flex flex-col md:flex-row gap-4">
+                                 <button type="button" id="save-pdf-btn" class="primary-button flex-1 flex items-center justify-center gap-2 font-bold py-3 px-4 rounded-lg">
+                                    <i data-lucide="save" class="button-icon"></i>
+                                    <i data-lucide="loader-circle" class="loader-icon"></i>
+                                    <span class="button-text">ذخیره به صورت PDF</span>
+                                 </button>
+                                 <button type="button" id="save-word-btn" class="word-button flex-1 flex items-center justify-center gap-2 font-bold py-3 px-4 rounded-lg">
+                                    <i data-lucide="file-text"></i>
+                                    <span>ذخیره به صورت Word</span>
+                                 </button>
+                                 <button type="button" id="send-email-btn" class="flex-1 flex items-center justify-center gap-2 text-white font-bold py-3 px-4 rounded-lg bg-green-600 hover:bg-green-700">
+                                    <i data-lucide="send"></i>
+                                    <span>ارسال با ایمیل</span>
+                                 </button>
+                             </div>
+                        </section>
+                    </div>
+                    <!-- Navigation Buttons -->
+                    <div class="p-6 border-t border-gray-700 bg-gray-800/20 flex-shrink-0 flex justify-between items-center rounded-b-xl">
+                        <button type="button" id="prev-btn" class="secondary-button text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600">قبلی</button>
+                        <button type="button" id="next-btn" class="primary-button font-bold py-2 px-6 rounded-lg">بعدی</button>
+                    </div>
+                </form>
+            </main>
+        </div>
+    </div>
+    
+    <!-- JS Templates (Hidden) -->
+    <template id="exercise-template">
+        <div class="exercise-row p-4 bg-gray-800/50 rounded-lg">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-x-6 gap-y-4 items-center">
+                <div class="lg:col-span-5 flex gap-2">
+                    <select class="muscle-group-select input-field text-sm"></select>
+                    <select class="exercise-select input-field text-sm"></select>
+                </div>
+                <div class="lg:col-span-6 grid grid-cols-3 gap-x-4 gap-y-2">
+                    <div class="param-control">
+                        <div class="flex justify-between items-center mb-1"><label class="text-xs font-semibold text-gray-400">ست</label><span class="set-value font-bold text-blue-400 text-sm">3</span></div>
+                        <input type="range" min="1" max="12" value="3" class="w-full range-slider set-slider">
+                    </div>
+                    <div class="param-control">
+                        <div class="flex justify-between items-center mb-1"><label class="text-xs font-semibold text-gray-400">تکرار</label><span class="rep-value font-bold text-green-400 text-sm">10</span></div>
+                        <input type="range" min="1" max="50" value="10" class="w-full range-slider rep-slider">
+                    </div>
+                    <div class="param-control">
+                        <div class="flex justify-between items-center mb-1"><label class="text-xs font-semibold text-gray-400">استراحت</label><span class="rest-value font-bold text-purple-400 text-sm">60s</span></div>
+                        <input type="range" min="0" max="180" step="15" value="60" class="w-full range-slider rest-slider">
+                    </div>
+                </div>
+                <div class="lg:col-span-1 flex items-center justify-end gap-1">
+                    <button type="button" class="superset-btn p-2 rounded-md hover:bg-gray-700 text-gray-400 hover:text-yellow-400" title="ایجاد سوپرست"><i data-lucide="link" class="w-5 h-5"></i></button>
+                    <button type="button" class="remove-exercise-btn p-2 rounded-md hover:bg-gray-700 text-gray-400 hover:text-red-400" title="حذف حرکت"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const { jsPDF } = window.jspdf;
+
+            // --- DATABASES ---
+            const exerciseDB = { "سینه": ["پرس سینه هالتر", "پرس سینه دمبل", "پرس بالا سینه هالتر", "پرس بالا سینه دمبل", "پرس زیر سینه دستگاه", "قفسه سینه دمبل", "کراس اور از بالا", "کراس اور از پایین", "فلای دستگاه", "شنا سوئدی"], "پشت": ["ددلیفت", "بارفیکس دست باز", "زیربغل هالتر خم", "تی بار رو", "لت سیم‌کش از جلو", "روئینگ دستگاه", "زیربغل دمبل تک خم"], "سرشانه": ["پرس سرشانه هالتر", "پرس سرشانه دمبل", "نشر از جانب دمبل", "نشر از جلو دمبل", "نشر خم دمبل", "فیس پول"], "جلو بازو": ["جلو بازو هالتر", "جلو بازو دمبل", "جلو بازو لاری", "جلو بازو چکشی"], "پشت بازو": ["پشت بازو سیم‌کش", "پشت بازو دیپ", "پشت بازو هالتر خوابیده", "پشت بازو دمبل تک خم"], "چهارسر ران": ["اسکوات با هالتر", "پرس پا", "جلو پا ماشین", "هاک اسکوات", "لانگز با دمبل"], "همسترینگ و سرینی": ["ددلیفت رومانیایی", "پشت پا ماشین خوابیده", "هیپ تراست با هالتر", "گود مورنینگ"], "ساق پا": ["ساق پا ایستاده دستگاه", "ساق پا نشسته دستگاه"], };
+            const supplementDB = { 'عضله‌ساز و ریکاوری': [ { name: 'پروتئین وی', dosage: '۲۰-۳۰ گرم بعد از تمرین', note: 'کمک به ترمیم و ساخت بافت عضلانی.' }, { name: 'کراتین مونوهیدرات', dosage: 'روزانه ۳-۵ گرم', note: 'افزایش قدرت، توان و حجم عضلات.' }, { name: 'BCAA', dosage: '۵-۱۰ گرم حین تمرین', note: 'کاهش خستگی و درد عضلانی.' }, { name: 'گلوتامین', dosage: '۵ گرم بعد از تمرین و قبل از خواب', note: 'حمایت از سیستم ایمنی و ریکاوری.' }, ], 'افزایش‌دهنده عملکرد و انرژی': [ { name: 'کافئین', dosage: '۲۰۰-۴۰۰ میلی‌گرم، ۳۰-۶۰ دقیقه قبل تمرین', note: 'افزایش هوشیاری، تمرکز و انرژی.' }, { name: 'بتا-آلانین', dosage: 'روزانه ۳-۶ گرم', note: 'افزایش استقامت عضلانی.' }, { name: 'سیترولین مالات', dosage: '۶-۸ گرم، ۳۰-۶۰ دقیقه قبل تمرین', note: 'بهبود جریان خون (پمپ) و کاهش خستگی.' }, ], 'سلامت عمومی و مفاصل': [ { name: 'مولتی ویتامین', dosage: 'روزانه ۱ عدد با غذا', note: 'تامین کمبودهای ویتامین‌ها و مواد معدنی.' }, { name: 'ویتامین D3', dosage: 'روزانه ۱۰۰۰-۴۰۰۰ IU', note: 'ضروری برای سلامت استخوان و سیستم ایمنی.' }, { name: 'اُمگا-۳ (روغن ماهی)', dosage: 'روزانه ۱-۳ گرم', note: 'کاهش التهاب، حمایت از سلامت قلب و مفاصل.' }, { name: 'گلوکوزامین', dosage: 'روزانه ۱۵۰۰ میلی‌گرم', note: 'حمایت از سلامت مفاصل و غضروف‌ها.' } ] };
+
+            // --- STATE ---
+            let currentStep = 1;
+            const totalSteps = 4;
+
+            // --- DOM ELEMENTS ---
+            const hipInputContainer = document.getElementById('hip-input-container');
+            
+            // --- FUNCTIONS ---
+            const updateSliderBackground = (slider) => { if (!slider) return; const min = +slider.min || 0; const max = +slider.max || 100; const value = +slider.value || 0; const percentage = ((value - min) / (max - min)) * 100; let color = '#3B82F6'; if (slider.classList.contains('rep-slider')) color = '#22C55E'; if (slider.classList.contains('rest-slider')) color = '#A78BFA'; if (slider.id.includes('age-slider')) color = '#F97316'; if (slider.id.includes('height-slider')) color = '#EC4899'; if (slider.id.includes('weight-slider')) color = '#FBBF24'; slider.style.background = `linear-gradient(to left, ${color} ${percentage}%, #374151 ${percentage}%)`; };
+            const findNextEnabledStep = (start, direction) => { let next = start + direction; return (next > 0 && next <= totalSteps) ? next : start; };
+
+            const updateUI = () => {
+                if (currentStep === 4) generateProgramPreview();
+                document.querySelectorAll('.stepper-item').forEach((item, i) => { const step = i + 1; item.classList.toggle('active', step === currentStep); item.classList.toggle('completed', step < currentStep); });
+                document.querySelectorAll('.form-section').forEach((section, i) => section.classList.toggle('active', (i + 1) === currentStep));
+                document.getElementById('prev-btn').disabled = currentStep === 1;
+                const nextBtn = document.getElementById('next-btn');
+                nextBtn.disabled = currentStep === totalSteps;
+                nextBtn.textContent = (currentStep === totalSteps - 1) ? 'مشاهده پیش‌نمایش' : 'بعدی';
+            };
+            
+            const calculateBodyMetrics = () => {
+                const age = parseFloat(document.getElementById('age-slider').value);
+                const heightCm = parseFloat(document.getElementById('height-slider').value);
+                const weightKg = parseFloat(document.getElementById('weight-slider').value);
+                const isMale = document.getElementById('male').checked;
+                const activityMultiplier = parseFloat(document.querySelector('input[name="activity-level"]:checked').value);
+                const neckCm = parseFloat(document.getElementById('neck-input').value);
+                const waistCm = parseFloat(document.getElementById('waist-input').value);
+                const hipCm = parseFloat(document.getElementById('hip-input').value);
+
+                const clearFields = () => ['bmi-input', 'bmr-input', 'tdee-input', 'bodyfat-input', 'lbm-input', 'ideal-weight-input'].forEach(id => document.getElementById(id).value = '');
+                
+                if (isNaN(heightCm) || isNaN(weightKg) || heightCm <= 0 || weightKg <= 0) { clearFields(); return; }
+
+                const heightM = heightCm / 100;
+                const bmi = weightKg / (heightM * heightM);
+                document.getElementById('bmi-input').value = bmi.toFixed(1);
+                const bmr = isMale ? (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5 : (10 * weightKg) + (6.25 * heightCm) - (5 * age) - 161;
+                document.getElementById('bmr-input').value = Math.round(bmr);
+                document.getElementById('tdee-input').value = Math.round(bmr * activityMultiplier);
+                document.getElementById('ideal-weight-input').value = `${(18.5 * heightM * heightM).toFixed(1)} - ${(24.9 * heightM * heightM).toFixed(1)} kg`;
+
+                let bodyFatPercentage = 0;
+                if (!isNaN(neckCm) && !isNaN(waistCm) && neckCm > 0 && waistCm > 0) {
+                    if (isMale) bodyFatPercentage = 86.010 * Math.log10(waistCm - neckCm) - 70.041 * Math.log10(heightCm) + 36.76;
+                    else if (!isNaN(hipCm) && hipCm > 0) bodyFatPercentage = 163.205 * Math.log10(waistCm + hipCm - neckCm) - 97.684 * Math.log10(heightCm) - 78.387;
+                }
+                
+                if (bodyFatPercentage > 0 && bodyFatPercentage < 100) {
+                    document.getElementById('bodyfat-input').value = bodyFatPercentage.toFixed(1);
+                    document.getElementById('lbm-input').value = (weightKg * (1 - bodyFatPercentage / 100)).toFixed(1);
+                } else {
+                    document.getElementById('bodyfat-input').value = '';
+                    document.getElementById('lbm-input').value = '';
+                }
+            };
+
+            const toggleHipInput = () => { hipInputContainer.classList.toggle('hidden', document.getElementById('male').checked); calculateBodyMetrics(); };
+            const populateMuscleGroups = (select) => { Object.keys(exerciseDB).forEach(group => { const option = document.createElement('option'); option.value = group; option.textContent = group; select.appendChild(option); }); };
+            const populateExercises = (group, select) => { select.innerHTML = ''; (exerciseDB[group] || []).forEach(name => { const option = document.createElement('option'); option.value = name; option.textContent = name; select.appendChild(option); }); };
+            
+            const addExerciseRow = (list) => { const newRow = document.getElementById('exercise-template').content.cloneNode(true); const muscleSelect = newRow.querySelector('.muscle-group-select'); populateMuscleGroups(muscleSelect); populateExercises(muscleSelect.value, newRow.querySelector('.exercise-select')); list.appendChild(newRow); list.querySelectorAll('.range-slider').forEach(updateSliderBackground); lucide.createIcons(); };
+            
+            const addDayCard = (isFirst = false) => { const dayCount = document.getElementById('workout-days-container').children.length + 1; const newDay = document.createElement('div'); newDay.className = 'card rounded-lg day-card'; newDay.innerHTML = `<div class="flex justify-between items-center p-4 bg-gray-900/30 rounded-t-lg"><div class="flex items-center gap-3"><i data-lucide="calendar-days" class="text-yellow-400"></i><input type="text" value="روز ${dayCount}: " class="day-title-input input-field font-bold text-lg bg-transparent border-0 p-1 focus:ring-0 focus:border-yellow-400 w-auto"></div> ${!isFirst ? '<button type="button" class="remove-day-btn p-1 text-gray-400 hover:text-red-400"><i data-lucide="x-circle" class="w-5 h-5"></i></button>' : ''}</div><div class="p-4 space-y-3"><div class="exercise-list space-y-3"></div><button type="button" class="add-exercise-btn mt-2 w-full text-sm text-yellow-400 font-semibold hover:bg-yellow-400/10 py-2.5 px-4 rounded-lg border-2 border-dashed border-yellow-400/30 transition-all flex items-center justify-center gap-2"><i data-lucide="plus"></i> افزودن حرکت</button></div><div class="p-4 border-t border-gray-700/50"><label class="font-semibold text-sm text-gray-300 mb-2 block">یادداشت‌های مربی</label><textarea class="day-notes-input input-field text-sm bg-gray-900/50" rows="2" placeholder="مثال: روی فرم صحیح حرکت تمرکز کنید..."></textarea></div>`; document.getElementById('workout-days-container').appendChild(newDay); addExerciseRow(newDay.querySelector('.exercise-list')); lucide.createIcons(); };
+            
+            const populateSupplements = () => { const container = document.getElementById('supplements-container'); container.innerHTML = '';  for (const category in supplementDB) { const card = document.createElement('div'); card.className = 'supp-category-card bg-gray-900/50 rounded-lg overflow-hidden'; card.innerHTML = `<h3 class="font-bold p-4 border-b border-gray-700 text-blue-300">${category}</h3><div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></div>`; const listContainer = card.querySelector('.grid'); supplementDB[category].forEach(item => { const wrapper = document.createElement('div'); wrapper.className = "supplement-item flex items-center justify-between"; wrapper.innerHTML = `<label class="custom-checkbox-label"><input type="checkbox" value="${item.name}" data-dosage="${item.dosage}" data-note="${item.note}" class="supplement-checkbox custom-checkbox"><span>${item.name}</span></label><div class="flex items-center gap-2"><div class="tooltip"><i data-lucide="info" class="w-4 h-4 text-gray-500 cursor-pointer"></i><span class="tooltiptext">${item.note}</span></div><input type="text" class="dosage-input input-field text-sm w-40" placeholder="دوز..."></div>`; listContainer.appendChild(wrapper); }); container.appendChild(card); } lucide.createIcons(); };
+
+            const generateProgramPreview = () => {
+                const clientName = document.getElementById('client-name-input').value || 'نامشخص';
+                const coachName = document.getElementById('coach-name-input').value;
+                const generalNotes = document.getElementById('general-notes-input').value;
+                const profileSrc = document.getElementById('profile-pic-preview').src;
+                
+                const vitals = { 'سن': `${document.getElementById('age-slider').value}`, 'قد': `${document.getElementById('height-slider').value} cm`, 'وزن': `${document.getElementById('weight-slider').value} kg`, 'BMI': document.getElementById('bmi-input').value || '-', 'چربی بدن': `${document.getElementById('bodyfat-input').value || '-'} %`, 'BMR': `${document.getElementById('bmr-input').value || '-'} kcal`, 'TDEE': `${document.getElementById('tdee-input').value || '-'} kcal`, 'توده بدون چربی': `${document.getElementById('lbm-input').value || '-'} kg` };
+                let vitalsHtml = Object.entries(vitals).map(([key, value]) => `<div><span>${key}</span><strong>${value}</strong></div>`).join('');
+                
+                let workoutHtml = '';
+                const dayCards = document.querySelectorAll('#workout-days-container .day-card');
+                if (dayCards.length > 0 && dayCards[0].querySelector('.exercise-row')) {
+                    dayCards.forEach(card => {
+                        const dayTitle = card.querySelector('.day-title-input').value;
+                        let exercisesTable = `<table class="preview-table-pro"><thead><tr><th>حرکت</th><th>ست</th><th>تکرار</th><th>استراحت</th></tr></thead><tbody>`;
+                        const exercises = Array.from(card.querySelectorAll('.exercise-row'));
+                        for (let i = 0; i < exercises.length; i++) {
+                            const ex = exercises[i];
+                            const isSuperset = ex.classList.contains('is-superset');
+                            const isFirstInGroup = isSuperset && (i === 0 || !exercises[i-1].classList.contains('is-superset'));
+                            exercisesTable += `<tr class="${isSuperset ? 'superset-group-pro' : ''}"><td>${isFirstInGroup ? '<span class="superset-label-pro">سوپرست</span>' : ''}${ex.querySelector('.exercise-select').value}</td><td>${ex.querySelector('.set-value').textContent}</td><td>${ex.querySelector('.rep-value').textContent}</td><td>${ex.querySelector('.rest-value').textContent}</td></tr>`;
+                        }
+                        exercisesTable += `</tbody></table>`;
+                        const notes = card.querySelector('.day-notes-input').value;
+                        workoutHtml += `<div class="mb-6"><h4 class="font-bold text-lg text-gray-800">${dayTitle}</h4>${exercisesTable}${notes ? `<div class="preview-notes-pro mt-4"><strong>یادداشت:</strong> ${notes}</div>` : ''}</div>`;
+                    });
+                } else { workoutHtml = `<p class="text-gray-500">برنامه تمرینی طراحی نشده است.</p>`; }
+
+                let supplementsHtml = '';
+                const checkedSupps = document.querySelectorAll('.supplement-checkbox:checked');
+                if (checkedSupps.length > 0) {
+                    supplementsHtml += `<table class="preview-table-pro"><thead><tr><th>مکمل / ویتامین</th><th>دستور مصرف</th></tr></thead><tbody>`;
+                    checkedSupps.forEach(sup => { supplementsHtml += `<tr><td>${sup.value}</td><td>${sup.closest('.supplement-item').querySelector('.dosage-input').value || 'طبق دستور'}</td></tr>`; });
+                    supplementsHtml += `</tbody></table>`;
+                } else { supplementsHtml = `<p class="text-gray-500">هیچ مکملی انتخاب نشده است.</p>`; }
+
+                const finalHtml = `
+                    <div id="program-sheet-content">
+                        <header class="flex justify-between items-start mb-8"><div class="flex items-center gap-3"><span class="font-bold text-2xl text-amber-500">FitGym Pro</span></div><img src="${profileSrc}" alt="Profile" class="w-20 h-20 rounded-full object-cover border-4 border-gray-100"></header>
+                        <div class="mb-8"><h2 class="text-3xl font-extrabold text-gray-900 mb-2">${clientName}</h2><p class="text-gray-500">تهیه شده در تاریخ: ${new Date().toLocaleDateString('fa-IR')}</p></div>
+                        <div class="mb-8"><h3 class="text-xl font-bold mb-3 border-b pb-2">شاخص‌های کلیدی</h3><div class="preview-vitals-grid">${vitalsHtml}</div></div>
+                        <div class="mb-8"><h3 class="text-xl font-bold mb-3 border-b pb-2 flex items-center gap-2"><i data-lucide="dumbbell" class="text-amber-500"></i>برنامه تمرینی</h3>${workoutHtml}</div>
+                        <div class="mb-8"><h3 class="text-xl font-bold mb-3 border-b pb-2 flex items-center gap-2"><i data-lucide="pilcrow" class="text-green-500"></i>برنامه مکمل‌ها</h3>${supplementsHtml}</div>
+                        ${generalNotes ? `<div class="mb-8"><h3 class="text-xl font-bold mb-3 border-b pb-2 flex items-center gap-2"><i data-lucide="clipboard-edit" class="text-blue-500"></i>توصیه‌های کلی مربی</h3><div class="preview-notes-pro">${generalNotes.replace(/\n/g, '<br>')}</div></div>` : ''}
+                        <footer class="preview-footer-pro"><p>این برنامه توسط <strong>${coachName || 'مربی شما'}</strong> برای شما آماده شده است. موفق باشید!</p></footer>
+                    </div>
+                `;
+                document.getElementById('program-sheet-container').innerHTML = finalHtml;
+                lucide.createIcons();
+            };
+
+            const saveAsPdf = async () => {
+                const pdfBtn = document.getElementById('save-pdf-btn');
+                if (pdfBtn.classList.contains('is-loading')) return;
+                pdfBtn.classList.add('is-loading');
+                pdfBtn.disabled = true;
+
+                const content = document.getElementById('program-sheet-content');
+                if (!content) return;
+
+                const canvas = await html2canvas(content, { scale: 2, useCORS: true, logging: false });
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgWidth = 210;
+                const pageHeight = 297;
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                while (heightLeft >= 0) {
+                  position = heightLeft - imgHeight;
+                  pdf.addPage();
+                  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                  heightLeft -= pageHeight;
+                }
+                const clientName = document.getElementById('client-name-input').value || 'FitGymPro';
+                pdf.save(`FitGymPro-Program-${clientName.replace(/ /g, '_')}.pdf`);
+                pdfBtn.classList.remove('is-loading');
+                pdfBtn.disabled = false;
+            };
+
+            const saveAsWord = () => {
+                const htmlContent = document.getElementById('program-sheet-content')?.innerHTML || 'محتوایی برای ذخیره وجود ندارد.';
+                const clientName = document.getElementById('client-name-input').value || 'FitGymPro-Program';
+                const filename = `${clientName.replace(/ /g, '_')}.doc`;
+                const fullHtml = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>Program</title><style>body{font-family: Arial, sans-serif; direction: rtl; text-align: right;} table{width: 100%; border-collapse: collapse;} th, td{border: 1px solid #ddd; padding: 8px;} th{background-color: #f2f2f2;}</style></head><body>${htmlContent}<script type="module" src="/index.tsx"></script>
+</body></html>`;
+                const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const sendEmail = () => {
+                const clientEmail = document.getElementById('client-email-input').value;
+                if (!clientEmail) { alert('لطفاً ایمیل شاگرد را در گام اول وارد کنید.'); return; }
+                const clientName = document.getElementById('client-name-input').value || 'شاگرد گرامی';
+                const coachName = document.getElementById('coach-name-input').value || 'مربی شما';
+                const subject = `برنامه تمرینی شما از طرف FitGym Pro`;
+                const body = `سلام ${clientName}،\n\nبرنامه تمرینی جدید شما آماده شده است. لطفاً فایل PDF را که به صورت دستی پیوست می‌شود، مشاهده کنید.\n\nموفق و پیروز باشید!\n${coachName}`;
+                window.location.href = `mailto:${clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            };
+
+            // --- EVENT LISTENERS ---
+            document.body.addEventListener('click', (e) => {
+                const target = e.target;
+                if(target.closest('.stepper-item') && !target.closest('.stepper-item').classList.contains('disabled')) { currentStep = parseInt(target.closest('.stepper-item').id.split('-')[1]); updateUI(); }
+                if(target.closest('#next-btn')) { currentStep = findNextEnabledStep(currentStep, 1); updateUI(); }
+                if(target.closest('#prev-btn')) { currentStep = findNextEnabledStep(currentStep, -1); updateUI(); }
+                if(target.closest('#add-day-btn')) addDayCard();
+                if(target.closest('.add-exercise-btn')) addExerciseRow(target.closest('.day-card').querySelector('.exercise-list'));
+                if(target.closest('.remove-exercise-btn')) target.closest('.exercise-row').remove();
+                if(target.closest('.remove-day-btn')) target.closest('.day-card').remove();
+                if(target.closest('.superset-btn')) { const btn = target.closest('.superset-btn'); btn.classList.toggle('active'); btn.closest('.exercise-row').classList.toggle('is-superset'); }
+                if(target.closest('#save-pdf-btn')) saveAsPdf();
+                if(target.closest('#save-word-btn')) saveAsWord();
+                if(target.closest('#send-email-btn')) sendEmail();
+            });
+
+            document.body.addEventListener('input', (e) => {
+                const target = e.target;
+                if (target.classList.contains('range-slider')) updateSliderBackground(target);
+                if (['age-slider', 'height-slider', 'weight-slider'].includes(target.id)) { const valueEl = document.getElementById(target.id.replace('-slider', '-value')); if (valueEl) valueEl.textContent = target.value + (target.id.includes('slider') ? (target.id.includes('height') ? ' cm' : (target.id.includes('weight') ? ' kg' : '')) : ''); }
+                const exerciseRow = target.closest('.exercise-row');
+                if (exerciseRow && target.classList.contains('range-slider')) { const valueEl = target.parentElement.querySelector('span'); if(valueEl) valueEl.textContent = target.value + (target.classList.contains('rest-slider') ? 's' : ''); }
+                if (['age-slider', 'height-slider', 'weight-slider', 'neck-input', 'waist-input', 'hip-input'].includes(target.id) || target.name === 'gender' || target.name === 'activity-level') calculateBodyMetrics();
+                if (target.id === 'supplement-search') { const searchTerm = target.value.toLowerCase(); document.querySelectorAll('.supp-category-card').forEach(card => { let hasVisibleItem = false; card.querySelectorAll('.supplement-item').forEach(item => { const isVisible = item.querySelector('span').textContent.toLowerCase().includes(searchTerm); item.style.display = isVisible ? 'flex' : 'none'; if (isVisible) hasVisibleItem = true; }); card.style.display = hasVisibleItem ? 'block' : 'none'; }); }
+            });
+
+            document.body.addEventListener('change', (e) => {
+                const target = e.target;
+                 if (target.classList.contains('muscle-group-select')) populateExercises(target.value, target.parentElement.querySelector('.exercise-select'));
+                 if(target.name === 'gender' || target.name === 'activity-level') calculateBodyMetrics();
+                 if(target.classList.contains('supplement-checkbox')) { const dosageInput = target.closest('.supplement-item').querySelector('.dosage-input'); dosageInput.value = target.checked ? target.dataset.dosage : ''; }
+            });
+
+            document.getElementById('profile-pic-input').addEventListener('change', (e) => { const file = e.target.files[0]; if (file) document.getElementById('profile-pic-preview').src = URL.createObjectURL(file); });
+            document.querySelectorAll('input[name="gender"]').forEach(radio => radio.addEventListener('change', toggleHipInput));
+            
+            // --- INITIALIZATION ---
+            toggleHipInput(); 
+            calculateBodyMetrics();
+            populateSupplements();
+            addDayCard(true);
+            updateUI();
+            document.querySelectorAll('.range-slider').forEach(updateSliderBackground);
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
