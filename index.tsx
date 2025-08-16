@@ -882,7 +882,7 @@ function handleUserLogin() {
         return;
     }
 
-    if (username.toLowerCase() === 'admin' && password === 'admin') {
+    if (username.toLowerCase() === 'admin' && password === 'hamid@@##') {
         loginAsAdmin();
         return;
     }
@@ -1540,7 +1540,7 @@ const checkUsername = async () => {
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Setup ---
     if (!localStorage.getItem('fitgympro_users')) {
-        saveUsers([{ username: 'admin', email: 'admin@fitgym.pro', password: 'admin' }]); // Add a default admin with credentials
+        saveUsers([{ username: 'admin', email: 'admin@fitgym.pro', password: 'hamid@@##' }]); // Add a default admin with credentials
     }
     initializeAI();
     setupAuthScreen();
