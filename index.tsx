@@ -153,6 +153,7 @@ const navigateToStep = (step: number) => {
     if (step > 0 && step <= totalSteps) {
         currentStep = step;
         updateUI();
+        document.getElementById('program-builder-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 };
 

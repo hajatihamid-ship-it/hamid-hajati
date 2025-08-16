@@ -26,6 +26,9 @@
 
     <!-- Custom Styles -->
     <style>
+        html {
+            scroll-behavior: smooth;
+        }
         :root {
             --bg-primary: #F9FAFB;
             --bg-secondary: #FFFFFF;
@@ -886,7 +889,7 @@
         </header>
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Left Panel: Profile and Metrics -->
-            <aside id="dashboard-profile-panel" class="lg:col-span-1 space-y-6 card rounded-xl p-6 h-fit sticky top-8">
+            <aside id="dashboard-profile-panel" class="lg:col-span-1 space-y-6 card rounded-xl p-6 h-fit sticky top-8 max-h-[calc(100vh-4rem)] overflow-y-auto">
                 <h2 class="text-2xl font-bold">پروفایل و شاخص‌ها</h2>
                 <p class="text-sm text-secondary -mt-4">اطلاعات خود را برای دریافت برنامه دقیق‌تر به‌روز نگه دارید. تغییرات شما به صورت خودکار ذخیره می‌شود.</p>
 
