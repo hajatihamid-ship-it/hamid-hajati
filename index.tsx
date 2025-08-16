@@ -36,13 +36,6 @@ const supplementDB = {
     'مدیریت وزن و چربی‌سوزی': [{ name: 'ال-کارنیتین', dosage: '۱-۳ عدد قرص یا ۱ قاشق مایع قبل از تمرین', note: 'کمک به انتقال اسیدهای چرب برای تولید انرژی.' }, { name: 'عصاره چای سبز', dosage: 'روزانه ۱-۲ عدد قرص (معادل ۵۰۰ میلی‌گرم)', note: 'افزایش متابولیسم و اکسیداسیون چربی.' }, { name: 'CLA', dosage: 'روزانه ۳-۴ عدد قرص سافت‌ژل', note: 'کمک به کاهش توده چربی بدن.' }, ],
     'سلامت عمومی و مفاصل': [{ name: 'مولتی ویتامین', dosage: 'روزانه ۱ عدد قرص با غذا', note: 'تامین کمبودهای ویتامین‌ها و مواد معدنی.' }, { name: 'ویتامین D3', dosage: 'روزانه ۱ عدد قرص (معادل ۱۰۰۰-۴۰۰۰ IU)', note: 'ضروری برای سلامت استخوان و سیستم ایمنی.' }, { name: 'اُمگا-۳ (روغن ماهی)', dosage: 'روزانه ۱-۳ عدد قرص سافت‌ژل (معادل ۱-۳ گرم)', note: 'کاهش التهاب، حمایت از سلامت قلب و مفاصل.' }, { name: 'گلوکوزامین و کندرویتین', dosage: 'طبق دستور محصول (معمولا ۲-۳ قرص)', note: 'حمایت از سلامت مفاصل و غضروف‌ها.' }, { name: 'ویتامین C', dosage: 'روزانه ۱-۲ عدد قرص (معادل ۵۰۰-۱۰۰۰ میلی‌گرم)', note: 'آنتی‌اکسیدان قوی و ضروری برای سلامت بافت‌ها.' }, { name: 'زینک و منیزیم (ZMA)', dosage: '۲-۳ عدد قرص قبل از خواب', note: 'بهبود کیفیت خواب، ریکاوری و سطح هورمون‌ها.' }, ]
 };
-const motivationalQuotes = [
-    { quote: "درد موقتی است، اما افتخار ابدی است.", author: "محمد علی کلی" },
-    { quote: "وقتی حس می‌کنی می‌خواهی تسلیم شوی، به یاد بیار چرا شروع کردی.", author: "ناشناس" },
-    { quote: "تفاوت بین کسی که هستی و کسی که می‌خواهی باشی، در کاری است که انجام می‌دهی.", author: "ناشناس" },
-    { quote: "برای دیدن عضله، اول باید با درد رفیق شوی.", author: "ناشناس" },
-    { quote: "قهرمانان در باشگاه ساخته می‌شوند، جایی که هیچکس آنها را نمی‌بیند.", author: "آرنولد شوارتزنگر" }
-];
 window.exerciseDB = exerciseDB; // Make it globally accessible
 
 // --- STATE & TYPES ---
@@ -72,56 +65,9 @@ const mainAppContainer = document.getElementById('main-app-container') as HTMLEl
 const userDashboardContainer = document.getElementById('user-dashboard-container') as HTMLElement;
 const adminPanelModal = document.getElementById('admin-panel-modal') as HTMLElement;
 const adminPanelBtn = document.getElementById('admin-panel-btn') as HTMLButtonElement;
-const authLoginTab = document.getElementById('auth-login-tab') as HTMLButtonElement;
-const authSignupTab = document.getElementById('auth-signup-tab') as HTMLButtonElement;
-const authLoginForm = document.getElementById('auth-login-form') as HTMLElement;
-const authSignupForm = document.getElementById('auth-signup-form') as HTMLElement;
-const authRecoveryForm = document.getElementById('auth-recovery-form') as HTMLElement;
 
 
 // --- FUNCTIONS ---
-
-const switchAuthForm = (formToShow: 'login' | 'signup' | 'recovery') => {
-    const forms = {
-        login: authLoginForm,
-        signup: authSignupForm,
-        recovery: authRecoveryForm
-    };
-    const currentActiveForm = document.querySelector('.auth-form-section.active-in') as HTMLElement | null;
-    
-    // Don't do anything if we are already on the correct form
-    if (currentActiveForm && currentActiveForm.id === `auth-${formToShow}-form`) return;
-
-    // Update tabs state
-    authLoginTab.classList.toggle('active', formToShow === 'login' || formToShow === 'recovery');
-    authSignupTab.classList.toggle('active', formToShow === 'signup');
-
-    // Animate out the currently visible form
-    if (currentActiveForm) {
-        currentActiveForm.classList.remove('active-in');
-        currentActiveForm.classList.add('active-out');
-    }
-
-    const targetForm = forms[formToShow];
-
-    // After the fade-out animation (300ms), switch the forms
-    setTimeout(() => {
-        // Hide all forms and clean up their animation classes
-        Object.values(forms).forEach(formEl => {
-            if (formEl) {
-                formEl.style.display = 'none';
-                formEl.classList.remove('active-in', 'active-out');
-            }
-        });
-
-        // Display the target form and fade it in
-        if (targetForm) {
-            targetForm.style.display = 'block';
-            targetForm.classList.add('active-in');
-        }
-
-    }, currentActiveForm ? 300 : 0); // No delay on initial load
-};
 
 const sanitizeHTML = (str: string): string => {
     const temp = document.createElement('div');
@@ -259,7 +205,10 @@ const calculateBodyMetrics = (container: HTMLElement) => {
     const genderRadio = container.querySelector('.gender:checked') as HTMLInputElement;
     if (!genderRadio) return;
     const isMale = genderRadio.value === 'مرد';
-    const activityMultiplier = parseFloat((container.querySelector('.activity-level:checked') as HTMLInputElement).value);
+    
+    const activityRadioChecked = container.querySelector('.activity-level:checked') as HTMLInputElement;
+    const activityMultiplier = activityRadioChecked ? parseFloat(activityRadioChecked.value) : 1.2; // Default to sedentary
+    
     const neckCm = parseFloat((container.querySelector('.neck-input') as HTMLInputElement).value);
     const waistCm = parseFloat((container.querySelector('.waist-input') as HTMLInputElement).value);
     const hipCm = parseFloat((container.querySelector('.hip-input') as HTMLInputElement).value);
@@ -285,7 +234,13 @@ const calculateBodyMetrics = (container: HTMLElement) => {
     if (bmrInput) bmrInput.value = Math.round(bmr).toString();
 
     const tdeeInput = container.querySelector('.tdee-input') as HTMLInputElement;
-    if (tdeeInput) tdeeInput.value = Math.round(bmr * activityMultiplier).toString();
+    if (tdeeInput) {
+        if (!isNaN(bmr) && !isNaN(activityMultiplier)) {
+            tdeeInput.value = Math.round(bmr * activityMultiplier).toString();
+        } else {
+            tdeeInput.value = '';
+        }
+    }
 
     const idealWeightInput = container.querySelector('.ideal-weight-input') as HTMLInputElement;
     if (idealWeightInput) idealWeightInput.value = `${(18.5 * heightM * heightM).toFixed(1)} - ${(24.9 * heightM * heightM).toFixed(1)} kg`;
@@ -321,7 +276,7 @@ const toggleHipInput = (container: HTMLElement) => {
 const populateMuscleGroups = (select: HTMLSelectElement) => { select.innerHTML = ''; Object.keys(exerciseDB).forEach(group => { const option = document.createElement('option'); option.value = group; option.textContent = group; select.appendChild(option); }); };
 const populateExercises = (group: string, select: HTMLSelectElement) => { select.innerHTML = ''; (exerciseDB[group] || []).forEach(name => { const option = document.createElement('option'); option.value = name; option.textContent = name; select.appendChild(option); }); };
 const addExerciseRow = (list: HTMLElement) => { const newRow = (document.getElementById('exercise-template') as HTMLTemplateElement).content.cloneNode(true) as DocumentFragment; const muscleSelect = newRow.querySelector('.muscle-group-select') as HTMLSelectElement; populateMuscleGroups(muscleSelect); populateExercises(muscleSelect.value, newRow.querySelector('.exercise-select') as HTMLSelectElement); list.appendChild(newRow); list.querySelectorAll('.range-slider').forEach(slider => updateSliderBackground(slider as HTMLInputElement)); window.lucide.createIcons(); };
-const addDayCard = (isFirst = false) => { const dayCount = (document.getElementById('workout-days-container') as HTMLElement).children.length + 1; const newDay = document.createElement('div'); newDay.className = 'card rounded-lg day-card'; newDay.innerHTML = `<div class="flex justify-between items-center p-4 bg-tertiary/30 rounded-t-lg"><div class="flex items-center gap-3"><i data-lucide="calendar-days" class="text-yellow-400"></i><input type="text" value="روز ${dayCount}: " class="day-title-input input-field font-bold text-lg bg-transparent border-0 p-1 focus:ring-0 focus:border-yellow-400 w-auto"></div> ${!isFirst ? '<button type="button" class="remove-day-btn p-1 text-secondary hover:text-red-400"><i data-lucide="x-circle" class="w-5 h-5"></i></button>' : ''}</div><div class="p-4 space-y-3"><div class="exercise-list space-y-3"></div><button type="button" class="add-exercise-btn mt-2 w-full text-sm text-yellow-400 font-semibold hover:bg-yellow-400/10 py-2.5 px-4 rounded-lg border-2 border-dashed border-yellow-400/30 transition-all flex items-center justify-center gap-2"><i data-lucide="plus"></i> افزودن حرکت</button></div><div class="p-4 border-t border-border-primary/50"><label class="font-semibold text-sm text-secondary mb-2 block">یادداشت‌های مربی</label><textarea class="day-notes-input input-field text-sm bg-tertiary/50" rows="2" placeholder="مثال: روی فرم صحیح حرکت تمرکز کنید..."></textarea></div>`; (document.getElementById('workout-days-container') as HTMLElement).appendChild(newDay); addExerciseRow(newDay.querySelector('.exercise-list') as HTMLElement); window.lucide.createIcons(); };
+const addDayCard = (isFirst = false) => { const dayCount = (document.getElementById('workout-days-container') as HTMLElement).children.length + 1; const newDay = document.createElement('div'); newDay.className = 'card rounded-lg day-card'; newDay.innerHTML = `<div class="flex justify-between items-center p-4 bg-tertiary/50 rounded-t-lg border-b border-border-secondary"><div class="flex items-center gap-3"><i data-lucide="calendar-days" class="text-yellow-400"></i><input type="text" value="روز ${dayCount}: " class="day-title-input input-field font-bold text-lg bg-transparent border-0 p-1 focus:ring-0 focus:border-yellow-400 w-auto"></div> ${!isFirst ? '<button type="button" class="remove-day-btn p-1 text-secondary hover:text-red-400"><i data-lucide="x-circle" class="w-5 h-5"></i></button>' : ''}</div><div class="p-4 space-y-3"><div class="exercise-list space-y-3"></div><button type="button" class="add-exercise-btn mt-2 w-full text-sm text-yellow-400 font-semibold hover:bg-yellow-400/10 py-2.5 px-4 rounded-lg border-2 border-dashed border-yellow-400/30 transition-all flex items-center justify-center gap-2"><i data-lucide="plus"></i> افزودن حرکت</button></div><div class="p-4 border-t border-border-primary/50"><label class="font-semibold text-sm text-secondary mb-2 block">یادداشت‌های مربی</label><textarea class="day-notes-input input-field text-sm bg-tertiary/50" rows="2" placeholder="مثال: روی فرم صحیح حرکت تمرکز کنید..."></textarea></div>`; (document.getElementById('workout-days-container') as HTMLElement).appendChild(newDay); addExerciseRow(newDay.querySelector('.exercise-list') as HTMLElement); window.lucide.createIcons(); };
 const populateSupplements = () => { const container = document.getElementById('supplements-container') as HTMLElement; container.innerHTML = '';  for (const category in supplementDB) { const card = document.createElement('div'); card.className = 'supp-category-card bg-tertiary/50 rounded-lg overflow-hidden'; card.innerHTML = `<h3 class="font-bold p-4 border-b border-border-secondary text-blue-400">${category}</h3><div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></div>`; const listContainer = card.querySelector('.grid') as HTMLElement; supplementDB[category].forEach(item => { const wrapper = document.createElement('div'); wrapper.className = "supplement-item flex items-center justify-between"; wrapper.innerHTML = `<label class="custom-checkbox-label"><input type="checkbox" value="${item.name}" data-dosage="${item.dosage}" data-note="${item.note}" class="supplement-checkbox custom-checkbox"><span>${item.name}</span></label><div class="flex items-center gap-2"><div class="tooltip"><i data-lucide="info" class="w-4 h-4 text-gray-500 cursor-pointer"></i><span class="tooltiptext">${item.note}</span></div><i data-lucide="pill" class="w-5 h-5 text-gray-400 flex-shrink-0"></i><input type="text" class="dosage-input input-field text-sm w-32" placeholder="دوز..."></div>`; listContainer.appendChild(wrapper); }); container.appendChild(card); } window.lucide.createIcons(); };
 
 const generateProgramPreview = (dataSourceContainer: HTMLElement, targetContainerSelector: string) => {
@@ -380,7 +335,7 @@ const generateProgramPreview = (dataSourceContainer: HTMLElement, targetContaine
             const supName = sanitizeHTML((sup as HTMLInputElement).value);
             supplementsTable += `<tr><td>${supName}</td><td style="text-align: center;">${dosage}</td></tr>`;
         });
-        supplementsTable += `</tbody></table></div></div>`;
+        supplementsTable += `</tbody></table></div>`;
         appendContent(supplementsTable);
     }
     window.lucide.createIcons();
@@ -771,6 +726,7 @@ function populateDashboard(username: string, state: AppState) {
     generateProgramPreview(profilePanel, '#dashboard-program-view');
     
     (document.getElementById('dashboard-welcome-message') as HTMLElement).textContent = `خوش آمدی، ${username}!`;
+    window.lucide.createIcons();
 }
 
 
@@ -807,35 +763,17 @@ function logout() {
         authScreen.classList.remove('hidden');
         setTimeout(() => {
             authScreen.classList.remove('opacity-0');
-            initAuthScreen();
         }, 50);
     }, 300);
+
+    // Reset auth screen to default state
+    document.getElementById('login-tab-btn')?.classList.add('active');
+    document.getElementById('signup-tab-btn')?.classList.remove('active');
+    document.getElementById('login-form-container')?.classList.remove('hidden');
+    document.getElementById('signup-form-container')?.classList.add('hidden');
+    (document.getElementById('login-form') as HTMLFormElement)?.reset();
+    (document.getElementById('signup-form') as HTMLFormElement)?.reset();
 }
-
-const updateClientCard = (username: string) => {
-    const card = document.querySelector(`.client-card[data-username="${username}"]`) as HTMLElement;
-    if (!card) return;
-    const data = getUserData(username);
-    const hasPaid = data.hasPaid ?? false;
-    const infoConfirmed = data.infoConfirmed ?? false;
-    const hasPlan = data.step2 && data.step2.days.some(d => d.exercises.length > 0);
-    
-    const statusContainer = card.querySelector('.client-status-tags')!;
-    statusContainer.innerHTML = ''; // Clear existing tags
-
-    if(hasPaid) statusContainer.innerHTML += `<span class="status-tag tag-green">پرداخت شده</span>`;
-    else statusContainer.innerHTML += `<span class="status-tag tag-red">پرداخت نشده</span>`;
-    
-    if(infoConfirmed) statusContainer.innerHTML += `<span class="status-tag tag-blue">اطلاعات تایید شده</span>`;
-    
-    if(!hasPlan) statusContainer.innerHTML += `<span class="status-tag tag-yellow">بدون برنامه</span>`;
-    
-    if(data.lastUpdatedByAdmin) {
-        const lastUpdate = new Date(data.lastUpdatedByAdmin);
-        (card.querySelector('.client-last-update') as HTMLElement).textContent = `آخرین بروزرسانی: ${lastUpdate.toLocaleDateString('fa-IR')} ${lastUpdate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}`;
-    }
-};
-
 
 const populateAdminUserList = () => {
     const userListContainer = document.getElementById('admin-user-list') as HTMLElement;
@@ -844,212 +782,32 @@ const populateAdminUserList = () => {
     
     userListContainer.innerHTML = '';
     if (users.length === 0) {
-        userListContainer.innerHTML = `<p class="text-secondary col-span-full text-center">هنوز هیچ شاگردی ثبت‌نام نکرده است.</p>`;
+        userListContainer.innerHTML = `<p class="text-secondary text-center col-span-full">هنوز هیچ شاگردی ثبت‌نام نکرده است.</p>`;
         return;
     }
     
     users.forEach((user: any) => {
-        const data = getUserData(user.username);
         const card = document.createElement('div');
-        card.className = 'client-card card rounded-lg p-4 cursor-pointer';
+        card.className = 'flex items-center justify-between p-3 rounded-lg hover:bg-tertiary/50 transition-colors';
         card.dataset.username = user.username;
-        card.dataset.email = user.email;
-        card.dataset.hasPaid = (data.hasPaid ?? false).toString();
-        card.dataset.infoConfirmed = (data.infoConfirmed ?? false).toString();
-        card.dataset.hasPlan = (data.step2 && data.step2.days.some(d => d.exercises.length > 0)) ? 'true' : 'false';
 
         card.innerHTML = `
-            <div class="flex items-start gap-4">
-                <img src="${data.step1?.profilePic || 'https://placehold.co/60x60/374151/E5E7EB?text=?'}" class="w-16 h-16 rounded-full object-cover border-2 border-border-primary">
-                <div class="flex-grow">
-                    <div class="flex justify-between items-start">
-                        <h4 class="font-bold text-lg">${user.username}</h4>
-                        <button class="remove-user-btn text-secondary hover:text-red-400 p-1" data-username="${user.username}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                    </div>
-                    <p class="text-sm text-secondary mb-2">${user.email}</p>
-                    <div class="client-status-tags flex flex-wrap gap-2 mb-2"></div>
+            <div class="flex items-center gap-3">
+                <img src="${getUserData(user.username).step1?.profilePic || 'https://placehold.co/40x40/374151/E5E7EB?text=?'}" class="w-10 h-10 rounded-full object-cover">
+                <div>
+                    <p class="font-bold">${user.username}</p>
+                    <p class="text-xs text-secondary">${user.email}</p>
                 </div>
             </div>
-            <div class="mt-3 pt-3 border-t border-border-primary">
-                <p class="text-xs text-secondary client-last-update">برنامه بروزرسانی نشده</p>
+            <div class="flex items-center gap-2">
+                <button class="load-user-btn secondary-button text-xs font-bold py-1 px-3 rounded-md" data-username="${user.username}">بارگذاری</button>
+                <button class="remove-user-btn text-red-500 hover:bg-red-500/10 p-2 rounded-md" data-username="${user.username}" title="حذف کاربر"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </div>
         `;
         userListContainer.appendChild(card);
-        updateClientCard(user.username);
     });
     window.lucide.createIcons();
 };
-
-const populateClientDetailPanel = (username: string) => {
-    const data = getUserData(username);
-    const user = getUsers().find((u:any) => u.username === username);
-
-    (document.getElementById('client-detail-name') as HTMLElement).textContent = username;
-    const contentEl = document.getElementById('client-detail-content')!;
-    
-    const s1 = data.step1 || {};
-
-    let vitalsHtml = '<h3>شاخص‌های کلیدی</h3><ul>';
-    const vitals = {
-        'هدف': s1.trainingGoal || '-',
-        'سن': s1.age || '-',
-        'قد': s1.height ? `${s1.height} cm` : '-',
-        'وزن': s1.weight ? `${s1.weight} kg` : '-',
-        'جنسیت': s1.gender || '-',
-    };
-    for(const [key, value] of Object.entries(vitals)) {
-        vitalsHtml += `<li><strong>${key}:</strong> ${value}</li>`;
-    }
-    vitalsHtml += '</ul>';
-
-    contentEl.innerHTML = `
-        <div class="space-y-6">
-            <div class="client-detail-section">
-                <h4><i data-lucide="user-circle" class="text-yellow-400"></i>اطلاعات تماس</h4>
-                <p><strong>نام کاربری:</strong> ${username}</p>
-                <p><strong>ایمیل:</strong> ${user.email}</p>
-            </div>
-            <div class="client-detail-section">
-                <h4><i data-lucide="activity" class="text-yellow-400"></i>شاخص‌های بدنی</h4>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <p><strong>هدف:</strong> ${s1.trainingGoal || '-'}</p>
-                    <p><strong>سن:</strong> ${s1.age || '-'}</p>
-                    <p><strong>قد:</strong> ${s1.height ? `${s1.height} cm` : '-'}</p>
-                    <p><strong>وزن:</strong> ${s1.weight ? `${s1.weight} kg` : '-'}</p>
-                    <p><strong>جنسیت:</strong> ${s1.gender || '-'}</p>
-                </div>
-            </div>
-             <div class="client-detail-section">
-                <h4><i data-lucide="file-check" class="text-yellow-400"></i>وضعیت</h4>
-                <div class="space-y-2">
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" data-field="hasPaid" class="custom-checkbox client-status-checkbox" ${data.hasPaid ? 'checked' : ''}> هزینه برنامه پرداخت شده</label>
-                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" data-field="infoConfirmed" class="custom-checkbox client-status-checkbox" ${data.infoConfirmed ? 'checked' : ''}> اطلاعات توسط کاربر تایید شده</label>
-                </div>
-            </div>
-        </div>
-    `;
-    window.lucide.createIcons();
-    (document.getElementById('load-client-for-edit-btn') as HTMLButtonElement).dataset.username = username;
-    (document.getElementById('client-detail-panel') as HTMLElement).dataset.username = username;
-};
-
-const updateGoalsChart = () => {
-    const users = getUsers().filter((u: any) => u.username !== 'admin');
-    const goalsCount: { [key: string]: number } = {
-        'افزایش حجم عضلانی': 0,
-        'چربی سوزی': 0,
-        'افزایش قدرت': 0,
-        'تناسب اندام عمومی': 0
-    };
-    
-    users.forEach(user => {
-        const data = getUserData(user.username);
-        const goal = data.step1?.trainingGoal;
-        if (goal && goalsCount.hasOwnProperty(goal)) {
-            goalsCount[goal]++;
-        }
-    });
-
-    const total = Object.values(goalsCount).reduce((a, b) => a + b, 0);
-    const chart = document.getElementById('goals-pie-chart')!;
-    const legend = document.getElementById('goals-chart-legend')!;
-    const colors = ['#3b82f6', '#22c55e', '#ef4444', '#f97316'];
-    const goalKeys = Object.keys(goalsCount);
-    
-    let gradientParts: string[] = [];
-    let currentPercentage = 0;
-    
-    legend.innerHTML = '';
-    if (total === 0) {
-        chart.style.background = 'var(--bg-tertiary)';
-        legend.innerHTML = '<p class="text-secondary text-sm col-span-2 text-center">هنوز اطلاعاتی برای نمایش وجود ندارد.</p>';
-        return;
-    }
-
-    goalKeys.forEach((goal, i) => {
-        const percentage = (goalsCount[goal] / total) * 100;
-        if (percentage > 0) {
-            gradientParts.push(`${colors[i]} ${currentPercentage}% ${currentPercentage + percentage}%`);
-            currentPercentage += percentage;
-        }
-        
-        const legendItem = document.createElement('div');
-        legendItem.className = 'flex items-center gap-2';
-        legendItem.innerHTML = `<div class="w-3 h-3 rounded-full" style="background-color: ${colors[i]}"></div> <span>${goal} (${percentage.toFixed(0)}%)</span>`;
-        legend.appendChild(legendItem);
-    });
-
-    chart.style.background = `conic-gradient(${gradientParts.join(', ')})`;
-};
-
-
-const populateAdminStats = () => {
-    const users = getUsers().filter((u: any) => u.username !== 'admin');
-    let paidCount = 0;
-    let needsAttentionCount = 0;
-
-    users.forEach(user => {
-        const data = getUserData(user.username);
-        if (data.hasPaid) paidCount++;
-        if (!data.hasPaid || !data.infoConfirmed) needsAttentionCount++;
-    });
-
-    (document.getElementById('stat-total-users') as HTMLElement).textContent = users.length.toString();
-    (document.getElementById('stat-paid-users') as HTMLElement).textContent = paidCount.toString();
-    (document.getElementById('stat-needs-attention') as HTMLElement).textContent = needsAttentionCount.toString();
-    
-    // Populate activity log
-    const logList = document.getElementById('activity-log-list')!;
-    const logs = getActivityLog();
-    logList.innerHTML = '';
-    if (logs.length > 0) {
-        logs.forEach((log: any) => {
-            const li = document.createElement('li');
-            li.className = 'flex items-start gap-3 text-sm';
-            li.innerHTML = `
-                <i data-lucide="check-circle" class="w-5 h-5 text-green-500 mt-0.5"></i>
-                <div>
-                    <p class="font-semibold">${log.message}</p>
-                    <p class="text-xs text-secondary">${new Date(log.date).toLocaleString('fa-IR')}</p>
-                </div>
-            `;
-            logList.appendChild(li);
-        });
-    } else {
-        logList.innerHTML = '<p class="text-secondary text-sm">فعالیتی برای نمایش وجود ندارد.</p>';
-    }
-    window.lucide.createIcons();
-
-    updateGoalsChart();
-};
-
-function initAuthScreen() {
-    // Inject motivational quote
-    const quoteContainer = document.getElementById('motivational-quote-container');
-    if (quoteContainer) {
-        const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
-        quoteContainer.innerHTML = `<p class="text-2xl font-bold leading-relaxed">"${randomQuote.quote}"</p><p class="mt-2 text-lg text-gray-300">- ${randomQuote.author}</p>`;
-    }
-    
-    // Welcome back message
-    const lastUser = localStorage.getItem('fitgympro_last_user');
-    const welcomeBackContainer = document.getElementById('welcome-back-container') as HTMLElement;
-    const loginDefaultHeader = document.getElementById('login-default-header') as HTMLElement;
-    if (lastUser && lastUser !== 'admin' && getUsers().some((u: any) => u.username === lastUser)) {
-        (document.getElementById('welcome-back-username') as HTMLElement).textContent = lastUser;
-        (document.getElementById('login-username-input') as HTMLInputElement).value = lastUser;
-        (document.getElementById('login-password-input') as HTMLInputElement).focus();
-        welcomeBackContainer.classList.remove('hidden');
-        loginDefaultHeader.classList.add('hidden');
-    } else {
-        welcomeBackContainer.classList.add('hidden');
-        loginDefaultHeader.classList.remove('hidden');
-    }
-    
-    // Default to login tab
-    switchAuthForm('login');
-}
-
 
 // --- EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1065,25 +823,104 @@ document.addEventListener('DOMContentLoaded', () => {
             loginAsAdmin();
         } else if (getUsers().some((u: any) => u.username === lastUser)) {
             loginAsUser(lastUser);
-        } else {
-            initAuthScreen();
         }
-    } else {
-        initAuthScreen();
     }
     
-    // --- Auth Form Switching ---
-    authLoginTab.addEventListener('click', () => switchAuthForm('login'));
-    authSignupTab.addEventListener('click', () => switchAuthForm('signup'));
+    // --- Auth Screen Tab Switcher ---
+    const loginTabBtn = document.getElementById('login-tab-btn');
+    const signupTabBtn = document.getElementById('signup-tab-btn');
+    const loginFormContainer = document.getElementById('login-form-container');
+    const signupFormContainer = document.getElementById('signup-form-container');
+    const loginForm = document.getElementById('login-form') as HTMLFormElement;
+    const signupForm = document.getElementById('signup-form') as HTMLFormElement;
 
-    (document.getElementById('forgot-password-link') as HTMLElement).addEventListener('click', () => {
-        switchAuthForm('recovery');
+    const switchToLogin = () => {
+        loginTabBtn?.classList.add('active');
+        signupTabBtn?.classList.remove('active');
+        loginFormContainer?.classList.remove('hidden');
+        signupFormContainer?.classList.add('hidden');
+        if (signupForm) signupForm.reset();
+    };
+
+    const switchToSignup = () => {
+        loginTabBtn?.classList.remove('active');
+        signupTabBtn?.classList.add('active');
+        loginFormContainer?.classList.add('hidden');
+        signupFormContainer?.classList.remove('hidden');
+        if (loginForm) loginForm.reset();
+    };
+
+    loginTabBtn?.addEventListener('click', switchToLogin);
+    signupTabBtn?.addEventListener('click', switchToSignup);
+
+    // --- Authentication Form Handlers ---
+    document.getElementById('login-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const username = (document.getElementById('login-username') as HTMLInputElement).value.trim();
+        const password = (document.getElementById('login-password') as HTMLInputElement).value;
+        
+        if (!username || !password) {
+            showToast('لطفا نام کاربری و رمز عبور را وارد کنید.', 'error');
+            return;
+        }
+        
+        if (username.toLowerCase() === 'admin' && password === 'hamid@@##') {
+            loginAsAdmin();
+            return;
+        }
+        
+        const users = getUsers();
+        const user = users.find((u: any) => u.username.toLowerCase() === username.toLowerCase());
+        
+        if (user && user.password === password) {
+            loginAsUser(user.username);
+        } else {
+            showToast('نام کاربری یا رمز عبور اشتباه است.', 'error');
+        }
     });
 
-    const backToLogin = () => switchAuthForm('login');
-    (document.getElementById('back-to-login-btn') as HTMLElement).addEventListener('click', backToLogin);
-    (document.getElementById('recovery-back-to-login-btn') as HTMLElement).addEventListener('click', backToLogin);
+    document.getElementById('signup-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const username = (document.getElementById('signup-username') as HTMLInputElement).value.trim();
+        const email = (document.getElementById('signup-email') as HTMLInputElement).value.trim();
+        const password = (document.getElementById('signup-password') as HTMLInputElement).value;
+        
+        if (!username || !email || !password) {
+            showToast('لطفا تمام فیلدها را پر کنید.', 'error');
+            return;
+        }
+        if (username.length < 3) {
+            showToast('نام کاربری باید حداقل ۳ حرف باشد.', 'error');
+            return;
+        }
+        if (password.length < 6) {
+            showToast('رمز عبور باید حداقل ۶ کاراکتر باشد.', 'error');
+            return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+             showToast('فرمت ایمیل نامعتبر است.', 'error');
+             return;
+        }
+        if (getUsers().some((u: any) => u.username.toLowerCase() === username.toLowerCase())) {
+            showToast('این نام کاربری قبلا استفاده شده است.', 'error');
+            return;
+        }
 
+        const users = getUsers();
+        users.push({ username, email, password });
+        saveUsers(users);
+        saveUserData(username, {
+            step1: { clientName: username, clientEmail: email },
+            step2: { days: [] },
+            step3: { supplements: [] },
+            step4: {}
+        });
+        
+        logActivity(`کاربر جدید ${username} ثبت نام کرد.`);
+        showToast(`خوش آمدی، ${username}! ثبت نام با موفقیت انجام شد.`, 'success');
+        loginAsUser(username);
+    });
 
     // --- Theme Toggler ---
     const toggleTheme = () => {
@@ -1109,13 +946,22 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (target.matches('.range-slider')) {
             updateSliderBackground(target);
-            const valueDisplay = target.previousElementSibling?.querySelector(`.${target.id.replace('-slider', '-value')}, .${target.className.split(' ').find(c => c.includes('-slider'))?.replace('-slider', '-value')}`);
-            if (valueDisplay) {
-                let suffix = '';
-                if (target.classList.contains('height-slider')) suffix = ' cm';
-                if (target.classList.contains('weight-slider')) suffix = ' kg';
-                if (target.classList.contains('rest-slider')) suffix = 's';
-                valueDisplay.textContent = target.value + suffix;
+        
+            const sliderClass = target.className.split(' ').find(c => c.includes('-slider'));
+            const classSelector = sliderClass ? `.${sliderClass.replace('-slider', '-value')}` : null;
+            const idSelector = target.id ? `.${target.id.replace('-slider', '-value')}` : null;
+            
+            const finalSelector = [idSelector, classSelector].filter(Boolean).join(', ');
+        
+            if (finalSelector) {
+                const valueDisplay = target.previousElementSibling?.querySelector(finalSelector) || target.parentElement?.querySelector(finalSelector);
+                if (valueDisplay) {
+                    let suffix = '';
+                    if (target.classList.contains('height-slider')) suffix = ' cm';
+                    if (target.classList.contains('weight-slider')) suffix = ' kg';
+                    if (target.classList.contains('rest-slider')) suffix = 's';
+                    valueDisplay.textContent = target.value + suffix;
+                }
             }
         }
         
@@ -1341,6 +1187,140 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = false;
         }
     });
+
+    // --- Admin Panel ---
+    const closeAdminPanel = () => {
+        adminPanelModal.classList.remove('active');
+        setTimeout(() => adminPanelModal.classList.add('hidden'), 300);
+    };
+
+    adminPanelBtn.addEventListener('click', () => {
+        populateAdminUserList();
+        adminPanelModal.classList.remove('hidden');
+        setTimeout(() => {
+            adminPanelModal.classList.add('active');
+        }, 10);
+    });
+
+    document.getElementById('close-admin-panel-btn')?.addEventListener('click', closeAdminPanel);
+    adminPanelModal.addEventListener('click', (e) => {
+        if (e.target === adminPanelModal) closeAdminPanel();
+    });
+
+    adminPanelModal.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+
+        const loadBtn = target.closest('.load-user-btn');
+        if (loadBtn) {
+            const username = (loadBtn as HTMLElement).dataset.username;
+            if (username) {
+                const userData = getUserData(username);
+                loadStateIntoApp(userData);
+                closeAdminPanel();
+                showToast(`اطلاعات ${username} برای ویرایش بارگذاری شد.`, 'success');
+            }
+        }
+
+        const removeBtn = target.closest('.remove-user-btn');
+        if (removeBtn) {
+            const username = (removeBtn as HTMLElement).dataset.username;
+            if (username && confirm(`آیا از حذف کاربر «${username}» مطمئن هستید؟ این عمل غیرقابل بازگشت است.`)) {
+                let users = getUsers();
+                users = users.filter((u: any) => u.username !== username);
+                saveUsers(users);
+                localStorage.removeItem(`fitgympro_data_${username}`);
+                logActivity(`کاربر ${username} حذف شد.`);
+                populateAdminUserList();
+                showToast(`کاربر ${username} با موفقیت حذف شد.`, 'success');
+            }
+        }
+    });
+
+    document.getElementById('create-user-btn')?.addEventListener('click', () => {
+        const userInput = document.getElementById('new-username-input') as HTMLInputElement;
+        const emailInput = document.getElementById('new-user-email-input') as HTMLInputElement;
+        const passInput = document.getElementById('new-user-password-input') as HTMLInputElement;
+        const errorEl = document.getElementById('create-user-error') as HTMLElement;
+
+        const username = userInput.value.trim();
+        const email = emailInput.value.trim();
+        const password = passInput.value.trim();
+        errorEl.textContent = '';
+
+        if (!username || !email || !password) {
+            errorEl.textContent = 'تمام فیلدها الزامی هستند.';
+            return;
+        }
+        if (getUsers().some((u: any) => u.username.toLowerCase() === username.toLowerCase())) {
+            errorEl.textContent = 'این نام کاربری قبلا استفاده شده.';
+            return;
+        }
+
+        const users = getUsers();
+        users.push({ username, email, password });
+        saveUsers(users);
+        saveUserData(username, {
+            step1: { clientName: username, clientEmail: email },
+            step2: { days: [] }, step3: { supplements: [] }, step4: {}
+        });
+        logActivity(`کاربر ${username} توسط مدیر ایجاد شد.`);
+        showToast(`کاربر ${username} با موفقیت ایجاد شد.`, 'success');
+        populateAdminUserList();
+        userInput.value = ''; emailInput.value = ''; passInput.value = '';
+    });
+    
+    // --- User Dashboard Functionality ---
+    let saveDashboardTimeout: number;
+    document.getElementById('dashboard-profile-panel')?.addEventListener('input', () => {
+        clearTimeout(saveDashboardTimeout);
+        saveDashboardTimeout = window.setTimeout(() => {
+            if (currentUser && currentUser !== 'admin') {
+                const currentState = getUserData(currentUser);
+                const dashboardPanel = document.getElementById('dashboard-profile-panel')!;
+                
+                const dashboardStep1Data = {
+                    clientName: (dashboardPanel.querySelector('.client-name-input') as HTMLInputElement).value,
+                    clientEmail: (dashboardPanel.querySelector('.client-email-input') as HTMLInputElement).value,
+                    profilePic: (dashboardPanel.querySelector('.profile-pic-preview') as HTMLImageElement).src,
+                    trainingGoal: (dashboardPanel.querySelector('.training-goal:checked') as HTMLInputElement)?.value,
+                    age: (dashboardPanel.querySelector('.age-slider') as HTMLInputElement).value,
+                    height: (dashboardPanel.querySelector('.height-slider') as HTMLInputElement).value,
+                    weight: (dashboardPanel.querySelector('.weight-slider') as HTMLInputElement).value,
+                    neck: (dashboardPanel.querySelector('.neck-input') as HTMLInputElement).value,
+                    waist: (dashboardPanel.querySelector('.waist-input') as HTMLInputElement).value,
+                    hip: (dashboardPanel.querySelector('.hip-input') as HTMLInputElement).value,
+                    gender: (dashboardPanel.querySelector('.gender:checked') as HTMLInputElement)?.value,
+                    activityLevel: (dashboardPanel.querySelector('.activity-level:checked') as HTMLInputElement)?.value,
+                    trainingDays: (dashboardPanel.querySelector('.training-days:checked') as HTMLInputElement)?.value,
+                };
+
+                currentState.step1 = { ...currentState.step1, ...dashboardStep1Data };
+                saveUserData(currentUser, currentState);
+                showToast('تغییرات شما ذخیره شد.', 'success');
+            }
+        }, 1500);
+    });
+
+    document.getElementById('confirm-info-btn')?.addEventListener('click', () => {
+        if (currentUser && currentUser !== 'admin') {
+            const data = getUserData(currentUser);
+            data.infoConfirmed = true;
+            saveUserData(currentUser, data);
+            populateDashboard(currentUser, data);
+            showToast('اطلاعات شما با موفقیت تایید شد.', 'success');
+        }
+    });
+
+    document.getElementById('pay-program-btn')?.addEventListener('click', () => {
+        if (currentUser && currentUser !== 'admin') {
+            const data = getUserData(currentUser);
+            data.hasPaid = true;
+            saveUserData(currentUser, data);
+            populateDashboard(currentUser, data);
+            showToast('پرداخت با موفقیت انجام شد (شبیه‌سازی).', 'success');
+        }
+    });
+
 
     // --- Logout ---
     document.getElementById('logout-btn')?.addEventListener('click', logout);
