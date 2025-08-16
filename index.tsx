@@ -861,26 +861,30 @@ function handleUserLogin() {
     const passwordInput = document.getElementById('login-password-input') as HTMLInputElement;
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
-    const errorEl = document.getElementById('login-error') as HTMLElement;
+    const usernameError = document.getElementById('login-username-error') as HTMLElement;
+    const passwordError = document.getElementById('login-password-error') as HTMLElement;
+    const generalError = document.getElementById('login-error') as HTMLElement;
 
-    errorEl.textContent = '';
+    // Clear previous errors
+    usernameError.textContent = '';
+    passwordError.textContent = '';
+    generalError.textContent = '';
     usernameInput.classList.remove('input-error');
     passwordInput.classList.remove('input-error');
 
     let hasError = false;
     if (!username) {
         usernameInput.classList.add('input-error');
+        usernameError.textContent = 'لطفا نام کاربری را وارد کنید.';
         hasError = true;
     }
     if (!password) {
         passwordInput.classList.add('input-error');
+        passwordError.textContent = 'لطفا رمز عبور را وارد کنید.';
         hasError = true;
     }
 
-    if (hasError) {
-        errorEl.textContent = 'نام کاربری و رمز عبور را وارد کنید.';
-        return;
-    }
+    if (hasError) return;
 
     if (username.toLowerCase() === 'admin' && password === 'hamid@@##') {
         loginAsAdmin();
@@ -893,7 +897,7 @@ function handleUserLogin() {
     if (user && user.password === password) {
         loginAsUser(user.username);
     } else {
-        errorEl.textContent = 'نام کاربری یا رمز عبور اشتباه است.';
+        generalError.textContent = 'نام کاربری یا رمز عبور اشتباه است.';
         usernameInput.classList.add('input-error');
         passwordInput.classList.add('input-error');
     }
@@ -906,42 +910,48 @@ function handleUserSignup() {
     const username = usernameInput.value.trim();
     const email = emailInput.value.trim();
     const password = passwordInput.value.trim();
-    const errorEl = document.getElementById('signup-error') as HTMLElement;
+    
+    // Error elements
+    const usernameError = document.getElementById('signup-username-error') as HTMLElement;
+    const emailError = document.getElementById('signup-email-error') as HTMLElement;
+    const passwordError = document.getElementById('signup-password-error') as HTMLElement;
+    const generalError = document.getElementById('signup-error') as HTMLElement;
 
-    errorEl.textContent = '';
+    // Clear previous errors
+    usernameError.textContent = '';
+    emailError.textContent = '';
+    passwordError.textContent = '';
+    generalError.textContent = '';
     usernameInput.classList.remove('input-error');
     emailInput.classList.remove('input-error');
     passwordInput.classList.remove('input-error');
 
     let hasError = false;
-    if (!username) { usernameInput.classList.add('input-error'); hasError = true; }
-    if (!email) { emailInput.classList.add('input-error'); hasError = true; }
-    if (!password) { passwordInput.classList.add('input-error'); hasError = true; }
-    if (hasError) {
-        errorEl.textContent = 'تمام فیلدها باید پر شوند.';
-        return;
-    }
+    if (!username) { usernameInput.classList.add('input-error'); usernameError.textContent = 'نام کاربری نمی‌تواند خالی باشد.'; hasError = true; }
+    if (!email) { emailInput.classList.add('input-error'); emailError.textContent = 'ایمیل نمی‌تواند خالی باشد.'; hasError = true; }
+    if (!password) { passwordInput.classList.add('input-error'); passwordError.textContent = 'رمز عبور نمی‌تواند خالی باشد.'; hasError = true; }
+    if (hasError) return;
 
     if (!/^\S+@\S+\.\S+$/.test(email)) {
-        errorEl.textContent = 'فرمت ایمیل نامعتبر است.';
+        emailError.textContent = 'فرمت ایمیل نامعتبر است.';
         emailInput.classList.add('input-error');
         return;
     }
     
     if (username.toLowerCase() === 'admin') {
-        errorEl.textContent = 'این نام کاربری رزرو شده است.';
+        usernameError.textContent = 'این نام کاربری رزرو شده است.';
         usernameInput.classList.add('input-error');
         return;
     }
 
     let users = getUsers();
     if (users.some((u: any) => u.username.toLowerCase() === username.toLowerCase())) {
-        errorEl.textContent = 'این نام کاربری قبلا استفاده شده است.';
+        usernameError.textContent = 'این نام کاربری قبلا استفاده شده است.';
         usernameInput.classList.add('input-error');
         return;
     }
     if (users.some((u: any) => u.email && u.email.toLowerCase() === email.toLowerCase())) {
-        errorEl.textContent = 'این ایمیل قبلا استفاده شده است.';
+        emailError.textContent = 'این ایمیل قبلا استفاده شده است.';
         emailInput.classList.add('input-error');
         return;
     }
@@ -1504,11 +1514,12 @@ const checkUsername = async () => {
     const usernameInput = document.getElementById('signup-username-input') as HTMLInputElement;
     const username = usernameInput.value.trim();
     const iconContainer = document.getElementById('username-valid-icon-container') as HTMLElement;
-    const errorEl = document.getElementById('signup-error') as HTMLElement;
+    const errorEl = document.getElementById('signup-username-error') as HTMLElement;
 
     if (username.length < 3) {
         iconContainer.innerHTML = '';
         usernameInput.classList.remove('input-error', 'input-success');
+        errorEl.textContent = '';
         return;
     }
     
@@ -1531,6 +1542,19 @@ const checkUsername = async () => {
         usernameInput.classList.remove('input-error');
         usernameInput.classList.add('input-success');
         errorEl.textContent = '';
+    }
+    window.lucide.createIcons();
+};
+
+const togglePasswordVisibility = (button: HTMLButtonElement) => {
+    const input = button.previousElementSibling as HTMLInputElement;
+    const icon = button.querySelector('i') as HTMLElement;
+    if (input.type === "password") {
+        input.type = "text";
+        icon.setAttribute('data-lucide', 'eye-off');
+    } else {
+        input.type = "password";
+        icon.setAttribute('data-lucide', 'eye');
     }
     window.lucide.createIcons();
 };
@@ -1586,6 +1610,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const signupUsernameInput = document.getElementById('signup-username-input') as HTMLInputElement;
     signupUsernameInput.addEventListener('input', debounce(checkUsername, 500));
 
+    // Password visibility toggles
+    document.querySelectorAll('.password-toggle-btn').forEach(button => {
+        button.addEventListener('click', () => togglePasswordVisibility(button as HTMLButtonElement));
+    });
+
     // Magic Link
     const magicLinkToggle = document.getElementById('magic-link-toggle');
     const passwordLoginToggle = document.getElementById('password-login-toggle');
@@ -1610,12 +1639,14 @@ document.addEventListener('DOMContentLoaded', () => {
     submitMagicLinkBtn?.addEventListener('click', () => {
         const emailInput = document.getElementById('magic-link-email-input') as HTMLInputElement;
         const email = emailInput.value.trim();
-        const errorEl = document.getElementById('magic-link-error') as HTMLElement;
-        errorEl.textContent = '';
+        const emailError = document.getElementById('magic-link-email-error') as HTMLElement;
+        const generalError = document.getElementById('magic-link-error') as HTMLElement;
+        emailError.textContent = '';
+        generalError.textContent = '';
         emailInput.classList.remove('input-error');
 
         if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-            errorEl.textContent = 'لطفا یک ایمیل معتبر وارد کنید.';
+            emailError.textContent = 'لطفا یک ایمیل معتبر وارد کنید.';
             emailInput.classList.add('input-error');
             return;
         }
@@ -1626,7 +1657,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast(`لینک ورود به ایمیل ${email} ارسال شد.`);
             emailInput.value = '';
         } else {
-            errorEl.textContent = 'کاربری با این ایمیل یافت نشد.';
+            generalError.textContent = 'کاربری با این ایمیل یافت نشد.';
             emailInput.classList.add('input-error');
         }
     });

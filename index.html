@@ -463,7 +463,6 @@
         }
         .input-field-container:focus-within .input-icon {
             color: var(--border-focus);
-            transform: scale(1.1);
         }
         .strength-weak { background-color: #ef4444; } /* red-500 */
         .strength-medium { background-color: #f97316; } /* orange-500 */
@@ -486,6 +485,28 @@
         .social-login-btn:hover {
             border-color: var(--border-secondary);
             background-color: var(--bg-button-secondary);
+        }
+        
+        .form-error-message {
+            color: #ef4444;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-top: 0.25rem;
+            height: 1rem; /* Reserve space to prevent layout shift */
+        }
+        .form-error-message:not(:empty) {
+            animation: fadeIn 0.3s;
+        }
+
+        .password-toggle-btn {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+        .password-toggle-btn:hover {
+            color: var(--text-primary);
         }
 
         /* Redesigned Admin Panel */
@@ -577,7 +598,7 @@
     <div id="user-selection-screen" class="fixed inset-0 bg-primary z-50 flex transition-opacity duration-500">
         <!-- Right side: Form -->
         <div class="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 overflow-y-auto">
-             <div class="w-full max-w-sm">
+             <div class="w-full max-w-md">
                  <div class="text-center mb-4">
                     <h1 class="text-3xl font-extrabold mb-2">به <span class="gradient-text">FitGym Pro</span> بپیوند</h1>
                     <p class="text-secondary text-base">برنامه‌های تمرینی هوشمند، مختص شما.</p>
@@ -599,21 +620,32 @@
                             <h2 class="text-xl font-bold mb-1">دوباره خوش آمدی، قهرمان!</h2>
                             <p class="text-secondary text-sm mb-6">برای ادامه وارد حساب خود شوید.</p>
                         </div>
-                        <form onsubmit="return false;" class="space-y-4">
-                            <div class="relative input-field-container">
-                                <i data-lucide="user" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
-                                <input type="text" id="login-username-input" class="input-field pr-10" placeholder="نام کاربری">
+                        <form onsubmit="return false;" class="space-y-2">
+                            <div>
+                                <div class="relative input-field-container">
+                                    <i data-lucide="user" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
+                                    <input type="text" id="login-username-input" class="input-field pr-10" placeholder="نام کاربری">
+                                </div>
+                                <p id="login-username-error" class="form-error-message"></p>
                             </div>
-                            <div class="relative input-field-container">
-                                <i data-lucide="lock" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
-                                <input type="password" id="login-password-input" class="input-field pr-10" placeholder="••••••••">
+                            <div>
+                                <div class="relative input-field-container">
+                                    <i data-lucide="lock" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
+                                    <input type="password" id="login-password-input" class="input-field pr-10 pl-10" placeholder="••••••••">
+                                    <button type="button" class="password-toggle-btn">
+                                        <i data-lucide="eye" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                                <p id="login-password-error" class="form-error-message"></p>
                             </div>
-                            <div class="flex justify-between items-center text-xs font-semibold">
+                            <div class="flex justify-between items-center text-xs font-semibold pt-2">
                                 <button type="button" id="magic-link-toggle" class="text-secondary hover:text-yellow-400 transition-colors">ورود با لینک جادویی</button>
                                 <button type="button" id="forgot-password-link" class="text-secondary hover:text-yellow-400 transition-colors">فراموشی رمز عبور؟</button>
                             </div>
-                            <button id="submit-login-btn" class="primary-button w-full font-bold py-3 rounded-lg text-base">ورود</button>
-                            <p id="login-error" class="text-red-500 text-sm text-center h-4"></p>
+                            <div class="pt-2">
+                                <button id="submit-login-btn" class="primary-button w-full font-bold py-3 rounded-lg text-base">ورود</button>
+                                <p id="login-error" class="form-error-message text-center"></p>
+                            </div>
                         </form>
                     </div>
 
@@ -621,13 +653,18 @@
                     <div id="auth-magic-link-form" class="auth-form-section">
                         <h2 class="text-xl font-bold mb-1">ورود بدون رمز</h2>
                         <p class="text-secondary text-sm mb-6">ایمیل خود را وارد کنید تا لینک ورود برایتان ارسال شود.</p>
-                        <form onsubmit="return false;" class="space-y-4">
-                            <div class="relative input-field-container">
-                                <i data-lucide="at-sign" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
-                                <input type="email" id="magic-link-email-input" class="input-field pr-10" placeholder="email@example.com">
+                        <form onsubmit="return false;" class="space-y-2">
+                            <div>
+                                <div class="relative input-field-container">
+                                    <i data-lucide="at-sign" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
+                                    <input type="email" id="magic-link-email-input" class="input-field pr-10" placeholder="email@example.com">
+                                </div>
+                                <p id="magic-link-email-error" class="form-error-message"></p>
                             </div>
-                            <button id="submit-magic-link-btn" class="primary-button w-full font-bold py-3 rounded-lg text-base">ارسال لینک ورود</button>
-                            <p id="magic-link-error" class="text-red-500 text-sm text-center h-4"></p>
+                            <div class="pt-2">
+                                <button id="submit-magic-link-btn" class="primary-button w-full font-bold py-3 rounded-lg text-base">ارسال لینک ورود</button>
+                                <p id="magic-link-error" class="form-error-message text-center"></p>
+                            </div>
                         </form>
                         <div class="text-center mt-4">
                             <button type="button" id="password-login-toggle" class="text-xs font-semibold text-secondary hover:text-yellow-400 transition-colors">بازگشت به ورود با رمز عبور</button>
@@ -638,20 +675,32 @@
                     <div id="auth-signup-form" class="auth-form-section">
                         <h2 class="text-xl font-bold mb-1">سفر خود را شروع کن.</h2>
                         <p class="text-secondary text-sm mb-6">با ساخت حساب، به جمع ما بپیوند.</p>
-                        <form onsubmit="return false;" class="space-y-4">
-                            <div class="relative input-field-container">
-                                <i data-lucide="user" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
-                                <input type="text" id="signup-username-input" class="input-field pr-10 pl-10" placeholder="یک نام کاربری انتخاب کنید">
-                                <div id="username-valid-icon-container" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5"></div>
+                        <form onsubmit="return false;" class="space-y-2">
+                            <div>
+                                <div class="relative input-field-container">
+                                    <i data-lucide="user" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
+                                    <input type="text" id="signup-username-input" class="input-field pr-10 pl-10" placeholder="یک نام کاربری انتخاب کنید">
+                                    <div id="username-valid-icon-container" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5"></div>
+                                </div>
+                                <p id="signup-username-error" class="form-error-message"></p>
                             </div>
-                            <div class="relative input-field-container">
-                                <i data-lucide="at-sign" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
-                                <input type="email" id="signup-email-input" class="input-field pr-10 pl-10" placeholder="email@example.com">
-                                <i data-lucide="check-circle" id="email-valid-icon" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500 hidden"></i>
+                            <div>
+                                <div class="relative input-field-container">
+                                    <i data-lucide="at-sign" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
+                                    <input type="email" id="signup-email-input" class="input-field pr-10 pl-10" placeholder="email@example.com">
+                                    <i data-lucide="check-circle" id="email-valid-icon" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500 hidden"></i>
+                                </div>
+                                <p id="signup-email-error" class="form-error-message"></p>
                             </div>
-                            <div class="relative input-field-container">
-                                <i data-lucide="lock" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
-                                <input type="password" id="signup-password-input" class="input-field pr-10" placeholder="••••••••">
+                            <div>
+                                <div class="relative input-field-container">
+                                    <i data-lucide="lock" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
+                                    <input type="password" id="signup-password-input" class="input-field pr-10 pl-10" placeholder="••••••••">
+                                    <button type="button" class="password-toggle-btn">
+                                        <i data-lucide="eye" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                                <p id="signup-password-error" class="form-error-message"></p>
                             </div>
                             <!-- Password Strength Meter -->
                             <div class="space-y-1 pt-1">
@@ -663,8 +712,10 @@
                                     <div id="strength-bar" class="h-full rounded-full transition-all duration-300"></div>
                                 </div>
                             </div>
-                            <button id="submit-signup-btn" class="primary-button w-full font-bold py-3 rounded-lg text-base">ثبت نام و ورود</button>
-                            <p id="signup-error" class="text-red-500 text-sm text-center h-4"></p>
+                            <div class="pt-2">
+                                <button id="submit-signup-btn" class="primary-button w-full font-bold py-3 rounded-lg text-base">ثبت نام و ورود</button>
+                                <p id="signup-error" class="form-error-message text-center"></p>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -673,7 +724,7 @@
                 <div class="mt-6">
                     <div class="relative my-6">
                         <div class="absolute inset-0 flex items-center" aria-hidden="true"><div class="w-full border-t border-border-primary"></div></div>
-                        <div class="relative flex justify-center text-sm"><span class="bg-secondary px-2 text-secondary">یا ادامه با</span></div>
+                        <div class="relative flex justify-center text-sm"><span class="bg-primary px-2 text-secondary">یا ادامه با</span></div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <a href="https://accounts.google.com/signup" target="_blank" rel="noopener noreferrer" class="social-login-btn">
