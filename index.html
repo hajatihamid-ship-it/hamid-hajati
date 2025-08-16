@@ -367,7 +367,7 @@
         
         /* New Auth Screen Styles */
         #user-selection-screen.auth-bg {
-            background-image: linear-gradient(to right, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.6)), url('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop');
+            background-image: linear-gradient(to right, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.6)), url('https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=2069&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
         }
@@ -409,6 +409,22 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background-color: var(--border-secondary); border-radius: 10px; border: 2px solid var(--bg-secondary); }
         ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Admin Panel Tabs */
+        .admin-tab {
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .admin-tab:hover {
+            color: var(--text-primary);
+        }
+        .admin-tab.active {
+            color: var(--text-primary);
+            border-bottom-color: #FBBF24;
+        }
         
     </style>
 </head>
@@ -484,7 +500,8 @@
     
     <!-- Admin Panel Modal -->
     <div id="admin-panel-modal" class="hidden opacity-0 fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 transition-all duration-300">
-        <div class="card rounded-2xl p-0 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-300 border-0 shadow-2xl">
+        <div class="card rounded-2xl p-0 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-300 border-0 shadow-2xl">
+            <!-- Header -->
             <div class="p-4 sm:p-5 border-b border-border-primary flex justify-between items-center flex-shrink-0 bg-tertiary/50">
                  <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-lg bg-yellow-400/10 flex items-center justify-center">
@@ -492,28 +509,83 @@
                     </div>
                     <div>
                         <h2 class="text-xl sm:text-2xl font-bold">پنل مدیریت</h2>
-                        <p class="text-sm text-secondary">ایجاد و مدیریت حساب‌های کاربری</p>
+                        <p class="text-sm text-secondary">داشبورد و مدیریت حساب‌های کاربری</p>
                     </div>
                 </div>
                 <button id="close-admin-panel-btn" class="p-2 rounded-full text-secondary hover:bg-black/10 hover:text-primary"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
-            <div class="flex-grow p-4 sm:p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-1 space-y-4">
-                    <h3 class="font-bold text-lg">ایجاد کاربر جدید</h3>
-                    <div class="space-y-3">
-                        <input type="text" id="new-username-input" class="input-field text-sm" placeholder="نام کاربری جدید">
-                        <input type="email" id="new-user-email-input" class="input-field text-sm" placeholder="ایمیل جدید">
-                        <input type="password" id="new-user-password-input" class="input-field text-sm" placeholder="رمز عبور جدید">
-                        <button id="create-user-btn" class="secondary-button w-full font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2">
-                             <i data-lucide="user-plus" class="w-4 h-4"></i><span>ایجاد کاربر</span>
-                        </button>
-                        <p id="create-user-error" class="text-red-500 text-sm h-4 text-center"></p>
+            <!-- Tabs -->
+            <div class="flex-shrink-0 border-b border-border-primary px-4 sm:px-6">
+                 <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+                     <button id="admin-dashboard-tab" type="button" class="admin-tab active flex items-center gap-2">
+                         <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                         <span>داشبورد</span>
+                     </button>
+                     <button id="admin-users-tab" type="button" class="admin-tab flex items-center gap-2">
+                         <i data-lucide="users" class="w-4 h-4"></i>
+                         <span>مدیریت کاربران</span>
+                     </button>
+                 </nav>
+            </div>
+            
+            <!-- Content -->
+            <div class="flex-grow p-4 sm:p-6 overflow-y-auto">
+                <!-- Dashboard Content -->
+                <div id="admin-dashboard-content">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                        <!-- Total Users -->
+                        <div class="card p-4 rounded-lg flex items-start gap-4 bg-blue-500/10 border-blue-500/20">
+                            <div class="bg-blue-500/20 p-3 rounded-lg"><i data-lucide="users" class="w-6 h-6 text-blue-400"></i></div>
+                            <div>
+                                <p class="text-sm font-semibold text-secondary">کل شاگردان</p>
+                                <p id="total-users-stat" class="text-3xl font-bold">0</p>
+                            </div>
+                        </div>
+                        <!-- Unpaid Users -->
+                        <div class="card p-4 rounded-lg flex items-start gap-4 bg-red-500/10 border-red-500/20">
+                            <div class="bg-red-500/20 p-3 rounded-lg"><i data-lucide="credit-card" class="w-6 h-6 text-red-400"></i></div>
+                            <div>
+                                <p class="text-sm font-semibold text-secondary">پرداخت نشده</p>
+                                <p id="unpaid-users-stat" class="text-3xl font-bold">0</p>
+                            </div>
+                        </div>
+                        <!-- Info Unconfirmed -->
+                        <div class="card p-4 rounded-lg flex items-start gap-4 bg-yellow-500/10 border-yellow-500/20">
+                            <div class="bg-yellow-500/20 p-3 rounded-lg"><i data-lucide="user-cog" class="w-6 h-6 text-yellow-400"></i></div>
+                            <div>
+                                <p class="text-sm font-semibold text-secondary">نیاز به تایید</p>
+                                <p id="unconfirmed-users-stat" class="text-3xl font-bold">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                         <h3 class="font-bold text-lg mb-4">آخرین فعالیت‌ها</h3>
+                         <div id="admin-activity-log" class="space-y-3">
+                             <!-- Activity log generated by JS -->
+                         </div>
                     </div>
                 </div>
-                <div class="lg:col-span-2">
-                    <h3 class="font-bold text-lg mb-4">لیست شاگردان</h3>
-                    <div id="admin-user-list" class="space-y-2">
-                        <!-- User list populated by JS -->
+                <!-- User Management Content -->
+                <div id="admin-users-content" class="hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-1 space-y-4">
+                            <h3 class="font-bold text-lg">ایجاد کاربر جدید</h3>
+                            <div class="space-y-3">
+                                <input type="text" id="new-username-input" class="input-field text-sm" placeholder="نام کاربری جدید">
+                                <input type="email" id="new-user-email-input" class="input-field text-sm" placeholder="ایمیل جدید">
+                                <input type="password" id="new-user-password-input" class="input-field text-sm" placeholder="رمز عبور جدید">
+                                <button id="create-user-btn" class="secondary-button w-full font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2">
+                                     <i data-lucide="user-plus" class="w-4 h-4"></i><span>ایجاد کاربر</span>
+                                </button>
+                                <p id="create-user-error" class="text-red-500 text-sm h-4 text-center"></p>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-2">
+                            <h3 class="font-bold text-lg mb-4">لیست شاگردان</h3>
+                            <div id="admin-user-list" class="space-y-2">
+                                <!-- User list populated by JS -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

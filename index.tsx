@@ -809,6 +809,59 @@ const populateAdminUserList = () => {
     window.lucide.createIcons();
 };
 
+const formatTimeAgo = (isoDate: string): string => {
+    const date = new Date(isoDate);
+    const now = new Date();
+    const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
+    const minutes = Math.round(seconds / 60);
+    const hours = Math.round(minutes / 60);
+    const days = Math.round(hours / 24);
+
+    if (seconds < 60) return "همین الان";
+    if (minutes < 60) return `${minutes} دقیقه پیش`;
+    if (hours < 24) return `${hours} ساعت پیش`;
+    return `${days} روز پیش`;
+}
+
+
+const populateAdminDashboard = () => {
+    const users = getUsers().filter((u: any) => u.username !== 'admin');
+    const totalUsers = users.length;
+    let unpaidCount = 0;
+    let unconfirmedCount = 0;
+
+    users.forEach((user: any) => {
+        const userData = getUserData(user.username);
+        if (!userData.hasPaid) unpaidCount++;
+        if (!userData.infoConfirmed) unconfirmedCount++;
+    });
+
+    (document.getElementById('total-users-stat') as HTMLElement).textContent = totalUsers.toString();
+    (document.getElementById('unpaid-users-stat') as HTMLElement).textContent = unpaidCount.toString();
+    (document.getElementById('unconfirmed-users-stat') as HTMLElement).textContent = unconfirmedCount.toString();
+
+    // Populate Activity Log
+    const log = getActivityLog();
+    const logContainer = document.getElementById('admin-activity-log') as HTMLElement;
+    logContainer.innerHTML = '';
+
+    if (log.length === 0) {
+        logContainer.innerHTML = `<p class="text-secondary text-center">فعالیتی برای نمایش وجود ندارد.</p>`;
+        return;
+    }
+
+    log.forEach(item => {
+        const logItem = document.createElement('div');
+        logItem.className = 'flex items-center justify-between p-3 rounded-lg bg-tertiary/50 text-sm';
+        logItem.innerHTML = `
+            <p>${sanitizeHTML(item.message)}</p>
+            <p class="text-secondary flex-shrink-0">${formatTimeAgo(item.date)}</p>
+        `;
+        logContainer.appendChild(logItem);
+    });
+};
+
+
 // --- EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
     // Initial setup
@@ -947,14 +1000,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target.matches('.range-slider')) {
             updateSliderBackground(target);
         
-            const sliderClass = target.className.split(' ').find(c => c.includes('-slider'));
+            const sliderClassList = Array.from(target.classList);
+            const sliderClass = sliderClassList.reverse().find(c => c.includes('-slider'));
             const classSelector = sliderClass ? `.${sliderClass.replace('-slider', '-value')}` : null;
-            const idSelector = target.id ? `.${target.id.replace('-slider', '-value')}` : null;
             
-            const finalSelector = [idSelector, classSelector].filter(Boolean).join(', ');
-        
-            if (finalSelector) {
-                const valueDisplay = target.previousElementSibling?.querySelector(finalSelector) || target.parentElement?.querySelector(finalSelector);
+            if (classSelector) {
+                const valueDisplay = target.parentElement?.querySelector(classSelector);
                 if (valueDisplay) {
                     let suffix = '';
                     if (target.classList.contains('height-slider')) suffix = ' cm';
@@ -1195,12 +1246,34 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     adminPanelBtn.addEventListener('click', () => {
+        populateAdminDashboard();
         populateAdminUserList();
         adminPanelModal.classList.remove('hidden');
         setTimeout(() => {
             adminPanelModal.classList.add('active');
         }, 10);
     });
+    
+    // Admin Panel Tabs
+    const adminDashboardTab = document.getElementById('admin-dashboard-tab');
+    const adminUsersTab = document.getElementById('admin-users-tab');
+    const adminDashboardContent = document.getElementById('admin-dashboard-content');
+    const adminUsersContent = document.getElementById('admin-users-content');
+
+    adminDashboardTab?.addEventListener('click', () => {
+        adminDashboardTab.classList.add('active');
+        adminUsersTab?.classList.remove('active');
+        adminDashboardContent?.classList.remove('hidden');
+        adminUsersContent?.classList.add('hidden');
+    });
+
+    adminUsersTab?.addEventListener('click', () => {
+        adminUsersTab.classList.add('active');
+        adminDashboardTab?.classList.remove('active');
+        adminUsersContent?.classList.remove('hidden');
+        adminDashboardContent?.classList.add('hidden');
+    });
+
 
     document.getElementById('close-admin-panel-btn')?.addEventListener('click', closeAdminPanel);
     adminPanelModal.addEventListener('click', (e) => {
@@ -1231,6 +1304,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.removeItem(`fitgympro_data_${username}`);
                 logActivity(`کاربر ${username} حذف شد.`);
                 populateAdminUserList();
+                populateAdminDashboard(); // Refresh stats
                 showToast(`کاربر ${username} با موفقیت حذف شد.`, 'success');
             }
         }
@@ -1266,6 +1340,7 @@ document.addEventListener('DOMContentLoaded', () => {
         logActivity(`کاربر ${username} توسط مدیر ایجاد شد.`);
         showToast(`کاربر ${username} با موفقیت ایجاد شد.`, 'success');
         populateAdminUserList();
+        populateAdminDashboard(); // Refresh stats
         userInput.value = ''; emailInput.value = ''; passInput.value = '';
     });
     
