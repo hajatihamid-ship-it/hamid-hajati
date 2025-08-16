@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type } from 'https://esm.run/@google/genai';
 
 declare global {
@@ -76,7 +77,7 @@ const authLoginTab = document.getElementById('auth-login-tab') as HTMLButtonElem
 const authSignupTab = document.getElementById('auth-signup-tab') as HTMLButtonElement;
 const authLoginForm = document.getElementById('auth-login-form') as HTMLElement;
 const authSignupForm = document.getElementById('auth-signup-form') as HTMLElement;
-const authMagicLinkForm = document.getElementById('auth-magic-link-form') as HTMLElement;
+const authRecoveryForm = document.getElementById('auth-recovery-form') as HTMLElement;
 
 
 // --- FUNCTIONS ---
@@ -851,8 +852,8 @@ function switchAuthTab(tab: 'login' | 'signup') {
          if(isLogin) { (document.getElementById('login-username-input') as HTMLInputElement).focus(); } else { (document.getElementById('signup-username-input') as HTMLInputElement).focus(); }
     }
     
-    if(authMagicLinkForm.classList.contains('active-in')) {
-        authMagicLinkForm.classList.remove('active-in');
+    if(authRecoveryForm.classList.contains('active-in')) {
+        authRecoveryForm.classList.remove('active-in');
     }
 }
 
@@ -1563,260 +1564,338 @@ const togglePasswordVisibility = (button: HTMLButtonElement) => {
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Setup ---
-    if (!localStorage.getItem('fitgympro_users')) {
-        saveUsers([{ username: 'admin', email: 'admin@fitgym.pro', password: 'hamid@@##' }]); // Add a default admin with credentials
+    const lastUser = localStorage.getItem('fitgympro_last_user');
+    if (lastUser) {
+        if (lastUser === 'admin') {
+            loginAsAdmin();
+        } else {
+            loginAsUser(lastUser);
+        }
+    } else {
+       setupAuthScreen();
+       switchAuthTab('login');
     }
+
+    populateSupplements();
+    addDayCard(true); // Add the first day card for the admin panel
+    updateUI();
     initializeAI();
-    setupAuthScreen();
-
-    // --- Theme ---
-    const applyTheme = (theme: string) => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
-        document.querySelectorAll('.range-slider').forEach(slider => updateSliderBackground(slider as HTMLInputElement));
-        const isDark = theme === 'dark';
-        document.querySelectorAll('#theme-icon-sun, #theme-icon-sun-dashboard').forEach(el => (el as HTMLElement).style.display = isDark ? 'block' : 'none');
-        document.querySelectorAll('#theme-icon-moon, #theme-icon-moon-dashboard').forEach(el => (el as HTMLElement).style.display = isDark ? 'none' : 'block');
-    };
-    const toggleTheme = () => {
-        const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        applyTheme(newTheme);
-    };
-    document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleTheme);
-    document.getElementById('theme-toggle-btn-dashboard')?.addEventListener('click', toggleTheme);
-    const savedTheme = localStorage.getItem('theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    applyTheme(savedTheme || (systemPrefersDark ? 'dark' : 'light'));
-
+    window.lucide.createIcons();
+    
     // --- Event Listeners ---
-    // Authentication
+    
+    // Theme Toggler
+    const themeToggler = () => {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('fitgympro_theme', newTheme);
+    };
+    
+    // Check for saved theme
+    const savedTheme = localStorage.getItem('fitgympro_theme');
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+
+    document.getElementById('theme-toggle-btn')?.addEventListener('click', themeToggler);
+    document.getElementById('theme-toggle-btn-dashboard')?.addEventListener('click', themeToggler);
+    
+    // Auth Screen Listeners
     authLoginTab.addEventListener('click', () => switchAuthTab('login'));
     authSignupTab.addEventListener('click', () => switchAuthTab('signup'));
-
-    (document.getElementById('submit-login-btn') as HTMLElement).addEventListener('click', handleUserLogin);
-    (document.getElementById('login-password-input') as HTMLElement).addEventListener('keydown', (e) => (e as KeyboardEvent).key === 'Enter' && handleUserLogin());
-    (document.getElementById('forgot-password-link') as HTMLElement).addEventListener('click', () => {
-        showToast('ویژگی بازیابی رمز عبور هنوز پیاده‌سازی نشده است.', 'error');
-    });
-
-    (document.getElementById('submit-signup-btn') as HTMLElement).addEventListener('click', handleUserSignup);
-    const signupPasswordInput = document.getElementById('signup-password-input') as HTMLInputElement;
-    signupPasswordInput.addEventListener('keydown', (e) => (e as KeyboardEvent).key === 'Enter' && handleUserSignup());
-    signupPasswordInput.addEventListener('input', () => updatePasswordStrength(signupPasswordInput.value));
-
-    const signupEmailInput = document.getElementById('signup-email-input') as HTMLInputElement;
-    signupEmailInput.addEventListener('input', () => validateEmail(signupEmailInput.value));
-
-    const signupUsernameInput = document.getElementById('signup-username-input') as HTMLInputElement;
-    signupUsernameInput.addEventListener('input', debounce(checkUsername, 500));
-
-    // Password visibility toggles
-    document.querySelectorAll('.password-toggle-btn').forEach(button => {
-        button.addEventListener('click', () => togglePasswordVisibility(button as HTMLButtonElement));
-    });
-
-    // Magic Link
-    const magicLinkToggle = document.getElementById('magic-link-toggle');
-    const passwordLoginToggle = document.getElementById('password-login-toggle');
-    const submitMagicLinkBtn = document.getElementById('submit-magic-link-btn');
     
-    magicLinkToggle?.addEventListener('click', () => {
+    document.getElementById('submit-login-btn')?.addEventListener('click', handleUserLogin);
+    document.getElementById('login-password-input')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleUserLogin(); });
+    
+    document.getElementById('submit-signup-btn')?.addEventListener('click', handleUserSignup);
+    document.getElementById('signup-password-input')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleUserSignup(); });
+    
+    document.getElementById('forgot-password-link')?.addEventListener('click', () => {
         authLoginForm.classList.remove('active-in');
-        authLoginForm.classList.add('active-out');
-        authLoginForm.addEventListener('animationend', () => {
-            authLoginForm.classList.remove('active-out');
-            authMagicLinkForm.classList.add('active-in');
-        }, { once: true });
+        authSignupForm.classList.remove('active-in');
+        authRecoveryForm.classList.add('active-in');
+        (document.getElementById('recovery-email-input') as HTMLInputElement).focus();
     });
-    passwordLoginToggle?.addEventListener('click', () => {
-        authMagicLinkForm.classList.remove('active-in');
-        authMagicLinkForm.classList.add('active-out');
-        authMagicLinkForm.addEventListener('animationend', () => {
-            authMagicLinkForm.classList.remove('active-out');
-            authLoginForm.classList.add('active-in');
-        }, { once: true });
-    });
-    submitMagicLinkBtn?.addEventListener('click', () => {
-        const emailInput = document.getElementById('magic-link-email-input') as HTMLInputElement;
-        const email = emailInput.value.trim();
-        const emailError = document.getElementById('magic-link-email-error') as HTMLElement;
-        const generalError = document.getElementById('magic-link-error') as HTMLElement;
-        emailError.textContent = '';
-        generalError.textContent = '';
-        emailInput.classList.remove('input-error');
 
-        if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-            emailError.textContent = 'لطفا یک ایمیل معتبر وارد کنید.';
-            emailInput.classList.add('input-error');
-            return;
-        }
-        const users = getUsers();
-        const userExists = users.some((u: any) => u.email && u.email.toLowerCase() === email.toLowerCase());
+    const goBackToLogin = () => {
+        authRecoveryForm.classList.remove('active-in');
+        switchAuthTab('login');
+        (document.getElementById('recovery-success-message') as HTMLElement).classList.add('hidden');
+        (document.getElementById('recovery-form-content') as HTMLElement).classList.remove('hidden');
+    };
+    document.getElementById('back-to-login-btn')?.addEventListener('click', goBackToLogin);
+    document.getElementById('recovery-back-to-login-btn')?.addEventListener('click', goBackToLogin);
 
-        if (userExists) {
-            showToast(`لینک ورود به ایمیل ${email} ارسال شد.`);
-            emailInput.value = '';
+    document.getElementById('submit-recovery-btn')?.addEventListener('click', () => {
+        const email = (document.getElementById('recovery-email-input') as HTMLInputElement).value;
+        if (email) {
+            (document.getElementById('recovery-form-content') as HTMLElement).classList.add('hidden');
+            (document.getElementById('recovery-success-message') as HTMLElement).classList.remove('hidden');
         } else {
-            generalError.textContent = 'کاربری با این ایمیل یافت نشد.';
-            emailInput.classList.add('input-error');
+            (document.getElementById('recovery-email-error') as HTMLElement).textContent = 'لطفا ایمیل را وارد کنید.';
         }
     });
+    
+    document.getElementById('signup-password-input')?.addEventListener('input', (e) => updatePasswordStrength((e.target as HTMLInputElement).value));
+    document.getElementById('signup-email-input')?.addEventListener('input', (e) => validateEmail((e.target as HTMLInputElement).value));
+    
+    const debouncedCheckUsername = debounce(checkUsername, 500);
+    document.getElementById('signup-username-input')?.addEventListener('input', debouncedCheckUsername);
+    
+    document.body.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const button = target.closest('.password-toggle-btn') as HTMLButtonElement;
+        if (button) {
+            togglePasswordVisibility(button);
+        }
+    });
+
+    // Logout
+    document.getElementById('logout-btn')?.addEventListener('click', logout);
+    document.getElementById('logout-btn-dashboard')?.addEventListener('click', logout);
 
     // Admin Panel
     adminPanelBtn.addEventListener('click', showAdminPanel);
-    (document.getElementById('close-admin-panel-btn') as HTMLElement).addEventListener('click', hideAdminPanel);
-    (document.getElementById('create-user-btn') as HTMLElement).addEventListener('click', createUser);
-    (document.getElementById('new-user-password-input') as HTMLElement).addEventListener('keydown', (e) => (e as KeyboardEvent).key === 'Enter' && createUser());
-    (document.getElementById('admin-user-list') as HTMLElement).addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        const deleteBtn = target.closest('.delete-user-btn');
-        const loadBtn = target.closest('.load-user-btn');
-        const paymentBtn = target.closest('.toggle-payment-btn');
-        const viewBtn = target.closest('.view-client-btn');
+    document.getElementById('close-admin-panel-btn')?.addEventListener('click', hideAdminPanel);
+    document.getElementById('close-client-detail-btn')?.addEventListener('click', hideClientDetailPanel);
+    adminPanelModal.addEventListener('click', (e) => { if (e.target === adminPanelModal) hideAdminPanel(); });
 
-        if (deleteBtn) deleteUser((deleteBtn as HTMLElement).dataset.username as string);
-        if (loadBtn) loadUserForEditing((loadBtn as HTMLElement).dataset.username as string);
-        if (viewBtn) showClientDetailPanel((viewBtn as HTMLElement).dataset.username as string);
-        if (paymentBtn) {
-            const username = (paymentBtn as HTMLElement).dataset.username as string;
-            if (username) {
-                const userData = getUserData(username);
-                const newStatus = !userData.hasPaid;
-                userData.hasPaid = newStatus;
-                saveUserData(username, userData);
-                logActivity(`وضعیت پرداخت ${username} به ${newStatus ? '"پرداخت شده"' : '"پرداخت نشده"'} تغییر کرد`);
-                renderClientManagementView();
-                showToast(`وضعیت پرداخت برای ${username} ${newStatus ? 'به "پرداخت شده"' : 'به "پرداخت نشده"'} تغییر کرد.`);
+    document.getElementById('admin-main-nav')?.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const btn = target.closest('.admin-nav-btn');
+        if (btn) {
+            const view = btn.getAttribute('data-view') as 'clients' | 'stats';
+            if (view) switchAdminView(view);
+        }
+    });
+    document.getElementById('create-user-btn')?.addEventListener('click', createUser);
+    
+    const filterAndSearchClients = () => {
+        const filter = (document.querySelector('#admin-user-filters .active') as HTMLElement)?.dataset.filter || 'all';
+        const searchTerm = (document.getElementById('admin-user-search') as HTMLInputElement).value;
+        renderClientManagementView(filter, searchTerm);
+    };
+    
+    document.getElementById('admin-user-filters')?.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+        const btn = target.closest('.admin-filter-btn') as HTMLButtonElement;
+        if (btn) {
+            document.querySelectorAll('#admin-user-filters .admin-filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            filterAndSearchClients();
+        }
+    });
+
+    const debouncedSearch = debounce(filterAndSearchClients, 300);
+    document.getElementById('admin-user-search')?.addEventListener('input', debouncedSearch);
+
+    document.getElementById('admin-user-list')?.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const username = (target.closest('[data-username]') as HTMLElement)?.dataset.username;
+        if (!username) return;
+
+        if (target.closest('.delete-user-btn')) deleteUser(username);
+        else if (target.closest('.load-user-btn')) loadUserForEditing(username);
+        else if (target.closest('.view-client-btn')) showClientDetailPanel(username);
+        else if (target.closest('.toggle-payment-btn')) {
+            const userData = getUserData(username);
+            userData.hasPaid = !userData.hasPaid;
+            saveUserData(username, userData);
+            filterAndSearchClients();
+        }
+    });
+
+    document.getElementById('load-client-for-edit-btn')?.addEventListener('click', (e) => {
+        const username = (e.currentTarget as HTMLButtonElement).dataset.username;
+        if (username) loadUserForEditing(username);
+    });
+
+    // Stepper Navigation
+    document.getElementById('prev-btn')?.addEventListener('click', () => navigateToStep(findNextEnabledStep(currentStep, -1)));
+    document.getElementById('next-btn')?.addEventListener('click', () => navigateToStep(findNextEnabledStep(currentStep, 1)));
+    document.querySelectorAll('.stepper-item').forEach((item, i) => {
+        item.addEventListener('click', () => { if (!item.classList.contains('disabled')) navigateToStep(i + 1); });
+    });
+
+    // Section 1: Body Metrics Calculation
+    const s1 = document.getElementById('section-1') as HTMLElement;
+    s1.addEventListener('input', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.classList.contains('range-slider') || target.classList.contains('neck-input') || target.classList.contains('waist-input') || target.classList.contains('hip-input')) {
+            calculateBodyMetrics(s1);
+        }
+    });
+    s1.addEventListener('change', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.classList.contains('gender') || target.classList.contains('activity-level')) {
+            if (target.classList.contains('gender')) toggleHipInput(s1);
+            calculateBodyMetrics(s1);
+        }
+        saveCurrentState();
+    });
+     s1.addEventListener('blur', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.classList.contains('input-field')) {
+           saveCurrentState();
+        }
+    }, true);
+    
+    // User Dashboard Listeners
+    const dashboardPanel = document.getElementById('dashboard-profile-panel') as HTMLElement;
+    if (dashboardPanel) {
+        dashboardPanel.addEventListener('input', (e) => {
+            const target = e.target as HTMLInputElement;
+            if (target.classList.contains('range-slider') || target.classList.contains('neck-input') || target.classList.contains('waist-input') || target.classList.contains('hip-input')) {
+                calculateBodyMetrics(dashboardPanel);
+            }
+        });
+        
+        const saveAndRecalculateDashboard = () => {
+            calculateBodyMetrics(dashboardPanel);
+            saveDashboardState();
+            // regenerate preview
+            loadStateIntoApp(getUserData(currentUser!));
+            generateProgramPreview(document.getElementById('program-builder-form')!, '#dashboard-program-view');
+        };
+        
+        dashboardPanel.addEventListener('change', (e) => {
+            const target = e.target as HTMLInputElement;
+            if (target.classList.contains('gender') || target.classList.contains('activity-level') || target.classList.contains('training-goal') || target.classList.contains('training-days')) {
+                if (target.classList.contains('gender')) toggleHipInput(dashboardPanel);
+                saveAndRecalculateDashboard();
+            }
+        });
+        
+        const debouncedSaveDashboard = debounce(saveAndRecalculateDashboard, 1000);
+        dashboardPanel.addEventListener('input', (e) => {
+            const target = e.target as HTMLInputElement;
+            if (!target.classList.contains('range-slider')) {
+                debouncedSaveDashboard();
+            }
+        });
+    }
+
+    document.getElementById('confirm-info-btn')?.addEventListener('click', (e) => {
+        if (!currentUser) return;
+        const userData = getUserData(currentUser);
+        userData.infoConfirmed = true;
+        saveUserData(currentUser, userData);
+        populateDashboard(currentUser, userData);
+        showToast('اطلاعات شما با موفقیت تایید شد.', 'success');
+    });
+
+    document.getElementById('pay-program-btn')?.addEventListener('click', () => {
+        showToast('درگاه پرداخت در حال آماده‌سازی است...', 'success');
+    });
+
+
+    // Section 2: Day & Exercise Management (using event delegation)
+    const form = document.getElementById('program-builder-form')!;
+    form.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('.add-day-btn')) addDayCard();
+        if (target.closest('.remove-day-btn')) target.closest('.day-card')?.remove();
+        if (target.closest('.add-exercise-btn')) addExerciseRow(target.closest('.day-card')!.querySelector('.exercise-list')!);
+        if (target.closest('.remove-exercise-btn')) target.closest('.exercise-row')?.remove();
+        if (target.closest('.superset-btn')) {
+            const btn = target.closest('.superset-btn')!;
+            btn.classList.toggle('active');
+            btn.closest('.exercise-row')?.classList.toggle('is-superset');
+        }
+    });
+
+    form.addEventListener('change', (e) => {
+        const target = e.target as HTMLSelectElement;
+        if (target.classList.contains('muscle-group-select')) {
+            const exerciseSelect = target.closest('.exercise-row')!.querySelector('.exercise-select') as HTMLSelectElement;
+            populateExercises(target.value, exerciseSelect);
+        }
+        saveCurrentState();
+    });
+
+    form.addEventListener('input', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.classList.contains('range-slider')) {
+            updateSliderBackground(target);
+            const valueSpan = target.parentElement?.querySelector('span');
+            if (valueSpan) {
+                let suffix = '';
+                if (target.classList.contains('rest-slider')) suffix = 's';
+                else if (target.classList.contains('height-slider')) suffix = ' cm';
+                else if (target.classList.contains('weight-slider')) suffix = ' kg';
+                valueSpan.textContent = target.value + suffix;
             }
         }
     });
     
-    // Admin Panel Navigation & Filters
-    (document.getElementById('admin-main-nav') as HTMLElement).addEventListener('click', (e) => {
-        const target = (e.target as HTMLElement).closest('.admin-nav-btn');
-        if (target) {
-            switchAdminView(target.getAttribute('data-view') as 'clients' | 'stats');
+    // For range sliders that are outside the form
+    document.body.addEventListener('input', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.classList.contains('range-slider') && !form.contains(target)) {
+            updateSliderBackground(target);
+            const valueSpan = target.parentElement?.querySelector('span');
+             if (valueSpan) {
+                let suffix = '';
+                if (target.classList.contains('rest-slider')) suffix = 's';
+                else if (target.classList.contains('height-slider')) suffix = ' cm';
+                else if (target.classList.contains('weight-slider')) suffix = ' kg';
+                valueSpan.textContent = target.value + suffix;
+            }
         }
     });
+
+    // Profile Pic Upload
+    document.body.addEventListener('change', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.classList.contains('profile-pic-input')) {
+            const file = target.files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const previews = document.querySelectorAll(`.${target.id}-preview, .${target.classList[0]}-preview`);
+                    previews.forEach(p => (p as HTMLImageElement).src = event.target?.result as string);
+                    if (currentUser === 'admin') saveCurrentState();
+                    else saveDashboardState();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+    });
+
+    // AI Buttons
+    document.getElementById('get-ai-suggestion-btn')?.addEventListener('click', getAISuggestion);
+    document.getElementById('ai-question-input')?.addEventListener('input', (e) => {
+        const input = e.target as HTMLInputElement;
+        (document.getElementById('get-ai-suggestion-btn') as HTMLButtonElement).disabled = input.value.trim() === '';
+    });
+    document.getElementById('ai-question-input')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') getAISuggestion(); });
+
+    document.getElementById('generate-ai-plan-btn')?.addEventListener('click', generateAIPlan);
+
+    // Section 4: Actions
+    document.getElementById('save-pdf-btn')?.addEventListener('click', saveAsPdf);
+    document.getElementById('dashboard-save-pdf-btn')?.addEventListener('click', saveAsPdf);
+    document.getElementById('save-word-btn')?.addEventListener('click', saveAsWord);
+    document.getElementById('send-program-btn')?.addEventListener('click', sendProgramToUser);
+    document.getElementById('save-changes-btn')?.addEventListener('click', saveProgramChanges);
     
-    const userSearchInput = document.getElementById('admin-user-search') as HTMLInputElement;
-    userSearchInput.addEventListener('input', debounce(() => {
-        const activeFilter = document.querySelector('.admin-filter-btn.active')?.getAttribute('data-filter') || 'all';
-        renderClientManagementView(activeFilter, userSearchInput.value);
-    }, 300));
-
-    document.getElementById('admin-user-filters')?.addEventListener('click', (e) => {
+    // Auto-save on form element blur for admin
+    form.addEventListener('blur', (e) => {
         const target = e.target as HTMLElement;
-        if(target.classList.contains('admin-filter-btn')) {
-            document.querySelectorAll('.admin-filter-btn').forEach(btn => btn.classList.remove('active'));
-            target.classList.add('active');
-            renderClientManagementView(target.dataset.filter, userSearchInput.value);
+        if (target.matches('input, textarea, select')) {
+            saveCurrentState();
         }
-    });
-
-    // Client Detail Panel
-    (document.getElementById('close-client-detail-btn') as HTMLElement).addEventListener('click', hideClientDetailPanel);
-    (document.getElementById('load-client-for-edit-btn') as HTMLElement).addEventListener('click', (e) => {
-        const username = (e.currentTarget as HTMLElement).dataset.username;
-        if(username) loadUserForEditing(username);
-    });
-
-    (document.getElementById('logout-btn') as HTMLElement).addEventListener('click', logout);
-    (document.getElementById('logout-btn-dashboard') as HTMLElement).addEventListener('click', logout);
+    }, true);
     
-    // Main App Click Listeners
-    (document.getElementById('main-app-container') as HTMLElement).addEventListener('click', (e) => {
-        const target = (e.target as HTMLElement).closest('button, .stepper-item') as HTMLElement;
-        if (!target) return;
-        if(target.closest('.stepper-item') && !target.closest('.stepper-item')?.classList.contains('disabled')) { currentStep = parseInt(target.closest('.stepper-item')?.id.split('-')[1] ?? '1'); updateUI(); }
-        if(target.id === 'next-btn') { currentStep = findNextEnabledStep(currentStep, 1); updateUI(); }
-        if(target.id === 'prev-btn') { currentStep = findNextEnabledStep(currentStep, -1); updateUI(); }
-        if(target.id === 'add-day-btn') addDayCard();
-        if(target.classList.contains('add-exercise-btn')) addExerciseRow(target.closest('.day-card')?.querySelector('.exercise-list') as HTMLElement);
-        if(target.classList.contains('remove-exercise-btn')) target.closest('.exercise-row')?.remove();
-        if(target.classList.contains('remove-day-btn')) target.closest('.day-card')?.remove();
-        if(target.classList.contains('superset-btn')) { target.classList.toggle('active'); target.closest('.exercise-row')?.classList.toggle('is-superset'); }
-        if(target.id === 'save-pdf-btn') saveAsPdf();
-        if(target.id === 'save-word-btn') saveAsWord();
-        if(target.id === 'send-program-btn') sendProgramToUser();
-        if(target.id === 'save-changes-btn') saveProgramChanges();
-        if(target.id === 'get-ai-suggestion-btn') getAISuggestion();
-        if(target.id === 'generate-ai-plan-btn') generateAIPlan();
+    // Supplement search
+    document.getElementById('supplement-search')?.addEventListener('input', (e) => {
+        const searchTerm = (e.target as HTMLInputElement).value.toLowerCase();
+        document.querySelectorAll('.supplement-item').forEach(item => {
+            const label = item.querySelector('span')?.textContent?.toLowerCase() || '';
+            const shouldShow = label.includes(searchTerm);
+            (item as HTMLElement).style.display = shouldShow ? 'flex' : 'none';
+        });
     });
-
-    (document.getElementById('dashboard-save-pdf-btn') as HTMLElement).addEventListener('click', saveAsPdf);
-
-    // Main App Input/Change Listeners
-    const adminForm = document.getElementById('program-builder-form') as HTMLFormElement;
-    const adminS1Container = document.getElementById('section-1') as HTMLElement;
-    adminForm.addEventListener('input', (e) => {
-        const target = e.target as HTMLElement;
-        if (target.classList.contains('range-slider')) {
-             updateSliderBackground(target as HTMLInputElement);
-             const exerciseRow = target.closest('.exercise-row');
-             if (exerciseRow) {
-                 const valueEl = target.parentElement?.querySelector('span');
-                 if(valueEl) valueEl.textContent = (target as HTMLInputElement).value + (target.classList.contains('rest-slider') ? 's' : '');
-             } else {
-                 const valueEl = target.parentElement?.querySelector('span');
-                 if (valueEl) { let unit = ''; if (target.classList.contains('height-slider')) unit = ' cm'; else if (target.classList.contains('weight-slider')) unit = ' kg'; valueEl.textContent = (target as HTMLInputElement).value + unit; }
-             }
-        }
-        if (target.closest('#section-1')) {
-            calculateBodyMetrics(adminS1Container);
-        }
-        if (target.id === 'supplement-search') { const searchTerm = (target as HTMLInputElement).value.toLowerCase(); document.querySelectorAll('.supp-category-card').forEach(card => { let hasVisibleItem = false; (card as HTMLElement).querySelectorAll('.supplement-item').forEach(item => { const isVisible = item.querySelector('span')?.textContent?.toLowerCase().includes(searchTerm) ?? false; (item as HTMLElement).style.display = isVisible ? 'flex' : 'none'; if (isVisible) hasVisibleItem = true; }); (card as HTMLElement).style.display = hasVisibleItem ? 'block' : 'none'; }); }
-        saveCurrentState();
-    });
-    adminForm.addEventListener('change', (e) => {
-        const target = e.target as HTMLElement;
-        if (target.classList.contains('muscle-group-select')) populateExercises((target as HTMLSelectElement).value, target.closest('.exercise-row')?.querySelector('.exercise-select') as HTMLSelectElement);
-        if((target as HTMLInputElement).name?.startsWith('gender') || (target as HTMLInputElement).name?.startsWith('activity-level')) calculateBodyMetrics(adminS1Container);
-        if(target.classList.contains('supplement-checkbox')) { const dosageInput = target.closest('.supplement-item')?.querySelector('.dosage-input') as HTMLInputElement; dosageInput.value = (target as HTMLInputElement).checked ? (target as HTMLInputElement).dataset.dosage ?? '' : ''; }
-        if (target.classList.contains('profile-pic-input')) { const file = (e.target as HTMLInputElement).files?.[0]; if (file) (adminS1Container.querySelector('.profile-pic-preview') as HTMLImageElement).src = URL.createObjectURL(file); }
-        if ((target as HTMLInputElement).name === 'gender-admin') toggleHipInput(adminS1Container);
-        saveCurrentState();
-    });
-
-    // User Dashboard Listeners
-    const dashboardProfilePanel = document.getElementById('dashboard-profile-panel') as HTMLElement;
-    dashboardProfilePanel.addEventListener('input', (e) => {
-        const target = e.target as HTMLElement;
-        if (target.classList.contains('range-slider')) {
-            updateSliderBackground(target as HTMLInputElement);
-            const valueEl = target.parentElement?.querySelector('span');
-            if (valueEl) { let unit = ''; if (target.classList.contains('height-slider')) unit = ' cm'; else if (target.classList.contains('weight-slider')) unit = ' kg'; valueEl.textContent = (target as HTMLInputElement).value + unit; }
-        }
-        calculateBodyMetrics(dashboardProfilePanel);
-        saveDashboardState();
-    });
-    dashboardProfilePanel.addEventListener('change', (e) => {
-         const target = e.target as HTMLElement;
-         if ((target as HTMLInputElement).name === 'gender-user') toggleHipInput(dashboardProfilePanel);
-         if (target.classList.contains('profile-pic-input')) { const file = (e.target as HTMLInputElement).files?.[0]; if (file) (dashboardProfilePanel.querySelector('.profile-pic-preview') as HTMLImageElement).src = URL.createObjectURL(file); }
-         saveDashboardState();
-    });
-    (document.getElementById('confirm-info-btn') as HTMLElement).addEventListener('click', () => {
-        if (currentUser) {
-            saveDashboardState(); // Save any pending form changes first
-            const userData = getUserData(currentUser);
-            userData.infoConfirmed = true;
-            saveUserData(currentUser, userData);
-            logActivity(`کاربر ${currentUser} اطلاعات خود را تایید کرد`);
-            populateDashboard(currentUser, userData); // Refresh dashboard UI
-            showToast('اطلاعات شما با موفقیت تایید و به‌روزرسانی شد.');
-        }
-    });
-    (document.getElementById('pay-program-btn') as HTMLElement).addEventListener('click', () => {
-        showToast('برای تکمیل پرداخت با مربی خود در ارتباط باشید.');
-    });
-    
-    const aiQuestionInput = document.getElementById('ai-question-input') as HTMLInputElement;
-    aiQuestionInput.addEventListener('input', () => { (document.getElementById('get-ai-suggestion-btn') as HTMLButtonElement).disabled = aiQuestionInput.value.trim() === ''; });
-    aiQuestionInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !(document.getElementById('get-ai-suggestion-btn') as HTMLButtonElement).disabled) { e.preventDefault(); getAISuggestion(); } });
-
-    // Populate static fields and set initial state
-    populateSupplements();
-    switchAuthTab('login');
-    window.lucide.createIcons();
 });

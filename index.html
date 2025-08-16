@@ -638,8 +638,7 @@
                                 </div>
                                 <p id="login-password-error" class="form-error-message"></p>
                             </div>
-                            <div class="flex justify-between items-center text-xs font-semibold pt-2">
-                                <button type="button" id="magic-link-toggle" class="text-secondary hover:text-yellow-400 transition-colors">ورود با لینک جادویی</button>
+                            <div class="flex justify-end items-center text-xs font-semibold pt-2">
                                 <button type="button" id="forgot-password-link" class="text-secondary hover:text-yellow-400 transition-colors">فراموشی رمز عبور؟</button>
                             </div>
                             <div class="pt-2">
@@ -649,25 +648,35 @@
                         </form>
                     </div>
 
-                    <!-- Magic Link Form -->
-                    <div id="auth-magic-link-form" class="auth-form-section">
-                        <h2 class="text-xl font-bold mb-1">ورود بدون رمز</h2>
-                        <p class="text-secondary text-sm mb-6">ایمیل خود را وارد کنید تا لینک ورود برایتان ارسال شود.</p>
-                        <form onsubmit="return false;" class="space-y-2">
-                            <div>
-                                <div class="relative input-field-container">
-                                    <i data-lucide="at-sign" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
-                                    <input type="email" id="magic-link-email-input" class="input-field pr-10" placeholder="email@example.com">
+                    <!-- Password Recovery Form -->
+                    <div id="auth-recovery-form" class="auth-form-section">
+                        <div id="recovery-form-content">
+                            <h2 class="text-xl font-bold mb-1">بازیابی رمز عبور</h2>
+                            <p class="text-secondary text-sm mb-6">ایمیل حساب کاربری خود را وارد کنید تا لینک بازیابی برای شما ارسال شود.</p>
+                            <form onsubmit="return false;" class="space-y-2">
+                                <div>
+                                    <div class="relative input-field-container">
+                                        <i data-lucide="at-sign" class="input-icon absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary"></i>
+                                        <input type="email" id="recovery-email-input" class="input-field pr-10" placeholder="email@example.com">
+                                    </div>
+                                    <p id="recovery-email-error" class="form-error-message"></p>
                                 </div>
-                                <p id="magic-link-email-error" class="form-error-message"></p>
+                                <div class="pt-2">
+                                    <button id="submit-recovery-btn" class="primary-button w-full font-bold py-3 rounded-lg text-base">ارسال لینک بازیابی</button>
+                                    <p id="recovery-error" class="form-error-message text-center"></p>
+                                </div>
+                            </form>
+                            <div class="text-center mt-4">
+                                <button type="button" id="back-to-login-btn" class="text-xs font-semibold text-secondary hover:text-yellow-400 transition-colors">بازگشت به صفحه ورود</button>
                             </div>
-                            <div class="pt-2">
-                                <button id="submit-magic-link-btn" class="primary-button w-full font-bold py-3 rounded-lg text-base">ارسال لینک ورود</button>
-                                <p id="magic-link-error" class="form-error-message text-center"></p>
+                        </div>
+                        <div id="recovery-success-message" class="hidden text-center p-4">
+                            <i data-lucide="mail-check" class="w-16 h-16 text-green-500 mx-auto mb-4"></i>
+                            <h3 class="text-xl font-bold">درخواست شما ثبت شد</h3>
+                            <p class="text-secondary mt-2">اگر ایمیل وارد شده صحیح باشد، لینکی برای بازیابی رمز عبور دریافت خواهید کرد. لطفا صندوق ورودی و پوشه اسپم خود را بررسی کنید.</p>
+                            <div class="text-center mt-6">
+                                <button type="button" id="recovery-back-to-login-btn" class="text-xs font-semibold text-secondary hover:text-yellow-400 transition-colors">بازگشت به صفحه ورود</button>
                             </div>
-                        </form>
-                        <div class="text-center mt-4">
-                            <button type="button" id="password-login-toggle" class="text-xs font-semibold text-secondary hover:text-yellow-400 transition-colors">بازگشت به ورود با رمز عبور</button>
                         </div>
                     </div>
                     
@@ -717,24 +726,6 @@
                                 <p id="signup-error" class="form-error-message text-center"></p>
                             </div>
                         </form>
-                    </div>
-                </div>
-
-                <!-- Social Logins (Common for both) -->
-                <div class="mt-6">
-                    <div class="relative my-6">
-                        <div class="absolute inset-0 flex items-center" aria-hidden="true"><div class="w-full border-t border-border-primary"></div></div>
-                        <div class="relative flex justify-center text-sm"><span class="bg-primary px-2 text-secondary">یا ادامه با</span></div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <a href="https://accounts.google.com/signup" target="_blank" rel="noopener noreferrer" class="social-login-btn">
-                            <svg class="w-5 h-5" aria-hidden="true" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path><path d="M1 1h22v22H1z" fill="none"></path></svg>
-                            <span>Google</span>
-                        </a>
-                        <a href="https://appleid.apple.com/account" target="_blank" rel="noopener noreferrer" class="social-login-btn">
-                            <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20"><path d="M10.016 6.352a1.88 1.88 0 00-1.554 1.063 2.02 2.02 0 00-.435 1.517 1.88 1.88 0 00.435 1.508c.36.485.933.78 1.554.78.23 0 .45-.04.66-.12a2.122 2.122 0 001.277-.982A1.94 1.94 0 0012.01 9c0-.288-.06-.566-.179-.826a1.933 1.933 0 00-.734-1.095 2.22 2.22 0 00-.982-.477.96.96 0 00-.1-.05zm.08 8.01c2.34 0 4.25-1.802 4.25-4.01s-1.91-4.01-4.25-4.01S5.846 8.55 5.846 10.75s1.91 4.01 4.25 4.01zM9.916.25a2.15 2.15 0 00-1.723.876c-.732.964-1.29 2.62-1.29 4.21s.508 2.99 1.19 3.925a2.236 2.236 0 001.813.964c.22 0 .43-.03.64-.08a1.88 1.88 0 001.554-1.063 2.02 2.02 0 00.435-1.517 1.88 1.88 0 00-.435-1.508c-.36-.485-.933-.78-1.554-.78a1.94 1.94 0 00-1.643 1.025c-.2-.04-.4-.06-.6-.06-.713 0-1.232.466-1.513 1.136a3.63 3.63 0 01-.31-2.126c0-1.8.528-3.01 1.13-3.815a1.71 1.71 0 011.362-.648c.18 0 .35.03.52.09.08.03.16.05.24.08.04.01.07.02.11.03a1.7 1.7 0 00-1.12-1.63z"></path></svg>
-                            <span>Apple</span>
-                        </a>
                     </div>
                 </div>
 
