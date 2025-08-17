@@ -9,6 +9,7 @@ declare global {
     };
     html2canvas: (element: HTMLElement, options?: any) => Promise<HTMLCanvasElement>;
     exerciseDB: any;
+    Chart: any;
   }
 }
 
@@ -51,12 +52,16 @@ interface AppState {
     lastSeenByClient?: string;
     hasPaid?: boolean;
     infoConfirmed?: boolean;
+    joinDate?: string;
+    workoutHistory?: string[]; // Array of ISO date strings
+    weightHistory?: { date: string; weight: number }[];
 }
 
 let currentStep = 1;
 const totalSteps = 4;
 let currentUser: string | null = null;
 let ai: GoogleGenAI;
+let weightChart: any = null;
 
 
 // --- DOM ELEMENTS ---
@@ -478,7 +483,7 @@ const logActivity = (message: string) => {
 };
 
 function getAppState(): AppState {
-    const appState: AppState = {
+    const appState: Partial<AppState> = {
         step1: {},
         step2: { days: [] },
         step3: { supplements: [] },
@@ -488,20 +493,20 @@ function getAppState(): AppState {
     const s1Container = document.getElementById('section-1')!;
 
     // Step 1 data
-    appState.step1.clientName = (s1Container.querySelector('.client-name-input') as HTMLInputElement).value;
-    appState.step1.clientEmail = (s1Container.querySelector('.client-email-input') as HTMLInputElement).value;
-    appState.step1.coachName = (s1Container.querySelector('.coach-name-input') as HTMLInputElement).value;
-    appState.step1.profilePic = (s1Container.querySelector('.profile-pic-preview') as HTMLImageElement).src;
-    appState.step1.trainingGoal = (s1Container.querySelector('.training-goal:checked') as HTMLInputElement)?.value;
-    appState.step1.age = (s1Container.querySelector('.age-slider') as HTMLInputElement).value;
-    appState.step1.height = (s1Container.querySelector('.height-slider') as HTMLInputElement).value;
-    appState.step1.weight = (s1Container.querySelector('.weight-slider') as HTMLInputElement).value;
-    appState.step1.neck = (s1Container.querySelector('.neck-input') as HTMLInputElement).value;
-    appState.step1.waist = (s1Container.querySelector('.waist-input') as HTMLInputElement).value;
-    appState.step1.hip = (s1Container.querySelector('.hip-input') as HTMLInputElement).value;
-    appState.step1.gender = (s1Container.querySelector('.gender:checked') as HTMLInputElement)?.value;
-    appState.step1.activityLevel = (s1Container.querySelector('.activity-level:checked') as HTMLInputElement)?.value;
-    appState.step1.trainingDays = (s1Container.querySelector('.training-days:checked') as HTMLInputElement)?.value;
+    appState.step1!.clientName = (s1Container.querySelector('.client-name-input') as HTMLInputElement).value;
+    appState.step1!.clientEmail = (s1Container.querySelector('.client-email-input') as HTMLInputElement).value;
+    appState.step1!.coachName = (s1Container.querySelector('.coach-name-input') as HTMLInputElement).value;
+    appState.step1!.profilePic = (s1Container.querySelector('.profile-pic-preview') as HTMLImageElement).src;
+    appState.step1!.trainingGoal = (s1Container.querySelector('.training-goal:checked') as HTMLInputElement)?.value;
+    appState.step1!.age = (s1Container.querySelector('.age-slider') as HTMLInputElement).value;
+    appState.step1!.height = (s1Container.querySelector('.height-slider') as HTMLInputElement).value;
+    appState.step1!.weight = (s1Container.querySelector('.weight-slider') as HTMLInputElement).value;
+    appState.step1!.neck = (s1Container.querySelector('.neck-input') as HTMLInputElement).value;
+    appState.step1!.waist = (s1Container.querySelector('.waist-input') as HTMLInputElement).value;
+    appState.step1!.hip = (s1Container.querySelector('.hip-input') as HTMLInputElement).value;
+    appState.step1!.gender = (s1Container.querySelector('.gender:checked') as HTMLInputElement)?.value;
+    appState.step1!.activityLevel = (s1Container.querySelector('.activity-level:checked') as HTMLInputElement)?.value;
+    appState.step1!.trainingDays = (s1Container.querySelector('.training-days:checked') as HTMLInputElement)?.value;
 
     // Step 2 data
     document.querySelectorAll('#workout-days-container .day-card').forEach(dayCard => {
@@ -520,21 +525,21 @@ function getAppState(): AppState {
                 isSuperset: exRow.classList.contains('is-superset')
             });
         });
-        appState.step2.days.push(dayData);
+        appState.step2!.days.push(dayData);
     });
 
     // Step 3 data
     document.querySelectorAll('.supplement-checkbox:checked').forEach(cb => {
-        appState.step3.supplements.push({
+        appState.step3!.supplements.push({
             name: (cb as HTMLInputElement).value,
             dosage: (cb.closest('.supplement-item')?.querySelector('.dosage-input') as HTMLInputElement).value
         });
     });
     
     // Step 4 data
-    appState.step4.generalNotes = (document.getElementById('general-notes-input') as HTMLTextAreaElement).value;
+    appState.step4!.generalNotes = (document.getElementById('general-notes-input') as HTMLTextAreaElement).value;
 
-    return appState;
+    return appState as AppState;
 }
 
 function loadStateIntoApp(state: AppState) {
@@ -663,8 +668,123 @@ function loginAsAdmin() {
     setTimeout(() => mainAppContainer.classList.remove('opacity-0'), 50);
 }
 
+// --- Dashboard Rendering ---
+
+const calculateWorkoutStreak = (history: string[] = []): number => {
+    if (!history || history.length === 0) return 0;
+    const oneDay = 24 * 60 * 60 * 1000;
+    const workoutDates = [...new Set(history.map(iso => new Date(iso).setHours(0, 0, 0, 0)))].sort((a, b) => b - a);
+    if (workoutDates.length === 0) return 0;
+    const today = new Date().setHours(0, 0, 0, 0);
+    if (today - workoutDates[0] > oneDay) return 0;
+    let streak = 1;
+    for (let i = 0; i < workoutDates.length - 1; i++) {
+        if ((workoutDates[i] - workoutDates[i + 1]) / oneDay === 1) streak++;
+        else break;
+    }
+    return streak;
+}
+
+const getTodaysWorkout = (state: AppState): { day: DayState; dayIndex: number } | null => {
+    if (!state.step2 || !state.step2.days || state.step2.days.length === 0) return null;
+    const today = new Date().getDay();
+    const numDays = state.step2.days.length;
+    const dayMap: { [key: number]: number[] } = { 1: [3], 2: [2, 5], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6], 7: [0, 1, 2, 3, 4, 5, 6] };
+    const schedule = dayMap[numDays] || dayMap[4];
+    const workoutDayIndex = schedule.indexOf(today);
+    if (workoutDayIndex !== -1 && state.step2.days[workoutDayIndex]) {
+        return { day: state.step2.days[workoutDayIndex], dayIndex: workoutDayIndex };
+    }
+    return null;
+};
+
+const renderWeightChart = (history: { date: string; weight: number }[] = []) => {
+    const ctx = (document.getElementById('weight-progress-chart') as HTMLCanvasElement)?.getContext('2d');
+    const noDataEl = document.getElementById('no-chart-data') as HTMLElement;
+    const canvasEl = document.getElementById('weight-progress-chart') as HTMLElement;
+    if (!ctx || !noDataEl || !canvasEl) return;
+    if (weightChart) weightChart.destroy();
+
+    if (!history || history.length < 2) {
+        noDataEl.classList.remove('hidden');
+        canvasEl.classList.add('hidden');
+        return;
+    }
+    noDataEl.classList.add('hidden');
+    canvasEl.classList.remove('hidden');
+
+    const sortedHistory = [...history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const labels = sortedHistory.map(entry => new Date(entry.date).toLocaleDateString('fa-IR', { month: 'short', day: 'numeric' }));
+    const data = sortedHistory.map(entry => entry.weight);
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const fontColor = isDark ? '#e2e8f0' : '#111827';
+
+    weightChart = new window.Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label: 'وزن (kg)', data, borderColor: '#FBBF24', backgroundColor: 'rgba(251, 191, 36, 0.2)', fill: true, tension: 0.3, pointBackgroundColor: '#FBBF24', pointBorderColor: '#fff', pointHoverRadius: 7, pointRadius: 5 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: false, grid: { color: gridColor }, ticks: { color: fontColor } }, x: { grid: { display: false }, ticks: { color: fontColor } } } }
+    });
+};
+
+function renderDashboardContent(username: string, state: AppState) {
+    const statsGrid = document.getElementById('dashboard-stats-grid')!;
+    const todayFocusCard = document.getElementById('today-focus-card')!;
+
+    // 1. Render Stats
+    const streak = calculateWorkoutStreak(state.workoutHistory);
+    const totalWorkouts = state.workoutHistory?.length || 0;
+    const joinDate = state.joinDate ? new Date(state.joinDate).toLocaleDateString('fa-IR') : 'نامشخص';
+
+    statsGrid.innerHTML = `
+        <div class="card p-4 rounded-lg flex items-start gap-4 bg-orange-500/10 border-orange-500/20">
+            <div class="bg-orange-500/20 p-3 rounded-lg"><i data-lucide="flame" class="w-6 h-6 text-orange-400"></i></div>
+            <div><p class="text-sm font-semibold text-secondary">روند تمرینی</p><p class="text-3xl font-bold">${streak} <span class="text-base font-medium">روز</span></p></div>
+        </div>
+        <div class="card p-4 rounded-lg flex items-start gap-4 bg-green-500/10 border-green-500/20">
+            <div class="bg-green-500/20 p-3 rounded-lg"><i data-lucide="swords" class="w-6 h-6 text-green-400"></i></div>
+            <div><p class="text-sm font-semibold text-secondary">کل تمرینات</p><p class="text-3xl font-bold">${totalWorkouts}</p></div>
+        </div>
+        <div class="card p-4 rounded-lg flex items-start gap-4 bg-indigo-500/10 border-indigo-500/20">
+            <div class="bg-indigo-500/20 p-3 rounded-lg"><i data-lucide="calendar-plus" class="w-6 h-6 text-indigo-400"></i></div>
+            <div><p class="text-sm font-semibold text-secondary">عضویت از</p><p class="text-xl font-bold pt-2">${joinDate}</p></div>
+        </div>
+    `;
+
+    // 2. Render Today's Focus
+    const todaysWorkout = getTodaysWorkout(state);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const hasWorkedOutToday = (state.workoutHistory || []).some(d => d.startsWith(todayStr));
+
+    let focusHTML = `<div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="target" class="text-blue-400"></i>تمرکز امروز</h3><span class="text-sm font-semibold text-secondary">${new Date().toLocaleDateString('fa-IR', { weekday: 'long', day: 'numeric', month: 'long' })}</span></div>`;
+    if (todaysWorkout) {
+        focusHTML += `
+            <div class="bg-tertiary/50 rounded-lg p-4">
+                <h4 class="font-bold text-xl mb-3">${sanitizeHTML(todaysWorkout.day.title)}</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-4">
+                    ${todaysWorkout.day.exercises.slice(0, 4).map(ex => `<div class="bg-secondary/50 p-2 rounded-md text-xs font-semibold">${sanitizeHTML(ex.exercise)}</div>`).join('')}
+                    ${todaysWorkout.day.exercises.length > 4 ? `<div class="bg-secondary/50 p-2 rounded-md text-xs font-semibold">+ ${todaysWorkout.day.exercises.length - 4} حرکت دیگر</div>` : ''}
+                </div>
+                 <button id="mark-workout-done-btn" class="primary-button w-full font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 ${hasWorkedOutToday ? 'bg-green-500 hover:bg-green-600' : ''}" ${hasWorkedOutToday ? 'disabled' : ''}>
+                    <i data-lucide="${hasWorkedOutToday ? 'check-check' : 'play'}"></i>
+                    <span>${hasWorkedOutToday ? 'تمرین امروز انجام شد!' : 'ثبت انجام تمرین'}</span>
+                </button>
+            </div>
+            <p class="text-xs text-secondary text-center italic mt-4">نکته روز: "قدرت از چیزی که فکر می‌کنی می‌توانی انجام دهی، یک قدم فراتر است."</p>
+        `;
+    } else {
+        focusHTML += `<div class="text-center bg-tertiary/50 rounded-lg p-8"><i data-lucide="coffee" class="w-10 h-10 mx-auto text-green-400 mb-3"></i><h4 class="font-bold">امروز روز استراحت است!</h4><p class="text-sm text-secondary mt-1">از ریکاوری لذت ببر و برای جلسه بعدی آماده شو.</p></div>`;
+    }
+    todayFocusCard.innerHTML = focusHTML;
+
+    // 3. Render Chart
+    renderWeightChart(state.weightHistory);
+    
+    window.lucide.createIcons();
+}
+
+
 function populateDashboard(username: string, state: AppState) {
-    const dashboard = document.getElementById('user-dashboard-container')!;
     const profilePanel = document.getElementById('dashboard-profile-panel')!;
     const statusContainer = document.getElementById('dashboard-status-container') as HTMLElement;
     
@@ -683,7 +803,7 @@ function populateDashboard(username: string, state: AppState) {
     infoStatusEl.innerHTML = `<i data-lucide="${infoConfirmed ? 'user-check' : 'user-cog'}" class="w-6 h-6"></i><div><p class="font-bold">وضعیت اطلاعات</p><p class="text-sm">${infoConfirmed ? 'تایید شده' : 'نیاز به تایید'}</p></div>`;
     statusContainer.appendChild(infoStatusEl);
     
-    // Populate profile panel with user data
+    // Populate profile editor panel with user data
     const s1 = state.step1 || {};
     (profilePanel.querySelector('.client-name-input') as HTMLInputElement).value = username;
     (profilePanel.querySelector('.client-email-input') as HTMLInputElement).value = s1.clientEmail || '';
@@ -713,7 +833,7 @@ function populateDashboard(username: string, state: AppState) {
         if (daysRadio) daysRadio.checked = true;
     }
 
-    // Trigger updates
+    // Trigger updates for profile editor
     profilePanel.querySelectorAll('.range-slider').forEach(s => {
         updateSliderBackground(s as HTMLInputElement);
         const event = new Event('input', { bubbles: true });
@@ -722,7 +842,10 @@ function populateDashboard(username: string, state: AppState) {
     toggleHipInput(profilePanel);
     calculateBodyMetrics(profilePanel);
 
-    // Generate and display the program preview for the user
+    // Render main dashboard content (stats, focus, chart)
+    renderDashboardContent(username, state);
+
+    // Generate and display the full program preview for the user
     generateProgramPreview(profilePanel, '#dashboard-program-view');
     
     (document.getElementById('dashboard-welcome-message') as HTMLElement).textContent = `خوش آمدی، ${username}!`;
@@ -963,12 +1086,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const users = getUsers();
         users.push({ username, email, password });
         saveUsers(users);
-        saveUserData(username, {
+        const newUserState: AppState = {
             step1: { clientName: username, clientEmail: email },
             step2: { days: [] },
             step3: { supplements: [] },
-            step4: {}
-        });
+            step4: {},
+            joinDate: new Date().toISOString(),
+            workoutHistory: [],
+            weightHistory: [],
+        };
+        saveUserData(username, newUserState);
         
         logActivity(`کاربر جدید ${username} ثبت نام کرد.`);
         showToast(`خوش آمدی، ${username}! ثبت نام با موفقیت انجام شد.`, 'success');
@@ -981,6 +1108,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('fitgympro_theme', newTheme);
+        // Re-render chart with new colors if on dashboard
+        if (currentUser && currentUser !== 'admin') {
+            const userData = getUserData(currentUser);
+            renderWeightChart(userData.weightHistory);
+        }
     };
     document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleTheme);
     document.getElementById('theme-toggle-btn-dashboard')?.addEventListener('click', toggleTheme);
@@ -1332,7 +1464,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const users = getUsers();
         users.push({ username, email, password });
-        saveUsers(users);
         saveUserData(username, {
             step1: { clientName: username, clientEmail: email },
             step2: { days: [] }, step3: { supplements: [] }, step4: {}
@@ -1393,6 +1524,44 @@ document.addEventListener('DOMContentLoaded', () => {
             saveUserData(currentUser, data);
             populateDashboard(currentUser, data);
             showToast('پرداخت با موفقیت انجام شد (شبیه‌سازی).', 'success');
+        }
+    });
+
+    userDashboardContainer.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+        if(target.closest('#mark-workout-done-btn')) {
+            if (currentUser && currentUser !== 'admin') {
+                const data = getUserData(currentUser);
+                if (!data.workoutHistory) data.workoutHistory = [];
+                data.workoutHistory.push(new Date().toISOString());
+                saveUserData(currentUser, data);
+                renderDashboardContent(currentUser, data);
+                showToast('تمرین امروز با موفقیت ثبت شد!', 'success');
+            }
+        }
+    });
+
+    document.getElementById('add-weight-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (currentUser && currentUser !== 'admin') {
+            const weightInput = document.getElementById('new-weight-input') as HTMLInputElement;
+            const newWeight = parseFloat(weightInput.value);
+            if(isNaN(newWeight) || newWeight <= 0) {
+                showToast('لطفا یک وزن معتبر وارد کنید.', 'error');
+                return;
+            }
+            const data = getUserData(currentUser);
+            if (!data.weightHistory) data.weightHistory = [];
+            data.weightHistory.push({ date: new Date().toISOString(), weight: newWeight });
+            
+            // Also update the main weight slider
+            (document.querySelector('#dashboard-profile-panel .weight-slider') as HTMLInputElement).value = newWeight.toString();
+            if(data.step1) data.step1.weight = newWeight.toString();
+
+            saveUserData(currentUser, data);
+            populateDashboard(currentUser, data); // Full repaint to update everything
+            showToast('وزن جدید با موفقیت ثبت شد.', 'success');
+            weightInput.value = '';
         }
     });
 

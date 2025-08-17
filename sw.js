@@ -4,7 +4,6 @@ const CACHE_NAME = 'fitgympro-v2'; // Increment version to force update
 const urlsToCache = [
   '/',
   '/index.html',
-  '/index.css',
   '/index.tsx', // The browser will resolve this to the compiled JS
   '/manifest.json',
   '/en.json',

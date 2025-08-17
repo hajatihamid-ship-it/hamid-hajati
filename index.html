@@ -21,6 +21,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
+    <!-- Chart.js for progress charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <!-- GenAI Module Preload -->
     <link rel="modulepreload" href="https://esm.run/@google/genai">
 
@@ -356,14 +359,6 @@
         
         #admin-panel-modal.active { opacity: 1; }
         #admin-panel-modal.active > .card { transform: scale(1); }
-
-        /* User Dashboard Responsiveness */
-        #user-dashboard-container main { display: grid; grid-template-columns: 1fr; gap: 2rem; }
-        @media (min-width: 1024px) {
-            #user-dashboard-container main { grid-template-columns: 3fr 7fr; gap: 2rem; }
-            #dashboard-profile-panel { grid-column: 2 / 3; grid-row: 1 / 2; position: sticky; top: 2rem; align-self: start; max-height: calc(100vh - 4rem); overflow-y: auto; }
-            #dashboard-right-panel { grid-column: 1 / 2; grid-row: 1 / 2; }
-        }
         
         /* New Auth Screen Styles */
         #user-selection-screen.auth-bg {
@@ -609,110 +604,145 @@
                 </button>
             </div>
         </header>
-        <main>
-            <!-- Right Panel: Profile (now visually on the right for large screens) -->
-            <aside id="dashboard-profile-panel" class="space-y-6 card rounded-xl p-6 h-fit">
-                <h2 class="text-2xl font-bold">پروفایل و شاخص‌ها</h2>
-                <p class="text-sm text-secondary -mt-4">اطلاعات خود را برای دریافت برنامه دقیق‌تر به‌روز نگه دارید. تغییرات شما به صورت خودکار ذخیره می‌شود.</p>
-
-                <!-- Profile Info Form (Replicated from Admin's Step 1) -->
-                 <div class="flex items-center gap-6">
-                    <label class="cursor-pointer">
-                        <img class="profile-pic-preview w-24 h-24 rounded-full object-cover border-2 border-border-secondary hover:border-yellow-400 transition-all" src="https://placehold.co/100x100/374151/E5E7EB?text=عکس" alt="عکس پروفایل">
-                        <input type="file" class="profile-pic-input hidden" accept="image/*">
-                    </label>
-                    <div class="flex-grow">
-                        <label class="font-semibold text-sm text-secondary">نام و نام خانوادگی</label>
-                        <input type="text" class="client-name-input input-field mt-1 text-lg font-bold" readonly>
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Main Content Column -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Stats Row -->
+                <div id="dashboard-stats-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Stat cards will be injected here by JS -->
+                </div>
+    
+                <!-- Today's Focus -->
+                <div id="today-focus-card" class="card rounded-xl p-6">
+                    <!-- Today's focus content will be injected here by JS -->
+                </div>
+    
+                <!-- Progress Chart -->
+                <div id="progress-chart-card" class="card rounded-xl p-6 relative min-h-[300px]">
+                     <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="text-yellow-400"></i>نمودار پیشرفت وزن</h3>
+                     <div id="no-chart-data" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center text-secondary p-4">
+                        <i data-lucide="chart-no-data" class="w-12 h-12 mb-4 text-border-secondary"></i>
+                        <p class="font-bold">داده‌ای برای نمایش وجود ندارد</p>
+                        <p class="text-sm">اولین وزن خود را از پنل پروفایل در کنار صفحه ثبت کنید.</p>
                     </div>
+                     <canvas id="weight-progress-chart"></canvas>
                 </div>
-                <div class="space-y-6">
-                    <div><label class="font-semibold text-sm text-secondary">ایمیل</label><input type="email" class="client-email-input input-field mt-1" placeholder="email@example.com"></div>
-                    <div class="training-goal-container">
-                        <label class="font-semibold text-sm mb-2 block">هدف اصلی تمرین</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div><input type="radio" name="training-goal-user" value="افزایش حجم عضلانی" id="goal-bulk-user" class="sr-only radio-group-input training-goal"><label for="goal-bulk-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">افزایش حجم</label></div>
-                            <div><input type="radio" name="training-goal-user" value="چربی سوزی" id="goal-cut-user" class="sr-only radio-group-input training-goal"><label for="goal-cut-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">چربی سوزی</label></div>
-                            <div><input type="radio" name="training-goal-user" value="افزایش قدرت" id="goal-strength-user" class="sr-only radio-group-input training-goal"><label for="goal-strength-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">افزایش قدرت</label></div>
-                            <div><input type="radio" name="training-goal-user" value="تناسب اندام عمومی" id="goal-fit-user" class="sr-only radio-group-input training-goal"><label for="goal-fit-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">تناسب اندام</label></div>
-                        </div>
+                
+                 <!-- Full Program View -->
+                <div class="card rounded-xl p-0 overflow-hidden">
+                     <h3 class="font-bold text-lg p-6">برنامه کامل شما</h3>
+                     <div id="dashboard-program-view" class="preview-container bg-transparent p-0 sm:p-0 border-t border-border-primary">
+                        <!-- The user's program sheet will be rendered here -->
                     </div>
+                    <div class="p-6 border-t border-border-primary text-center">
+                        <button type="button" id="dashboard-save-pdf-btn" class="primary-button flex items-center justify-center gap-2 font-bold py-3 px-6 rounded-lg mx-auto">
+                           <i data-lucide="save" class="button-icon"></i>
+                           <i data-lucide="loader-circle" class="loader-icon"></i>
+                           <span class="button-text">ذخیره برنامه به صورت PDF</span>
+                        </button>
+                   </div>
                 </div>
-                <div class="space-y-6">
-                    <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">سن</label><span class="age-value font-bold text-lg text-orange-400">25</span></div><input type="range" min="15" max="80" value="25" class="range-slider age-slider"></div>
-                    <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">قد (cm)</label><span class="height-value font-bold text-lg text-pink-400">180 cm</span></div><input type="range" min="140" max="220" value="180" class="range-slider height-slider"></div>
-                    <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">وزن (kg)</label><span class="weight-value font-bold text-lg text-yellow-400">80 kg</span></div><input type="range" min="40" max="150" value="80" class="range-slider weight-slider"></div>
-                </div>
-                <div class="space-y-4">
-                    <h3 class="font-semibold text-base text-secondary">اندازه‌های بدن</h3>
-                    <div><label class="font-semibold text-sm text-secondary">دور گردن (cm)</label><input type="number" class="neck-input input-field mt-1" placeholder="مثال: 40"></div>
-                    <div><label class="font-semibold text-sm text-secondary">دور کمر (cm)</label><input type="number" class="waist-input input-field mt-1" placeholder="مثال: 85"></div>
-                    <div class="hip-input-container hidden"><label class="font-semibold text-sm text-secondary">دور باسن (cm)</label><input type="number" class="hip-input input-field mt-1" placeholder="مثال: 95"></div>
-                </div>
-                <div class="border-t border-border-primary pt-4 space-y-4">
-                     <h3 class="font-semibold text-base text-secondary">شاخص‌های کلیدی (محاسبه خودکار)</h3>
-                     <div class="grid grid-cols-2 gap-4">
-                         <div><label class="font-semibold text-sm text-secondary">BMI</label><input type="text" class="bmi-input input-field mt-1" readonly></div>
-                         <div><label class="font-semibold text-sm text-secondary">BMR (kcal)</label><input type="text" class="bmr-input input-field mt-1" readonly></div>
-                         <div><label class="font-semibold text-sm text-secondary">TDEE (kcal)</label><input type="text" class="tdee-input input-field mt-1" readonly></div>
-                         <div><label class="font-semibold text-sm text-secondary">چربی (%)</label><input type="text" class="bodyfat-input input-field mt-1" readonly></div>
-                         <div><label class="font-semibold text-sm text-secondary">توده بدون چربی (kg)</label><input type="text" class="lbm-input input-field mt-1" readonly></div>
-                         <div class="col-span-2"><label class="font-semibold text-sm text-secondary">محدوده وزن ایده‌آل (kg)</label><input type="text" class="ideal-weight-input input-field mt-1" readonly></div>
-                     </div>
-                </div>
-                 <div class="realtime-visualizers grid grid-cols-1 gap-6"></div>
-                 <div class="space-y-6">
-                    <div><label class="font-semibold text-sm mb-2 block text-secondary">جنسیت</label><div class="grid grid-cols-2 gap-2"><div><input type="radio" name="gender-user" value="مرد" id="male-user" class="sr-only radio-group-input gender"><label for="male-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer">مرد</label></div><div><input type="radio" name="gender-user" value="زن" id="female-user" class="sr-only radio-group-input gender"><label for="female-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer">زن</label></div></div></div>
-                    <div>
-                         <label class="font-semibold text-sm mb-2 block text-secondary">سطح فعالیت روزانه</label>
-                         <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                             <div><input type="radio" name="activity-level-user" value="1.2" id="sedentary-user" class="sr-only radio-group-input activity-level"><label for="sedentary-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">بی‌تحرک</label></div>
-                             <div><input type="radio" name="activity-level-user" value="1.375" id="light-user" class="sr-only radio-group-input activity-level"><label for="light-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">کم</label></div>
-                             <div><input type="radio" name="activity-level-user" value="1.55" id="moderate-user" class="sr-only radio-group-input activity-level"><label for="moderate-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">متوسط</label></div>
-                             <div><input type="radio" name="activity-level-user" value="1.725" id="active-user" class="sr-only radio-group-input activity-level"><label for="active-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">زیاد</label></div>
-                             <div class="col-span-2 md:col-span-1"><input type="radio" name="activity-level-user" value="1.9" id="very-active-user" class="sr-only radio-group-input activity-level"><label for="very-active-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">خیلی زیاد</label></div>
-                         </div>
-                    </div>
-                    <div>
-                         <label class="font-semibold text-sm mb-2 block text-secondary">تعداد روزهای تمرین در هفته</label>
-                         <div class="grid grid-cols-4 gap-2">
-                             <div><input type="radio" name="training-days-user" value="1" id="days-1-user" class="sr-only radio-group-input training-days"><label for="days-1-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۱</label></div>
-                             <div><input type="radio" name="training-days-user" value="2" id="days-2-user" class="sr-only radio-group-input training-days"><label for="days-2-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۲</label></div>
-                             <div><input type="radio" name="training-days-user" value="3" id="days-3-user" class="sr-only radio-group-input training-days"><label for="days-3-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۳</label></div>
-                             <div><input type="radio" name="training-days-user" value="4" id="days-4-user" class="sr-only radio-group-input training-days"><label for="days-4-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۴</label></div>
-                             <div><input type="radio" name="training-days-user" value="5" id="days-5-user" class="sr-only radio-group-input training-days"><label for="days-5-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۵</label></div>
-                             <div><input type="radio" name="training-days-user" value="6" id="days-6-user" class="sr-only radio-group-input training-days"><label for="days-6-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۶</label></div>
-                             <div><input type="radio" name="training-days-user" value="7" id="days-7-user" class="sr-only radio-group-input training-days"><label for="days-7-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۷</label></div>
-                         </div>
-                    </div>
-                </div>
-                 <div class="border-t border-border-primary pt-6 mt-6 space-y-3">
-                    <button type="button" id="confirm-info-btn" class="secondary-button w-full font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2">
-                        <i data-lucide="check-circle"></i>
-                        <span>تایید اطلاعات</span>
-                    </button>
-                    <button type="button" id="pay-program-btn" class="primary-button w-full font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2">
-                        <i data-lucide="credit-card"></i>
-                        <span>پرداخت هزینه برنامه تمرینی</span>
-                    </button>
-                </div>
-            </aside>
-
-            <!-- Left Panel: Program Sheet (now visually on the left for large screens) -->
-            <div id="dashboard-right-panel" class="space-y-6">
-                <div id="dashboard-status-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            </div>
+    
+            <!-- Sidebar Column -->
+            <div class="lg:col-span-1 space-y-6">
+                <div id="dashboard-status-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                     <!-- Status badges will be injected here -->
                 </div>
-                <div id="dashboard-program-view" class="preview-container">
-                    <!-- The user's program sheet will be rendered here -->
-                </div>
-                <div class="text-center">
-                    <button type="button" id="dashboard-save-pdf-btn" class="primary-button flex items-center justify-center gap-2 font-bold py-3 px-6 rounded-lg mx-auto">
-                       <i data-lucide="save" class="button-icon"></i>
-                       <i data-lucide="loader-circle" class="loader-icon"></i>
-                       <span class="button-text">ذخیره برنامه به صورت PDF</span>
-                    </button>
-               </div>
+                <!-- Profile Panel -->
+                <aside id="dashboard-profile-panel" class="space-y-6 card rounded-xl p-6 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
+                    <h2 class="text-2xl font-bold">پروفایل و شاخص‌ها</h2>
+                    <p class="text-sm text-secondary -mt-4">اطلاعات خود را برای دریافت برنامه دقیق‌تر به‌روز نگه دارید.</p>
+    
+                    <!-- Profile Info Form (Replicated from Admin's Step 1) -->
+                     <div class="flex items-center gap-6">
+                        <label class="cursor-pointer">
+                            <img class="profile-pic-preview w-24 h-24 rounded-full object-cover border-2 border-border-secondary hover:border-yellow-400 transition-all" src="https://placehold.co/100x100/374151/E5E7EB?text=عکس" alt="عکس پروفایل">
+                            <input type="file" class="profile-pic-input hidden" accept="image/*">
+                        </label>
+                        <div class="flex-grow">
+                            <label class="font-semibold text-sm text-secondary">نام و نام خانوادگی</label>
+                            <input type="text" class="client-name-input input-field mt-1 text-lg font-bold" readonly>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                        <div><label class="font-semibold text-sm text-secondary">ایمیل</label><input type="email" class="client-email-input input-field mt-1" placeholder="email@example.com"></div>
+                        <div class="training-goal-container">
+                            <label class="font-semibold text-sm mb-2 block">هدف اصلی تمرین</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div><input type="radio" name="training-goal-user" value="افزایش حجم عضلانی" id="goal-bulk-user" class="sr-only radio-group-input training-goal"><label for="goal-bulk-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">افزایش حجم</label></div>
+                                <div><input type="radio" name="training-goal-user" value="چربی سوزی" id="goal-cut-user" class="sr-only radio-group-input training-goal"><label for="goal-cut-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">چربی سوزی</label></div>
+                                <div><input type="radio" name="training-goal-user" value="افزایش قدرت" id="goal-strength-user" class="sr-only radio-group-input training-goal"><label for="goal-strength-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">افزایش قدرت</label></div>
+                                <div><input type="radio" name="training-goal-user" value="تناسب اندام عمومی" id="goal-fit-user" class="sr-only radio-group-input training-goal"><label for="goal-fit-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">تناسب اندام</label></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                        <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">سن</label><span class="age-value font-bold text-lg text-orange-400">25</span></div><input type="range" min="15" max="80" value="25" class="range-slider age-slider"></div>
+                        <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">قد (cm)</label><span class="height-value font-bold text-lg text-pink-400">180 cm</span></div><input type="range" min="140" max="220" value="180" class="range-slider height-slider"></div>
+                        <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">وزن (kg)</label><span class="weight-value font-bold text-lg text-yellow-400">80 kg</span></div><input type="range" min="40" max="150" value="80" class="range-slider weight-slider"></div>
+                    </div>
+                    <div class="space-y-4">
+                        <h3 class="font-semibold text-base text-secondary">اندازه‌های بدن</h3>
+                        <div><label class="font-semibold text-sm text-secondary">دور گردن (cm)</label><input type="number" class="neck-input input-field mt-1" placeholder="مثال: 40"></div>
+                        <div><label class="font-semibold text-sm text-secondary">دور کمر (cm)</label><input type="number" class="waist-input input-field mt-1" placeholder="مثال: 85"></div>
+                        <div class="hip-input-container hidden"><label class="font-semibold text-sm text-secondary">دور باسن (cm)</label><input type="number" class="hip-input input-field mt-1" placeholder="مثال: 95"></div>
+                    </div>
+                    <div class="border-t border-border-primary pt-4 space-y-4">
+                         <h3 class="font-semibold text-base text-secondary">شاخص‌های کلیدی (محاسبه خودکار)</h3>
+                         <div class="grid grid-cols-2 gap-4">
+                             <div><label class="font-semibold text-sm text-secondary">BMI</label><input type="text" class="bmi-input input-field mt-1" readonly></div>
+                             <div><label class="font-semibold text-sm text-secondary">BMR (kcal)</label><input type="text" class="bmr-input input-field mt-1" readonly></div>
+                             <div><label class="font-semibold text-sm text-secondary">TDEE (kcal)</label><input type="text" class="tdee-input input-field mt-1" readonly></div>
+                             <div><label class="font-semibold text-sm text-secondary">چربی (%)</label><input type="text" class="bodyfat-input input-field mt-1" readonly></div>
+                             <div><label class="font-semibold text-sm text-secondary">توده بدون چربی (kg)</label><input type="text" class="lbm-input input-field mt-1" readonly></div>
+                             <div class="col-span-2"><label class="font-semibold text-sm text-secondary">محدوده وزن ایده‌آل (kg)</label><input type="text" class="ideal-weight-input input-field mt-1" readonly></div>
+                         </div>
+                    </div>
+                     <div class="realtime-visualizers grid grid-cols-1 gap-6"></div>
+                     <div class="space-y-6">
+                        <div><label class="font-semibold text-sm mb-2 block text-secondary">جنسیت</label><div class="grid grid-cols-2 gap-2"><div><input type="radio" name="gender-user" value="مرد" id="male-user" class="sr-only radio-group-input gender"><label for="male-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer">مرد</label></div><div><input type="radio" name="gender-user" value="زن" id="female-user" class="sr-only radio-group-input gender"><label for="female-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer">زن</label></div></div></div>
+                        <div>
+                             <label class="font-semibold text-sm mb-2 block text-secondary">سطح فعالیت روزانه</label>
+                             <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                 <div><input type="radio" name="activity-level-user" value="1.2" id="sedentary-user" class="sr-only radio-group-input activity-level"><label for="sedentary-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">بی‌تحرک</label></div>
+                                 <div><input type="radio" name="activity-level-user" value="1.375" id="light-user" class="sr-only radio-group-input activity-level"><label for="light-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">کم</label></div>
+                                 <div><input type="radio" name="activity-level-user" value="1.55" id="moderate-user" class="sr-only radio-group-input activity-level"><label for="moderate-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">متوسط</label></div>
+                                 <div><input type="radio" name="activity-level-user" value="1.725" id="active-user" class="sr-only radio-group-input activity-level"><label for="active-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">زیاد</label></div>
+                                 <div class="col-span-2 md:col-span-1"><input type="radio" name="activity-level-user" value="1.9" id="very-active-user" class="sr-only radio-group-input activity-level"><label for="very-active-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">خیلی زیاد</label></div>
+                             </div>
+                        </div>
+                        <div>
+                             <label class="font-semibold text-sm mb-2 block text-secondary">تعداد روزهای تمرین در هفته</label>
+                             <div class="grid grid-cols-4 gap-2">
+                                 <div><input type="radio" name="training-days-user" value="1" id="days-1-user" class="sr-only radio-group-input training-days"><label for="days-1-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۱</label></div>
+                                 <div><input type="radio" name="training-days-user" value="2" id="days-2-user" class="sr-only radio-group-input training-days"><label for="days-2-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۲</label></div>
+                                 <div><input type="radio" name="training-days-user" value="3" id="days-3-user" class="sr-only radio-group-input training-days"><label for="days-3-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۳</label></div>
+                                 <div><input type="radio" name="training-days-user" value="4" id="days-4-user" class="sr-only radio-group-input training-days"><label for="days-4-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۴</label></div>
+                                 <div><input type="radio" name="training-days-user" value="5" id="days-5-user" class="sr-only radio-group-input training-days"><label for="days-5-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۵</label></div>
+                                 <div><input type="radio" name="training-days-user" value="6" id="days-6-user" class="sr-only radio-group-input training-days"><label for="days-6-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۶</label></div>
+                                 <div><input type="radio" name="training-days-user" value="7" id="days-7-user" class="sr-only radio-group-input training-days"><label for="days-7-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۷</label></div>
+                             </div>
+                        </div>
+                    </div>
+                     <div class="border-t border-border-primary pt-6 mt-6 space-y-3">
+                        <button type="button" id="confirm-info-btn" class="secondary-button w-full font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2">
+                            <i data-lucide="check-circle"></i>
+                            <span>تایید اطلاعات</span>
+                        </button>
+                        <button type="button" id="pay-program-btn" class="primary-button w-full font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2">
+                            <i data-lucide="credit-card"></i>
+                            <span>پرداخت هزینه برنامه تمرینی</span>
+                        </button>
+                    </div>
+                    <div class="border-t border-border-primary pt-6 mt-6">
+                        <h3 class="font-bold text-lg mb-4">ثبت وزن امروز</h3>
+                        <form id="add-weight-form" class="flex gap-2">
+                            <input type="number" step="0.1" id="new-weight-input" class="input-field" placeholder="وزن امروز (kg)" required>
+                            <button type="submit" class="primary-button p-3 rounded-lg flex-shrink-0"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                        </form>
+                    </div>
+                </aside>
             </div>
         </main>
     </div>
