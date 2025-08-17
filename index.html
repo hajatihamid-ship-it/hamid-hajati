@@ -1085,5 +1085,24 @@
     </template>
     
     <script type="module" src="./index.tsx"></script>
+    <script type="module">
+      // Import SDKs
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIza....",
+        authDomain: "fitgympro.firebaseapp.com",
+        projectId: "fitgympro",
+        storageBucket: "fitgympro.appspot.com",
+        messagingSenderId: "123456789",
+        appId: "1:123456789:web:abcd1234"
+      };
+    
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+    </script>
 </body>
 </html>
