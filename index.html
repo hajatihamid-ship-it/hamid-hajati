@@ -420,6 +420,27 @@
             color: var(--text-primary);
             border-bottom-color: #FBBF24;
         }
+
+        /* Admin Panel User Filters */
+        .user-filter-btn {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+        .user-filter-btn:hover {
+            background-color: var(--border-primary);
+            color: var(--text-primary);
+        }
+        .user-filter-btn.active {
+            background-color: rgba(251, 191, 36, 0.1);
+            color: #FBBF24;
+            font-weight: 700;
+            border-color: #FBBF24;
+        }
         
     </style>
 </head>
@@ -576,6 +597,19 @@
                             </div>
                         </div>
                         <div class="lg:col-span-2">
+                            <div class="mb-4 space-y-3">
+                                <div class="relative">
+                                    <i data-lucide="search" class="absolute top-1/2 right-3 -translate-y-1/2 text-secondary w-5 h-5"></i>
+                                    <input type="text" id="admin-user-search" class="input-field pr-10" placeholder="جستجو بر اساس نام یا ایمیل...">
+                                </div>
+                                <div id="user-filter-btn-group" class="flex flex-wrap items-center gap-2 text-sm">
+                                    <span class="font-semibold text-secondary">فیلتر:</span>
+                                    <button class="user-filter-btn active" data-filter="all">نمایش همه</button>
+                                    <button class="user-filter-btn" data-filter="unpaid">پرداخت نشده</button>
+                                    <button class="user-filter-btn" data-filter="unconfirmed">تایید نکرده</button>
+                                    <button class="user-filter-btn" data-filter="inactive">غیرفعال (۱+ هفته)</button>
+                                </div>
+                            </div>
                             <h3 class="font-bold text-lg mb-4">لیست شاگردان</h3>
                             <div id="admin-user-list" class="space-y-2">
                                 <!-- User list populated by JS -->

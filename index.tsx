@@ -900,12 +900,48 @@ function logout() {
 
 const populateAdminUserList = () => {
     const userListContainer = document.getElementById('admin-user-list') as HTMLElement;
+    const searchTerm = (document.getElementById('admin-user-search') as HTMLInputElement).value.toLowerCase();
+    const activeFilter = document.querySelector('#user-filter-btn-group .user-filter-btn.active')?.getAttribute('data-filter') || 'all';
+
     if (!userListContainer) return;
-    const users = getUsers().filter((u: any) => u.username !== 'admin');
+    let users = getUsers().filter((u: any) => u.username !== 'admin');
+
+    // Apply filters
+    if (activeFilter !== 'all') {
+        users = users.filter((user: any) => {
+            const userData = getUserData(user.username);
+            switch (activeFilter) {
+                case 'unpaid':
+                    return !userData.hasPaid;
+                case 'unconfirmed':
+                    return !userData.infoConfirmed;
+                case 'inactive': {
+                    if (!userData.workoutHistory || userData.workoutHistory.length === 0) {
+                        return true; // Inactive if no history
+                    }
+                    const lastWorkoutStr = userData.workoutHistory[userData.workoutHistory.length - 1];
+                    const lastWorkout = new Date(lastWorkoutStr);
+                    const oneWeekAgo = new Date();
+                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                    return lastWorkout < oneWeekAgo;
+                }
+                default:
+                    return true;
+            }
+        });
+    }
+
+    // Apply search term
+    if (searchTerm) {
+        users = users.filter((user: any) => 
+            user.username.toLowerCase().includes(searchTerm) ||
+            user.email.toLowerCase().includes(searchTerm)
+        );
+    }
     
     userListContainer.innerHTML = '';
     if (users.length === 0) {
-        userListContainer.innerHTML = `<p class="text-secondary text-center col-span-full">هنوز هیچ شاگردی ثبت‌نام نکرده است.</p>`;
+        userListContainer.innerHTML = `<p class="text-secondary text-center col-span-full">هیچ شاگردی با این مشخصات یافت نشد.</p>`;
         return;
     }
     
@@ -1379,6 +1415,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     adminPanelBtn.addEventListener('click', () => {
         populateAdminDashboard();
+        
+        // Reset filters before populating list
+        (document.getElementById('admin-user-search') as HTMLInputElement).value = '';
+        document.querySelectorAll('#user-filter-btn-group .user-filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-filter') === 'all') {
+                btn.classList.add('active');
+            }
+        });
+        
         populateAdminUserList();
         adminPanelModal.classList.remove('hidden');
         setTimeout(() => {
@@ -1439,6 +1485,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 populateAdminDashboard(); // Refresh stats
                 showToast(`کاربر ${username} با موفقیت حذف شد.`, 'success');
             }
+        }
+    });
+
+    // Admin Panel User Search and Filter
+    document.getElementById('admin-user-search')?.addEventListener('input', populateAdminUserList);
+    document.getElementById('user-filter-btn-group')?.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const button = target.closest('.user-filter-btn');
+        if (button) {
+            document.querySelectorAll('#user-filter-btn-group .user-filter-btn').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            populateAdminUserList();
         }
     });
 
