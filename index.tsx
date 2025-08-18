@@ -1,1326 +1,1614 @@
 
-import { GoogleGenAI, Type } from 'https://esm.run/@google/genai';
+import { GoogleGenAI, Type as R, Chat, GenerateContentResponse } from "https://esm.run/@google/genai";
 
+// Type declarations for window properties and external libraries
 declare global {
-  interface Window {
-    jspdf: { jsPDF: any };
-    lucide: {
-      createIcons: () => void;
-    };
-    html2canvas: (element: HTMLElement, options?: any) => Promise<HTMLCanvasElement>;
-    exerciseDB: any;
-    Chart: any;
-  }
+    interface Window {
+        jspdf: { jsPDF: any };
+        exerciseDB: Record<string, string[]>;
+        lucide: {
+            createIcons: () => void;
+        };
+        html2canvas: (element: HTMLElement, options?: any) => Promise<HTMLCanvasElement>;
+        Chart: any;
+    }
 }
 
-const { jsPDF } = window.jspdf;
 
-// --- DATABASES ---
-const exerciseDB = {
-    "سینه": ["پرس سینه هالتر", "پرس سینه دمبل", "پرس بالا سینه هالتر", "پرس بالا سینه دمبل", "پرس زیر سینه دستگاه", "قفسه سینه دمبل", "کراس اور از بالا", "کراس اور از پایین", "فلای دستگاه", "شنا سوئدی", "دیپ پارالل", "پرس سینه دستگاه", "قفسه بالا سینه دمبل", "پول اور هالتر", "شنا شیب مثبت", "شنا شیب منفی", "پرس سینه سیم کش", "دیپ سینه", "قفسه سیم کش", "پرس سینه لندماین"],
-    "پشت": ["ددلیفت", "بارفیکس دست باز", "زیربغل هالتر خم", "تی بار رو", "لت سیم‌کش از جلو", "زیربغل سیم‌کش دست برعکس", "روئینگ دستگاه", "زیربغل دمبل تک خم", "فیله کمر", "پول اور دمبل", "بارفیکس دست جمع", "لت سیم‌کش دست موازی", "روئینگ سیم‌کش", "شراگ هالتر", "هایپر اکستنشن", "شراگ با دستگاه", "زیربغل قایقی دست باز", "لت از جلو دست جمع", "رک پول"],
-    "سرشانه": ["پرس سرشانه هالتر", "پرس سرشانه دمبل", "نشر از جانب دمبل", "نشر از جلو دمبل", "نشر خم دمبل (دلتا خلفی)", "فیس پول", "کول هالتر دست باز", "شراگ با دمبل", "پرس آرنولدی", "نشر از جانب سیم‌کش", "نشر از جلو صفحه", "کول هالتر دست جمع", "پرس سرشانه دستگاه", "پرس سرشانه لندماین", "نشر جانب سیم کش تک دست", "شراگ دستگاه اسمیت", "کول با دمبل"],
+(function() {
+    const t = (document.createElement("link") as HTMLLinkElement).relList;
+    if (t && t.supports && t.supports("modulepreload")) return;
+    for (const a of document.querySelectorAll('link[rel="modulepreload"]')) {
+        r(a as HTMLLinkElement);
+    }
+    new MutationObserver(a => {
+        for (const n of a)
+            if (n.type === "childList")
+                for (const o of n.addedNodes)
+                    if (o instanceof HTMLLinkElement && o.rel === "modulepreload") r(o)
+    }).observe(document, {
+        childList: !0,
+        subtree: !0
+    });
+
+    function s(a: HTMLLinkElement) {
+        const n: RequestInit = {};
+        return a.integrity && (n.integrity = a.integrity), a.referrerPolicy && (n.referrerPolicy as ReferrerPolicy), a.crossOrigin === "use-credentials" ? n.credentials = "include" : a.crossOrigin === "anonymous" ? n.credentials = "omit" : n.credentials = "same-origin", n
+    }
+
+    function r(a: HTMLLinkElement) {
+        if ((a as any).ep) return;
+        (a as any).ep = !0;
+        const n = s(a);
+        fetch(a.href, n)
+    }
+})();
+const we = {
+    سینه: ["پرس سینه هالتر", "پرس سینه دمبل", "پرس بالا سینه هالتر", "پرس بالا سینه دمبل", "پرس زیر سینه دستگاه", "قفسه سینه دمبل", "کراس اور از بالا", "کراس اور از پایین", "فلای دستگاه", "شنا سوئدی", "دیپ پارالل", "پرس سینه دستگاه", "قفسه بالا سینه دمبل", "پول اور هالتر", "شنا شیب مثبت", "شنا شیب منفی", "پرس سینه سیم کش", "دیپ سینه", "قفسه سیم کش", "پرس سینه لندماین"],
+    پشت: ["ددلیفت", "بارفیکس دست باز", "زیربغل هالتر خم", "تی بار رو", "لت سیم‌کش از جلو", "زیربغل سیم‌کش دست برعکس", "روئینگ دستگاه", "زیربغل دمبل تک خم", "فیله کمر", "پول اور دمبل", "بارفیکس دست جمع", "لت سیم‌کش دست موازی", "روئینگ سیم‌کش", "شراگ هالتر", "هایپر اکستنشن", "شراگ با دستگاه", "زیربغل قایقی دست باز", "لت از جلو دست جمع", "رک پول"],
+    سرشانه: ["پرس سرشانه هالتر", "پرس سرشانه دمبل", "نشر از جانب دمبل", "نشر از جلو دمبل", "نشر خم دمبل (دلتا خلفی)", "فیس پول", "کول هالتر دست باز", "شراگ با دمبل", "پرس آرنولدی", "نشر از جانب سیم‌کش", "نشر از جلو صفحه", "کول هالتر دست جمع", "پرس سرشانه دستگاه", "پرس سرشانه لندماین", "نشر جانب سیم کش تک دست", "شراگ دستگاه اسمیت", "کول با دمبل"],
     "جلو بازو": ["جلو بازو هالتر", "جلو بازو دمبل", "جلو بازو لاری", "جلو بازو چکشی", "جلو بازو سیم‌کش", "جلو بازو تمرکزی", "جلو بازو هالتر ای زد (EZ)", "جلو بازو دمبل روی میز شیبدار", "جلو بازو سیم‌کش از بالا (فیگوری)", "جلو بازو عنکبوتی", "جلو بازو دراگ", "جلو بازو دمبل متناوب", "جلو بازو سیم کش تک دست", "جلو بازو با صفحه", "جلو بازو اسپایدر با هالتر"],
     "پشت بازو": ["پشت بازو سیم‌کش", "دیپ پارالل", "پشت بازو هالتر خوابیده", "پشت بازو دمبل تک خم", "پشت بازو کیک بک", "دیپ روی نیمکت", "پرس سینه دست جمع", "پشت بازو دمبل جفت از پشت سر", "پشت بازو سیم‌کش طنابی", "شنا دست جمع (الماسی)", "پشت بازو دستگاه دیپ", "پشت بازو سیم کش از بالای سر", "پشت بازو با صفحه خوابیده", "پشت بازو سیم کش تک دست برعکس", "شنا پا بالا"],
     "چهارسر ران": ["اسکوات با هالتر", "پرس پا", "جلو پا ماشین", "هاک اسکوات", "لانگز با دمبل", "اسکوات گابلت", "اسکوات اسپلیت بلغاری"],
     "همسترینگ و سرینی": ["ددلیفت رومانیایی", "پشت پا ماشین خوابیده", "هیپ تراست با هالتر", "گود مورنینگ", "پل باسن با وزنه", "ددلیفت سومو", "پشت پا ماشین ایستاده", "کیک بک با سیم‌کش", "استپ آپ با دمبل", "لانگز معکوس", "ابداکتور باسن دستگاه", "ددلیفت تک پا", "لگ کرل با توپ سوئیسی", "کتل بل سوئینگ", "هیپ اکستنشن سیم کش"],
     "ساق پا": ["ساق پا ایستاده دستگاه", "ساق پا نشسته دستگاه", "ساق پا پرسی", "ساق پا با هالتر", "ساق پا الاغی", "ساق پا ایستاده با دمبل (تک پا)", "ساق پا روی پله", "ساق پا جهشی", "ساق پا در دستگاه هاک اسکوات"],
-    "هوازی": ["تردمیل - پیاده‌روی سریع", "تردمیل - دویدن با شدت کم", "تردمیل - دویدن با شدت متوسط", "تردمیل - اینتروال (HIIT)", "دوچرخه ثابت - شدت کم", "دوچرخه ثابت - شدت متوسط", "دوچرخه ثابت - اینتروال (HIIT)", "الپتیکال - شدت متوسط", "الپتیکال - اینتروال", "دستگاه روئینگ - ۲۰ دقیقه", "دستگاه پله - شدت متوسط", "طناب زدن - ۱۰ دقیقه", "برپی", "جامپینگ جک (پروانه)"],
+    هوازی: ["تردمیل - پیاده‌روی سریع", "تردمیل - دویدن با شدت کم", "تردمیل - دویدن با شدت متوسط", "تردمیل - اینتروال (HIIT)", "دوچرخه ثابت - شدت کم", "دوچرخه ثابت - شدت متوسط", "دوچرخه ثابت - اینتروال (HIIT)", "الپتیکال - شدت متوسط", "الپتیکال - اینتروال", "دستگاه روئینگ - ۲۰ دقیقه", "دستگاه پله - شدت متوسط", "طناب زدن - ۱۰ دقیقه", "برپی", "جامپینگ جک (پروانه)"],
     "شکم و پهلو": ["کرانچ", "کرانچ معکوس", "پلانک", "پلانک پهلو", "زیرشکم خلبانی", "چرخش روسی با وزنه", "کرانچ سیم‌کش"],
     "وزن بدن": ["شنا سوئدی (Push-up)", "اسکوات وزن بدن", "پلانک", "برپی (Burpee)", "پروانه (Jumping Jacks)", "پل باسن (Glute Bridge)", "کوهنوردی (Mountain Climber)", "کرانچ شکم", "بارفیکس", "دیپ با صندلی", "لانگز (Lunge) وزن بدن", "بالا آوردن پا درازکش"],
     "تی‌آرایکس (TRX)": ["رو TRX (زیربغل)", "پرس سینه TRX", "اسکوات TRX", "پشت پا TRX", "جلوبازو TRX", "پشت بازو TRX", "پایک TRX (شکم)", "لانگز TRX"],
     "فیتنس و فانکشنال": ["تاب دادن کتل‌بل", "پرش روی جعبه (Box Jump)", "بتل روپ (Battle Rope)", "وال بال (Wall Ball)", "راه رفتن کشاورز (Farmer's Walk)", "اسلم بال (کوبیدن توپ)", "برخاستن ترکی (Turkish Get-up)"]
+}, Pe = {
+    "عضله‌ساز و ریکاوری": [{
+        name: "پروتئین وی",
+        dosage: "۱ اسکوپ (۲۰-۳۰ گرم) بعد از تمرین",
+        note: "پروتئین زودجذب برای ترمیم و ساخت سریع بافت عضلانی."
+    }, {
+        name: "کراتین مونوهیدرات",
+        dosage: "روزانه ۳-۵ گرم",
+        note: "افزایش قدرت، توان انفجاری و حجم عضلات در طول زمان."
+    }, {
+        name: "BCAA (آمینو اسید شاخه‌دار)",
+        dosage: "۵-۱۰ گرم حین یا بعد از تمرین",
+        note: "کاهش خستگی، درد عضلانی و جلوگیری از تجزیه عضلات."
+    }, {
+        name: "گلوتامین",
+        dosage: "۵ گرم بعد از تمرین و قبل از خواب",
+        note: "حمایت از سیستم ایمنی، سلامت روده و بهبود ریکاوری."
+    }, {
+        name: "پروتئین کازئین",
+        dosage: "۱ اسکوپ (۲۰-۳۰ گرم) قبل از خواب",
+        note: "پروتئین دیر هضم برای تغذیه عضلات در طول شب و جلوگیری از کاتابولیسم."
+    }, {
+        name: "گینر (Mass Gainer)",
+        dosage: "طبق دستور محصول",
+        note: "ترکیب پروتئین و کربوهیدرات برای افراد دارای کمبود وزن جهت افزایش حجم."
+    }, {
+        name: "HMB",
+        dosage: "روزانه ۳ گرم",
+        note: "کاهش تجزیه پروتئین عضلانی، مناسب برای دوره های کات یا تمرینات شدید."
+    }],
+    "افزایش‌دهنده عملکرد و انرژی": [{
+        name: "کافئین",
+        dosage: "۲۰۰-۴۰۰ میلی‌گرم، ۳۰-۶۰ دقیقه قبل تمرین",
+        note: "افزایش هوشیاری، تمرکز، انرژی و کاهش درک خستگی."
+    }, {
+        name: "بتا-آلانین",
+        dosage: "روزانه ۳-۶ گرم",
+        note: "افزایش استقامت عضلانی با بافر کردن یون هیدروژن و تاخیر در خستگی."
+    }, {
+        name: "سیترولین مالات",
+        dosage: "۶-۸ گرم، ۳۰-۶۰ دقیقه قبل تمرین",
+        note: "بهبود جریان خون (پمپ)، اکسیژن‌رسانی به عضلات و کاهش خستگی."
+    }, {
+        name: "آرژنین (AAKG)",
+        dosage: "۳-۶ گرم قبل از تمرین",
+        note: "پیش‌ساز نیتریک اکساید برای افزایش پمپ عضلانی و جریان خون."
+    }, {
+        name: "تورین",
+        dosage: "۱-۳ گرم قبل از تمرین",
+        note: "حمایت از هیدراتاسیون، عملکرد سلولی و کاهش گرفتگی عضلات."
+    }, {
+        name: "پمپ (Pre-Workout)",
+        dosage: "۱ اسکوپ قبل از تمرین",
+        note: "ترکیبی از مواد مختلف برای افزایش انرژی، تمرکز و پمپ عضلانی."
+    }],
+    "مدیریت وزن و چربی‌سوزی": [{
+        name: "ال-کارنیتین",
+        dosage: "۱-۳ گرم قبل از تمرین هوازی",
+        note: "کمک به انتقال اسیدهای چرب به میتوکندری برای تولید انرژی."
+    }, {
+        name: "عصاره چای سبز (EGCG)",
+        dosage: "روزانه ۵۰۰ میلی‌گرم",
+        note: "افزایش متابولیسم و اکسیداسیون چربی از طریق خواص ترموژنیک."
+    }, {
+        name: "CLA (اسید لینولئیک کونژوگه)",
+        dosage: "روزانه ۳-۴ گرم",
+        note: "کمک به کاهش توده چربی بدن و حفظ توده عضلانی."
+    }, {
+        name: "یوهیمبین",
+        dosage: "۵-۱۵ میلی‌گرم قبل از تمرین ناشتا",
+        note: "چربی‌سوز قوی برای هدف قرار دادن چربی‌های مقاوم."
+    }],
+    "سلامت عمومی و مفاصل": [{
+        name: "مولتی ویتامین",
+        dosage: "روزانه ۱ عدد با غذا",
+        note: "تامین کمبودهای احتمالی ویتامین‌ها و مواد معدنی ضروری."
+    }, {
+        name: "ویتامین D3",
+        dosage: "روزانه ۱۰۰۰-۴۰۰۰ IU",
+        note: "ضروری برای سلامت استخوان، سیستم ایمنی و عملکرد هورمونی."
+    }, {
+        name: "اُمگا-۳ (روغن ماهی)",
+        dosage: "روزانه ۱-۳ گرم (EPA+DHA)",
+        note: "کاهش التهاب، حمایت از سلامت قلب، مغز و مفاصل."
+    }, {
+        name: "گلوکوزامین و کندرویتین",
+        dosage: "طبق دستور محصول",
+        note: "حمایت از سلامت مفاصل، غضروف‌ها و کاهش دردهای مفصلی."
+    }, {
+        name: "ویتامین C",
+        dosage: "روزانه ۵۰۰-۱۰۰۰ میلی‌گرم",
+        note: "آنتی‌اکсидан قوی، ضروری برای سلامت بافت‌ها و سیستم ایمنی."
+    }, {
+        name: "زینک و منیزیم (ZMA)",
+        dosage: "۲-۳ عدد قرص قبل از خواب",
+        note: "بهبود کیفیت خواب، ریکاوری، و حمایت از سطح هورمون‌های آنابولیک."
+    }, {
+        name: "آشواگاندا",
+        dosage: "روزانه ۳۰۰-۶۰۰ میلی‌گرم",
+        note: "آداپتوژن برای کاهش استرس، بهبود ریکاوری و افزایش قدرت."
+    }]
 };
-const supplementDB = {
-    'عضله‌ساز و ریکاوری': [{ name: 'پروتئین وی', dosage: '۱ اسکوپ (معادل ۲۰-۳۰ گرم) بعد از تمرین', note: 'کمک به ترمیم و ساخت بافت عضلانی.' }, { name: 'کراتین مونوهیدرات', dosage: 'روزانه ۱ پیمانه کوچک (معادل ۳-۵ گرم)', note: 'افزایش قدرت، توان و حجم عضلات.' }, { name: 'BCAA', dosage: '۱-۲ اسکوپ (معادل ۵-۱۰ گرم) حین تمرین', note: 'کاهش خستگی و درد عضلانی.' }, { name: 'گلوتامین', dosage: '۱ اسکوپ (معادل ۵ گرم) بعد از تمرین و قبل از خواب', note: 'حمایت از سیستم ایمنی و ریکاوری.' }, { name: 'پروتئین کازئین', dosage: '۱ اسکوپ (معادل ۲۰-۳۰ گرم) قبل از خواب', note: 'پروتئین دیر هضم برای ریکاوری شبانه.' }, { name: 'گینر (Mass Gainer)', dosage: 'طبق دستور محصول (معمولا ۱-۲ اسکوپ)', note: 'برای افزایش وزن و حجم عضلانی.' }, { name: 'HMB', dosage: 'روزانه ۲-۳ عدد قرص (معادل ۳ گرم)', note: 'کاهش تجزیه عضلات و کمک به ریکاوری.' }, ],
-    'افزایش‌دهنده عملکرد و انرژی': [{ name: 'کافئین', dosage: '۱-۲ عدد قرص (معادل ۲۰۰-۴۰۰ میلی‌گرم)، ۳۰-۶۰ دقیقه قبل تمرین', note: 'افزایش هوشیاری، تمرکز و انرژی.' }, { name: 'بتا-آلانین', dosage: 'روزانه نصف تا یک اسکوپ (معادل ۳-۶ گرم)', note: 'افزایش استقامت عضلانی و تاخیر در خستگی.' }, { name: 'سیترولین مالات', dosage: '۱ اسکوپ (معادل ۶-۸ گرم)، ۳۰-۶۰ دقیقه قبل تمرین', note: 'بهبود جریان خون (پمپ) و کاهش خستگی.' }, { name: 'آرژنین (AAKG)', dosage: '۳-۶ عدد قرص یا ۱ اسکوپ قبل از تمرین', note: 'افزایش تولید نیتریک اکساید و پمپ عضلانی.' }, { name: 'تورین', dosage: '۱-۳ عدد قرص یا نصف اسکوپ قبل از تمرین', note: 'حمایت از هیدراتاسیون و عملکرد سلولی.' }, ],
-    'مدیریت وزن و چربی‌سوزی': [{ name: 'ال-کارنیتین', dosage: '۱-۳ عدد قرص یا ۱ قاشق مایع قبل از تمرین', note: 'کمک به انتقال اسیدهای چرب برای تولید انرژی.' }, { name: 'عصاره چای سبز', dosage: 'روزانه ۱-۲ عدد قرص (معادل ۵۰۰ میلی‌گرم)', note: 'افزایش متابولیسم و اکسیداسیون چربی.' }, { name: 'CLA', dosage: 'روزانه ۳-۴ عدد قرص سافت‌ژل', note: 'کمک به کاهش توده چربی بدن.' }, ],
-    'سلامت عمومی و مفاصل': [{ name: 'مولتی ویتامین', dosage: 'روزانه ۱ عدد قرص با غذا', note: 'تامین کمبودهای ویتامین‌ها و مواد معدنی.' }, { name: 'ویتامین D3', dosage: 'روزانه ۱ عدد قرص (معادل ۱۰۰۰-۴۰۰۰ IU)', note: 'ضروری برای سلامت استخوان و سیستم ایمنی.' }, { name: 'اُمگا-۳ (روغن ماهی)', dosage: 'روزانه ۱-۳ عدد قرص سافت‌ژل (معادل ۱-۳ گرم)', note: 'کاهش التهاب، حمایت از سلامت قلب و مفاصل.' }, { name: 'گلوکوزامین و کندرویتین', dosage: 'طبق دستور محصول (معمولا ۲-۳ قرص)', note: 'حمایت از سلامت مفاصل و غضروف‌ها.' }, { name: 'ویتامین C', dosage: 'روزانه ۱-۲ عدد قرص (معادل ۵۰۰-۱۰۰۰ میلی‌گرم)', note: 'آنتی‌اکسیدان قوی و ضروری برای سلامت بافت‌ها.' }, { name: 'زینک و منیزیم (ZMA)', dosage: '۲-۳ عدد قرص قبل از خواب', note: 'بهبود کیفیت خواب، ریکاوری و سطح هورمون‌ها.' }, ]
-};
-window.exerciseDB = exerciseDB; // Make it globally accessible
-
-// --- STATE & TYPES ---
-interface ExerciseState { muscle: string; exercise: string; sets: string; reps: string; rest: string; isSuperset: boolean; }
-interface DayState { title: string; notes: string; exercises: ExerciseState[]; }
-interface SupplementState { name: string; dosage: string; }
-interface AppState {
-    step1: { clientName?: string; clientEmail?: string; coachName?: string; profilePic?: string; trainingGoal?: string; age?: string; height?: string; weight?: string; neck?: string; waist?: string; hip?: string; gender?: string; activityLevel?: string; trainingDays?: string; };
-    step2: { days: DayState[]; };
-    step3: { supplements: SupplementState[]; };
-    step4: { generalNotes?: string; };
-    lastUpdatedByAdmin?: string;
-    lastSeenByClient?: string;
-    hasPaid?: boolean;
-    infoConfirmed?: boolean;
-    joinDate?: string;
-    workoutHistory?: string[]; // Array of ISO date strings
-    weightHistory?: { date: string; weight: number }[];
-}
-
-let currentStep = 1;
-const totalSteps = 4;
-let currentUser: string | null = null;
-let ai: GoogleGenAI;
-let weightChart: any = null;
-
-
-// --- DOM ELEMENTS ---
-const authScreen = document.getElementById('user-selection-screen') as HTMLElement;
-const mainAppContainer = document.getElementById('main-app-container') as HTMLElement;
-const userDashboardContainer = document.getElementById('user-dashboard-container') as HTMLElement;
-const adminPanelModal = document.getElementById('admin-panel-modal') as HTMLElement;
-const adminPanelBtn = document.getElementById('admin-panel-btn') as HTMLButtonElement;
-
-
-// --- FUNCTIONS ---
-
-const sanitizeHTML = (str: string): string => {
-    const temp = document.createElement('div');
-    temp.textContent = str;
-    return temp.innerHTML;
-};
-
-const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    const icon = type === 'success' ? 'check-circle' : 'alert-triangle';
-    const colors = type === 'success' 
-        ? 'bg-green-500 border-green-600' 
-        : 'bg-red-500 border-red-600';
-
-    toast.className = `flex items-center gap-3 ${colors} text-white py-3 px-5 rounded-lg shadow-xl border-b-4 transform opacity-0 translate-x-full`;
-    toast.style.transition = 'transform 0.5s ease, opacity 0.5s ease';
-    toast.innerHTML = `
-        <i data-lucide="${icon}" class="w-6 h-6"></i>
-        <span>${sanitizeHTML(message)}</span>
-    `;
-
-    container.appendChild(toast);
-    window.lucide.createIcons();
-
-    // Animate in
-    requestAnimationFrame(() => {
-        toast.classList.remove('opacity-0', 'translate-x-full');
-    });
-
-    // Animate out and remove
-    setTimeout(() => {
-        toast.classList.add('opacity-0');
-        toast.style.transform = 'translateX(120%)';
-        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-    }, 2000);
-};
-
-const updateSliderBackground = (slider: HTMLInputElement | null) => { 
-    if (!slider) return; 
-    const min = +slider.min || 0; 
-    const max = +slider.max || 100; 
-    const value = +slider.value || 0; 
-    const percentage = ((value - min) / (max - min)) * 100; 
-    let color = '#3B82F6'; 
-    if (slider.classList.contains('rep-slider')) color = '#22C55E'; 
-    if (slider.classList.contains('rest-slider')) color = '#A78BFA'; 
-    if (slider.classList.contains('age-slider')) color = '#F97316'; 
-    if (slider.classList.contains('height-slider')) color = '#EC4899'; 
-    if (slider.classList.contains('weight-slider')) color = '#FBBF24';
-    const trackColor = getComputedStyle(document.documentElement).getPropertyValue('--range-track-bg').trim();
-    slider.style.background = `linear-gradient(to left, ${color} ${percentage}%, ${trackColor} ${percentage}%)`; 
-};
-
-const findNextEnabledStep = (start: number, direction: number) => { let next = start + direction; return (next > 0 && next <= totalSteps) ? next : start; };
-
-const updateUI = () => {
-    if (currentStep === 4) generateProgramPreview(document.getElementById('program-builder-form') as HTMLElement, '#program-sheet-container');
-    document.querySelectorAll('.stepper-item').forEach((item, i) => { const step = i + 1; item.classList.toggle('active', step === currentStep); item.classList.toggle('completed', step < currentStep); });
-    document.querySelectorAll('.form-section').forEach((section, i) => section.classList.toggle('active', (i + 1) === currentStep));
-    (document.getElementById('prev-btn') as HTMLButtonElement).disabled = currentStep === 1;
-    const nextBtn = document.getElementById('next-btn') as HTMLButtonElement;
-    nextBtn.disabled = currentStep === totalSteps;
-    nextBtn.textContent = (currentStep === totalSteps - 1) ? 'مشاهده پیش‌نمایش' : 'بعدی';
-};
-
-const navigateToStep = (step: number) => {
-    if (step > 0 && step <= totalSteps) {
-        currentStep = step;
-        updateUI();
-        document.getElementById('program-builder-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-};
-
-const updateRealtimeVisualizers = (container: HTMLElement) => {
-    const visualizersContainer = container.querySelector('.realtime-visualizers');
-    if (!visualizersContainer) return;
-    const bmiValueEl = container.querySelector('.bmi-input') as HTMLInputElement;
-    if (!bmiValueEl) return;
-    const bmiValue = parseFloat(bmiValueEl.value);
-    let bmiHtml = '';
-    if (!isNaN(bmiValue) && bmiValue > 0) {
-        const minBmi = 15;
-        const maxBmi = 40;
-        let bmiPercentage = ((bmiValue - minBmi) / (maxBmi - minBmi)) * 100;
-        bmiPercentage = Math.max(0, Math.min(100, bmiPercentage));
-        let bmiCategory = 'نرمال', bmiCategoryClass = 'normal';
-        if (bmiValue < 18.5) { bmiCategory = 'کمبود وزن'; bmiCategoryClass = 'underweight'; } 
-        else if (bmiValue >= 25 && bmiValue < 30) { bmiCategory = 'اضافه وزن'; bmiCategoryClass = 'overweight'; } 
-        else if (bmiValue >= 30) { bmiCategory = 'چاقی'; bmiCategoryClass = 'obese'; }
-        const underweightWidth = ((18.5 - minBmi) / (maxBmi - minBmi)) * 100;
-        const normalWidth = ((25 - 18.5) / (maxBmi - minBmi)) * 100;
-        const overweightWidth = ((30 - 25) / (maxBmi - minBmi)) * 100;
-        const obeseWidth = 100 - underweightWidth - normalWidth - overweightWidth;
-        bmiHtml = `<div class="p-4 rounded-xl"><h3 class="font-bold text-lg mb-3 border-b border-border-primary pb-2 flex items-center gap-2"><i data-lucide="activity" class="text-purple-400"></i>شاخص توده بدنی (BMI)</h3><div class="bmi-visualizer"><div class="bmi-scale"><div class="bmi-segment" style="--color: #3b82f6; width: ${underweightWidth}%;"></div><div class="bmi-segment" style="--color: #22c55e; width: ${normalWidth}%;"></div><div class="bmi-segment" style="--color: #f97316; width: ${overweightWidth}%;"></div><div class="bmi-segment" style="--color: #ef4444; width: ${obeseWidth}%;"></div><div class="bmi-needle" style="--position: ${bmiPercentage}%;"><div class="bmi-value-box">${bmiValue.toFixed(1)}</div></div></div><div class="bmi-labels"><span>کمبود</span><span>نرمال</span><span>اضافه</span><span>چاقی</span></div><p class="bmi-status-text">وضعیت: <strong class="bmi-status-${bmiCategoryClass}">${bmiCategory}</strong></p></div></div>`;
-    }
-
-    let weightVisualizerHtml = '';
-    const currentWeight = parseFloat((container.querySelector('.weight-slider') as HTMLInputElement).value);
-    const idealWeightRangeEl = container.querySelector('.ideal-weight-input') as HTMLInputElement;
-    if (!idealWeightRangeEl) {
-        visualizersContainer.innerHTML = bmiHtml;
-        window.lucide.createIcons();
-        return;
-    };
-    const idealWeightRangeText = idealWeightRangeEl.value;
-    if (idealWeightRangeText && idealWeightRangeText.includes(' - ')) {
-        const [minIdeal, maxIdeal] = idealWeightRangeText.replace(' kg', '').split(' - ').map(parseFloat);
-        if (!isNaN(currentWeight) && !isNaN(minIdeal) && !isNaN(maxIdeal)) {
-            const scalePadding = 15;
-            const scaleMin = Math.max(0, minIdeal - scalePadding);
-            const scaleMax = maxIdeal + scalePadding;
-            const scaleRange = scaleMax - scaleMin;
-            let weightPercentage = ((currentWeight - scaleMin) / scaleRange) * 100;
-            weightPercentage = Math.max(0, Math.min(100, weightPercentage));
-            const underweightWidth = Math.max(0, ((minIdeal - scaleMin) / scaleRange) * 100);
-            const idealWidth = Math.max(0, ((maxIdeal - minIdeal) / scaleRange) * 100);
-            const overweightWidth = Math.max(0, 100 - underweightWidth - idealWidth);
-            let weightCategory = 'ایده‌آل', weightCategoryClass = 'normal';
-            if (currentWeight < minIdeal) { weightCategory = 'کمبود وزن'; weightCategoryClass = 'underweight'; }
-            else if (currentWeight > maxIdeal) { weightCategory = 'اضافه وزن'; weightCategoryClass = 'overweight'; }
-            weightVisualizerHtml = `<div class="p-4 rounded-xl"><h3 class="font-bold text-lg mb-3 border-b border-border-primary pb-2 flex items-center gap-2"><i data-lucide="scale" class="text-teal-400"></i>محدوده وزن ایده‌آل</h3><div class="weight-visualizer"><div class="weight-scale"><div class="weight-segment" style="--color: #3b82f6; width: ${underweightWidth}%;"></div><div class="weight-segment" style="--color: #22c55e; width: ${idealWidth}%;"></div><div class="weight-segment" style="--color: #f97316; width: ${overweightWidth}%;"></div><div class="weight-needle" style="--position: ${weightPercentage}%;"><div class="weight-value-box">${currentWeight.toFixed(1)} kg</div></div></div><div class="weight-labels"><span>${minIdeal.toFixed(1)}kg</span><span class="font-bold">ایده‌آل</span><span>${maxIdeal.toFixed(1)}kg</span></div><p class="weight-status-text">وضعیت: <strong class="weight-status-${weightCategoryClass}">${weightCategory}</strong></p></div></div>`;
-        }
-    }
-    visualizersContainer.innerHTML = bmiHtml + weightVisualizerHtml;
-    window.lucide.createIcons();
-};
-
-const calculateBodyMetrics = (container: HTMLElement) => {
-    const age = parseFloat((container.querySelector('.age-slider') as HTMLInputElement).value);
-    const heightCm = parseFloat((container.querySelector('.height-slider') as HTMLInputElement).value);
-    const weightKg = parseFloat((container.querySelector('.weight-slider') as HTMLInputElement).value);
-    const genderRadio = container.querySelector('.gender:checked') as HTMLInputElement;
-    if (!genderRadio) return;
-    const isMale = genderRadio.value === 'مرد';
-    
-    const activityRadioChecked = container.querySelector('.activity-level:checked') as HTMLInputElement;
-    const activityMultiplier = activityRadioChecked ? parseFloat(activityRadioChecked.value) : 1.2; // Default to sedentary
-    
-    const neckCm = parseFloat((container.querySelector('.neck-input') as HTMLInputElement).value);
-    const waistCm = parseFloat((container.querySelector('.waist-input') as HTMLInputElement).value);
-    const hipCm = parseFloat((container.querySelector('.hip-input') as HTMLInputElement).value);
-
-    const clearFields = () => {
-        ['.bmi-input', '.bmr-input', '.tdee-input', '.bodyfat-input', '.lbm-input', '.ideal-weight-input'].forEach(cls => {
-            const el = container.querySelector(cls) as HTMLInputElement;
-            if (el) el.value = '';
+window.exerciseDB = we;
+let F = 1;
+const ue = 5;
+let f: string | null = null,
+    X: GoogleGenAI, ve: any = null, smallChartInstance: any = null,
+    adminChartInstance: any = null,
+    currentChatSession: Chat | null = null;
+const V = document.getElementById("user-selection-screen")!,
+    me = document.getElementById("main-app-container")!,
+    oe = document.getElementById("user-dashboard-container")!,
+    U = document.getElementById("admin-panel-modal")!,
+    je = document.getElementById("admin-panel-btn")!,
+    A = e => {
+        const t = document.createElement("div");
+        return t.textContent = e, t.innerHTML
+    },
+    w = (e, t = "success") => {
+        const s = document.getElementById("toast-container");
+        if (!s) return;
+        const r = document.createElement("div"),
+            a = t === "success" ? "check-circle" : "alert-triangle",
+            n = t === "success" ? "bg-green-500 border-green-600" : "bg-red-500 border-red-600";
+        r.className = `flex items-center gap-3 ${n} text-white py-3 px-5 rounded-lg shadow-xl border-b-4 transform opacity-0 translate-x-full`, r.style.transition = "transform 0.5s ease, opacity 0.5s ease", r.innerHTML = `
+        <i data-lucide="${a}" class="w-6 h-6"></i>
+        <span>${A(e)}</span>
+    `, s.appendChild(r), window.lucide.createIcons(), requestAnimationFrame(() => {
+            r.classList.remove("opacity-0", "translate-x-full")
+        }), setTimeout(() => {
+            r.classList.add("opacity-0"), r.style.transform = "translateX(120%)", r.addEventListener("transitionend", () => r.remove(), {
+                once: !0
+            })
+        }, 2e3)
+    },
+    ie = (e: HTMLInputElement) => {
+        if (!e) return;
+        const t = +e.min || 0,
+            s = +e.max || 100,
+            a = ((+e.value || 0) - t) / (s - t) * 100;
+        let n = "#3B82F6";
+        e.classList.contains("rep-slider") && (n = "#22C55E"), e.classList.contains("rest-slider") && (n = "#A78BFA"), e.classList.contains("age-slider") && (n = "#F97316"), e.classList.contains("height-slider") && (n = "#EC4899"), e.classList.contains("weight-slider") && (n = "#FBBF24");
+        const o = getComputedStyle(document.documentElement).getPropertyValue("--range-track-bg").trim();
+        e.style.background = `linear-gradient(to left, ${n} ${a}%, ${o} ${a}%)`
+    },
+    Re = (e, t) => {
+        let s = e + t;
+        return s > 0 && s <= ue ? s : e
+    },
+    _e = () => {
+        document.querySelectorAll(".stepper-item").forEach((t, s) => {
+            const r = s + 1;
+            t.classList.toggle("active", r === F), t.classList.toggle("completed", r < F)
         });
-        const viz = container.querySelector('.realtime-visualizers') as HTMLElement;
-        if (viz) viz.innerHTML = '';
-    }
-
-    if (isNaN(heightCm) || isNaN(weightKg) || heightCm <= 0 || weightKg <= 0) { clearFields(); return; }
-
-    const heightM = heightCm / 100;
-    const bmi = weightKg / (heightM * heightM);
-    const bmiInput = container.querySelector('.bmi-input') as HTMLInputElement;
-    if (bmiInput) bmiInput.value = bmi.toFixed(1);
-
-    const bmr = isMale ? (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5 : (10 * weightKg) + (6.25 * heightCm) - (5 * age) - 161;
-    const bmrInput = container.querySelector('.bmr-input') as HTMLInputElement;
-    if (bmrInput) bmrInput.value = Math.round(bmr).toString();
-
-    const tdeeInput = container.querySelector('.tdee-input') as HTMLInputElement;
-    if (tdeeInput) {
-        if (!isNaN(bmr) && !isNaN(activityMultiplier)) {
-            tdeeInput.value = Math.round(bmr * activityMultiplier).toString();
-        } else {
-            tdeeInput.value = '';
+        document.querySelectorAll(".form-section").forEach(t => t.classList.add("hidden"));
+        const e = document.getElementById(`section-${F}`);
+        if (e) e.classList.remove("hidden");
+        if (F === 4) Ue(ye(), "#program-sheet-container");
+        if (F === 5) Ue(ye(), "#program-sheet-container-step5");
+        (document.getElementById("prev-btn") as HTMLButtonElement).disabled = F === 1;
+        const t = document.getElementById("next-btn") as HTMLButtonElement;
+        t.disabled = F === ue, t.textContent = F === ue - 1 ? "برو به تغذیه" : "بعدی";
+        const s = document.getElementById("send-nutrition-btn"),
+            r = document.getElementById("send-program-btn"),
+            a = document.getElementById("save-changes-btn");
+        if (s && r && a) {
+            const n = F === 5;
+            s.classList.toggle("hidden", !n), r.classList.toggle("hidden", n), a.classList.toggle("hidden", n)
         }
-    }
-
-    const idealWeightInput = container.querySelector('.ideal-weight-input') as HTMLInputElement;
-    if (idealWeightInput) idealWeightInput.value = `${(18.5 * heightM * heightM).toFixed(1)} - ${(24.9 * heightM * heightM).toFixed(1)} kg`;
-
-    let bodyFatPercentage = 0;
-    if (!isNaN(neckCm) && !isNaN(waistCm) && neckCm > 0 && waistCm > 0) {
-        if (isMale) bodyFatPercentage = 86.010 * Math.log10(waistCm - neckCm) - 70.041 * Math.log10(heightCm) + 36.76;
-        else if (!isNaN(hipCm) && hipCm > 0) bodyFatPercentage = 163.205 * Math.log10(waistCm + hipCm - neckCm) - 97.684 * Math.log10(heightCm) - 78.387;
-    }
-
-    const bodyfatInput = container.querySelector('.bodyfat-input') as HTMLInputElement;
-    const lbmInput = container.querySelector('.lbm-input') as HTMLInputElement;
-
-    if (bodyFatPercentage > 0 && bodyFatPercentage < 100) {
-        if (bodyfatInput) bodyfatInput.value = bodyFatPercentage.toFixed(1);
-        if (lbmInput) lbmInput.value = (weightKg * (1 - bodyFatPercentage / 100)).toFixed(1);
-    } else {
-        if (bodyfatInput) bodyfatInput.value = '';
-        if (lbmInput) lbmInput.value = '';
-    }
-
-    updateRealtimeVisualizers(container);
-};
-
-
-const toggleHipInput = (container: HTMLElement) => {
-    const hipInput = container.querySelector('.hip-input-container') as HTMLElement;
-    if (!hipInput) return;
-    const maleRadio = container.querySelector('.gender[value="مرد"]') as HTMLInputElement;
-    hipInput.classList.toggle('hidden', maleRadio.checked);
-    calculateBodyMetrics(container);
-};
-const populateMuscleGroups = (select: HTMLSelectElement) => { select.innerHTML = ''; Object.keys(exerciseDB).forEach(group => { const option = document.createElement('option'); option.value = group; option.textContent = group; select.appendChild(option); }); };
-const populateExercises = (group: string, select: HTMLSelectElement) => { select.innerHTML = ''; (exerciseDB[group] || []).forEach(name => { const option = document.createElement('option'); option.value = name; option.textContent = name; select.appendChild(option); }); };
-const addExerciseRow = (list: HTMLElement) => { const newRow = (document.getElementById('exercise-template') as HTMLTemplateElement).content.cloneNode(true) as DocumentFragment; const muscleSelect = newRow.querySelector('.muscle-group-select') as HTMLSelectElement; populateMuscleGroups(muscleSelect); populateExercises(muscleSelect.value, newRow.querySelector('.exercise-select') as HTMLSelectElement); list.appendChild(newRow); list.querySelectorAll('.range-slider').forEach(slider => updateSliderBackground(slider as HTMLInputElement)); window.lucide.createIcons(); };
-const addDayCard = (isFirst = false) => { const dayCount = (document.getElementById('workout-days-container') as HTMLElement).children.length + 1; const newDay = document.createElement('div'); newDay.className = 'card rounded-lg day-card'; newDay.innerHTML = `<div class="flex justify-between items-center p-4 bg-tertiary/50 rounded-t-lg border-b border-border-secondary"><div class="flex items-center gap-3"><i data-lucide="calendar-days" class="text-yellow-400"></i><input type="text" value="روز ${dayCount}: " class="day-title-input input-field font-bold text-lg bg-transparent border-0 p-1 focus:ring-0 focus:border-yellow-400 w-auto"></div> ${!isFirst ? '<button type="button" class="remove-day-btn p-1 text-secondary hover:text-red-400"><i data-lucide="x-circle" class="w-5 h-5"></i></button>' : ''}</div><div class="p-4 space-y-3"><div class="exercise-list space-y-3"></div><button type="button" class="add-exercise-btn mt-2 w-full text-sm text-yellow-400 font-semibold hover:bg-yellow-400/10 py-2.5 px-4 rounded-lg border-2 border-dashed border-yellow-400/30 transition-all flex items-center justify-center gap-2"><i data-lucide="plus"></i> افزودن حرکت</button></div><div class="p-4 border-t border-border-primary/50"><label class="font-semibold text-sm text-secondary mb-2 block">یادداشت‌های مربی</label><textarea class="day-notes-input input-field text-sm bg-tertiary/50" rows="2" placeholder="مثال: روی فرم صحیح حرکت تمرکز کنید..."></textarea></div>`; (document.getElementById('workout-days-container') as HTMLElement).appendChild(newDay); addExerciseRow(newDay.querySelector('.exercise-list') as HTMLElement); window.lucide.createIcons(); };
-const populateSupplements = () => { const container = document.getElementById('supplements-container') as HTMLElement; container.innerHTML = '';  for (const category in supplementDB) { const card = document.createElement('div'); card.className = 'supp-category-card bg-tertiary/50 rounded-lg overflow-hidden'; card.innerHTML = `<h3 class="font-bold p-4 border-b border-border-secondary text-blue-400">${category}</h3><div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></div>`; const listContainer = card.querySelector('.grid') as HTMLElement; supplementDB[category].forEach(item => { const wrapper = document.createElement('div'); wrapper.className = "supplement-item flex items-center justify-between"; wrapper.innerHTML = `<label class="custom-checkbox-label"><input type="checkbox" value="${item.name}" data-dosage="${item.dosage}" data-note="${item.note}" class="supplement-checkbox custom-checkbox"><span>${item.name}</span></label><div class="flex items-center gap-2"><div class="tooltip"><i data-lucide="info" class="w-4 h-4 text-gray-500 cursor-pointer"></i><span class="tooltiptext">${item.note}</span></div><i data-lucide="pill" class="w-5 h-5 text-gray-400 flex-shrink-0"></i><input type="text" class="dosage-input input-field text-sm w-32" placeholder="دوز..."></div>`; listContainer.appendChild(wrapper); }); container.appendChild(card); } window.lucide.createIcons(); };
-
-const generateProgramPreview = (dataSourceContainer: HTMLElement, targetContainerSelector: string) => {
-    const container = document.querySelector(targetContainerSelector) as HTMLElement;
-    if (!container) return;
-    container.innerHTML = '';
-    const pageElement = document.createElement('div');
-    pageElement.className = 'program-page';
-    
-    const s1Container = dataSourceContainer.id === 'program-builder-form' ? document.getElementById('section-1')! : dataSourceContainer;
-    
-    const clientName = sanitizeHTML((s1Container.querySelector('.client-name-input') as HTMLInputElement).value || 'نامشخص');
-    const coachName = sanitizeHTML((document.getElementById('coach-name-input') as HTMLInputElement)?.value || 'مربی شما');
-    const profileSrc = (s1Container.querySelector('.profile-pic-preview') as HTMLImageElement).src;
-    const headerHtml = `<header class="page-header flex justify-between items-start mb-6"><div class="flex items-center gap-3"><span class="font-bold text-2xl text-amber-500">FitGym Pro</span></div><img src="${profileSrc}" alt="Profile" class="w-20 h-20 rounded-full object-cover border-4 border-gray-100"></header><div class="mb-6"><h2 class="text-3xl font-extrabold text-gray-900 mb-2">${clientName}</h2><p class="text-gray-500">تهیه شده در تاریخ: ${new Date().toLocaleDateString('fa-IR')}</p></div>`;
-    pageElement.innerHTML = `${headerHtml}<div class="page-content"></div><footer class="page-footer"><p>این برنامه توسط <strong>${coachName}</strong> برای شما آماده شده است. موفق باشید!</p></footer>`;
-    container.appendChild(pageElement);
-    const currentPage = pageElement.querySelector('.page-content') as HTMLElement;
-    const appendContent = (html: string) => { const tempDiv = document.createElement('div'); tempDiv.innerHTML = html; const element = tempDiv.firstElementChild; if (element) currentPage.appendChild(element); };
-    const vitals = { 'سن': `${(s1Container.querySelector('.age-slider') as HTMLInputElement).value}`, 'قد': `${(s1Container.querySelector('.height-slider') as HTMLInputElement).value} cm`, 'وزن': `${(s1Container.querySelector('.weight-slider') as HTMLInputElement).value} kg`, 'BMI': (s1Container.querySelector('.bmi-input') as HTMLInputElement).value || '-', 'چربی بدن': `${(s1Container.querySelector('.bodyfat-input') as HTMLInputElement).value || '-'} %`, 'BMR': `${(s1Container.querySelector('.bmr-input') as HTMLInputElement).value || '-'} kcal`, 'TDEE': `${(s1Container.querySelector('.tdee-input') as HTMLInputElement).value || '-'} kcal`, 'توده بدون چربی': `${(s1Container.querySelector('.lbm-input') as HTMLInputElement)?.value || '-'} kg` };
-    let vitalsHtml = Object.entries(vitals).map(([key, value]) => `<div><span>${key}</span><strong>${value}</strong></div>`).join('');
-    appendContent(`<div class="mb-6"><h3 class="preview-section-header"><i data-lucide="clipboard-list"></i>شاخص‌های کلیدی</h3><div class="preview-vitals-grid">${vitalsHtml}</div></div>`);
-    const visualizersContainer = (s1Container.querySelector('.realtime-visualizers') as HTMLElement).cloneNode(true) as HTMLElement;
-    visualizersContainer.querySelectorAll('.card').forEach(c => c.classList.remove('card'));
-    if (visualizersContainer.innerHTML.trim() !== "") appendContent(`<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 mb-6">${visualizersContainer.innerHTML}</div>`);
-    
-    const dayCards = document.querySelectorAll('#workout-days-container .day-card');
-    const daysWithExercises = Array.from(dayCards).filter(d => d.querySelector('.exercise-row'));
-    if (daysWithExercises.length > 0) {
-        appendContent('<div class="day-separator"></div>');
-        appendContent(`<div class="mb-4 mt-4"><h3 class="preview-section-header"><i data-lucide="dumbbell"></i>برنامه تمرینی</h3></div>`);
-        daysWithExercises.forEach((card, index) => {
-            const dayTitle = sanitizeHTML((card.querySelector('.day-title-input') as HTMLInputElement).value);
-            let exercisesTable = `<div class="overflow-x-auto rounded-lg border border-border-primary"><table class="preview-table-pro w-full"><thead><tr><th>حرکت (Exercise)</th><th>ست (Sets)</th><th>تکرار (Reps)</th><th>استراحت (Rest)</th></tr></thead><tbody>`;
-            const exercises = Array.from(card.querySelectorAll('.exercise-row'));
-            for (let i = 0; i < exercises.length; i++) {
-                const ex = exercises[i];
-                const isSuperset = ex.classList.contains('is-superset');
-                const isFirstInGroup = isSuperset && (i === 0 || !exercises[i-1].classList.contains('is-superset'));
-                exercisesTable += `<tr class="${isSuperset ? 'superset-group-pro' : ''}"><td>${isFirstInGroup ? '<span class="superset-label-pro">سوپرست</span>' : ''}${(ex.querySelector('.exercise-select') as HTMLSelectElement).value}</td><td>${ex.querySelector('.set-value')?.textContent}</td><td>${ex.querySelector('.rep-value')?.textContent}</td><td>${ex.querySelector('.rest-value')?.textContent}</td></tr>`;
+    },
+    ne = e => {
+        var t;
+        e > 0 && e <= ue && (F = e, _e(), (t = document.getElementById("program-builder-form")) == null || t.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        }))
+    },
+    et = e => {
+        var t;
+        const s = e.querySelector(".realtime-visualizers");
+        if (!s) return;
+        const r = e.id === "section-1" ? e.closest("form")! : e,
+            a = r.querySelector(".bmi-input") as HTMLInputElement;
+        if (!a) return;
+        const n = parseFloat(a.value);
+        let o = "";
+        if (!isNaN(n) && n > 0) {
+            let h = (n - 15) / 25 * 100;
+            h = Math.max(0, Math.min(100, h));
+            let E = "نرمال",
+                q = "normal";
+            n < 18.5 ? (E = "کمبود وزن", q = "underweight") : n >= 25 && n < 30 ? (E = "اضافه وزن", q = "overweight") : n >= 30 && (E = "چاقی", q = "obese");
+            const k = (18.5 - 15) / 25 * 100,
+                $ = (25 - 18.5) / 25 * 100,
+                I = 5 / 25 * 100,
+                C = 100 - k - $ - I;
+            o = `<div class="p-4 rounded-xl"><h3 class="font-bold text-lg mb-3 border-b border-border-primary pb-2 flex items-center gap-2"><i data-lucide="activity" class="text-purple-400"></i>شاخص توده بدنی (BMI)</h3><div class="bmi-visualizer"><div class="bmi-scale"><div class="bmi-segment" style="--color: #3b82f6; width: ${k}%;"></div><div class="bmi-segment" style="--color: #22c55e; width: ${$}%;"></div><div class="bmi-segment" style="--color: #f97316; width: ${I}%;"></div><div class="bmi-segment" style="--color: #ef4444; width: ${C}%;"></div><div class="bmi-needle" style="--position: ${h}%;"><div class="bmi-value-box">${n.toFixed(1)}</div></div></div><div class="bmi-labels"><span>کمبود</span><span>نرمال</span><span>اضافه</span><span>چاقی</span></div><p class="bmi-status-text">وضعیت: <strong class="bmi-status-${q}">${E}</strong></p></div></div>`
+        }
+        let m = "";
+        const d = parseFloat((e.querySelector(".weight-slider") as HTMLInputElement).value),
+            c = r.querySelector(".ideal-weight-input") as HTMLInputElement;
+        if (!c) {
+            s.innerHTML = o, window.lucide.createIcons();
+            return
+        }
+        const g = c.value;
+        if (g && g.includes(" - ")) {
+            const [x, h] = g.replace(" kg", "").split(" - ").map(parseFloat);
+            if (!isNaN(d) && !isNaN(x) && !isNaN(h)) {
+                const q = Math.max(0, x - 15),
+                    k = h + 15 - q;
+                let $ = (d - q) / k * 100;
+                $ = Math.max(0, Math.min(100, $));
+                const I = Math.max(0, (x - q) / k * 100),
+                    C = Math.max(0, (h - x) / k * 100),
+                    L = Math.max(0, 100 - I - C);
+                let b = "ایده‌آل",
+                    B = "normal";
+                d < x ? (b = "کمبود وزن", B = "underweight") : d > h && (b = "اضافه وزن", B = "overweight"), m = `<div class="p-4 rounded-xl"><h3 class="font-bold text-lg mb-3 border-b border-border-primary pb-2 flex items-center gap-2"><i data-lucide="scale" class="text-teal-400"></i>محدوده وزن ایده‌آل</h3><div class="weight-visualizer"><div class="weight-scale"><div class="weight-segment" style="--color: #3b82f6; width: ${I}%;"></div><div class="weight-segment" style="--color: #22c55e; width: ${C}%;"></div><div class="weight-segment" style="--color: #f97316; width: ${L}%;"></div><div class="weight-needle" style="--position: ${$}%;"><div class="weight-value-box">${d.toFixed(1)} kg</div></div></div><div class="weight-labels"><span>${x.toFixed(1)}kg</span><span class="font-bold">ایده‌آل</span><span>${h.toFixed(1)}kg</span></div><p class="weight-status-text">وضعیت: <strong class="weight-status-${B}">${b}</strong></p></div></div>`
             }
-            exercisesTable += `</tbody></table></div>`;
-            const notes = sanitizeHTML((card.querySelector('.day-notes-input') as HTMLTextAreaElement).value);
-            const dayHtml = `<div><h4 class="font-bold text-lg text-gray-800 mb-2">${dayTitle}</h4>${exercisesTable}${notes ? `<div class="preview-notes-pro mt-3"><strong>یادداشت:</strong> ${notes}</div>` : ''}</div>`;
-            appendContent(dayHtml);
-            if (index < daysWithExercises.length - 1) appendContent('<div class="day-separator"></div>');
-        });
+        }
+        s.innerHTML = o + m, window.lucide.createIcons()
+    },
+    he = e => {
+        const t = e.id === "section-1" ? e.closest("form")! : e,
+            s = parseFloat((e.querySelector(".age-slider") as HTMLInputElement).value),
+            r = parseFloat((e.querySelector(".height-slider") as HTMLInputElement).value),
+            a = parseFloat((e.querySelector(".weight-slider") as HTMLInputElement).value),
+            n = e.querySelector(".gender:checked") as HTMLInputElement;
+        if (!n) return;
+        const o = n.value === "مرد",
+            m = e.querySelector(".activity-level:checked") as HTMLInputElement,
+            d = m ? parseFloat(m.value) : 1.2,
+            c = parseFloat((e.querySelector(".neck-input") as HTMLInputElement).value),
+            g = parseFloat((e.querySelector(".waist-input") as HTMLInputElement).value),
+            x = parseFloat((e.querySelector(".hip-input") as HTMLInputElement).value),
+            h = () => {
+                [".bmi-input", ".bmr-input", ".tdee-input", ".bodyfat-input", ".lbm-input", ".ideal-weight-input"].forEach(N => {
+                    const G = t.querySelector(N) as HTMLInputElement;
+                    G && (G.value = "")
+                });
+                const M = e.querySelector(".realtime-visualizers");
+                M && (M.innerHTML = "")
+            };
+        if (isNaN(r) || isNaN(a) || r <= 0 || a <= 0) {
+            h();
+            return
+        }
+        const E = r / 100,
+            q = a / (E * E),
+            k = t.querySelector(".bmi-input") as HTMLInputElement;
+        k && (k.value = q.toFixed(1));
+        const $ = o ? 10 * a + 6.25 * r - 5 * s + 5 : 10 * a + 6.25 * r - 5 * s - 161,
+            I = t.querySelector(".bmr-input") as HTMLInputElement;
+        I && (I.value = Math.round($).toString());
+        const C = t.querySelector(".tdee-input") as HTMLInputElement;
+        C && (!isNaN($) && !isNaN(d) ? C.value = Math.round($ * d).toString() : C.value = "");
+        const L = t.querySelector(".ideal-weight-input") as HTMLInputElement;
+        L && (L.value = `${(18.5*E*E).toFixed(1)} - ${(24.9*E*E).toFixed(1)} kg`);
+        let b = 0;
+        !isNaN(c) && !isNaN(g) && c > 0 && g > 0 && (o ? b = 86.01 * Math.log10(g - c) - 70.041 * Math.log10(r) + 36.76 : !isNaN(x) && x > 0 && (b = 163.205 * Math.log10(g + x - c) - 97.684 * Math.log10(r) - 78.387));
+        const B = t.querySelector(".bodyfat-input") as HTMLInputElement,
+            N = t.querySelector(".lbm-input") as HTMLInputElement;
+        b > 0 && b < 100 ? (B && (B.value = b.toFixed(1)), N && (N.value = (a * (1 - b / 100)).toFixed(1))) : (B && (B.value = ""), N && (N.value = "")), et(e)
+    },
+    xe = e => {
+        const t = e.querySelector(".hip-input-container");
+        if (!t) return;
+        const s = e.querySelector('.gender[value="مرد"]') as HTMLInputElement;
+        t.classList.toggle("hidden", s.checked), he(e)
+    },
+    tt = e => {
+        e.innerHTML = "", Object.keys(we).forEach(t => {
+            const s = document.createElement("option");
+            s.value = t, s.textContent = t, e.appendChild(s)
+        })
+    },
+    pe = (e, t) => {
+        t.innerHTML = "", (we[e] || []).forEach(s => {
+            const r = document.createElement("option");
+            r.value = s, r.textContent = s, t.appendChild(r)
+        })
+    },
+    ge = e => {
+        const t = (document.getElementById("exercise-template") as HTMLTemplateElement).content.cloneNode(!0) as DocumentFragment,
+            s = t.querySelector(".muscle-group-select") as HTMLSelectElement;
+        tt(s), pe(s.value, t.querySelector(".exercise-select") as HTMLSelectElement), e.appendChild(t), e.querySelectorAll(".range-slider").forEach(r => ie(r as HTMLInputElement)), window.lucide.createIcons()
+    },
+    re = (e = !1) => {
+        const t = document.getElementById("workout-days-container")!.children.length + 1,
+            s = document.createElement("div");
+        s.className = "card rounded-lg day-card", s.innerHTML = `<div class="flex justify-between items-center p-4 bg-tertiary/50 rounded-t-lg border-b border-border-secondary"><div class="flex items-center gap-3"><i data-lucide="calendar-days" class="text-yellow-400"></i><input type="text" value="روز ${t}: " class="day-title-input input-field font-bold text-lg bg-transparent border-0 p-1 focus:ring-0 focus:border-yellow-400 w-auto"></div> ${e?"":'<button type="button" class="remove-day-btn p-1 text-secondary hover:text-red-400"><i data-lucide="x-circle" class="w-5 h-5"></i></button>'}</div><div class="p-4 space-y-3"><div class="exercise-list space-y-3"></div><button type="button" class="add-exercise-btn mt-2 w-full text-sm text-yellow-400 font-semibold hover:bg-yellow-400/10 py-2.5 px-4 rounded-lg border-2 border-dashed border-yellow-400/30 transition-all flex items-center justify-center gap-2"><i data-lucide="plus"></i> افزودن حرکت</button></div><div class="p-4 border-t border-border-primary/50"><label class="font-semibold text-sm text-secondary mb-2 block">یادداشت‌های مربی</label><textarea class="day-notes-input input-field text-sm bg-tertiary/50" rows="2" placeholder="مثال: روی فرم صحیح حرکت تمرکز کنید..."></textarea></div>`, document.getElementById("workout-days-container")!.appendChild(s), ge(s.querySelector(".exercise-list") as HTMLDivElement), window.lucide.createIcons()
+    },
+    st = () => {
+        const e = document.getElementById("supplements-container")!;
+        e.innerHTML = "";
+        for (const t in Pe) {
+            const s = document.createElement("div");
+            s.className = "supp-category-card bg-tertiary/50 rounded-lg overflow-hidden", s.innerHTML = `<h3 class="font-bold p-4 border-b border-border-secondary text-blue-400">${t}</h3><div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></div>`;
+            const r = s.querySelector(".grid")!;
+            Pe[t].forEach(a => {
+                const n = document.createElement("div");
+                n.className = "supplement-item flex items-center justify-between", n.innerHTML = `<label class="custom-checkbox-label"><input type="checkbox" value="${a.name}" data-dosage="${a.dosage}" data-note="${a.note}" class="supplement-checkbox custom-checkbox"><span>${a.name}</span></label><div class="flex items-center gap-2"><div class="tooltip"><i data-lucide="info" class="w-4 h-4 text-gray-500 cursor-pointer"></i><span class="tooltiptext">${a.note}</span></div><i data-lucide="pill" class="w-5 h-5 text-gray-400 flex-shrink-0"></i><input type="text" class="dosage-input input-field text-sm w-32" placeholder="دوز..."></div>`, r.appendChild(n)
+            }), e.appendChild(s)
+        }
+        window.lucide.createIcons()
+    };
+const Ue = (e, t) => {
+    const s = document.querySelector(t);
+    if (!s) return;
+    s.innerHTML = "";
+    const r = document.createElement("div");
+    r.className = "program-page";
+    const a = e.step1 || {},
+        n = A(a.clientName || "نامشخص"),
+        o = A(a.coachName || "مربی شما"),
+        m = a.profilePic || "https://placehold.co/100x100/374151/E5E7EB?text=عکس";
+    const d = `<header class="page-header flex justify-between items-start mb-6"><div class="flex items-center gap-3"><span class="font-bold text-2xl text-amber-500">FitGym Pro</span></div><img src="${m}" alt="Profile" class="w-20 h-20 rounded-full object-cover border-4 border-gray-100"></header><div class="mb-6"><h2 class="text-3xl font-extrabold text-gray-900 mb-2">${n}</h2><p class="text-gray-500">تهیه شده در تاریخ: ${new Date().toLocaleDateString("fa-IR")}</p></div>`;
+    r.innerHTML = `${d}<div class="page-content"></div><footer class="page-footer"><p>این برنامه توسط <strong>${o}</strong> برای شما آماده شده است. موفق باشید!</p></footer>`, s.appendChild(r);
+    const c = r.querySelector(".page-content")!,
+        g = B => {
+            const N = document.createElement("div");
+            N.innerHTML = B;
+            const G = N.firstElementChild;
+            G && c.appendChild(G)
+        },
+        x = {
+            سن: a.age || "-",
+            قد: `${a.height||"-"} cm`,
+            وزن: `${a.weight||"-"} kg`,
+            BMI: a.bmi || "-",
+            "چربی بدن": `${a.bodyFat||"-"} %`,
+            BMR: `${a.bmr||"-"} kcal`,
+            TDEE: `${a.tdee||"-"} kcal`,
+            "توده بدون چربی": `${a.lbm||"-"} kg`
+        };
+    let h = Object.entries(x).map(([B, N]) => `<div><span>${B}</span><strong>${N}</strong></div>`).join("");
+    g(`<div class="mb-6"><h3 class="preview-section-header"><i data-lucide="clipboard-list"></i>شاخص‌های کلیدی</h3><div class="preview-vitals-grid">${h}</div></div>`);
+    const E = (e.step2 || {}).days || [],
+        q = E.filter(B => B.exercises && B.exercises.length > 0);
+    q.length > 0 && (g('<div class="day-separator"></div>'), g('<div class="mb-4 mt-4"><h3 class="preview-section-header"><i data-lucide="dumbbell"></i>برنامه تمرینی</h3></div>'), q.forEach((B, N) => {
+        const G = A(B.title);
+        let M = '<div class="overflow-x-auto rounded-lg border border-border-primary"><table class="preview-table-pro w-full"><thead><tr><th>حرکت (Exercise)</th><th>ست (Sets)</th><th>تکرار (Reps)</th><th>استراحت (Rest)</th></tr></thead><tbody>';
+        const K = B.exercises || [];
+        for (let j = 0; j < K.length; j++) {
+            const _ = K[j],
+                ee = _.isSuperset,
+                ce = ee && (j === 0 || !K[j - 1].isSuperset);
+            M += `<tr class="${ee?"superset-group-pro":""}"><td>${ce?'<span class="superset-label-pro">سوپرست</span>':""}${_.exercise}</td><td>${_.sets}</td><td>${_.reps}</td><td>${_.rest}s</td></tr>`
+        }
+        M += "</tbody></table></div>";
+        const le = A(B.notes),
+            Ee = `<div><h4 class="font-bold text-lg text-gray-800 mb-2">${G}</h4>${M}${le?`<div class="preview-notes-pro mt-3"><strong>یادداشت:</strong> ${le}</div>`:""}</div>`;
+        g(Ee), N < q.length - 1 && g('<div class="day-separator"></div>')
+    }));
+    const k = (e.step3 || {}).supplements || [];
+    if (k.length > 0) {
+        let B = '<div class="mt-6"><h3 class="preview-section-header"><i data-lucide="pill"></i>برنامه مکمل‌ها</h3><div class="overflow-x-auto rounded-lg border border-border-primary"><table class="preview-table-pro mx-auto" style="min-width: 500px;"><thead><tr><th>مکمل / ویتامین</th><th style="width: 200px;">دستور مصرف</th></tr></thead><tbody>';
+        k.forEach(N => {
+            const G = A(N.dosage || "طبق دستور"),
+                M = A(N.name);
+            B += `<tr><td>${M}</td><td style="text-align: center;">${G}</td></tr>`
+        }), B += "</tbody></table></div>", g(B)
     }
-    const generalNotes = (document.getElementById('general-notes-input') as HTMLTextAreaElement).value;
-    if (generalNotes) appendContent(`<div class="mt-6"><h3 class="preview-section-header"><i data-lucide="clipboard-edit"></i>توصیه‌های کلی مربی</h3><div class="preview-notes-pro">${sanitizeHTML(generalNotes).replace(/\n/g, '<br>')}</div></div>`);
-    const checkedSupps = document.querySelectorAll('.supplement-checkbox:checked');
-    if (checkedSupps.length > 0) {
-        let supplementsTable = `<div class="mt-6"><h3 class="preview-section-header"><i data-lucide="pill"></i>برنامه مکمل‌ها</h3><div class="overflow-x-auto rounded-lg border border-border-primary"><table class="preview-table-pro mx-auto" style="min-width: 500px;"><thead><tr><th>مکمل / ویتامین</th><th style="width: 200px;">دستور مصرف</th></tr></thead><tbody>`;
-        checkedSupps.forEach(sup => {
-            const dosage = sanitizeHTML((sup.closest('.supplement-item')?.querySelector('.dosage-input') as HTMLInputElement).value || 'طبق دستور');
-            const supName = sanitizeHTML((sup as HTMLInputElement).value);
-            supplementsTable += `<tr><td>${supName}</td><td style="text-align: center;">${dosage}</td></tr>`;
-        });
-        supplementsTable += `</tbody></table></div>`;
-        appendContent(supplementsTable);
-    }
-    window.lucide.createIcons();
+    const $ = (e.step5 || {}).nutritionPlanHTML;
+    $ && $.trim() !== "" && g(`<div class="day-separator"></div><div class="mt-6"><h3 class="preview-section-header"><i data-lucide="utensils-crossed"></i>راهنمای تغذیه</h3><div class="preview-notes-pro">${$}</div></div>`);
+    const I = (e.step4 || {}).generalNotes;
+    I && g(`<div class="mt-6"><h3 class="preview-section-header"><i data-lucide="clipboard-edit"></i>توصیه‌های کلی مربی</h3><div class="preview-notes-pro">${A(I).replace(/\n/g,"<br>")}</div></div>`), window.lucide.createIcons()
 };
+const Fe = async () => {
+    var n;
+    if (document.querySelector(".is-loading")) return;
+    const t = ((n = document.getElementById("save-pdf-btn")) == null ? void 0 : n.offsetParent) !== null ? document.getElementById("save-pdf-btn") as HTMLButtonElement : document.getElementById("dashboard-save-pdf-btn") as HTMLButtonElement;
 
+    t.classList.add("is-loading"), t.disabled = !0;
 
-const saveAsPdf = async () => {
-    const pdfBtn = document.querySelector('.is-loading');
-    if (pdfBtn) return;
-    
-    const activePdfBtn = (document.getElementById('save-pdf-btn')?.offsetParent !== null)
-        ? document.getElementById('save-pdf-btn') as HTMLButtonElement
-        : document.getElementById('dashboard-save-pdf-btn') as HTMLButtonElement;
-    
-    activePdfBtn.classList.add('is-loading');
-    activePdfBtn.disabled = true;
+    if (!window.jspdf || !window.html2canvas) {
+        w("کتابخانه‌های مورد نیاز برای ساخت PDF بارگیری نشده‌اند.", "error");
+        t.classList.remove("is-loading");
+        t.disabled = false;
+        return;
+    }
+    const { jsPDF: Qe } = window.jspdf;
 
-    const pageSelector = currentUser === 'admin' ? '#program-sheet-container .program-page' : '#dashboard-program-view .program-page';
-    const originalPage = document.querySelector(pageSelector) as HTMLElement;
+    let s;
+    if (f === "admin") {
+        const previewContainerSelector = "#program-sheet-container";
+        // In admin panel, always render fresh data to a consistent preview container.
+        Ue(ye(), previewContainerSelector);
+        s = `${previewContainerSelector} .program-page`;
+    } else {
+        // In user dashboard, the view is already rendered and correct.
+        s = "#dashboard-program-view .program-page";
+    }
 
-    if (!originalPage) {
-        showToast('محتوایی برای ساخت PDF وجود ندارد.', 'error');
-        activePdfBtn.classList.remove('is-loading');
-        activePdfBtn.disabled = false;
+    const r = document.querySelector(s) as HTMLElement;
+        
+    if (!r) {
+        w("محتوایی برای ساخت PDF وجود ندارد.", "error");
+        t.classList.remove("is-loading");
+        t.disabled = !1;
         return;
     }
 
-    const clone = originalPage.cloneNode(true) as HTMLElement;
-    clone.style.position = 'absolute'; clone.style.top = '0'; clone.style.left = '-9999px'; clone.style.width = originalPage.offsetWidth + 'px'; clone.style.height = 'auto';
-    document.body.appendChild(clone);
-    await new Promise(resolve => setTimeout(resolve, 50));
+    const a = r.cloneNode(!0) as HTMLElement;
+    a.style.position = "absolute", a.style.top = "0", a.style.left = "-9999px";
+    // Use a fixed width to avoid issues with hidden elements' offsetWidth being 0.
+    a.style.width = "800px"; 
+    a.style.height = "auto", document.body.appendChild(a);
+    await new Promise(o => setTimeout(o, 50));
+
     try {
-        const canvas = await window.html2canvas(clone, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
-        document.body.removeChild(clone);
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfPageWidth = pdf.internal.pageSize.getWidth();
-        const pdfPageHeight = pdf.internal.pageSize.getHeight();
-        const imgHeight = canvas.height * pdfPageWidth / canvas.width;
-        let heightLeft = imgHeight, position = 0;
-        pdf.addImage(imgData, 'PNG', 0, position, pdfPageWidth, imgHeight); heightLeft -= pdfPageHeight;
-        while (heightLeft > 0) { position -= pdfPageHeight; pdf.addPage(); pdf.addImage(imgData, 'PNG', 0, position, pdfPageWidth, imgHeight); heightLeft -= pdfPageHeight; }
-        const clientName = (document.querySelector(currentUser === 'admin' ? '#client-name-input' : '.client-name-input') as HTMLInputElement).value || 'FitGymPro';
-        pdf.save(`FitGymPro-Program-${clientName.replace(/ /g, '_')}.pdf`);
-    } catch(error) {
-        console.error("Failed to generate PDF:", error);
-        showToast("خطا در هنگام ساخت فایل PDF رخ داد.", "error");
-        if (document.body.contains(clone)) document.body.removeChild(clone);
+        const o = await window.html2canvas(a, {
+            scale: 2,
+            useCORS: !0,
+            logging: !1,
+            backgroundColor: "#ffffff"
+        });
+        document.body.removeChild(a);
+        const m = o.toDataURL("image/png"),
+            d = new Qe("p", "mm", "a4"),
+            c = d.internal.pageSize.getWidth(),
+            g = d.internal.pageSize.getHeight(),
+            x = o.height * c / o.width;
+        let h = x, E = 0;
+        d.addImage(m, "PNG", 0, E, c, x);
+        h -= g;
+        while (h > 0) {
+            E -= g;
+            d.addPage();
+            d.addImage(m, "PNG", 0, E, c, x);
+            h -= g;
+        }
+        
+        const clientNameElement = document.querySelector(f === "admin" ? "#client-name-input" : "#dashboard-profile-panel .client-name-input") as HTMLInputElement;
+
+        if (!clientNameElement) {
+            w("خطا: فیلد نام کاربر یافت نشد.", "error");
+            t.classList.remove("is-loading");
+            t.disabled = false;
+            return;
+        }
+        const q = clientNameElement.value || "FitGymPro";
+        d.save(`FitGymPro-Program-${q.replace(/ /g,"_")}.pdf`)
+    } catch (o) {
+        console.error("Failed to generate PDF:", o), w("خطا در هنگام ساخت فایل PDF رخ داد.", "error"), document.body.contains(a) && document.body.removeChild(a)
     } finally {
-        activePdfBtn.classList.remove('is-loading');
-        activePdfBtn.disabled = false;
+        t.classList.remove("is-loading"), t.disabled = !1
     }
-};
-
-const saveAsWord = () => {
-    const pageContent = document.querySelector('.program-page') as HTMLElement;
-    if (!pageContent) { showToast('محتوایی برای ذخیره وجود ندارد.', 'error'); return; }
-    const fullHtmlContent = pageContent.innerHTML;
-    const clientName = (document.getElementById('client-name-input') as HTMLInputElement).value || 'FitGymPro-Program';
-    const filename = `${clientName.replace(/ /g, '_')}.doc`;
-    const fullHtml = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>Program</title><style>body{font-family: Arial, sans-serif; direction: rtl; text-align: right; margin: 2cm;} table{width: 100%; border-collapse: collapse; margin-bottom: 1rem;} th, td{border: 1px solid #ddd; padding: 8px;} th{background-color: #f2f2f2;} .page-footer p { page-break-before: always; } </style></head><body>${fullHtmlContent}</body></html>`;
-    const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename; document.body.appendChild(link);
-    link.click(); document.body.removeChild(link);
-};
-
-const sendProgramToUser = () => {
-    const clientNameInput = document.getElementById('client-name-input') as HTMLInputElement;
-    const clientName = clientNameInput.value.trim();
-
-    if (!clientName) {
-        showToast('لطفاً نام شاگرد را در گام اول مشخص کنید.', 'error');
-        navigateToStep(1);
-        clientNameInput.focus();
-        clientNameInput.classList.add('input-error');
-        setTimeout(() => clientNameInput.classList.remove('input-error'), 3000);
-        return;
-    }
-
-    const users = getUsers();
-    if (!users.some((u: any) => u.username === clientName)) {
-        showToast(`کاربری با نام «${clientName}» وجود ندارد.`, 'error');
-        return;
-    }
+},
+nt = () => {
+    // Always render the latest program data to the main preview container before saving.
+    const e = "#program-sheet-container";
+    Ue(ye(), e);
     
-    const existingData = getUserData(clientName);
-    const newProgramState = getAppState();
-    
-    const finalState = {
-        ...existingData,
-        ...newProgramState,
-        lastUpdatedByAdmin: new Date().toISOString(),
+    const t = document.querySelector(`${e} .program-page`);
+    if (!t) {
+        w("محتوایی برای ذخیره وجود ندارد.", "error");
+        return
+    }
+    const s = t.innerHTML,
+        a = `${((document.getElementById("client-name-input") as HTMLInputElement).value||"FitGymPro-Program").replace(/ /g,"_")}.doc`,
+        n = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>Program</title><style>body{font-family: Arial, sans-serif; direction: rtl; text-align: right; margin: 2cm;} table{width: 100%; border-collapse: collapse; margin-bottom: 1rem;} th, td{border: 1px solid #ddd; padding: 8px;} th{background-color: #f2f2f2;} .page-footer p { page-break-before: always; } </style></head><body>${s}</body></html>`,
+        o = new Blob(["\uFEFF", n], {
+            type: "application/msword"
+        }),
+        m = document.createElement("a");
+    m.href = URL.createObjectURL(o), m.download = a, document.body.appendChild(m), m.click(), document.body.removeChild(m)
+},
+rt = () => {
+    const e = document.getElementById("client-name-input") as HTMLInputElement,
+        t = e.value.trim();
+    if (!t) {
+        w("لطفاً نام شاگرد را در گام اول مشخص کنید.", "error"), ne(1), e.focus(), e.classList.add("input-error"), setTimeout(() => e.classList.remove("input-error"), 3e3);
+        return
+    }
+    if (!O().some(o => o.username === t)) {
+        w(`کاربری با نام «${t}» وجود ندارد.`, "error");
+        return
+    }
+    const r = D(t),
+        a = ye(),
+        n = {
+            ...r,
+            ...a,
+            lastUpdatedByAdmin: new Date().toISOString(),
+            newProgram: !0
+        };
+    W(t, n), ae(`برنامه برای ${t} ارسال شد`), w(`برنامه با موفقیت برای کاربر «${t}» ارسال شد.`)
+},
+    at = () => {
+        const e = document.getElementById("client-name-input") as HTMLInputElement,
+            t = e.value.trim();
+        if (!t) {
+            w("لطفاً نام شاگرد را برای ذخیره کردن مشخص کنید.", "error"), ne(1), e.focus(), e.classList.add("input-error"), setTimeout(() => e.classList.remove("input-error"), 3e3);
+            return
+        }
+        const s = D(t),
+            r = ye(),
+            a = {
+                ...s,
+                ...r,
+                lastUpdatedByAdmin: new Date().toISOString()
+            };
+        W(t, a), ae(`تغییرات برنامه ${t} ذخیره شد`), w(`تغییرات با موفقیت برای «${t}» ذخیره شد.`)
+    },
+    dt = () => {
+        const e = document.getElementById("client-name-input") as HTMLInputElement,
+            t = e.value.trim();
+        if (!t) {
+            w("لطفاً نام شاگرد را در گام اول مشخص کنید.", "error"), ne(1), e.focus(), e.classList.add("input-error"), setTimeout(() => e.classList.remove("input-error"), 3e3);
+            return
+        }
+        if (!O().some(o => o.username === t)) {
+            w(`کاربری با نام «${t}» وجود ندارد.`, "error");
+            return
+        }
+        const s = D(t),
+            r = (document.getElementById("ai-nutrition-result") as HTMLElement).innerHTML;
+        if (!r || !r.trim().length || r.includes("در حال تولید برنامه غذایی")) {
+            w("برنامه غذایی معتبری برای ارسال وجود ندارد.", "error");
+            return
+        }
+        s.step5 = s.step5 || {}, s.step5.nutritionPlanHTML = r, s.lastUpdatedByAdmin = new Date().toISOString(), s.newProgram = !0, W(t, s), ae(`برنامه غذایی برای ${t} ارسال شد`), w(`برنامه غذایی با موفقیت برای کاربر «${t}» ارسال شد.`)
+    },
+    O = () => JSON.parse(localStorage.getItem("fitgympro_users") || "[]"),
+    Ge = e => localStorage.setItem("fitgympro_users", JSON.stringify(e)),
+    D = e => JSON.parse(localStorage.getItem(`fitgympro_data_${e}`) || "{}"),
+    W = (e, t) => localStorage.setItem(`fitgympro_data_${e}`, JSON.stringify(t)),
+    ze = () => JSON.parse(localStorage.getItem("fitgympro_activity_log") || "[]"),
+    ae = e => {
+        let t = ze();
+        t.unshift({
+            message: e,
+            date: new Date().toISOString()
+        }), t.length > 20 && (t = t.slice(0, 20)), localStorage.setItem("fitgympro_activity_log", JSON.stringify(t))
+    };
+const ht = () => JSON.parse(localStorage.getItem("fitgympro_templates") || "{}"),
+    xt = e => localStorage.setItem("fitgympro_templates", JSON.stringify(e)),
+    yt = (e, t) => {
+        const s = ht();
+        s[e] = t, xt(s)
+    },
+    pt = e => {
+        const t = ht();
+        delete t[e], xt(t)
     };
 
-    saveUserData(clientName, finalState);
-    logActivity(`برنامه برای ${clientName} ارسال شد`);
-    showToast(`برنامه با موفقیت برای کاربر «${clientName}» ارسال شد.`);
-};
-
-const saveProgramChanges = () => {
-    const clientNameInput = document.getElementById('client-name-input') as HTMLInputElement;
-    const clientName = clientNameInput.value.trim();
-
-    if (!clientName) {
-        showToast('لطفاً نام شاگرد را برای ذخیره کردن مشخص کنید.', 'error');
-        navigateToStep(1);
-        clientNameInput.focus();
-        clientNameInput.classList.add('input-error');
-        setTimeout(() => clientNameInput.classList.remove('input-error'), 3000);
-        return;
-    }
-    
-    const existingData = getUserData(clientName);
-    const newProgramState = getAppState();
-
-    const finalState = {
-        ...existingData,
-        ...newProgramState,
-        lastUpdatedByAdmin: new Date().toISOString()
-    };
-    saveUserData(clientName, finalState);
-    logActivity(`تغییرات برنامه ${clientName} ذخیره شد`);
-    showToast(`تغییرات با موفقیت برای «${clientName}» ذخیره شد.`);
-};
-
-// --- User Management & Data Persistence ---
-
-const getUsers = () => JSON.parse(localStorage.getItem('fitgympro_users') || '[]');
-const saveUsers = (users: any[]) => localStorage.setItem('fitgympro_users', JSON.stringify(users));
-const getUserData = (username: string): AppState => JSON.parse(localStorage.getItem(`fitgympro_data_${username}`) || '{}');
-const saveUserData = (username: string, data: AppState) => localStorage.setItem(`fitgympro_data_${username}`, JSON.stringify(data));
-const getActivityLog = () => JSON.parse(localStorage.getItem('fitgympro_activity_log') || '[]');
-const logActivity = (message: string) => { 
-    let log = getActivityLog(); 
-    log.unshift({ message, date: new Date().toISOString() }); 
-    if (log.length > 20) log = log.slice(0, 20); 
-    localStorage.setItem('fitgympro_activity_log', JSON.stringify(log));
-};
-
-function getAppState(): AppState {
-    const appState: Partial<AppState> = {
+function ye() {
+    var s, r, a, n;
+    const e: any = {
         step1: {},
-        step2: { days: [] },
-        step3: { supplements: [] },
-        step4: {}
+        step2: {
+            days: []
+        },
+        step3: {
+            supplements: []
+        },
+        step4: {},
+        step5: {}
     };
-    
-    const s1Container = document.getElementById('section-1')!;
-
-    // Step 1 data
-    appState.step1!.clientName = (s1Container.querySelector('.client-name-input') as HTMLInputElement).value;
-    appState.step1!.clientEmail = (s1Container.querySelector('.client-email-input') as HTMLInputElement).value;
-    appState.step1!.coachName = (s1Container.querySelector('.coach-name-input') as HTMLInputElement).value;
-    appState.step1!.profilePic = (s1Container.querySelector('.profile-pic-preview') as HTMLImageElement).src;
-    appState.step1!.trainingGoal = (s1Container.querySelector('.training-goal:checked') as HTMLInputElement)?.value;
-    appState.step1!.age = (s1Container.querySelector('.age-slider') as HTMLInputElement).value;
-    appState.step1!.height = (s1Container.querySelector('.height-slider') as HTMLInputElement).value;
-    appState.step1!.weight = (s1Container.querySelector('.weight-slider') as HTMLInputElement).value;
-    appState.step1!.neck = (s1Container.querySelector('.neck-input') as HTMLInputElement).value;
-    appState.step1!.waist = (s1Container.querySelector('.waist-input') as HTMLInputElement).value;
-    appState.step1!.hip = (s1Container.querySelector('.hip-input') as HTMLInputElement).value;
-    appState.step1!.gender = (s1Container.querySelector('.gender:checked') as HTMLInputElement)?.value;
-    appState.step1!.activityLevel = (s1Container.querySelector('.activity-level:checked') as HTMLInputElement)?.value;
-    appState.step1!.trainingDays = (s1Container.querySelector('.training-days:checked') as HTMLInputElement)?.value;
-
-    // Step 2 data
-    document.querySelectorAll('#workout-days-container .day-card').forEach(dayCard => {
-        const dayData: DayState = {
-            title: (dayCard.querySelector('.day-title-input') as HTMLInputElement).value,
-            notes: (dayCard.querySelector('.day-notes-input') as HTMLTextAreaElement).value,
+    const form = document.getElementById("program-builder-form")!;
+    const t = form.querySelector("#section-1")!;
+    e.step1.clientName = (t.querySelector(".client-name-input") as HTMLInputElement).value;
+    e.step1.clientEmail = (t.querySelector(".client-email-input") as HTMLInputElement).value;
+    e.step1.coachName = (t.querySelector(".coach-name-input") as HTMLInputElement).value;
+    e.step1.profilePic = (t.querySelector(".profile-pic-preview") as HTMLImageElement).src;
+    e.step1.trainingGoal = (s = t.querySelector(".training-goal:checked") as HTMLInputElement) == null ? void 0 : s.value;
+    e.step1.age = (t.querySelector(".age-slider") as HTMLInputElement).value;
+    e.step1.height = (t.querySelector(".height-slider") as HTMLInputElement).value;
+    e.step1.weight = (t.querySelector(".weight-slider") as HTMLInputElement).value;
+    e.step1.neck = (t.querySelector(".neck-input") as HTMLInputElement).value;
+    e.step1.waist = (t.querySelector(".waist-input") as HTMLInputElement).value;
+    e.step1.hip = (t.querySelector(".hip-input") as HTMLInputElement).value;
+    e.step1.gender = (r = t.querySelector(".gender:checked") as HTMLInputElement) == null ? void 0 : r.value;
+    e.step1.activityLevel = (a = t.querySelector(".activity-level:checked") as HTMLInputElement) == null ? void 0 : a.value;
+    e.step1.trainingDays = (n = t.querySelector(".training-days:checked") as HTMLInputElement) == null ? void 0 : n.value;
+    e.step1.bmi = (form.querySelector(".bmi-input") as HTMLInputElement).value;
+    e.step1.bmr = (form.querySelector(".bmr-input") as HTMLInputElement).value;
+    e.step1.tdee = (form.querySelector(".tdee-input") as HTMLInputElement).value;
+    e.step1.bodyFat = (form.querySelector(".bodyfat-input") as HTMLInputElement).value;
+    e.step1.lbm = (form.querySelector(".lbm-input") as HTMLInputElement).value;
+    e.step1.idealWeight = (form.querySelector(".ideal-weight-input") as HTMLInputElement).value;
+    document.querySelectorAll("#workout-days-container .day-card").forEach(o => {
+        const m: any = {
+            title: (o.querySelector(".day-title-input") as HTMLInputElement).value,
+            notes: (o.querySelector(".day-notes-input") as HTMLTextAreaElement).value,
             exercises: []
         };
-        dayCard.querySelectorAll('.exercise-row').forEach(exRow => {
-            dayData.exercises.push({
-                muscle: (exRow.querySelector('.muscle-group-select') as HTMLSelectElement).value,
-                exercise: (exRow.querySelector('.exercise-select') as HTMLSelectElement).value,
-                sets: (exRow.querySelector('.set-slider') as HTMLInputElement).value,
-                reps: (exRow.querySelector('.rep-slider') as HTMLInputElement).value,
-                rest: (exRow.querySelector('.rest-slider') as HTMLInputElement).value,
-                isSuperset: exRow.classList.contains('is-superset')
-            });
-        });
-        appState.step2!.days.push(dayData);
+        o.querySelectorAll(".exercise-row").forEach(d => {
+            m.exercises.push({
+                muscle: (d.querySelector(".muscle-group-select") as HTMLSelectElement).value,
+                exercise: (d.querySelector(".exercise-select") as HTMLSelectElement).value,
+                sets: (d.querySelector(".set-slider") as HTMLInputElement).value,
+                reps: (d.querySelector(".rep-slider") as HTMLInputElement).value,
+                rest: (d.querySelector(".rest-slider") as HTMLInputElement).value,
+                isSuperset: d.classList.contains("is-superset")
+            })
+        }), e.step2.days.push(m)
     });
-
-    // Step 3 data
-    document.querySelectorAll('.supplement-checkbox:checked').forEach(cb => {
-        appState.step3!.supplements.push({
-            name: (cb as HTMLInputElement).value,
-            dosage: (cb.closest('.supplement-item')?.querySelector('.dosage-input') as HTMLInputElement).value
-        });
+    document.querySelectorAll(".supplement-checkbox:checked").forEach(o => {
+        var m;
+        e.step3.supplements.push({
+            name: (o as HTMLInputElement).value,
+            dosage: ((m = (o as HTMLInputElement).closest(".supplement-item")) == null ? void 0 : (m.querySelector(".dosage-input") as HTMLInputElement)).value
+        })
     });
-    
-    // Step 4 data
-    appState.step4!.generalNotes = (document.getElementById('general-notes-input') as HTMLTextAreaElement).value;
+    e.step4.generalNotes = (document.getElementById("general-notes-input") as HTMLTextAreaElement).value;
+    e.step5.nutritionPlanHTML = (document.getElementById("ai-nutrition-result") as HTMLElement).innerHTML;
+    return e
+}
+const updateRadioCardSelection = (e) => {
+    ["training_goal", "activity_level", "training_days", "gender", "gender_user", "training_goal_user", "activity_level_user", "training_days_user"].forEach(t => {
+        e.querySelectorAll(`input[name="${t}"]`).forEach(s => {
+            const r = s.closest(".card");
+            r && r.classList.toggle("selected-card", (s as HTMLInputElement).checked)
+        })
+    })
+};
 
-    return appState as AppState;
+function Je(e) {
+    (document.getElementById("program-builder-form") as HTMLFormElement).reset(), document.getElementById("workout-days-container")!.innerHTML = "";
+    const t = document.getElementById("section-1")!,
+        s = e.step1 || {};
+    (t.querySelector(".client-name-input") as HTMLInputElement).value = s.clientName || "", (t.querySelector(".client-email-input") as HTMLInputElement).value = s.clientEmail || "", (t.querySelector(".coach-name-input") as HTMLInputElement).value = s.coachName || "", (t.querySelector(".profile-pic-preview") as HTMLImageElement).src = s.profilePic || "https://placehold.co/100x100/374151/E5E7EB?text=عکس";
+    if (s.trainingGoal) {
+        const n = t.querySelector(`.training-goal[value="${s.trainingGoal}"]`) as HTMLInputElement;
+        n && (n.checked = !0)
+    }(t.querySelector(".age-slider") as HTMLInputElement).value = s.age || "25", (t.querySelector(".height-slider") as HTMLInputElement).value = s.height || "180", (t.querySelector(".weight-slider") as HTMLInputElement).value = s.weight || "80", (t.querySelector(".neck-input") as HTMLInputElement).value = s.neck || "", (t.querySelector(".waist-input") as HTMLInputElement).value = s.waist || "", (t.querySelector(".hip-input") as HTMLInputElement).value = s.hip || "";
+    if (s.gender) {
+        const n = t.querySelector(`.gender[value="${s.gender}"]`) as HTMLInputElement;
+        n && (n.checked = !0)
+    }
+    if (s.activityLevel) {
+        const n = t.querySelector(`.activity-level[value="${s.activityLevel}"]`) as HTMLInputElement;
+        n && (n.checked = !0)
+    }
+    if (s.trainingDays) {
+        const n = t.querySelector(`.training-days[value="${s.trainingDays}"]`) as HTMLInputElement;
+        n && (n.checked = !0)
+    }
+    updateRadioCardSelection(t);
+    const r = e.step2 || {
+        days: []
+    };
+    r.days && r.days.length > 0 ? r.days.forEach((n, o) => {
+        re(o === 0);
+        const m = document.querySelector(`#workout-days-container .day-card:nth-child(${o+1})`)!;
+        (m.querySelector(".day-title-input") as HTMLInputElement).value = n.title, (m.querySelector(".day-notes-input") as HTMLTextAreaElement).value = n.notes;
+        const d = m.querySelector(".exercise-list")!;
+        d.innerHTML = "", n.exercises.forEach(c => {
+            var E;
+            ge(d as HTMLDivElement);
+            const g = d.lastElementChild!,
+                x = g.querySelector(".muscle-group-select") as HTMLSelectElement,
+                h = g.querySelector(".exercise-select") as HTMLSelectElement;
+            x.value = c.muscle, pe(c.muscle, h), h.value = c.exercise, (g.querySelector(".set-slider") as HTMLInputElement).value = c.sets, (g.querySelector(".rep-slider") as HTMLInputElement).value = c.reps, (g.querySelector(".rest-slider") as HTMLInputElement).value = c.rest, c.isSuperset && (g.classList.add("is-superset"), (E = g.querySelector(".superset-btn")) == null || E.classList.add("active"))
+        })
+    }) : re(!0);
+    const a = e.step3 || {
+        supplements: []
+    };
+    document.querySelectorAll(".supplement-checkbox").forEach(n => (n as HTMLInputElement).checked = !1), a.supplements && a.supplements.forEach(n => {
+        var m;
+        const o = document.querySelector(`.supplement-checkbox[value="${n.name}"]`) as HTMLInputElement;
+        o && (o.checked = !0, ((m = o.closest(".supplement-item")) == null ? void 0 : (m.querySelector(".dosage-input") as HTMLInputElement)).value = n.dosage)
+    }), (document.getElementById("general-notes-input") as HTMLTextAreaElement).value = (e.step4 || {}).generalNotes || "";
+    const o = document.getElementById("ai-nutrition-result")!;
+    e.step5 && e.step5.nutritionPlanHTML ? (o.innerHTML = e.step5.nutritionPlanHTML, o.classList.remove("hidden")) : (o.innerHTML = "", o.classList.add("hidden")), document.querySelectorAll("#program-builder-form .range-slider").forEach(n => {
+        ie(n as HTMLInputElement);
+        const m = new Event("input", {
+            bubbles: !0
+        });
+        n.dispatchEvent(m)
+    }), xe(t), he(t), F = 1, _e()
 }
 
-function loadStateIntoApp(state: AppState) {
-    // Reset form first
-    (document.getElementById('program-builder-form') as HTMLFormElement).reset();
-    (document.getElementById('workout-days-container') as HTMLElement).innerHTML = '';
-    
-    const s1Container = document.getElementById('section-1')!;
-
-    // Step 1
-    const s1 = state.step1 || {};
-    (s1Container.querySelector('.client-name-input') as HTMLInputElement).value = s1.clientName || '';
-    (s1Container.querySelector('.client-email-input') as HTMLInputElement).value = s1.clientEmail || '';
-    (s1Container.querySelector('.coach-name-input') as HTMLInputElement).value = s1.coachName || '';
-    (s1Container.querySelector('.profile-pic-preview') as HTMLImageElement).src = s1.profilePic || 'https://placehold.co/100x100/374151/E5E7EB?text=عکس';
-    if (s1.trainingGoal) {
-        const goalRadio = s1Container.querySelector(`.training-goal[value="${s1.trainingGoal}"]`) as HTMLInputElement;
-        if(goalRadio) goalRadio.checked = true;
-    }
-    (s1Container.querySelector('.age-slider') as HTMLInputElement).value = s1.age || '25';
-    (s1Container.querySelector('.height-slider') as HTMLInputElement).value = s1.height || '180';
-    (s1Container.querySelector('.weight-slider') as HTMLInputElement).value = s1.weight || '80';
-    (s1Container.querySelector('.neck-input') as HTMLInputElement).value = s1.neck || '';
-    (s1Container.querySelector('.waist-input') as HTMLInputElement).value = s1.waist || '';
-    (s1Container.querySelector('.hip-input') as HTMLInputElement).value = s1.hip || '';
-    if (s1.gender) {
-        const genderRadio = s1Container.querySelector(`.gender[value="${s1.gender}"]`) as HTMLInputElement;
-        if(genderRadio) genderRadio.checked = true;
-    }
-    if (s1.activityLevel) {
-        const activityRadio = s1Container.querySelector(`.activity-level[value="${s1.activityLevel}"]`) as HTMLInputElement;
-        if (activityRadio) activityRadio.checked = true;
-    }
-    if (s1.trainingDays) {
-        const daysRadio = s1Container.querySelector(`.training-days[value="${s1.trainingDays}"]`) as HTMLInputElement;
-        if (daysRadio) daysRadio.checked = true;
-    }
-
-    // Step 2
-    const s2 = state.step2 || { days: [] };
-    if (s2.days && s2.days.length > 0) {
-        s2.days.forEach((day, dayIndex) => {
-            addDayCard(dayIndex === 0);
-            const dayCard = document.querySelector(`#workout-days-container .day-card:nth-child(${dayIndex + 1})`) as HTMLElement;
-            (dayCard.querySelector('.day-title-input') as HTMLInputElement).value = day.title;
-            (dayCard.querySelector('.day-notes-input') as HTMLTextAreaElement).value = day.notes;
-            const exList = dayCard.querySelector('.exercise-list') as HTMLElement;
-            exList.innerHTML = '';
-            day.exercises.forEach(ex => {
-                addExerciseRow(exList);
-                const exRow = exList.lastElementChild as HTMLElement;
-                const muscleSelect = exRow.querySelector('.muscle-group-select') as HTMLSelectElement;
-                const exerciseSelect = exRow.querySelector('.exercise-select') as HTMLSelectElement;
-                muscleSelect.value = ex.muscle;
-                populateExercises(ex.muscle, exerciseSelect);
-                exerciseSelect.value = ex.exercise;
-                (exRow.querySelector('.set-slider') as HTMLInputElement).value = ex.sets;
-                (exRow.querySelector('.rep-slider') as HTMLInputElement).value = ex.reps;
-                (exRow.querySelector('.rest-slider') as HTMLInputElement).value = ex.rest;
-                if (ex.isSuperset) {
-                    exRow.classList.add('is-superset');
-                    exRow.querySelector('.superset-btn')?.classList.add('active');
+function Oe() {
+    f = "admin", localStorage.setItem("fitgympro_last_user", "admin"), Je({
+        step1: {
+            coachName: "مربی فیت‌جیم‌پرو"
+        },
+        step2: {
+            days: []
+        },
+        step3: {
+            supplements: []
+        },
+        step4: {},
+        step5: {}
+    }), document.getElementById("current-user-name")!.textContent = "Admin";
+    const e = document.getElementById("current-user-display")!;
+    e.classList.remove("hidden"), e.classList.add("flex"), document.getElementById("logout-btn")!.classList.remove("hidden"), je.classList.remove("hidden"), V.classList.add("opacity-0"), setTimeout(() => V.classList.add("hidden"), 300), me.classList.remove("hidden"), setTimeout(() => me.classList.remove("opacity-0"), 50)
+}
+const ot = (e = []) => {
+    if (!e || e.length === 0) return 0;
+    const t = e.map(o => o.date),
+        s = 864e5,
+        r = [...new Set(t.map(o => new Date(o).setHours(0, 0, 0, 0)))].sort((o, m) => m - o);
+    if (r.length === 0 || new Date().setHours(0, 0, 0, 0) - r[0] > s) return 0;
+    let n = 1;
+    for (let o = 0; o < r.length - 1 && (r[o] - r[o + 1]) / s === 1; o++) n++;
+    return n
+}, it = e => {
+    if (!e.step2 || !e.step2.days || e.step2.days.length === 0) return null;
+    const t = new Date().getDay(),
+        s = e.step2.days.length,
+        r = {
+            1: [3],
+            2: [2, 5],
+            3: [1, 3, 5],
+            4: [1, 2, 4, 5],
+            5: [1, 2, 3, 4, 5],
+            6: [1, 2, 3, 4, 5, 6],
+            7: [0, 1, 2, 3, 4, 5, 6]
+        },
+        n = (r[s] || r[4]).indexOf(t);
+    return n !== -1 && e.step2.days[n] ? {
+        day: e.step2.days[n],
+        dayIndex: n
+    } : null
+}, Xe = (e = [], t = "weight-progress-chart", s = "no-chart-data", smallChart = false) => {
+    var a;
+    const r = (a = document.getElementById(t) as HTMLCanvasElement) == null ? void 0 : a.getContext("2d");
+    if (!r) return;
+    const n = document.getElementById(s),
+        o = document.getElementById(t);
+    if (!o) return;
+    n && !e || e.length < 2 ? (n.classList.remove("hidden"), o.classList.add("hidden")) : (n && n.classList.add("hidden"), o.classList.remove("hidden"), (() => {
+        let m = null;
+        if(t === "weight-progress-chart") m = ve;
+        if(t === "weight-progress-chart-small") m = smallChartInstance;
+        if(t.startsWith("admin")) m = adminChartInstance;
+        
+        m && m.destroy();
+        
+        const c = [...e].sort((E, q) => new Date(E.date).getTime() - new Date(q.date).getTime()),
+            g = c.map(E => new Date(E.date).toLocaleDateString("fa-IR", {
+                month: "short",
+                day: "numeric"
+            })),
+            x = c.map(E => E.weight),
+            h = document.documentElement.getAttribute("data-theme") === "dark",
+            I = h ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+            C = h ? "#e2e8f0" : "#111827",
+            L = new window.Chart(r, {
+                type: "line",
+                data: {
+                    labels: g,
+                    datasets: [{
+                        label: "وزن (kg)",
+                        data: x,
+                        borderColor: "#FBBF24",
+                        backgroundColor: "rgba(251, 191, 36, 0.2)",
+                        fill: !0,
+                        tension: .3,
+                        pointBackgroundColor: "#FBBF24",
+                        pointBorderColor: "#fff",
+                        pointHoverRadius: 7,
+                        pointRadius: smallChart ? 0 : 5
+                    }]
+                },
+                options: {
+                    responsive: !0,
+                    maintainAspectRatio: !1,
+                    plugins: {
+                        legend: {
+                            display: !1
+                        },
+                        tooltip: {
+                            enabled: !smallChart
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: !1,
+                            display: !smallChart,
+                            grid: {
+                                color: I
+                            },
+                            ticks: {
+                                color: C
+                            }
+                        },
+                        x: {
+                             display: !smallChart,
+                            grid: {
+                                display: !1
+                            },
+                            ticks: {
+                                color: C
+                            }
+                        }
+                    }
                 }
             });
-        });
-    } else {
-        addDayCard(true); // Add one default day if none exist
-    }
+        if(t === "weight-progress-chart") ve = L;
+        if(t === "weight-progress-chart-small") smallChartInstance = L;
+        if(t.startsWith("admin")) adminChartInstance = L;
 
-    // Step 3
-    const s3 = state.step3 || { supplements: [] };
-    document.querySelectorAll('.supplement-checkbox').forEach(cb => (cb as HTMLInputElement).checked = false);
-    if(s3.supplements) {
-        s3.supplements.forEach(sup => {
-            const checkbox = document.querySelector(`.supplement-checkbox[value="${sup.name}"]`) as HTMLInputElement;
-            if (checkbox) {
-                checkbox.checked = true;
-                (checkbox.closest('.supplement-item')?.querySelector('.dosage-input') as HTMLInputElement).value = sup.dosage;
-            }
-        });
-    }
-
-    // Step 4
-    (document.getElementById('general-notes-input') as HTMLTextAreaElement).value = (state.step4 || {}).generalNotes || '';
-
-    // Final UI updates for Admin form
-    document.querySelectorAll('#program-builder-form .range-slider').forEach(s => {
-        updateSliderBackground(s as HTMLInputElement);
-        const event = new Event('input', { bubbles: true });
-        s.dispatchEvent(event);
-    });
-    toggleHipInput(s1Container);
-    calculateBodyMetrics(s1Container);
-    currentStep = 1;
-    updateUI();
-}
-
-function saveCurrentState() {
-    if (currentUser && currentUser === 'admin') {
-        const clientName = (document.getElementById('client-name-input') as HTMLInputElement).value;
-        if (clientName) {
-            const existingData = getUserData(clientName);
-            const newProgramData = getAppState();
-            const mergedState = { ...existingData, ...newProgramData };
-            saveUserData(clientName, mergedState);
-        }
-    }
-}
-
-function loginAsAdmin() {
-    currentUser = 'admin';
-    localStorage.setItem('fitgympro_last_user', 'admin');
-    loadStateIntoApp({ step1: { coachName: "مربی فیت‌جیم‌پرو" }, step2: { days: [] }, step3: { supplements: [] }, step4: {} });
-
-    (document.getElementById('current-user-name') as HTMLElement).textContent = "Admin";
-    const currentUserDisplay = document.getElementById('current-user-display') as HTMLElement;
-    currentUserDisplay.classList.remove('hidden');
-    currentUserDisplay.classList.add('flex');
-    (document.getElementById('logout-btn') as HTMLElement).classList.remove('hidden');
-    adminPanelBtn.classList.remove('hidden');
-
-    authScreen.classList.add('opacity-0');
-    setTimeout(() => authScreen.classList.add('hidden'), 300);
-
-    mainAppContainer.classList.remove('hidden');
-    setTimeout(() => mainAppContainer.classList.remove('opacity-0'), 50);
-}
-
-// --- Dashboard Rendering ---
-
-const calculateWorkoutStreak = (history: string[] = []): number => {
-    if (!history || history.length === 0) return 0;
-    const oneDay = 24 * 60 * 60 * 1000;
-    const workoutDates = [...new Set(history.map(iso => new Date(iso).setHours(0, 0, 0, 0)))].sort((a, b) => b - a);
-    if (workoutDates.length === 0) return 0;
-    const today = new Date().setHours(0, 0, 0, 0);
-    if (today - workoutDates[0] > oneDay) return 0;
-    let streak = 1;
-    for (let i = 0; i < workoutDates.length - 1; i++) {
-        if ((workoutDates[i] - workoutDates[i + 1]) / oneDay === 1) streak++;
-        else break;
-    }
-    return streak;
-}
-
-const getTodaysWorkout = (state: AppState): { day: DayState; dayIndex: number } | null => {
-    if (!state.step2 || !state.step2.days || state.step2.days.length === 0) return null;
-    const today = new Date().getDay();
-    const numDays = state.step2.days.length;
-    const dayMap: { [key: number]: number[] } = { 1: [3], 2: [2, 5], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6], 7: [0, 1, 2, 3, 4, 5, 6] };
-    const schedule = dayMap[numDays] || dayMap[4];
-    const workoutDayIndex = schedule.indexOf(today);
-    if (workoutDayIndex !== -1 && state.step2.days[workoutDayIndex]) {
-        return { day: state.step2.days[workoutDayIndex], dayIndex: workoutDayIndex };
-    }
-    return null;
+    })())
 };
 
-const renderWeightChart = (history: { date: string; weight: number }[] = []) => {
-    const ctx = (document.getElementById('weight-progress-chart') as HTMLCanvasElement)?.getContext('2d');
-    const noDataEl = document.getElementById('no-chart-data') as HTMLElement;
-    const canvasEl = document.getElementById('weight-progress-chart') as HTMLElement;
-    if (!ctx || !noDataEl || !canvasEl) return;
-    if (weightChart) weightChart.destroy();
-
-    if (!history || history.length < 2) {
-        noDataEl.classList.remove('hidden');
-        canvasEl.classList.add('hidden');
-        return;
-    }
-    noDataEl.classList.add('hidden');
-    canvasEl.classList.remove('hidden');
-
-    const sortedHistory = [...history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const labels = sortedHistory.map(entry => new Date(entry.date).toLocaleDateString('fa-IR', { month: 'short', day: 'numeric' }));
-    const data = sortedHistory.map(entry => entry.weight);
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-    const fontColor = isDark ? '#e2e8f0' : '#111827';
-
-    weightChart = new window.Chart(ctx, {
-        type: 'line',
-        data: { labels, datasets: [{ label: 'وزن (kg)', data, borderColor: '#FBBF24', backgroundColor: 'rgba(251, 191, 36, 0.2)', fill: true, tension: 0.3, pointBackgroundColor: '#FBBF24', pointBorderColor: '#fff', pointHoverRadius: 7, pointRadius: 5 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: false, grid: { color: gridColor }, ticks: { color: fontColor } }, x: { grid: { display: false }, ticks: { color: fontColor } } } }
-    });
-};
-
-function renderDashboardContent(username: string, state: AppState) {
-    const statsGrid = document.getElementById('dashboard-stats-grid')!;
-    const todayFocusCard = document.getElementById('today-focus-card')!;
-
-    // 1. Render Stats
-    const streak = calculateWorkoutStreak(state.workoutHistory);
-    const totalWorkouts = state.workoutHistory?.length || 0;
-    const joinDate = state.joinDate ? new Date(state.joinDate).toLocaleDateString('fa-IR') : 'نامشخص';
-
-    statsGrid.innerHTML = `
+const renderDashboardTab = (username, userData) => {
+    var g;
+    const s = document.getElementById("dashboard-stats-grid")!,
+        r = document.getElementById("today-focus-card")!,
+        a = ot(userData.workoutHistory),
+        n = ((g = userData.workoutHistory) == null ? void 0 : g.length) || 0,
+        o = userData.joinDate ? new Date(userData.joinDate).toLocaleDateString("fa-IR") : "نامشخص";
+    s.innerHTML = `
         <div class="card p-4 rounded-lg flex items-start gap-4 bg-orange-500/10 border-orange-500/20">
             <div class="bg-orange-500/20 p-3 rounded-lg"><i data-lucide="flame" class="w-6 h-6 text-orange-400"></i></div>
-            <div><p class="text-sm font-semibold text-secondary">روند تمرینی</p><p class="text-3xl font-bold">${streak} <span class="text-base font-medium">روز</span></p></div>
+            <div><p class="text-sm font-semibold text-secondary">روند تمرینی</p><p class="text-3xl font-bold">${a} <span class="text-base font-medium">روز</span></p></div>
         </div>
         <div class="card p-4 rounded-lg flex items-start gap-4 bg-green-500/10 border-green-500/20">
             <div class="bg-green-500/20 p-3 rounded-lg"><i data-lucide="swords" class="w-6 h-6 text-green-400"></i></div>
-            <div><p class="text-sm font-semibold text-secondary">کل تمرینات</p><p class="text-3xl font-bold">${totalWorkouts}</p></div>
+            <div><p class="text-sm font-semibold text-secondary">کل تمرینات</p><p class="text-3xl font-bold">${n}</p></div>
         </div>
         <div class="card p-4 rounded-lg flex items-start gap-4 bg-indigo-500/10 border-indigo-500/20">
             <div class="bg-indigo-500/20 p-3 rounded-lg"><i data-lucide="calendar-plus" class="w-6 h-6 text-indigo-400"></i></div>
-            <div><p class="text-sm font-semibold text-secondary">عضویت از</p><p class="text-xl font-bold pt-2">${joinDate}</p></div>
+            <div><p class="text-sm font-semibold text-secondary">عضویت از</p><p class="text-xl font-bold pt-2">${o}</p></div>
         </div>
     `;
-
-    // 2. Render Today's Focus
-    const todaysWorkout = getTodaysWorkout(state);
-    const todayStr = new Date().toISOString().split('T')[0];
-    const hasWorkedOutToday = (state.workoutHistory || []).some(d => d.startsWith(todayStr));
-
-    let focusHTML = `<div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="target" class="text-blue-400"></i>تمرکز امروز</h3><span class="text-sm font-semibold text-secondary">${new Date().toLocaleDateString('fa-IR', { weekday: 'long', day: 'numeric', month: 'long' })}</span></div>`;
-    if (todaysWorkout) {
-        focusHTML += `
+    const m = document.getElementById("coach-message-card")!,
+        d = document.getElementById("coach-message-content")!;
+    userData.coachMessages && userData.coachMessages.length > 0 ? (d.innerHTML = userData.coachMessages.map(x => `<p class="border-r-2 border-amber-500 pr-2">${A(x)}</p>`).join(""), m.classList.remove("hidden")) : m.classList.add("hidden");
+    const c = it(userData);
+    let x = `<div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="target" class="text-blue-400"></i>تمرکز امروز</h3><span class="text-sm font-semibold text-secondary">${new Date().toLocaleDateString("fa-IR",{weekday:"long",day:"numeric",month:"long"})}</span></div>`;
+    if (c) {
+        const h = new Date().toISOString().split("T")[0],
+            E = (userData.workoutHistory || []).some(q => q.date.startsWith(h));
+        x += `
             <div class="bg-tertiary/50 rounded-lg p-4">
-                <h4 class="font-bold text-xl mb-3">${sanitizeHTML(todaysWorkout.day.title)}</h4>
+                <h4 class="font-bold text-xl mb-3">${A(c.day.title)}</h4>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-4">
-                    ${todaysWorkout.day.exercises.slice(0, 4).map(ex => `<div class="bg-secondary/50 p-2 rounded-md text-xs font-semibold">${sanitizeHTML(ex.exercise)}</div>`).join('')}
-                    ${todaysWorkout.day.exercises.length > 4 ? `<div class="bg-secondary/50 p-2 rounded-md text-xs font-semibold">+ ${todaysWorkout.day.exercises.length - 4} حرکت دیگر</div>` : ''}
+                    ${c.day.exercises.slice(0,4).map(q=>`<div class="bg-secondary/50 p-2 rounded-md text-xs font-semibold">${A(q.exercise)}</div>`).join("")}
+                    ${c.day.exercises.length>4?`<div class="bg-secondary/50 p-2 rounded-md text-xs font-semibold">+ ${c.day.exercises.length-4} حرکت دیگر</div>`:""}
                 </div>
-                 <button id="mark-workout-done-btn" class="primary-button w-full font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 ${hasWorkedOutToday ? 'bg-green-500 hover:bg-green-600' : ''}" ${hasWorkedOutToday ? 'disabled' : ''}>
-                    <i data-lucide="${hasWorkedOutToday ? 'check-check' : 'play'}"></i>
-                    <span>${hasWorkedOutToday ? 'تمرین امروز انجام شد!' : 'ثبت انجام تمرین'}</span>
+                 <button id="start-workout-btn" class="primary-button w-full font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 ${E?"bg-green-500 hover:bg-green-600":""}">
+                    <i data-lucide="${E?"check-check":"clipboard-list"}"></i>
+                    <span>${E?"تمرین امروز ثبت شد":"شروع و ثبت جزئیات تمرین"}</span>
                 </button>
             </div>
             <p class="text-xs text-secondary text-center italic mt-4">نکته روز: "قدرت از چیزی که فکر می‌کنی می‌توانی انجام دهی، یک قدم فراتر است."</p>
-        `;
+        `
+    } else x += '<div class="text-center bg-tertiary/50 rounded-lg p-8"><i data-lucide="coffee" class="w-10 h-10 mx-auto text-green-400 mb-3"></i><h4 class="font-bold">امروز روز استراحت است!</h4><p class="text-sm text-secondary mt-1">از ریکاوری لذت ببر و برای جلسه بعدی آماده شو.</p></div>';
+    r.innerHTML = x;
+    Xe(userData.weightHistory, 'weight-progress-chart-small', 'no-chart-data', true);
+}
+
+const renderProgramTab = (userData) => {
+    const weeklyViewContainer = document.getElementById('program-weekly-view');
+    if (!weeklyViewContainer) return;
+    
+    const programDays = (userData.step2 || {}).days || [];
+    const trainingDaysCount = programDays.length;
+    const dayMapping = {
+        1: [3], 2: [2, 5], 3: [1, 3, 5], 4: [1, 2, 4, 5],
+        5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6], 7: [0, 1, 2, 3, 4, 5, 6]
+    };
+    const schedule = dayMapping[trainingDaysCount] || dayMapping[4];
+    const weekDays = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنج‌شنبه", "جمعه", "شنبه"];
+    
+    let programDayIndex = 0;
+    weeklyViewContainer.innerHTML = weekDays.map((dayName, index) => {
+        if (schedule.includes(index) && programDayIndex < programDays.length) {
+            const dayData = programDays[programDayIndex++];
+            return `
+                <div class="card rounded-lg p-4 border-l-4 border-amber-400">
+                    <p class="font-bold text-lg">${dayName}</p>
+                    <p class="text-sm text-secondary truncate">${A(dayData.title)}</p>
+                    <p class="text-xs mt-2 font-semibold bg-tertiary/80 rounded-full px-2 py-1 inline-block">${dayData.exercises.length} حرکت</p>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="card rounded-lg p-4 bg-tertiary/50">
+                    <p class="font-bold text-lg">${dayName}</p>
+                    <p class="text-sm text-secondary">استراحت</p>
+                </div>
+            `;
+        }
+    }).join('');
+
+    Ue(userData, "#dashboard-program-view");
+}
+
+const renderProgressTab = (userData) => {
+    Xe(userData.weightHistory, 'weight-progress-chart', 'no-chart-data');
+    const historyContainer = document.getElementById('workout-history-container');
+    if (!historyContainer) return;
+
+    const history = (userData.workoutHistory || []).slice().reverse();
+
+    if (history.length > 0) {
+        historyContainer.innerHTML = history.map(log => `
+            <details class="bg-tertiary/50 rounded-lg">
+                <summary class="p-3 cursor-pointer font-semibold flex justify-between items-center">
+                    <span>تمرین ${new Date(log.date).toLocaleDateString("fa-IR", { day: 'numeric', month: 'long' })}</span>
+                    <i data-lucide="chevron-down" class="w-5 h-5 transition-transform details-arrow"></i>
+                </summary>
+                <div class="p-3 border-t border-border-primary text-sm">
+                    ${log.workoutData.map(ex => `
+                        <div class="mb-2">
+                            <p class="font-bold">${A(ex.exerciseName)}</p>
+                            <div class="flex flex-wrap gap-2 text-xs mt-1">
+                                ${ex.sets.map((set, i) => `<span class="bg-secondary/80 rounded-full px-2 py-0.5">${i+1}: ${set.reps} تکرار @ ${set.weight || '-'}kg</span>`).join('')}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </details>
+        `).join('');
     } else {
-        focusHTML += `<div class="text-center bg-tertiary/50 rounded-lg p-8"><i data-lucide="coffee" class="w-10 h-10 mx-auto text-green-400 mb-3"></i><h4 class="font-bold">امروز روز استراحت است!</h4><p class="text-sm text-secondary mt-1">از ریکاوری لذت ببر و برای جلسه بعدی آماده شو.</p></div>`;
+        historyContainer.innerHTML = '<p class="text-secondary text-center p-4">هیچ تمرینی برای نمایش وجود ندارد.</p>';
     }
-    todayFocusCard.innerHTML = focusHTML;
-
-    // 3. Render Chart
-    renderWeightChart(state.weightHistory);
-    
-    window.lucide.createIcons();
 }
 
 
-function populateDashboard(username: string, state: AppState) {
-    const profilePanel = document.getElementById('dashboard-profile-panel')!;
-    const statusContainer = document.getElementById('dashboard-status-container') as HTMLElement;
-    
-    // Populate status
-    statusContainer.innerHTML = '';
-    const hasPaid = state.hasPaid ?? false;
-    const infoConfirmed = state.infoConfirmed ?? false;
-    
-    const paymentStatusEl = document.createElement('div');
-    paymentStatusEl.className = `flex items-center gap-3 p-3 rounded-lg ${hasPaid ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`;
-    paymentStatusEl.innerHTML = `<i data-lucide="${hasPaid ? 'check-circle' : 'alert-circle'}" class="w-6 h-6"></i><div><p class="font-bold">وضعیت پرداخت</p><p class="text-sm">${hasPaid ? 'پرداخت شده' : 'پرداخت نشده'}</p></div>`;
-    statusContainer.appendChild(paymentStatusEl);
+const renderProfileTab = (username, userData) => {
+    const s = document.getElementById("profile-tab-content")!,
+        r = document.getElementById("dashboard-status-container")!;
+    r.innerHTML = "";
+    const a = userData.hasPaid ?? !1,
+        n = userData.infoConfirmed ?? !1,
+        o = document.createElement("div");
+    o.className = `flex items-center gap-3 p-3 rounded-lg ${a?"bg-green-500/10 text-green-400":"bg-red-500/10 text-red-400"}`, o.innerHTML = `<i data-lucide="${a?"check-circle":"alert-circle"}" class="w-6 h-6"></i><div><p class="font-bold">وضعیت پرداخت</p><p class="text-sm">${a?"پرداخت شده":"پرداخت نشده"}</p></div>`, r.appendChild(o);
+    const m = document.createElement("div");
+    m.className = `flex items-center gap-3 p-3 rounded-lg ${n?"bg-blue-500/10 text-blue-400":"bg-yellow-500/10 text-yellow-400"}`, m.innerHTML = `<i data-lucide="${n?"user-check":"user-cog"}" class="w-6 h-6"></i><div><p class="font-bold">وضعیت اطلاعات</p><p class="text-sm">${n?"تایید شده":"نیاز به تایید"}</p></div>`, r.appendChild(m);
 
-    const infoStatusEl = document.createElement('div');
-    infoStatusEl.className = `flex items-center gap-3 p-3 rounded-lg ${infoConfirmed ? 'bg-blue-500/10 text-blue-400' : 'bg-yellow-500/10 text-yellow-400'}`;
-    infoStatusEl.innerHTML = `<i data-lucide="${infoConfirmed ? 'user-check' : 'user-cog'}" class="w-6 h-6"></i><div><p class="font-bold">وضعیت اطلاعات</p><p class="text-sm">${infoConfirmed ? 'تایید شده' : 'نیاز به تایید'}</p></div>`;
-    statusContainer.appendChild(infoStatusEl);
+    const d = userData.step1 || {};
+    const profilePanel = document.getElementById("dashboard-profile-panel")!;
+    (profilePanel.querySelector(".client-name-input") as HTMLInputElement).value = username, (profilePanel.querySelector(".client-email-input") as HTMLInputElement).value = d.clientEmail || "", (profilePanel.querySelector(".profile-pic-preview") as HTMLImageElement).src = d.profilePic || "https://placehold.co/100x100/374151/E5E7EB?text=عکس";
     
-    // Populate profile editor panel with user data
-    const s1 = state.step1 || {};
-    (profilePanel.querySelector('.client-name-input') as HTMLInputElement).value = username;
-    (profilePanel.querySelector('.client-email-input') as HTMLInputElement).value = s1.clientEmail || '';
-    (profilePanel.querySelector('.profile-pic-preview') as HTMLImageElement).src = s1.profilePic || 'https://placehold.co/100x100/374151/E5E7EB?text=عکس';
-    if (s1.trainingGoal) {
-        const goalRadio = profilePanel.querySelector(`.training-goal[value="${s1.trainingGoal}"]`) as HTMLInputElement;
-        if (goalRadio) goalRadio.checked = true;
-    }
-    (profilePanel.querySelector('.age-slider') as HTMLInputElement).value = s1.age || '25';
-    (profilePanel.querySelector('.height-slider') as HTMLInputElement).value = s1.height || '180';
-    (profilePanel.querySelector('.weight-slider') as HTMLInputElement).value = s1.weight || '80';
-    (profilePanel.querySelector('.neck-input') as HTMLInputElement).value = s1.neck || '';
-    (profilePanel.querySelector('.waist-input') as HTMLInputElement).value = s1.waist || '';
-    (profilePanel.querySelector('.hip-input') as HTMLInputElement).value = s1.hip || '';
-    if (s1.gender) {
-        const genderRadio = profilePanel.querySelector(`.gender[value="${s1.gender}"]`) as HTMLInputElement;
-        if (genderRadio) genderRadio.checked = true;
-    } else { // Default to male if nothing is set
-        (profilePanel.querySelector('.gender[value="مرد"]') as HTMLInputElement).checked = true;
-    }
-    if (s1.activityLevel) {
-        const activityRadio = profilePanel.querySelector(`.activity-level[value="${s1.activityLevel}"]`) as HTMLInputElement;
-        if (activityRadio) activityRadio.checked = true;
-    }
-    if (s1.trainingDays) {
-        const daysRadio = profilePanel.querySelector(`.training-days[value="${s1.trainingDays}"]`) as HTMLInputElement;
-        if (daysRadio) daysRadio.checked = true;
+    (profilePanel.querySelector(".height-slider") as HTMLInputElement).value = d.height || "180";
+    (profilePanel.querySelector(".weight-slider") as HTMLInputElement).value = d.weight || "80";
+    (profilePanel.querySelector(".age-slider") as HTMLInputElement).value = d.age || "25";
+    (profilePanel.querySelector(".neck-input") as HTMLInputElement).value = d.neck || "";
+    (profilePanel.querySelector(".waist-input") as HTMLInputElement).value = d.waist || "";
+    (profilePanel.querySelector(".hip-input") as HTMLInputElement).value = d.hip || "";
+
+    if (d.gender) {
+        const c = profilePanel.querySelector(`input[name="gender_user"][value="${d.gender}"]`) as HTMLInputElement;
+        if (c) c.checked = true;
+    } else {
+        const c = profilePanel.querySelector('input[name="gender_user"][value="مرد"]') as HTMLInputElement;
+        if (c) c.checked = true;
     }
 
-    // Trigger updates for profile editor
-    profilePanel.querySelectorAll('.range-slider').forEach(s => {
-        updateSliderBackground(s as HTMLInputElement);
-        const event = new Event('input', { bubbles: true });
-        s.dispatchEvent(event);
-    });
-    toggleHipInput(profilePanel);
-    calculateBodyMetrics(profilePanel);
-
-    // Render main dashboard content (stats, focus, chart)
-    renderDashboardContent(username, state);
-
-    // Generate and display the full program preview for the user
-    generateProgramPreview(profilePanel, '#dashboard-program-view');
-    
-    (document.getElementById('dashboard-welcome-message') as HTMLElement).textContent = `خوش آمدی، ${username}!`;
-    window.lucide.createIcons();
-}
-
-
-function loginAsUser(username: string) {
-    currentUser = username;
-    localStorage.setItem('fitgympro_last_user', username);
-
-    const userData = getUserData(username);
-    if(!userData.step1) {
-        userData.step1 = { clientName: username };
-        saveUserData(username, userData);
+    if (d.trainingGoal) {
+        const c = profilePanel.querySelector(`input[name="training_goal_user"][value="${d.trainingGoal}"]`) as HTMLInputElement;
+        if (c) c.checked = true;
+    }
+    if (d.activityLevel) {
+        const c = profilePanel.querySelector(`input[name="activity_level_user"][value="${d.activityLevel}"]`) as HTMLInputElement;
+        if (c) c.checked = true;
+    }
+    if (d.trainingDays) {
+        const c = profilePanel.querySelector(`input[name="training_days_user"][value="${d.trainingDays}"]`) as HTMLInputElement;
+        if (c) c.checked = true;
     }
     
-    populateDashboard(username, userData);
-
-    authScreen.classList.add('opacity-0');
-    setTimeout(() => authScreen.classList.add('hidden'), 300);
-    
-    userDashboardContainer.classList.remove('hidden');
-    setTimeout(() => userDashboardContainer.classList.remove('opacity-0'), 50);
-}
-
-function logout() {
-    currentUser = null;
-    localStorage.removeItem('fitgympro_last_user');
-    
-    mainAppContainer.classList.add('opacity-0');
-    userDashboardContainer.classList.add('opacity-0');
-    
-    setTimeout(() => {
-        mainAppContainer.classList.add('hidden');
-        userDashboardContainer.classList.add('hidden');
-        
-        authScreen.classList.remove('hidden');
-        setTimeout(() => {
-            authScreen.classList.remove('opacity-0');
-        }, 50);
-    }, 300);
-
-    // Reset auth screen to default state
-    document.getElementById('login-tab-btn')?.classList.add('active');
-    document.getElementById('signup-tab-btn')?.classList.remove('active');
-    document.getElementById('login-form-container')?.classList.remove('hidden');
-    document.getElementById('signup-form-container')?.classList.add('hidden');
-    (document.getElementById('login-form') as HTMLFormElement)?.reset();
-    (document.getElementById('signup-form') as HTMLFormElement)?.reset();
-}
-
-const populateAdminUserList = () => {
-    const userListContainer = document.getElementById('admin-user-list') as HTMLElement;
-    const searchTerm = (document.getElementById('admin-user-search') as HTMLInputElement).value.toLowerCase();
-    const activeFilter = document.querySelector('#user-filter-btn-group .user-filter-btn.active')?.getAttribute('data-filter') || 'all';
-
-    if (!userListContainer) return;
-    let users = getUsers().filter((u: any) => u.username !== 'admin');
-
-    // Apply filters
-    if (activeFilter !== 'all') {
-        users = users.filter((user: any) => {
-            const userData = getUserData(user.username);
-            switch (activeFilter) {
-                case 'unpaid':
-                    return !userData.hasPaid;
-                case 'unconfirmed':
-                    return !userData.infoConfirmed;
-                case 'inactive': {
-                    if (!userData.workoutHistory || userData.workoutHistory.length === 0) {
-                        return true; // Inactive if no history
-                    }
-                    const lastWorkoutStr = userData.workoutHistory[userData.workoutHistory.length - 1];
-                    const lastWorkout = new Date(lastWorkoutStr);
-                    const oneWeekAgo = new Date();
-                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                    return lastWorkout < oneWeekAgo;
-                }
-                default:
-                    return true;
-            }
+    updateRadioCardSelection(profilePanel);
+    profilePanel.querySelectorAll(".range-slider").forEach(c => {
+        ie(c as HTMLInputElement);
+        const g = new Event("input", {
+            bubbles: !0
         });
-    }
-
-    // Apply search term
-    if (searchTerm) {
-        users = users.filter((user: any) => 
-            user.username.toLowerCase().includes(searchTerm) ||
-            user.email.toLowerCase().includes(searchTerm)
-        );
-    }
+        c.dispatchEvent(g)
+    });
     
-    userListContainer.innerHTML = '';
-    if (users.length === 0) {
-        userListContainer.innerHTML = `<p class="text-secondary text-center col-span-full">هیچ شاگردی با این مشخصات یافت نشد.</p>`;
-        return;
-    }
-    
-    users.forEach((user: any) => {
-        const card = document.createElement('div');
-        card.className = 'flex items-center justify-between p-3 rounded-lg hover:bg-tertiary/50 transition-colors';
-        card.dataset.username = user.username;
+    xe(profilePanel);
+    he(profilePanel);
+}
 
-        card.innerHTML = `
-            <div class="flex items-center gap-3">
-                <img src="${getUserData(user.username).step1?.profilePic || 'https://placehold.co/40x40/374151/E5E7EB?text=?'}" class="w-10 h-10 rounded-full object-cover">
+
+function de(e, t) {
+    document.getElementById("dashboard-welcome-message")!.textContent = `خوش آمدی، ${e}!`;
+    
+    renderDashboardTab(e, t);
+    renderProgramTab(t);
+    renderProgressTab(t);
+    renderProfileTab(e, t);
+    
+    const c = document.getElementById("notification-bell-container")!;
+    if (t.newProgram) {
+        c.innerHTML = `
+            <button id="notification-bell-btn" class="secondary-button !px-3 !py-2" title="برنامه جدیدی از مربی دریافت کرده‌اید">
+                <i data-lucide="bell"></i>
+                <span class="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-secondary"></span>
+            </button>
+        `;
+        document.getElementById("notification-bell-btn")?.addEventListener("click", () => {
+            w("مربی شما یک برنامه جدید ارسال کرده است.");
+            const g = D(e);
+            delete g.newProgram;
+            W(e, g);
+            c.innerHTML = "";
+            switchUserDashboardTab('program');
+        }, {
+            once: !0
+        });
+    } else {
+        c.innerHTML = "";
+    }
+    window.lucide.createIcons();
+    switchUserDashboardTab('dashboard');
+}
+
+function fe(e) {
+    f = e, localStorage.setItem("fitgympro_last_user", e);
+    const t = D(e);
+    t.step1 || (t.step1 = {
+        clientName: e
+    }, W(e, t)), de(e, t), document.getElementById("ai-chat-fab")?.classList.remove("hidden"), V.classList.add("opacity-0"), setTimeout(() => V.classList.add("hidden"), 300), oe.classList.remove("hidden"), setTimeout(() => oe.classList.remove("opacity-0"), 50)
+}
+
+const switchUserDashboardTab = (e) => {
+    document.querySelectorAll(".user-dashboard-tab").forEach(s => {
+        const r = s.getAttribute("data-tab") === e;
+        s.classList.toggle("active-spring-tab", r), s.classList.toggle("text-secondary", !r), s.classList.toggle("border-transparent", !r)
+    });
+    document.querySelectorAll(".user-dashboard-tab-content").forEach(s => {
+        s.classList.toggle("hidden", s.id !== `${e}-tab-content`)
+    });
+    const t = localStorage.getItem("fitgympro_last_user");
+    if (t && f !== "admin") {
+        const s = D(t);
+        e === "progress" && Xe(s.weightHistory, "weight-progress-chart", "no-chart-data"), e === "dashboard" && Xe(s.weightHistory, 'weight-progress-chart-small', 'no-chart-data', true);
+    }
+};
+
+function switchAuthTab(e, t = !1) {
+    const s = document.getElementById("login-tab-btn"),
+        r = document.getElementById("signup-tab-btn"),
+        a = document.getElementById("tab-underline"),
+        n = document.getElementById("login-form-container"),
+        o = document.getElementById("signup-form-container"),
+        m = document.getElementById("signup-form") as HTMLFormElement,
+        d = document.getElementById("login-form") as HTMLFormElement;
+    if (!s || !r || !a || !n || !o) return;
+    const c = e === "login" ? s : r,
+        g = e === "login";
+    a.style.transition = t ? "none" : "left 0.3s ease, width 0.3s ease", s.classList.toggle("active", g), r.classList.toggle("active", !g), n.classList.toggle("hidden", !g), o.classList.toggle("hidden", g), g ? (m == null || m.reset(), o.querySelectorAll(".validation-message").forEach(h => h.textContent = "")) : d == null || d.reset(), a.style.left = `${c.offsetLeft}px`, a.style.width = `${c.offsetWidth}px`, t && setTimeout(() => {
+        a.style.transition = "left 0.3s ease, width 0.3s ease"
+    }, 50)
+}
+
+function We() {
+    var e, t;
+    f = null, localStorage.removeItem("fitgympro_last_user"), document.getElementById("ai-chat-fab")?.classList.add("hidden"), me.classList.add("opacity-0"), oe.classList.add("opacity-0"), setTimeout(() => {
+        me.classList.add("hidden"), oe.classList.add("hidden"), V.classList.remove("hidden"), setTimeout(() => {
+            V.classList.remove("opacity-0")
+        }, 50)
+    }, 300), switchAuthTab("login", !0), (e = document.getElementById("login-form")) == null || e.reset(), (t = document.getElementById("signup-form")) == null || t.reset()
+}
+const renderSparkline = (e, t) => {
+    const s = document.getElementById(e) as HTMLCanvasElement;
+    if (!s || !t || t.length < 2) return;
+    const r = [...t].sort((c, g) => new Date(c.date).getTime() - new Date(g.date).getTime()).slice(-30),
+        a = r.map(c => new Date(c.date).toLocaleDateString("fa-IR")),
+        n = r.map(c => c.weight),
+        o = n[n.length - 1] > n[0] ? "#22c55e" : "#ef4444",
+        m = document.documentElement.getAttribute("data-theme") === "dark",
+        d = m ? "#e2e8f0" : "#111827";
+    new window.Chart(s.getContext("2d"), {
+        type: "line",
+        data: {
+            labels: a,
+            datasets: [{
+                data: n,
+                borderColor: o,
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: .4
+            }]
+        },
+        options: {
+            responsive: !0,
+            maintainAspectRatio: !1,
+            animation: !1,
+            plugins: {
+                legend: {
+                    display: !1
+                },
+                tooltip: {
+                    enabled: !1
+                }
+            },
+            scales: {
+                x: {
+                    display: !1
+                },
+                y: {
+                    display: !1
+                }
+            }
+        }
+    })
+}, getUserStatus = e => {
+    if (!e.workoutHistory || e.workoutHistory.length === 0) return {
+        text: "جدید",
+        className: "bg-blue-500/20 text-blue-400"
+    };
+    const t = e.workoutHistory.sort((r, a) => new Date(a.date).getTime() - new Date(r.date).getTime())[0].date,
+        s = (new Date().getTime() - new Date(t).getTime()) / 864e5;
+    return s > 7 ? {
+        text: "نیاز به توجه",
+        className: "bg-red-500/20 text-red-400"
+    } : {
+        text: "در مسیر پیشرفت",
+        className: "bg-green-500/20 text-green-400"
+    }
+}, se = () => {
+    var a;
+    const e = document.getElementById("admin-user-list")!,
+        t = (document.getElementById("admin-user-search") as HTMLInputElement).value.toLowerCase(),
+        s = ((a = document.querySelector("#user-filter-btn-group .user-filter-btn.active")) == null ? void 0 : a.getAttribute("data-filter")) || "all";
+    if (!e) return;
+    let r = O().filter(n => n.username !== "admin");
+    if (s !== "all" && (r = r.filter(n => {
+        const o = D(n.username);
+        switch (s) {
+            case "unpaid":
+                return !o.hasPaid;
+            case "unconfirmed":
+                return !o.infoConfirmed;
+            case "inactive":
+                {
+                    if (!o.workoutHistory || o.workoutHistory.length === 0) return !0;
+                    const m = o.workoutHistory.sort((c, g) => new Date(g.date).getTime() - new Date(c.date).getTime())[0].date;
+                    return (new Date().getTime() - new Date(m).getTime()) / 864e5 > 7
+                }
+            default:
+                return !0
+        }
+    })), t && (r = r.filter(n => n.username.toLowerCase().includes(t) || n.email.toLowerCase().includes(t))), e.innerHTML = "", r.length === 0) {
+        e.innerHTML = '<p class="text-secondary text-center col-span-full">هیچ شاگردی با این مشخصات یافت نشد.</p>';
+        return
+    }
+    r.forEach(n => {
+        var m;
+        const o = document.createElement("div");
+        const d = D(n.username);
+        const c = getUserStatus(d);
+        o.className = "grid grid-cols-4 items-center gap-2 p-3 rounded-lg hover:bg-tertiary/50 transition-colors", o.dataset.username = n.username, o.innerHTML = `
+            <div class="flex items-center gap-3 col-span-2">
+                <img src="${((m=d.step1)==null?void 0:m.profilePic)||"https://placehold.co/40x40/374151/E5E7EB?text=?"}" class="w-10 h-10 rounded-full object-cover">
                 <div>
-                    <p class="font-bold">${user.username}</p>
-                    <p class="text-xs text-secondary">${user.email}</p>
+                    <p class="font-bold">${n.username}</p>
+                    <div class="flex items-center gap-2">
+                       <p class="text-xs text-secondary">${n.email}</p>
+                       <span class="text-xs font-bold px-2 py-0.5 rounded-full ${c.className}">${c.text}</span>
+                    </div>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
-                <button class="load-user-btn secondary-button text-xs font-bold py-1 px-3 rounded-md" data-username="${user.username}">بارگذاری</button>
-                <button class="remove-user-btn text-red-500 hover:bg-red-500/10 p-2 rounded-md" data-username="${user.username}" title="حذف کاربر"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            <div class="h-8"><canvas id="spark-${n.username}"></canvas></div>
+            <div class="flex items-center gap-1 justify-end">
+                <button class="load-user-btn secondary-button !text-xs !font-bold !py-1 !px-2 rounded-md" data-username="${n.username}">بارگذاری</button>
+                <button class="remove-user-btn text-red-500 hover:bg-red-500/10 p-2 rounded-md" data-username="${n.username}" title="حذف کاربر"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </div>
-        `;
-        userListContainer.appendChild(card);
-    });
-    window.lucide.createIcons();
-};
-
-const formatTimeAgo = (isoDate: string): string => {
-    const date = new Date(isoDate);
-    const now = new Date();
-    const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
-    const minutes = Math.round(seconds / 60);
-    const hours = Math.round(minutes / 60);
-    const days = Math.round(hours / 24);
-
-    if (seconds < 60) return "همین الان";
-    if (minutes < 60) return `${minutes} دقیقه پیش`;
-    if (hours < 24) return `${hours} ساعت پیش`;
-    return `${days} روز پیش`;
-}
-
-
-const populateAdminDashboard = () => {
-    const users = getUsers().filter((u: any) => u.username !== 'admin');
-    const totalUsers = users.length;
-    let unpaidCount = 0;
-    let unconfirmedCount = 0;
-
-    users.forEach((user: any) => {
-        const userData = getUserData(user.username);
-        if (!userData.hasPaid) unpaidCount++;
-        if (!userData.infoConfirmed) unconfirmedCount++;
-    });
-
-    (document.getElementById('total-users-stat') as HTMLElement).textContent = totalUsers.toString();
-    (document.getElementById('unpaid-users-stat') as HTMLElement).textContent = unpaidCount.toString();
-    (document.getElementById('unconfirmed-users-stat') as HTMLElement).textContent = unconfirmedCount.toString();
-
-    // Populate Activity Log
-    const log = getActivityLog();
-    const logContainer = document.getElementById('admin-activity-log') as HTMLElement;
-    logContainer.innerHTML = '';
-
-    if (log.length === 0) {
-        logContainer.innerHTML = `<p class="text-secondary text-center">فعالیتی برای نمایش وجود ندارد.</p>`;
-        return;
+        `, e.appendChild(o), renderSparkline(`spark-${n.username}`, d.weightHistory)
+    }), window.lucide.createIcons()
+}, lt = e => {
+    const t = new Date(e),
+        r = Math.round((new Date().getTime() - t.getTime()) / 1e3),
+        a = Math.round(r / 60),
+        n = Math.round(a / 60),
+        o = Math.round(n / 24);
+    return r < 60 ? "همین الان" : a < 60 ? `${a} دقیقه پیش` : n < 24 ? `${n} ساعت پیش` : `${o} روز پیش`
+}, be = () => {
+    const e = O().filter(o => o.username !== "admin"),
+        t = e.length;
+    let s = 0,
+        r = 0;
+    e.forEach(o => {
+        const m = D(o.username);
+        m.hasPaid || s++, m.infoConfirmed || r++
+    }), document.getElementById("total-users-stat")!.textContent = t.toString(), document.getElementById("unpaid-users-stat")!.textContent = s.toString(), document.getElementById("unconfirmed-users-stat")!.textContent = r.toString();
+    const a = ze(),
+        n = document.getElementById("admin-activity-log")!;
+    if (n.innerHTML = "", a.length === 0) {
+        n.innerHTML = '<p class="text-secondary text-center">فعالیتی برای نمایش وجود ندارد.</p>';
+        return
     }
-
-    log.forEach(item => {
-        const logItem = document.createElement('div');
-        logItem.className = 'flex items-center justify-between p-3 rounded-lg bg-tertiary/50 text-sm';
-        logItem.innerHTML = `
-            <p>${sanitizeHTML(item.message)}</p>
-            <p class="text-secondary flex-shrink-0">${formatTimeAgo(item.date)}</p>
-        `;
-        logContainer.appendChild(logItem);
-    });
+    a.forEach(o => {
+        const m = document.createElement("div");
+        m.className = "flex items-center justify-between p-3 rounded-lg bg-tertiary/50 text-sm", m.innerHTML = `
+            <p>${A(o.message)}</p>
+            <p class="text-secondary flex-shrink-0">${lt(o.date)}</p>
+        `, n.appendChild(m)
+    })
 };
-
-
-// --- EVENT LISTENERS ---
-document.addEventListener('DOMContentLoaded', () => {
-    // Initial setup
-    window.lucide.createIcons();
-    const theme = localStorage.getItem('fitgympro_theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', theme);
-    
-    // Check for last logged-in user
-    const lastUser = localStorage.getItem('fitgympro_last_user');
-    if (lastUser) {
-        if (lastUser === 'admin') {
-            loginAsAdmin();
-        } else if (getUsers().some((u: any) => u.username === lastUser)) {
-            loginAsUser(lastUser);
+const openModal = e => {
+    e.classList.remove("hidden"), setTimeout(() => e.classList.add("active", "opacity-100"), 10)
+}, closeModal = e => {
+    e.classList.remove("active", "opacity-100"), setTimeout(() => e.classList.add("hidden"), 300)
+}, openWorkoutLogModal = () => {
+    if (!f) return;
+    const e = D(f),
+        t = it(e);
+    if (!t) {
+        w("امروز برنامه تمرینی ندارید.", "error");
+        return
+    }
+    const s = document.getElementById("workout-log-modal")!,
+        r = document.getElementById("workout-log-title")!,
+        a = document.getElementById("workout-log-exercises-container")!,
+        n = document.getElementById("exercise-log-template") as HTMLTemplateElement,
+        o = document.getElementById("set-log-row-template") as HTMLTemplateElement;
+    r.textContent = t.day.title, a.innerHTML = "", t.day.exercises.forEach(m => {
+        const d = n.content.cloneNode(!0) as DocumentFragment,
+            c = d.querySelector(".exercise-log-item")! as HTMLElement,
+            g = d.querySelector("h4")!;
+        g.textContent = m.exercise, c.dataset.exerciseName = m.exercise;
+        const x = d.querySelector(".sets-log-container")!;
+        for (let h = 1; h <= +m.sets; h++) {
+            const E = o.content.cloneNode(!0) as DocumentFragment,
+                q = E.querySelector("span")!,
+                k = E.querySelector(".reps-log-input")!,
+                $ = E.querySelector(".add-set-btn")!;
+            q.textContent = `ست ${h}`, k.setAttribute("placeholder", m.reps), h < +m.sets ? $.remove() : $.addEventListener("click", () => {
+                const I = x.querySelectorAll(".set-log-row").length + 1,
+                    C = o.content.cloneNode(!0) as DocumentFragment,
+                    L = C.querySelector("span")!,
+                    b = C.querySelector(".reps-log-input")!,
+                    B = C.querySelector(".add-set-btn")!;
+                L.textContent = `ست ${I}`, b.setAttribute("placeholder", m.reps), B.remove(), x.appendChild(C)
+            }), x.appendChild(E)
         }
+        a.appendChild(d)
+    }), window.lucide.createIcons(), openModal(s)
+}, saveWorkoutLog = () => {
+    if (!f) return;
+    const e = document.getElementById("workout-log-modal")!,
+        t = {
+            date: (new Date).toISOString(),
+            workoutData: [] as any[]
+        };
+    e.querySelectorAll(".exercise-log-item").forEach(a => {
+        const n = {
+            exerciseName: (a as HTMLElement).dataset.exerciseName,
+            sets: [] as any[]
+        };
+        a.querySelectorAll(".set-log-row").forEach(o => {
+            const m = (o.querySelector(".weight-log-input") as HTMLInputElement).value,
+                d = (o.querySelector(".reps-log-input") as HTMLInputElement).value;
+            (m || d) && n.sets.push({
+                weight: m,
+                reps: d
+            })
+        }), n.sets.length > 0 && t.workoutData.push(n)
+    });
+    const s = D(f);
+    s.workoutHistory || (s.workoutHistory = []), s.workoutHistory.push(t), W(f, s), w("تمرین با موفقیت ثبت شد!", "success"), de(f, s), closeModal(e)
+}, openChat = () => {
+    const e = document.getElementById("ai-chat-modal")!;
+    openModal(e), currentChatSession || (X || (X = new GoogleGenAI({
+        apiKey: process.env.API_KEY
+    })), currentChatSession = X.chats.create({
+        model: "gemini-2.5-flash",
+        config: {
+            systemInstruction: "You are a friendly, expert-level fitness and nutrition coach named FitBot. Provide safe, encouraging, and concise advice in Persian. Use markdown for formatting."
+        }
+    }))
+}, sendMessageToAiChat = async () => {
+    const e = document.getElementById("ai-chat-input") as HTMLInputElement,
+        t = e.value.trim();
+    if (!t || !currentChatSession) return;
+    const s = document.getElementById("ai-chat-messages")!,
+        r = document.getElementById("ai-chat-form") as HTMLFormElement,
+        a = document.createElement("div");
+    a.className = "message user-message", a.textContent = t, s.appendChild(a), e.value = "", r.disabled = !0, s.scrollTop = s.scrollHeight;
+    const n = document.createElement("div");
+    n.className = "message ai-message", n.innerHTML = '<span class="blinking-cursor"></span>', s.appendChild(n), s.scrollTop = s.scrollHeight;
+    try {
+        const o = await currentChatSession.sendMessageStream({
+            message: t
+        });
+        let m = "";
+        for await (const d of o) m += d.text, n.innerHTML = m.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\*(.*?)\*/g, "<em>$1</em>").replace(/\n/g, "<br>"), s.scrollTop = s.scrollHeight;
+        n.querySelector(".blinking-cursor")?.remove()
+    } catch (o) {
+        n.innerHTML = "متاسفانه خطایی رخ داد. لطفا دوباره تلاش کنید."
+    } finally {
+        r.disabled = !1
     }
-    
-    // --- Auth Screen Tab Switcher ---
-    const loginTabBtn = document.getElementById('login-tab-btn');
-    const signupTabBtn = document.getElementById('signup-tab-btn');
-    const loginFormContainer = document.getElementById('login-form-container');
-    const signupFormContainer = document.getElementById('signup-form-container');
-    const loginForm = document.getElementById('login-form') as HTMLFormElement;
-    const signupForm = document.getElementById('signup-form') as HTMLFormElement;
+};
+document.addEventListener("DOMContentLoaded", () => {
+    var N, G, M, K, le, Y, Z, Q, j, _, ee, ce, Ee, Se, Le, Ie, qe, ke, Be, $e, Ce, Te, De, Ne, Me, ut, ft, gt, mt, bt, wt, Ct, Tt, Dt, Lt, zt, Ut, Vt, Nt;
+    window.lucide.createIcons();
+    const e = localStorage.getItem("fitgympro_theme") || "dark";
+    document.documentElement.setAttribute("data-theme", e);
+    const t = localStorage.getItem("fitgympro_last_user");
+    t && (t === "admin" ? Oe() : O().some(l => l.username === t) && fe(t));
+    const s = document.getElementById("login-tab-btn"),
+        r = document.getElementById("signup-tab-btn");
+    s == null || s.addEventListener("click", () => switchAuthTab("login")), r == null || r.addEventListener("click", () => switchAuthTab("signup")), switchAuthTab("login", !0);
 
-    const switchToLogin = () => {
-        loginTabBtn?.classList.add('active');
-        signupTabBtn?.classList.remove('active');
-        loginFormContainer?.classList.remove('hidden');
-        signupFormContainer?.classList.add('hidden');
-        if (signupForm) signupForm.reset();
-    };
-
-    const switchToSignup = () => {
-        loginTabBtn?.classList.remove('active');
-        signupTabBtn?.classList.add('active');
-        loginFormContainer?.classList.add('hidden');
-        signupFormContainer?.classList.remove('hidden');
-        if (loginForm) loginForm.reset();
-    };
-
-    loginTabBtn?.addEventListener('click', switchToLogin);
-    signupTabBtn?.addEventListener('click', switchToSignup);
-
-    // --- Authentication Form Handlers ---
-    document.getElementById('login-form')?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const username = (document.getElementById('login-username') as HTMLInputElement).value.trim();
-        const password = (document.getElementById('login-password') as HTMLInputElement).value;
-        
-        if (!username || !password) {
-            showToast('لطفا نام کاربری و رمز عبور را وارد کنید.', 'error');
+    const loginAndRoute = (event) => {
+        event.preventDefault();
+        const i = (document.getElementById("login-username") as HTMLInputElement).value.trim(),
+            u = (document.getElementById("login-password") as HTMLInputElement).value;
+        if (!i || !u) {
+            w("لطفا نام کاربری و رمز عبور را وارد کنید.", "error");
             return;
         }
         
-        if (username.toLowerCase() === 'admin' && password === 'hamid@@##') {
-            loginAsAdmin();
+        // Check for admin credentials first. This will work on Enter press or any button click.
+        if (i.toLowerCase() === "admin" && u === "adminpass") {
+            Oe();
             return;
         }
         
-        const users = getUsers();
-        const user = users.find((u: any) => u.username.toLowerCase() === username.toLowerCase());
-        
-        if (user && user.password === password) {
-            loginAsUser(user.username);
+        // If not admin, proceed with client login.
+        const y = O().find(p => p.username.toLowerCase() === i.toLowerCase());
+        if (y && y.password === u) {
+            fe(y.username);
         } else {
-            showToast('نام کاربری یا رمز عبور اشتباه است.', 'error');
+            // If the login fails, give a specific error if they tried to log in as admin.
+            if (i.toLowerCase() === "admin") {
+                 w("نام کاربری یا رمز عبور مربی اشتباه است.", "error");
+            } else {
+                 w("نام کاربری یا رمز عبور اشتباه است.", "error");
+            }
         }
-    });
+    };
 
-    document.getElementById('signup-form')?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const username = (document.getElementById('signup-username') as HTMLInputElement).value.trim();
-        const email = (document.getElementById('signup-email') as HTMLInputElement).value.trim();
-        const password = (document.getElementById('signup-password') as HTMLInputElement).value;
-        
-        if (!username || !email || !password) {
-            showToast('لطفا تمام فیلدها را پر کنید.', 'error');
-            return;
-        }
-        if (username.length < 3) {
-            showToast('نام کاربری باید حداقل ۳ حرف باشد.', 'error');
-            return;
-        }
-        if (password.length < 6) {
-            showToast('رمز عبور باید حداقل ۶ کاراکتر باشد.', 'error');
-            return;
-        }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-             showToast('فرمت ایمیل نامعتبر است.', 'error');
-             return;
-        }
-        if (getUsers().some((u: any) => u.username.toLowerCase() === username.toLowerCase())) {
-            showToast('این نام کاربری قبلا استفاده شده است.', 'error');
-            return;
-        }
+    (document.getElementById("login-form") as HTMLFormElement).addEventListener("submit", loginAndRoute);
+    (document.getElementById("login-coach-btn") as HTMLButtonElement).addEventListener("click", loginAndRoute);
 
-        const users = getUsers();
-        users.push({ username, email, password });
-        saveUsers(users);
-        const newUserState: AppState = {
-            step1: { clientName: username, clientEmail: email },
-            step2: { days: [] },
-            step3: { supplements: [] },
+
+    (G = document.getElementById("signup-form")) == null || G.addEventListener("submit", l => {
+        l.preventDefault();
+        const i = (document.getElementById("signup-username") as HTMLInputElement).value.trim(),
+            u = (document.getElementById("signup-email") as HTMLInputElement).value.trim(),
+            v = (document.getElementById("signup-password") as HTMLInputElement).value;
+        if (!i || !u || !v) {
+            w("لطفا تمام فیلدها را پر کنید.", "error");
+            return
+        }
+        if (i.length < 3) {
+            w("نام کاربری باید حداقل ۳ حرف باشد.", "error");
+            return
+        }
+        if (v.length < 6) {
+            w("رمز عبور باید حداقل ۶ کاراکتر باشد.", "error");
+            return
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u)) {
+            w("فرمت ایمیل نامعتبر است.", "error");
+            return
+        }
+        if (O().some(T => T.username.toLowerCase() === i.toLowerCase())) {
+            w("این نام کاربری قبلا استفاده شده است.", "error");
+            return
+        }
+        const p = O();
+        p.push({
+            username: i,
+            email: u,
+            password: v
+        }), Ge(p);
+        const S = {
+            step1: {
+                clientName: i,
+                clientEmail: u
+            },
+            step2: {
+                days: []
+            },
+            step3: {
+                supplements: []
+            },
             step4: {},
             joinDate: new Date().toISOString(),
             workoutHistory: [],
-            weightHistory: [],
+            weightHistory: []
         };
-        saveUserData(username, newUserState);
-        
-        logActivity(`کاربر جدید ${username} ثبت نام کرد.`);
-        showToast(`خوش آمدی، ${username}! ثبت نام با موفقیت انجام شد.`, 'success');
-        loginAsUser(username);
+        W(i, S), ae(`کاربر جدید ${i} ثبت نام کرد.`), w(`خوش آمدی، ${i}! ثبت نام با موفقیت انجام شد.`, "success"), fe(i)
     });
-
-    // --- Theme Toggler ---
-    const toggleTheme = () => {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('fitgympro_theme', newTheme);
-        // Re-render chart with new colors if on dashboard
-        if (currentUser && currentUser !== 'admin') {
-            const userData = getUserData(currentUser);
-            renderWeightChart(userData.weightHistory);
+    document.querySelectorAll(".password-toggle").forEach(l => {
+        l.addEventListener("click", () => {
+            const i = (l as HTMLElement).dataset.target;
+            if (!i) return;
+            const u = document.getElementById(i) as HTMLInputElement;
+            if (!u) return;
+            const v = l.querySelector("i");
+            u.type === "password" ? (u.type = "text", v == null || v.setAttribute("data-lucide", "eye-off")) : (u.type = "password", v == null || v.setAttribute("data-lucide", "eye")), window.lucide.createIcons()
+        })
+    });
+    const c = (l, i) => {
+            if (l.validity.valueMissing) i.textContent = "این فیلد الزامی است.";
+            else if (l.validity.tooShort) i.textContent = `حداقل باید ${l.minLength} کاراکتر باشد.`;
+            else if (l.validity.typeMismatch) i.textContent = "فرمت وارد شده صحیح نیست.";
+            else i.textContent = ""
+        },
+        o = document.getElementById("signup-username"),
+        m = document.getElementById("signup-email"),
+        d = document.getElementById("signup-password");
+    [o, m, d].forEach(l => {
+        if (l) {
+            const i = l.parentElement.querySelector(".validation-message");
+            i && (l.addEventListener("blur", () => c(l, i)), l.addEventListener("input", () => c(l, i)))
+        }
+    });
+    const g = () => {
+        const i = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        if (document.documentElement.setAttribute("data-theme", i), localStorage.setItem("fitgympro_theme", i), f && f !== "admin") {
+            const u = D(f);
+            Xe(u.weightHistory, 'weight-progress-chart-small', 'no-chart-data', true);
+            Xe(u.weightHistory, 'weight-progress-chart', 'no-chart-data');
         }
     };
-    document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleTheme);
-    document.getElementById('theme-toggle-btn-dashboard')?.addEventListener('click', toggleTheme);
-    
-    // --- Navigation ---
-    document.getElementById('next-btn')?.addEventListener('click', () => navigateToStep(findNextEnabledStep(currentStep, 1)));
-    document.getElementById('prev-btn')?.addEventListener('click', () => navigateToStep(findNextEnabledStep(currentStep, -1)));
-    document.querySelectorAll('.stepper-item').forEach((item, i) => {
-        item.addEventListener('click', () => { if (item.classList.contains('completed') || item.classList.contains('active')) navigateToStep(i + 1); });
+    (M = document.getElementById("theme-toggle-btn-dashboard")) == null || M.addEventListener("click", g), (K = document.getElementById("theme-toggle-btn-dashboard")) == null || K.addEventListener("click", g), (le = document.getElementById("next-btn")) == null || le.addEventListener("click", () => ne(Re(F, 1))), (Y = document.getElementById("prev-btn")) == null || Y.addEventListener("click", () => ne(Re(F, -1))), document.querySelectorAll(".stepper-item").forEach((l, i) => {
+        l.addEventListener("click", () => {
+            (l.classList.contains("completed") || l.classList.contains("active")) && ne(i + 1)
+        })
     });
-
-    // --- Form Interactions ---
-    const form = document.getElementById('program-builder-form') as HTMLElement;
-    form.addEventListener('input', (e) => {
-        const target = e.target as HTMLInputElement;
-        
-        if (target.matches('.range-slider')) {
-            updateSliderBackground(target);
-        
-            const sliderClassList = Array.from(target.classList);
-            const sliderClass = sliderClassList.reverse().find(c => c.includes('-slider'));
-            const classSelector = sliderClass ? `.${sliderClass.replace('-slider', '-value')}` : null;
-            
-            if (classSelector) {
-                const valueDisplay = target.parentElement?.querySelector(classSelector);
-                if (valueDisplay) {
-                    let suffix = '';
-                    if (target.classList.contains('height-slider')) suffix = ' cm';
-                    if (target.classList.contains('weight-slider')) suffix = ' kg';
-                    if (target.classList.contains('rest-slider')) suffix = 's';
-                    valueDisplay.textContent = target.value + suffix;
+    const x = document.getElementById("program-builder-form")!;
+    x.addEventListener("input", l => {
+        var u, v, y;
+        const i = l.target as HTMLElement;
+        if (i.matches(".range-slider")) {
+            ie(i as HTMLInputElement);
+            const S = Array.from(i.classList).reverse().find(P => P.includes("-slider"));
+            if (S) {
+                const T = `.${S.replace("-slider","-value")}`;
+                const P = (u = i.parentElement) == null ? void 0 : u.querySelector(T);
+                if (P) {
+                    let H = "";
+                    i.classList.contains("height-slider") && (H = " cm"), i.classList.contains("weight-slider") && (H = " kg"), i.classList.contains("rest-slider") && (H = "s"), i.classList.contains("age-slider") || (P.textContent = (i as HTMLInputElement).value + H)
                 }
             }
         }
-        
-        if (target.matches('.gender, .age-slider, .height-slider, .weight-slider, .activity-level, .neck-input, .waist-input, .hip-input')) {
-            calculateBodyMetrics(target.closest('#section-1, #dashboard-profile-panel') as HTMLElement);
+        if (i.matches(".gender, .age-slider, .height-slider, .weight-slider, .activity-level, .neck-input, .waist-input, .hip-input")) {
+            he(i.closest("#section-1, #dashboard-profile-panel")!)
         }
-        if (target.matches('.gender')) {
-            toggleHipInput(target.closest('#section-1, #dashboard-profile-panel') as HTMLElement);
+        if (i.matches(".gender")) {
+            xe(i.closest("#section-1, #dashboard-profile-panel")!)
         }
-        
-        if (target.matches('.muscle-group-select')) {
-            populateExercises(target.value, target.parentElement?.querySelector('.exercise-select') as HTMLSelectElement);
-        }
-
-        if (target.matches('.supplement-checkbox')) {
-            const dosageInput = target.closest('.supplement-item')?.querySelector('.dosage-input') as HTMLInputElement;
-            if (dosageInput) {
-                dosageInput.value = target.checked ? (target.dataset.dosage || '') : '';
+        if (i.matches('.training-goal, .activity-level, .training-days, .gender')) {
+            const container = i.closest('.form-section, #dashboard-profile-panel');
+            if (container) {
+                updateRadioCardSelection(container);
             }
         }
-
-        if(currentUser === 'admin' && target.closest('#program-builder-form')) {
-            // Debounced save
-            // clearTimeout(saveTimeout);
-            // saveTimeout = setTimeout(saveCurrentState, 1000);
+        if (i.matches(".muscle-group-select")) {
+            pe((i as HTMLSelectElement).value, (v = i.parentElement) == null ? void 0 : v.querySelector(".exercise-select") as HTMLSelectElement)
         }
-    });
-
-    // --- Dynamic Row/Card Addition/Removal ---
-    form.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        const addExerciseBtn = target.closest('.add-exercise-btn');
-        if (addExerciseBtn) { addExerciseRow(addExerciseBtn.previousElementSibling as HTMLElement); }
-        if (target.closest('.remove-exercise-btn')) { target.closest('.exercise-row')?.remove(); }
-        if (target.closest('.superset-btn')) { 
-            const btn = target.closest('.superset-btn') as HTMLElement;
-            btn.classList.toggle('active');
-            btn.closest('.exercise-row')?.classList.toggle('is-superset');
+        if (i.matches(".supplement-checkbox")) {
+            const p = (y = i.closest(".supplement-item")) == null ? void 0 : y.querySelector(".dosage-input") as HTMLInputElement;
+            p && (p.value = (i as HTMLInputElement).checked && (i as HTMLInputElement).dataset.dosage || "")
         }
-        if (target.closest('.remove-day-btn')) { target.closest('.day-card')?.remove(); }
-    });
-    document.getElementById('add-day-btn')?.addEventListener('click', () => addDayCard());
-    
-    // --- Profile Picture ---
-    document.body.addEventListener('change', e => {
-        const target = e.target as HTMLInputElement;
-        if(target.matches('.profile-pic-input')) {
-            const file = target.files?.[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const src = event.target?.result as string;
-                    target.closest('label')?.parentElement?.querySelectorAll('.profile-pic-preview').forEach(img => (img as HTMLImageElement).src = src);
-                };
-                reader.readAsDataURL(file);
+        if (f === "admin" && i.closest("#program-builder-form")) {
+            if (F === 4) {
+                Ue(ye(), "#program-sheet-container");
+            } else if (F === 5) {
+                Ue(ye(), "#program-sheet-container-step5");
             }
         }
-    });
-    
-    // --- Supplement Search ---
-    document.getElementById('supplement-search')?.addEventListener('input', (e) => {
-        const query = (e.target as HTMLInputElement).value.toLowerCase();
-        document.querySelectorAll('.supplement-item').forEach(item => {
-            const name = item.querySelector('span')?.textContent?.toLowerCase() || '';
-            const isVisible = name.includes(query);
-            item.classList.toggle('hidden', !isVisible);
-        });
-        document.querySelectorAll('.supp-category-card').forEach(card => {
-            const visibleItems = card.querySelectorAll('.supplement-item:not(.hidden)').length;
-            card.classList.toggle('hidden', visibleItems === 0);
-        });
-    });
-
-    // --- AI Assistant ---
-    const getAISuggestionBtn = document.getElementById('get-ai-suggestion-btn');
-    const aiQuestionInput = document.getElementById('ai-question-input') as HTMLInputElement;
-    const aiContent = document.getElementById('ai-assistant-content') as HTMLElement;
-    
-    const getAISuggestion = async () => {
-        const question = aiQuestionInput.value.trim();
-        if (!question) {
-            aiContent.innerHTML = '<p class="text-secondary">لطفا سوال خود را وارد کنید.</p>';
-            return;
+    }), x.addEventListener("click", l => {
+        var v, y, p;
+        const i = l.target as HTMLElement,
+            u = i.closest(".add-exercise-btn");
+        if (u) {
+            ge(u.previousElementSibling as HTMLDivElement)
         }
+        if (i.closest(".remove-exercise-btn")) {
+            (v = i.closest(".exercise-row")) == null || v.remove()
+        }
+        if (i.closest(".superset-btn")) {
+            const S = i.closest(".superset-btn")!;
+            S.classList.toggle("active"), (y = S.closest(".exercise-row")) == null || y.classList.toggle("is-superset")
+        }
+        if (i.closest(".remove-day-btn")) {
+            (p = i.closest(".day-card")) == null || p.remove()
+        }
+    }), (Z = document.getElementById("add-day-btn")) == null || Z.addEventListener("click", () => re()), document.body.addEventListener("change", l => {
+        var u;
+        const i = l.target;
+        if (i instanceof HTMLInputElement && i.matches(".profile-pic-input")) {
+            const v = (u = i.files) == null ? void 0 : u[0];
+            if (v) {
+                const y = new FileReader;
+                y.onload = p => {
+                    var T, P, H;
+                    const S = (T = p.target) == null ? void 0 : T.result;
+                    (H = (P = i.closest("label")) == null ? void 0 : P.parentElement) == null || H.querySelectorAll(".profile-pic-preview").forEach(te => (te as HTMLImageElement).src = S as string)
+                }, y.readAsDataURL(v)
+            }
+        }
+    }), (Q = document.getElementById("supplement-search")) == null || Q.addEventListener("input", l => {
+        const i = (l.target as HTMLInputElement).value.toLowerCase();
+        document.querySelectorAll(".supplement-item").forEach(u => {
+            var p, S;
+            const y = (((S = (p = u.querySelector("span")) == null ? void 0 : p.textContent) == null ? void 0 : S.toLowerCase()) || "").includes(i);
+            u.classList.toggle("hidden", !y)
+        }), document.querySelectorAll(".supp-category-card").forEach(u => {
+            const v = u.querySelectorAll(".supplement-item:not(.hidden)").length;
+            u.classList.toggle("hidden", v === 0)
+        })
+    });
+    const h = document.getElementById("get-ai-suggestion-btn") as HTMLButtonElement,
+        E = document.getElementById("ai-question-input") as HTMLInputElement,
+        q = document.getElementById("ai-assistant-content")!,
+        k = async () => {
+            const l = E.value.trim();
+            if (!l) {
+                q.innerHTML = '<p class="text-secondary">لطفا سوال خود را وارد کنید.</p>';
+                return
+            }
+            h == null || h.classList.add("is-loading"), E.disabled = !0, q.innerHTML = '<p class="text-secondary">در حال دریافت پاسخ...</p>';
+            try {
+                X || (X = new GoogleGenAI({
+                    apiKey: process.env.API_KEY
+                }));
+                const i = ye().step1,
+                    v = `${`You are a world-class fitness and nutrition coach. A user is creating a plan for a client with these details: Goal=${i.trainingGoal}, Age=${i.age}, Gender=${i.gender}, Height=${i.height}cm, Weight=${i.weight}kg. Please answer the following question concisely in Persian, using Markdown for formatting.`}
 
-        getAISuggestionBtn?.classList.add('is-loading');
-        aiQuestionInput.disabled = true;
-        aiContent.innerHTML = '<p class="text-secondary">در حال دریافت پاسخ...</p>';
-
+Question: ${l}`,
+                    y = await X.models.generateContent({
+                        model: "gemini-2.5-flash",
+                        contents: v
+                    });
+                let p = A(y.text).replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\*(.*?)\*/g, "<em>$1</em>").replace(/(\n\r?){2,}/g, "</p><p>").replace(/\n- (.*)/g, "<ul><li>$1</li></ul>").replace(/<\/ul><ul>/g, "");
+                q.innerHTML = `<p>${p}</p>`
+            } catch (i) {
+                console.error("AI Suggestion Error:", i), q.innerHTML = '<p class="text-red-400">متاسفانه خطایی رخ داد. لطفا دوباره تلاش کنید.</p>'
+            } finally {
+                h == null || h.classList.remove("is-loading"), E.disabled = !1
+            }
+        };
+    h == null || h.addEventListener("click", k), E == null || E.addEventListener("keyup", l => {
+        l.key === "Enter" && k()
+    }), (j = document.getElementById("generate-ai-plan-btn")) == null || j.addEventListener("click", async () => {
+        const l = document.getElementById("generate-ai-plan-btn") as HTMLButtonElement;
+        l.classList.add("is-loading"), l.disabled = !0;
         try {
-            if (!ai) {
-                ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-            }
-            const s1 = getAppState().step1;
-            const context = `You are a world-class fitness and nutrition coach. A user is creating a plan for a client with these details: Goal=${s1.trainingGoal}, Age=${s1.age}, Gender=${s1.gender}, Height=${s1.height}cm, Weight=${s1.weight}kg. Please answer the following question concisely in Persian, using Markdown for formatting.`;
-            const fullPrompt = `${context}\n\nQuestion: ${question}`;
-            
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: fullPrompt
-            });
-            
-            // A basic markdown to HTML converter
-            let htmlResponse = sanitizeHTML(response.text)
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')       // Italic
-                .replace(/(\n\r?){2,}/g, '</p><p>')          // Paragraphs
-                .replace(/\n- (.*)/g, '<ul><li>$1</li></ul>') // Basic lists
-                .replace(/<\/ul><ul>/g, '');               // Combine adjacent lists
-            aiContent.innerHTML = `<p>${htmlResponse}</p>`;
-
-        } catch (error) {
-            console.error('AI Suggestion Error:', error);
-            aiContent.innerHTML = '<p class="text-red-400">متاسفانه خطایی رخ داد. لطفا دوباره تلاش کنید.</p>';
-        } finally {
-            getAISuggestionBtn?.classList.remove('is-loading');
-            aiQuestionInput.disabled = false;
-        }
-    };
-    getAISuggestionBtn?.addEventListener('click', getAISuggestion);
-    aiQuestionInput?.addEventListener('keyup', (e) => { if(e.key === 'Enter') getAISuggestion(); });
-
-    // --- AI Plan Generation ---
-    document.getElementById('generate-ai-plan-btn')?.addEventListener('click', async () => {
-        const btn = document.getElementById('generate-ai-plan-btn')! as HTMLButtonElement;
-        btn.classList.add('is-loading');
-        btn.disabled = true;
-
-        try {
-            if (!ai) ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-            
-            const s1 = getAppState().step1;
-            const numDays = parseInt(s1.trainingDays || '4');
-            const prompt = `Based on the following user data, create a ${numDays}-day workout plan in Persian.
+            X || (X = new GoogleGenAI({
+                apiKey: process.env.API_KEY
+            }));
+            const i = ye().step1,
+                u = parseInt(i.trainingDays || "4"),
+                v = `Based on the following user data, create a ${u}-day workout plan in Persian.
                 User Data:
-                - Goal: ${s1.trainingGoal}
-                - Age: ${s1.age}
-                - Gender: ${s1.gender}
+                - Goal: ${i.trainingGoal}
+                - Age: ${i.age}
+                - Gender: ${i.gender}
                 - Experience Level: Assume intermediate
-                - Training Days Per Week: ${numDays}
+                - Training Days Per Week: ${u}
 
                 Instructions:
                 1.  Use ONLY the exercises from this database: ${JSON.stringify(window.exerciseDB)}. Do not invent new exercises. Match the names exactly.
@@ -1329,315 +1617,363 @@ document.addEventListener('DOMContentLoaded', () => {
                 4.  Each exercise object in the array must have "muscle" (from DB keys), "exercise" (from DB values), "sets" (3-5), "reps" (6-15), and "rest" (in seconds, 30-90).
                 5.  Structure the plan logically (e.g., push/pull/legs split or similar).
                 6.  Do not include any supersets for now.
-            `;
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: prompt,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                title: { type: Type.STRING },
-                                notes: { type: Type.STRING },
-                                exercises: {
-                                    type: Type.ARRAY,
-                                    items: {
-                                        type: Type.OBJECT,
-                                        properties: {
-                                            muscle: { type: Type.STRING },
-                                            exercise: { type: Type.STRING },
-                                            sets: { type: Type.INTEGER },
-                                            reps: { type: Type.INTEGER },
-                                            rest: { type: Type.INTEGER }
-                                        },
-                                        required: ["muscle", "exercise", "sets", "reps", "rest"]
+            `,
+                y = await X.models.generateContent({
+                    model: "gemini-2.5-flash",
+                    contents: v,
+                    config: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: R.ARRAY,
+                            items: {
+                                type: R.OBJECT,
+                                properties: {
+                                    title: {
+                                        type: R.STRING
+                                    },
+                                    notes: {
+                                        type: R.STRING
+                                    },
+                                    exercises: {
+                                        type: R.ARRAY,
+                                        items: {
+                                            type: R.OBJECT,
+                                            properties: {
+                                                muscle: {
+                                                    type: R.STRING
+                                                },
+                                                exercise: {
+                                                    type: R.STRING
+                                                },
+                                                sets: {
+                                                    type: R.INTEGER
+                                                },
+                                                reps: {
+                                                    type: R.INTEGER
+                                                },
+                                                rest: {
+                                                    type: R.INTEGER
+                                                }
+                                            },
+                                            required: ["muscle", "exercise", "sets", "reps", "rest"]
+                                        }
                                     }
-                                }
-                            },
-                            required: ["title", "notes", "exercises"]
+                                },
+                                required: ["title", "notes", "exercises"]
+                            }
                         }
                     }
-                }
-            });
-
-            const plan = JSON.parse(response.text.trim());
-            const workoutContainer = document.getElementById('workout-days-container')!;
-            workoutContainer.innerHTML = '';
-            
-            plan.forEach((day: any, dayIndex: number) => {
-                addDayCard(dayIndex === 0);
-                const dayCard = workoutContainer.lastElementChild as HTMLElement;
-                if(dayCard) {
-                    (dayCard.querySelector('.day-title-input') as HTMLInputElement).value = day.title;
-                    (dayCard.querySelector('.day-notes-input') as HTMLTextAreaElement).value = day.notes;
-                    const exList = dayCard.querySelector('.exercise-list')!;
-                    exList.innerHTML = '';
-                    day.exercises.forEach((ex: any) => {
-                        addExerciseRow(exList as HTMLElement);
-                        const exRow = exList.lastElementChild as HTMLElement;
-                        if(exRow) {
-                             const muscleSelect = exRow.querySelector('.muscle-group-select') as HTMLSelectElement;
-                             const exerciseSelect = exRow.querySelector('.exercise-select') as HTMLSelectElement;
-                             muscleSelect.value = ex.muscle;
-                             populateExercises(ex.muscle, exerciseSelect);
-                             exerciseSelect.value = ex.exercise;
-                             (exRow.querySelector('.set-slider') as HTMLInputElement).value = ex.sets.toString();
-                             (exRow.querySelector('.rep-slider') as HTMLInputElement).value = ex.reps.toString();
-                             (exRow.querySelector('.rest-slider') as HTMLInputElement).value = ex.rest.toString();
+                }),
+                p = JSON.parse(y.text.trim()),
+                S = document.getElementById("workout-days-container")!;
+            S.innerHTML = "", p.forEach((T, P) => {
+                re(P === 0);
+                const H = S.lastElementChild as HTMLElement;
+                if (H) {
+                    (H.querySelector(".day-title-input") as HTMLInputElement).value = T.title, (H.querySelector(".day-notes-input") as HTMLTextAreaElement).value = T.notes;
+                    const te = H.querySelector(".exercise-list")!;
+                    te.innerHTML = "", T.exercises.forEach(z => {
+                        ge(te as HTMLDivElement);
+                        const J = te.lastElementChild as HTMLElement;
+                        if (J) {
+                            const Ke = J.querySelector(".muscle-group-select") as HTMLSelectElement,
+                                He = J.querySelector(".exercise-select") as HTMLSelectElement;
+                            Ke.value = z.muscle, pe(z.muscle, He), He.value = z.exercise, (J.querySelector(".set-slider") as HTMLInputElement).value = z.sets.toString(), (J.querySelector(".rep-slider") as HTMLInputElement).value = z.reps.toString(), (J.querySelector(".rest-slider") as HTMLInputElement).value = z.rest.toString()
                         }
-                    });
+                    })
                 }
-            });
-            document.querySelectorAll('#program-builder-form .range-slider').forEach(s => {
-                updateSliderBackground(s as HTMLInputElement);
-                s.dispatchEvent(new Event('input'));
-            });
-             showToast('برنامه تمرینی هوشمند با موفقیت ایجاد شد!', 'success');
-
-        } catch (error) {
-            console.error('AI Plan Generation Error:', error);
-            showToast('خطا در ایجاد برنامه با هوش مصنوعی.', 'error');
+            }), document.querySelectorAll("#program-builder-form .range-slider").forEach(T => {
+                ie(T as HTMLInputElement), T.dispatchEvent(new Event("input"))
+            }), w("برنامه تمرینی هوشمند با موفقیت ایجاد شد!", "success")
+        } catch (i) {
+            console.error("AI Plan Generation Error:", i), w("خطا در ایجاد برنامه با هوش مصنوعی.", "error")
         } finally {
-            btn.classList.remove('is-loading');
-            btn.disabled = false;
+            l.classList.remove("is-loading"), l.disabled = !1
         }
     });
-
-    // --- Admin Panel ---
-    const closeAdminPanel = () => {
-        adminPanelModal.classList.remove('active');
-        setTimeout(() => adminPanelModal.classList.add('hidden'), 300);
+    const $ = () => {
+        U.classList.remove("active", "opacity-100"), setTimeout(() => U.classList.add("hidden"), 300)
     };
-
-    adminPanelBtn.addEventListener('click', () => {
-        populateAdminDashboard();
-        
-        // Reset filters before populating list
-        (document.getElementById('admin-user-search') as HTMLInputElement).value = '';
-        document.querySelectorAll('#user-filter-btn-group .user-filter-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('data-filter') === 'all') {
-                btn.classList.add('active');
+    je.addEventListener("click", () => {
+        be(), (document.getElementById("admin-user-search") as HTMLInputElement).value = "", document.querySelectorAll("#user-filter-btn-group .user-filter-btn").forEach(l => {
+            l.classList.remove("active"), l.getAttribute("data-filter") === "all" && l.classList.add("active")
+        }), se(), U.classList.remove("hidden"), setTimeout(() => {
+            U.classList.add("active", "opacity-100")
+        }, 10)
+    });
+    (_ = document.getElementById("close-admin-panel-btn")) == null || _.addEventListener("click", $), U.addEventListener("click", l => {
+        l.target === U && $()
+    }), U.addEventListener("click", l => {
+        const i = l.target as HTMLElement,
+            u = i.closest(".load-user-btn");
+        if (u) {
+            const y = (u as HTMLElement).dataset.username;
+            if (y) {
+                const p = D(y);
+                Je(p), $(), w(`اطلاعات ${y} برای ویرایش بارگذاری شد.`, "success")
             }
+        }
+        const v = i.closest(".remove-user-btn");
+        if (v) {
+            const y = (v as HTMLElement).dataset.username;
+            if (y && confirm(`آیا از حذف کاربر «${y}» مطمئن هستید؟ این عمل غیرقابل بازگشت است.`)) {
+                let p = O();
+                p = p.filter(S => S.username !== y), Ge(p), localStorage.removeItem(`fitgympro_data_${y}`), ae(`کاربر ${y} حذف شد.`), se(), be(), w(`کاربر ${y} با موفقیت حذف شد.`, "success")
+            }
+        }
+    }), (ee = document.getElementById("admin-user-search")) == null || ee.addEventListener("input", se), (ce = document.getElementById("user-filter-btn-group")) == null || ce.addEventListener("click", l => {
+        const u = (l.target as HTMLElement).closest(".user-filter-btn");
+        u && (document.querySelectorAll("#user-filter-btn-group .user-filter-btn").forEach(v => v.classList.remove("active")), u.classList.add("active"), se())
+    }), (Ee = document.getElementById("create-user-btn")) == null || Ee.addEventListener("click", () => {
+        const l = document.getElementById("new-username-input") as HTMLInputElement,
+            i = document.getElementById("new-user-email-input") as HTMLInputElement,
+            u = document.getElementById("new-user-password-input") as HTMLInputElement,
+            v = document.getElementById("create-user-error")!,
+            y = l.value.trim(),
+            p = i.value.trim(),
+            S = u.value.trim();
+        if (v.textContent = "", !y || !p || !S) {
+            v.textContent = "تمام فیلدها الزامی هستند.";
+            return
+        }
+        if (O().some(P => P.username.toLowerCase() === y.toLowerCase())) {
+            v.textContent = "این نام کاربری قبلا استفاده شده.";
+            return
+        }
+        const users = O();
+        users.push({
+            username: y,
+            email: p,
+            password: S
         });
-        
-        populateAdminUserList();
-        adminPanelModal.classList.remove('hidden');
-        setTimeout(() => {
-            adminPanelModal.classList.add('active');
-        }, 10);
+        Ge(users);
+        W(y, {
+            step1: {
+                clientName: y,
+                clientEmail: p
+            },
+            step2: {
+                days: []
+            },
+            step3: {
+                supplements: []
+            },
+            step4: {}
+        }), ae(`کاربر ${y} توسط مدیر ایجاد شد.`), w(`کاربر ${y} با موفقیت ایجاد شد.`, "success"), se(), be(), l.value = "", i.value = "", u.value = ""
     });
-    
-    // Admin Panel Tabs
-    const adminDashboardTab = document.getElementById('admin-dashboard-tab');
-    const adminUsersTab = document.getElementById('admin-users-tab');
-    const adminDashboardContent = document.getElementById('admin-dashboard-content');
-    const adminUsersContent = document.getElementById('admin-users-content');
-
-    adminDashboardTab?.addEventListener('click', () => {
-        adminDashboardTab.classList.add('active');
-        adminUsersTab?.classList.remove('active');
-        adminDashboardContent?.classList.remove('hidden');
-        adminUsersContent?.classList.add('hidden');
-    });
-
-    adminUsersTab?.addEventListener('click', () => {
-        adminUsersTab.classList.add('active');
-        adminDashboardTab?.classList.remove('active');
-        adminUsersContent?.classList.remove('hidden');
-        adminDashboardContent?.classList.add('hidden');
-    });
-
-
-    document.getElementById('close-admin-panel-btn')?.addEventListener('click', closeAdminPanel);
-    adminPanelModal.addEventListener('click', (e) => {
-        if (e.target === adminPanelModal) closeAdminPanel();
-    });
-
-    adminPanelModal.addEventListener('click', e => {
-        const target = e.target as HTMLElement;
-
-        const loadBtn = target.closest('.load-user-btn');
-        if (loadBtn) {
-            const username = (loadBtn as HTMLElement).dataset.username;
-            if (username) {
-                const userData = getUserData(username);
-                loadStateIntoApp(userData);
-                closeAdminPanel();
-                showToast(`اطلاعات ${username} برای ویرایش بارگذاری شد.`, 'success');
-            }
-        }
-
-        const removeBtn = target.closest('.remove-user-btn');
-        if (removeBtn) {
-            const username = (removeBtn as HTMLElement).dataset.username;
-            if (username && confirm(`آیا از حذف کاربر «${username}» مطمئن هستید؟ این عمل غیرقابل بازگشت است.`)) {
-                let users = getUsers();
-                users = users.filter((u: any) => u.username !== username);
-                saveUsers(users);
-                localStorage.removeItem(`fitgympro_data_${username}`);
-                logActivity(`کاربر ${username} حذف شد.`);
-                populateAdminUserList();
-                populateAdminDashboard(); // Refresh stats
-                showToast(`کاربر ${username} با موفقیت حذف شد.`, 'success');
-            }
-        }
-    });
-
-    // Admin Panel User Search and Filter
-    document.getElementById('admin-user-search')?.addEventListener('input', populateAdminUserList);
-    document.getElementById('user-filter-btn-group')?.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        const button = target.closest('.user-filter-btn');
-        if (button) {
-            document.querySelectorAll('#user-filter-btn-group .user-filter-btn').forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            populateAdminUserList();
-        }
-    });
-
-    document.getElementById('create-user-btn')?.addEventListener('click', () => {
-        const userInput = document.getElementById('new-username-input') as HTMLInputElement;
-        const emailInput = document.getElementById('new-user-email-input') as HTMLInputElement;
-        const passInput = document.getElementById('new-user-password-input') as HTMLInputElement;
-        const errorEl = document.getElementById('create-user-error') as HTMLElement;
-
-        const username = userInput.value.trim();
-        const email = emailInput.value.trim();
-        const password = passInput.value.trim();
-        errorEl.textContent = '';
-
-        if (!username || !email || !password) {
-            errorEl.textContent = 'تمام فیلدها الزامی هستند.';
-            return;
-        }
-        if (getUsers().some((u: any) => u.username.toLowerCase() === username.toLowerCase())) {
-            errorEl.textContent = 'این نام کاربری قبلا استفاده شده.';
-            return;
-        }
-
-        const users = getUsers();
-        users.push({ username, email, password });
-        saveUserData(username, {
-            step1: { clientName: username, clientEmail: email },
-            step2: { days: [] }, step3: { supplements: [] }, step4: {}
-        });
-        logActivity(`کاربر ${username} توسط مدیر ایجاد شد.`);
-        showToast(`کاربر ${username} با موفقیت ایجاد شد.`, 'success');
-        populateAdminUserList();
-        populateAdminDashboard(); // Refresh stats
-        userInput.value = ''; emailInput.value = ''; passInput.value = '';
-    });
-    
-    // --- User Dashboard Functionality ---
-    let saveDashboardTimeout: number;
-    document.getElementById('dashboard-profile-panel')?.addEventListener('input', () => {
-        clearTimeout(saveDashboardTimeout);
-        saveDashboardTimeout = window.setTimeout(() => {
-            if (currentUser && currentUser !== 'admin') {
-                const currentState = getUserData(currentUser);
-                const dashboardPanel = document.getElementById('dashboard-profile-panel')!;
-                
-                const dashboardStep1Data = {
-                    clientName: (dashboardPanel.querySelector('.client-name-input') as HTMLInputElement).value,
-                    clientEmail: (dashboardPanel.querySelector('.client-email-input') as HTMLInputElement).value,
-                    profilePic: (dashboardPanel.querySelector('.profile-pic-preview') as HTMLImageElement).src,
-                    trainingGoal: (dashboardPanel.querySelector('.training-goal:checked') as HTMLInputElement)?.value,
-                    age: (dashboardPanel.querySelector('.age-slider') as HTMLInputElement).value,
-                    height: (dashboardPanel.querySelector('.height-slider') as HTMLInputElement).value,
-                    weight: (dashboardPanel.querySelector('.weight-slider') as HTMLInputElement).value,
-                    neck: (dashboardPanel.querySelector('.neck-input') as HTMLInputElement).value,
-                    waist: (dashboardPanel.querySelector('.waist-input') as HTMLInputElement).value,
-                    hip: (dashboardPanel.querySelector('.hip-input') as HTMLInputElement).value,
-                    gender: (dashboardPanel.querySelector('.gender:checked') as HTMLInputElement)?.value,
-                    activityLevel: (dashboardPanel.querySelector('.activity-level:checked') as HTMLInputElement)?.value,
-                    trainingDays: (dashboardPanel.querySelector('.training-days:checked') as HTMLInputElement)?.value,
+    let B;
+    (Se = document.getElementById("dashboard-profile-panel")) == null || Se.addEventListener("input", l => {
+        const i = l.target as HTMLElement;
+        i && i.matches('input[type="radio"]') && updateRadioCardSelection(document.getElementById("dashboard-profile-panel")!), clearTimeout(B), B = window.setTimeout(() => {
+            var v, y, p, S, T, P;
+            if (f && f !== "admin") {
+                const H = D(f),
+                    te = document.getElementById("dashboard-profile-panel")!,
+                    z: any = {
+                        clientName: (te.querySelector(".client-name-input") as HTMLInputElement).value,
+                        clientEmail: (te.querySelector(".client-email-input") as HTMLInputElement).value,
+                        profilePic: (te.querySelector(".profile-pic-preview") as HTMLImageElement).src,
+                        height: (te.querySelector(".height-slider") as HTMLInputElement).value,
+                        weight: (te.querySelector(".weight-slider") as HTMLInputElement).value,
+                        age: (te.querySelector(".age-slider") as HTMLInputElement).value,
+                        neck: (te.querySelector(".neck-input") as HTMLInputElement).value,
+                        waist: (te.querySelector(".waist-input") as HTMLInputElement).value,
+                        hip: (te.querySelector(".hip-input") as HTMLInputElement).value,
+                        gender: (y = te.querySelector('input[name="gender_user"]:checked') as HTMLInputElement) == null ? void 0 : y.value,
+                        trainingGoal: (p = te.querySelector('input[name="training_goal_user"]:checked') as HTMLInputElement) == null ? void 0 : p.value,
+                        activityLevel: (S = te.querySelector('input[name="activity_level_user"]:checked') as HTMLInputElement) == null ? void 0 : S.value,
+                        trainingDays: (T = te.querySelector('input[name="training_days_user"]:checked') as HTMLInputElement) == null ? void 0 : T.value
+                    };
+                H.step1 = { ...H.step1,
+                    ...z
                 };
-
-                currentState.step1 = { ...currentState.step1, ...dashboardStep1Data };
-                saveUserData(currentUser, currentState);
-                showToast('تغییرات شما ذخیره شد.', 'success');
+                 W(f, H);
+                 he(te);
+                 w("تغییرات شما ذخیره شد.", "success");
             }
-        }, 1500);
+        }, 1500)
     });
-
-    document.getElementById('confirm-info-btn')?.addEventListener('click', () => {
-        if (currentUser && currentUser !== 'admin') {
-            const data = getUserData(currentUser);
-            data.infoConfirmed = true;
-            saveUserData(currentUser, data);
-            populateDashboard(currentUser, data);
-            showToast('اطلاعات شما با موفقیت تایید شد.', 'success');
-        }
-    });
-
-    document.getElementById('pay-program-btn')?.addEventListener('click', () => {
-        if (currentUser && currentUser !== 'admin') {
-            const data = getUserData(currentUser);
-            data.hasPaid = true;
-            saveUserData(currentUser, data);
-            populateDashboard(currentUser, data);
-            showToast('پرداخت با موفقیت انجام شد (شبیه‌سازی).', 'success');
-        }
-    });
-
-    userDashboardContainer.addEventListener('click', e => {
-        const target = e.target as HTMLElement;
-        if(target.closest('#mark-workout-done-btn')) {
-            if (currentUser && currentUser !== 'admin') {
-                const data = getUserData(currentUser);
-                if (!data.workoutHistory) data.workoutHistory = [];
-                data.workoutHistory.push(new Date().toISOString());
-                saveUserData(currentUser, data);
-                renderDashboardContent(currentUser, data);
-                showToast('تمرین امروز با موفقیت ثبت شد!', 'success');
-            }
-        }
-    });
-
-    document.getElementById('add-weight-form')?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (currentUser && currentUser !== 'admin') {
-            const weightInput = document.getElementById('new-weight-input') as HTMLInputElement;
-            const newWeight = parseFloat(weightInput.value);
-            if(isNaN(newWeight) || newWeight <= 0) {
-                showToast('لطفا یک وزن معتبر وارد کنید.', 'error');
-                return;
-            }
-            const data = getUserData(currentUser);
-            if (!data.weightHistory) data.weightHistory = [];
-            data.weightHistory.push({ date: new Date().toISOString(), weight: newWeight });
-            
-            // Also update the main weight slider
-            (document.querySelector('#dashboard-profile-panel .weight-slider') as HTMLInputElement).value = newWeight.toString();
-            if(data.step1) data.step1.weight = newWeight.toString();
-
-            saveUserData(currentUser, data);
-            populateDashboard(currentUser, data); // Full repaint to update everything
-            showToast('وزن جدید با موفقیت ثبت شد.', 'success');
-            weightInput.value = '';
-        }
-    });
-
-
-    // --- Logout ---
-    document.getElementById('logout-btn')?.addEventListener('click', logout);
-    document.getElementById('logout-btn-dashboard')?.addEventListener('click', logout);
-
-    // --- Action Buttons ---
-    document.getElementById('save-pdf-btn')?.addEventListener('click', saveAsPdf);
-    document.getElementById('save-word-btn')?.addEventListener('click', saveAsWord);
-    document.getElementById('send-program-btn')?.addEventListener('click', sendProgramToUser);
-    document.getElementById('save-changes-btn')?.addEventListener('click', saveProgramChanges);
-    document.getElementById('dashboard-save-pdf-btn')?.addEventListener('click', saveAsPdf);
     
-    // Initial population for components
-    populateSupplements();
-    if(document.getElementById('workout-days-container')?.children.length === 0) {
-        addDayCard(true);
+    (Le = document.getElementById("confirm-info-btn")) == null || Le.addEventListener("click", () => {
+        if (f && f !== "admin") {
+            const l = D(f);
+            l.infoConfirmed = !0, W(f, l), de(f, l), w("اطلاعات شما با موفقیت تایید شد.", "success")
+        }
+    }), (Ie = document.getElementById("pay-program-btn")) == null || Ie.addEventListener("click", () => {
+        if (f && f !== "admin") {
+            const l = D(f);
+            l.hasPaid = !0, W(f, l), de(f, l), w("پرداخت با موفقیت انجام شد (شبیه‌سازی).", "success")
+        }
+    }), oe.addEventListener("click", l => {
+        const i = l.target as HTMLElement;
+        i.closest("#start-workout-btn") && f && f !== "admin" && openWorkoutLogModal();
+    }), (qe = document.getElementById("add-weight-form")) == null || qe.addEventListener("submit", l => {
+        if (l.preventDefault(), f && f !== "admin") {
+            const i = document.getElementById("new-weight-input") as HTMLInputElement,
+                u = parseFloat(i.value);
+            if (isNaN(u) || u <= 0) {
+                w("لطفا یک وزن معتبر وارد کنید.", "error");
+                return
+            }
+            const v = D(f);
+            v.weightHistory || (v.weightHistory = []), v.weightHistory.push({
+                date: new Date().toISOString(),
+                weight: u
+            });
+            v.step1 && (v.step1.weight = u.toString()), W(f, v), de(f, v), w("وزن جدید با موفقیت ثبت شد.", "success"), i.value = ""
+        }
+    });
+
+    (document.getElementById("user-dashboard-tabs") as HTMLElement)?.addEventListener("click", (l) => {
+        const i = (l.target as HTMLElement).closest(".user-dashboard-tab");
+        if(i) {
+            const tabName = i.getAttribute('data-tab');
+            if(tabName) switchUserDashboardTab(tabName);
+        }
+    });
+
+    (ke = document.getElementById("logout-btn")) == null || ke.addEventListener("click", We), (Be = document.getElementById("logout-btn-dashboard")) == null || Be.addEventListener("click", We), ($e = document.getElementById("save-pdf-btn")) == null || $e.addEventListener("click", Fe), (Ce = document.getElementById("save-word-btn")) == null || Ce.addEventListener("click", nt), (Te = document.getElementById("send-program-btn")) == null || Te.addEventListener("click", rt), (De = document.getElementById("save-changes-btn")) == null || De.addEventListener("click", at), (Nt = document.getElementById("send-nutrition-btn")) == null || Nt.addEventListener("click", dt), (Ne = document.getElementById("dashboard-save-pdf-btn")) == null || Ne.addEventListener("click", Fe), (Me = document.getElementById("ai-chat-fab")) == null || Me.addEventListener("click", openChat), (ut = document.getElementById("close-ai-chat-btn")) == null || ut.addEventListener("click", () => closeModal(document.getElementById("ai-chat-modal")!)), (ft = document.getElementById("ai-chat-form")) == null || ft.addEventListener("submit", l => {
+        l.preventDefault(), sendMessageToAiChat()
+    }), (gt = document.getElementById("close-workout-log-btn")) == null || gt.addEventListener("click", () => closeModal(document.getElementById("workout-log-modal")!)), (mt = document.getElementById("finish-workout-btn")) == null || mt.addEventListener("click", saveWorkoutLog), st(), ((bt = document.getElementById("workout-days-container")) == null ? void 0 : bt.children.length) === 0 && re(!0), (wt = document.getElementById("admin-review-user-list")) == null || wt.addEventListener("click", l => {
+        const i = (l.target as HTMLElement).closest(".admin-review-user-item") as HTMLElement | null;
+        if (i) {
+            document.querySelectorAll(".admin-review-user-item").forEach(u => u.classList.remove("bg-tertiary")), i.classList.add("bg-tertiary");
+            const u = i.dataset.username;
+            if (u) {
+                const v = D(u),
+                    y = document.getElementById("admin-review-details")!;
+                y.innerHTML = `<div class="space-y-6"><h3 class="text-2xl font-bold mb-4">${u}</h3><div class="card rounded-xl p-4"><h4 class="font-bold text-lg mb-4">روند پیشرفت وزن</h4><div class="h-64 relative"><canvas id="admin-review-weight-chart"></canvas><div id="admin-review-no-chart-data" class="absolute inset-0 flex items-center justify-center text-secondary hidden"><p>داده کافی برای نمودار نیست.</p></div></div></div><div class="card rounded-xl p-4"><h4 class="font-bold text-lg mb-4">ارسال پیام به شاگرد</h4><form id="send-coach-message-form" class="flex gap-2"><input type="text" id="coach-message-input" class="input-field flex-1" placeholder="پیام شما..." required><button type="submit" class="primary-button !px-4"><i data-lucide="send"></i></button></form></div><div class="card rounded-xl p-4"><h4 class="font-bold text-lg mb-4">تاریخچه تمرینات</h4><div id="admin-review-history" class="space-y-2 text-sm max-h-64 overflow-y-auto">${(v.workoutHistory||[]).length===0?'<p class="text-secondary">تاریخچه‌ای ثبت نشده.</p>':v.workoutHistory.map(p=>`<div class="bg-tertiary/50 p-2 rounded-md"><strong>${new Date(p.date).toLocaleDateString("fa-IR")}</strong>: ${p.workoutData.map(S=>S.exerciseName).join(", ")}</div>`).join("")}</div></div></div>`, Xe(v.weightHistory, "admin-review-weight-chart", "admin-review-no-chart-data"), window.lucide.createIcons(), (document.getElementById("send-coach-message-form") as HTMLFormElement).addEventListener("submit", p => {
+                    p.preventDefault();
+                    const S = (document.getElementById("coach-message-input") as HTMLInputElement).value.trim();
+                    S && (v.coachMessages || (v.coachMessages = []), v.coachMessages.push(S), W(u, v), w(`پیام برای ${u} ارسال شد.`), (document.getElementById("coach-message-input") as HTMLInputElement).value = "")
+                })
+            }
+        }
+    });
+    
+    const adminTabsContainer = document.getElementById("admin-panel-modal")?.querySelector(".flex-1.p-6 > .flex.border-b");
+    if (adminTabsContainer) {
+        adminTabsContainer.addEventListener("click", (l) => {
+            const i = (l.target as HTMLElement).closest(".admin-tab-btn");
+            if (!i) return;
+
+            const u = i.getAttribute('data-tab');
+            if (!u) return;
+
+            adminTabsContainer.querySelectorAll(".admin-tab-btn").forEach(p => {
+                const isClicked = p.getAttribute('data-tab') === u;
+                p.classList.toggle("active-spring-tab", isClicked);
+                p.classList.toggle("text-secondary", !isClicked);
+                p.classList.toggle("border-transparent", !isClicked);
+            });
+
+            document.querySelectorAll(".admin-tab-content").forEach(p => {
+                p.classList.add("hidden");
+            });
+
+            const v = document.getElementById(`admin-${u}-content`);
+            v?.classList.remove("hidden");
+
+            if (u === "review") {
+                const p = document.getElementById("admin-review-user-list");
+                if (p) {
+                    p.innerHTML = "در حال بارگذاری...";
+                    setTimeout(() => {
+                        const S = O().filter(P => P.username !== "admin");
+                        p.innerHTML = "";
+                        S.forEach(P => {
+                            var te;
+                            const H = document.createElement("div");
+                            H.className = "flex items-center gap-3 p-3 rounded-lg hover:bg-tertiary/50 transition-colors cursor-pointer admin-review-user-item";
+                            H.dataset.username = P.username;
+                            H.innerHTML = `<img src="${((te=D(P.username).step1)==null?void 0:te.profilePic)||"https://placehold.co/40x40/374151/E5E7EB?text=?"}" class="w-10 h-10 rounded-full object-cover"><div><p class="font-bold">${P.username}</p><p class="text-xs text-secondary">${P.email}</p></div>`;
+                            p.appendChild(H);
+                        });
+                    }, 100);
+                }
+            } else if (u === "templates") {
+                const p = document.getElementById("admin-template-list")!;
+                p.innerHTML = "";
+                const S = ht();
+                Object.keys(S).length === 0 
+                    ? p.innerHTML = '<p class="text-secondary text-center">الگویی ذخیره نشده است.</p>' 
+                    : Object.keys(S).forEach(T => {
+                        const H = document.createElement("div");
+                        H.className = "flex items-center justify-between p-3 rounded-lg bg-tertiary/50";
+                        H.innerHTML = `<span class="font-bold">${A(T)}</span><button data-name="${A(T)}" class="delete-template-btn text-red-500 hover:bg-red-500/10 p-2 rounded-md"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
+                        p.appendChild(H);
+                    });
+                window.lucide.createIcons();
+            }
+        });
     }
+
+    (Ct = document.getElementById("generate-ai-nutrition-btn")) == null || Ct.addEventListener("click", async l => {
+        const i = l.currentTarget as HTMLButtonElement;
+        i.classList.add("is-loading"), i.disabled = !0;
+        const u = document.getElementById("ai-nutrition-result")!;
+        u.innerHTML = '<p class="text-secondary">در حال تولید برنامه غذایی...</p>', u.classList.remove("hidden");
+        try {
+            X || (X = new GoogleGenAI({
+                apiKey: process.env.API_KEY
+            }));
+            const v = ye().step1,
+                y = (document.querySelector("#program-builder-form .tdee-input") as HTMLInputElement).value,
+                p = `Create a sample one-day meal plan in Persian for a client with these details:
+                - Goal: ${v.trainingGoal}
+                - TDEE: ${y} kcal
+
+                Instructions:
+                1.  Provide a simple, balanced meal plan including Breakfast, Lunch, Dinner, and 2 Snacks.
+                2.  For each meal, give a brief description and an estimated macronutrient breakdown (Protein, Carbs, Fat in grams).
+                3.  The total calories should be close to the provided TDEE.
+                4.  Format the response as a single block of HTML. Use h4 for meal titles, p for descriptions, and a small table for macros. Use Tailwind CSS classes for basic styling (e.g., font-bold, text-sm, grid).
+                5.  Wrap the entire output in a div.
+                `,
+                S = await X.models.generateContent({
+                    model: "gemini-2.5-flash",
+                    contents: p
+                });
+            u.innerHTML = S.text
+        } catch (v) {
+            console.error("AI Nutrition Error:", v), u.innerHTML = '<p class="text-red-400">خطا در تولید برنامه غذایی.</p>'
+        } finally {
+            i.classList.remove("is-loading"), i.disabled = !1;
+            Ue(ye(), "#program-sheet-container-step5");
+        }
+    }), (Tt = document.getElementById("admin-templates-content")) == null || Tt.addEventListener("click", l => {
+        const i = (l.target as HTMLElement).closest(".delete-template-btn") as HTMLElement | null;
+        if (i) {
+            const u = i.dataset.name;
+            u && confirm(`آیا از حذف الگوی «${u}» مطمئن هستید؟`) && (pt(u), (document.querySelector(".admin-tab-btn[data-tab='templates']") as HTMLButtonElement).click(), w(`الگوی ${u} حذف شد.`))
+        }
+    }), (Dt = document.getElementById("program-builder-form")) == null || Dt.addEventListener("click", l => {
+        const i = l.target as HTMLElement,
+            u = document.getElementById("save-template-modal")!,
+            v = document.getElementById("load-template-modal")!,
+            y = document.getElementById("template-list-container")!;
+        if (i.closest("#save-template-btn")) openModal(u);
+        else if (i.closest("#confirm-save-template-btn")) {
+            const p = (document.getElementById("template-name-input") as HTMLInputElement).value.trim();
+            p ? (yt(p, ye()), w(`الگو با نام «${p}» ذخیره شد.`), closeModal(u), (document.getElementById("template-name-input") as HTMLInputElement).value = "") : w("لطفا نام الگو را وارد کنید.", "error")
+        } else if (i.closest("#load-template-btn")) {
+            const p = ht();
+            y.innerHTML = "", Object.keys(p).length === 0 ? y.innerHTML = '<p class="text-secondary text-center">الگویی برای بارگذاری وجود ندارد.</p>' : Object.keys(p).forEach(S => {
+                const T = document.createElement("button");
+                T.className = "block w-full text-right p-3 rounded-lg hover:bg-tertiary/50", T.dataset.name = S, T.textContent = S, T.onclick = () => {
+                    Je(p[S]), w(`الگوی «${S}» بارگذاری شد.`), closeModal(v)
+                }, y.appendChild(T)
+            }), openModal(v)
+        }
+    });
+    document.getElementById("cancel-save-template-btn")?.addEventListener('click', () => closeModal(document.getElementById('save-template-modal')!));
+    document.getElementById("cancel-load-template-btn")?.addEventListener('click', () => closeModal(document.getElementById('load-template-modal')!));
+    
+    window.addEventListener('storage', (event) => {
+        if (f && f !== 'admin' && event.key === `fitgympro_data_${f}`) {
+            const freshData = D(f);
+            de(f, freshData);
+            w('برنامه شما توسط مربی به‌روزرسانی شد.', 'success');
+        }
+    });
 });

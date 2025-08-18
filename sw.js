@@ -1,19 +1,19 @@
+
 // Service Worker for FitGymPro PWA
 
-const CACHE_NAME = 'fitgympro-v2'; // Increment version to force update
+const CACHE_NAME = 'fitgympro-v10'; // Increment version to force update
 const urlsToCache = [
   '/',
   '/index.html',
   '/index.tsx', // The browser will resolve this to the compiled JS
   '/manifest.json',
   '/en.json',
-  '/fa.json',
-  'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap',
-  'https://cdn.jsdelivr.net/npm/chart.js'
+  'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Vazirmatn:wght@400;500;600;700;800;900&display=swap'
 ];
 
 // Install the service worker and cache the app shell
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -31,16 +31,20 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
 // Intercept fetch requests
 self.addEventListener('fetch', event => {
+  // We only handle GET requests
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -50,30 +54,7 @@ self.addEventListener('fetch', event => {
         }
 
         // Not in cache - fetch from network
-        return fetch(event.request).then(
-          networkResponse => {
-            // Check if we received a valid response
-            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-              return networkResponse;
-            }
-
-            // IMPORTANT: Clone the response. A response is a stream
-            // and because we want the browser to consume the response
-            // as well as the cache consuming the response, we need
-            // to clone it so we have two streams.
-            const responseToCache = networkResponse.clone();
-
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                // We don't cache calls to the genai API itself
-                if (!event.request.url.includes('generativelanguage')) {
-                    cache.put(event.request, responseToCache);
-                }
-              });
-
-            return networkResponse;
-          }
-        );
+        return fetch(event.request);
       })
   );
 });

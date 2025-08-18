@@ -1,619 +1,417 @@
-
 <!DOCTYPE html>
 <html lang="fa" dir="rtl" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FitGym Pro - سازنده برنامه حرفه‌ای</title>
+    <title>FitGym Pro | مربی هوشمند شما</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Google Fonts - Vazirmatn -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- jsPDF and html2canvas for PDF export -->
+    
+    <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    
-    <!-- Chart.js for progress charts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     
     <!-- GenAI Module Preload -->
     <link rel="modulepreload" href="https://esm.run/@google/genai">
 
     <!-- Custom Styles -->
     <style>
-        html {
-            scroll-behavior: smooth;
-        }
         :root {
-            --bg-primary: #F9FAFB;
-            --bg-secondary: #FFFFFF;
-            --bg-tertiary: #F3F4F6;
-            --bg-stepper: #F9FAFB;
-            --bg-input: #FFFFFF;
-            --bg-input-readonly: #E5E7EB;
-            --bg-stepper-active: rgba(251, 191, 36, 0.1);
-            --bg-stepper-nutrition-active: rgba(34, 197, 94, 0.1);
-            --bg-superset: rgba(251, 191, 36, 0.05);
-            --bg-button-secondary: #E5E7EB;
-            --bg-button-secondary-hover: #D1D5DB;
-            --bg-ai-assistant: #F9FAFB;
-            --bg-ai-content: #FFFFFF;
-            --bg-preview-container: #E5E7EB; /* For page container background */
-
-            --text-primary: #111827;
-            --text-secondary: #6B7280;
-            --text-on-primary-accent: #111827;
-            --text-on-primary-radio: #111827;
-            
-            --border-primary: #E5E7EB;
-            --border-secondary: #D1D5DB;
-            --border-input: #D1D5DB;
-            --border-focus: #FBBF24;
-            
-            --range-track-bg: #E5E7EB;
-            --range-thumb-bg: #4B5563;
-            --superset-border: #FBBF24;
-            
-            --muscle-group-color: #16A34A; /* green-600 */
-            --exercise-color: #111827; /* black */
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --border-primary: #e2e8f0;
+            --border-secondary: #cbd5e1;
+            --accent: #facc15; /* Yellow */
+            --accent-hover: #eab308; /* Darker Yellow */
+            --green-accent: #10b981; /* Green */
+            --green-accent-hover: #059669; /* Darker Green */
+            --range-track-bg: #e5e7eb;
         }
-
         html[data-theme='dark'] {
             --bg-primary: #020617;
             --bg-secondary: #0f172a;
             --bg-tertiary: #1e293b;
-            --bg-stepper: #0f172a;
-            --bg-input: #020617;
-            --bg-input-readonly: #1e293b;
-            --bg-button-secondary: #1e293b;
-            --bg-button-secondary-hover: #334155;
-            --bg-ai-assistant: #0f172a;
-            --bg-ai-content: #020617;
-            --bg-preview-container: #0f172a; /* For page container background */
-
-            --text-primary: #e2e8f0;
+            --text-primary: #f1f5f9;
             --text-secondary: #94a3b8;
-            
-            --border-primary: #1e293b;
-            --border-secondary: #334155;
-            --border-input: #334155;
-
-            --range-track-bg: #1e293b;
-            --range-thumb-bg: #e2e8f0;
-
-            --muscle-group-color: #4ade80; /* green-400 */
-            --exercise-color: #e2e8f0; /* light gray for dark mode */
+            --border-primary: #334155;
+            --border-secondary: #475569;
+            --range-track-bg: #374151;
         }
-
         body {
             font-family: 'Vazirmatn', sans-serif;
             background-color: var(--bg-primary);
             color: var(--text-primary);
             transition: background-color 0.3s ease, color 0.3s ease;
-            overflow-x: hidden;
         }
-        .card {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-primary);
-            transition: background-color 0.3s ease, border-color 0.3s ease;
-        }
-        .ai-assistant-card { background-color: var(--bg-ai-assistant); }
-        .ai-assistant-content { background-color: var(--bg-ai-content); }
-
-        .day-card { padding: 0; overflow: hidden; }
-        #stepper { position: relative; }
-        .stepper-item {
-            transition: all 0.3s ease;
-            border-right: 4px solid transparent;
-            position: relative;
-        }
-        .stepper-item:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            right: calc(2rem + 20px - 2px); /* Half of circle width */
-            top: 70px;
-            height: calc(100% - 70px + 0.5rem); /* From bottom of circle to next item's top */
-            width: 2px;
-            background-color: var(--border-secondary);
-            transition: background-color 0.4s ease;
-            z-index: 0;
-        }
-        .stepper-item .flex { position: relative; z-index: 1; }
-        .stepper-item.completed:not(:last-child)::after {
-             background-color: #FBBF24;
-        }
-        .stepper-item.nutrition.completed:not(:last-child)::after {
-             background-color: #22C55E;
-        }
-        #stepper { background-color: var(--bg-stepper); }
-        .stepper-item.active {
-            border-right-color: #FBBF24;
-            background-color: var(--bg-stepper-active);
-        }
-        .stepper-item.nutrition.active {
-            border-right-color: #22C55E;
-            background-color: var(--bg-stepper-nutrition-active);
-        }
-        .stepper-item.completed .step-circle {
-            background-color: #FBBF24;
-            color: #1F2937;
-        }
-         .stepper-item.nutrition.completed .step-circle {
-            background-color: #22C55E;
-        }
-        .stepper-item.disabled { opacity: 0.5; cursor: not-allowed; }
-        .step-circle {
-            transition: all 0.3s ease;
-            background-color: var(--border-primary);
-            color: var(--text-secondary);
-        }
-        .form-section { display: none; animation: fadeIn 0.5s ease-in-out; }
-        .form-section.active { display: block; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .input-field {
-            background-color: var(--bg-input);
-            border: 1px solid var(--border-input);
-            border-radius: 0.5rem;
-            padding: 0.75rem;
-            width: 100%;
-            color: var(--text-primary);
-            transition: all 0.2s ease;
-        }
-        .input-field[readonly] {
-            background-color: var(--bg-input-readonly);
-            cursor: default;
-        }
-        .input-field[readonly]:focus {
-            box-shadow: none;
-            border-color: var(--border-input);
-        }
-        .input-field:focus {
-            outline: none;
-            border-color: var(--border-focus);
-            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2);
-        }
-        .input-field.input-error {
-            border-color: #ef4444; /* red-500 */
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
-        }
-         .input-field.input-success {
-            border-color: #22c55e; /* green-500 */
-            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
-        }
-        .primary-button { 
-            background-color: #FBBF24; 
-            color: var(--text-on-primary-accent);
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
-        }
-        .primary-button:hover:not(:disabled) { background-color: #F59E0B; transform: translateY(-2px); box-shadow: 0 7px 10px -3px rgba(0,0,0,0.15), 0 4px 6px -4px rgba(0,0,0,0.15); }
-        .secondary-button { 
-            background-color: var(--bg-button-secondary); 
-            color: var(--text-primary);
-            transition: all 0.3s ease;
-        }
-        .secondary-button:hover:not(:disabled) {
-            background-color: var(--bg-button-secondary-hover);
-        }
-        .primary-button:disabled, .secondary-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .word-button {
-            background-color: #2b579a;
-            color: #ffffff;
-            transition: all 0.3s ease;
-        }
-        .word-button:hover:not(:disabled) { background-color: #204071; }
-        .gradient-text { background: linear-gradient(90deg, #FBBF24, #F59E0B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        
-        .superset-btn.active { color: #FBBF24; background-color: rgba(251, 191, 36, 0.1); }
-        .exercise-row.is-superset {
-            border-color: var(--superset-border);
-            background-color: var(--bg-superset);
-        }
-        
-        .range-slider {
-            -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: var(--range-track-bg);
-            border-radius: 4px; outline: none; transition: background 0.2s ease;
-        }
-        .range-slider::-webkit-slider-thumb {
-            -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: var(--range-thumb-bg);
-            border-radius: 50%; cursor: pointer; margin-top: -6px; transition: transform 0.2s ease;
-        }
-        .range-slider:active::-webkit-slider-thumb { transform: scale(1.2); }
-        .range-slider::-moz-range-thumb {
-            width: 20px; height: 20px; background: var(--range-thumb-bg); border: none;
-            border-radius: 50%; cursor: pointer;
-        }
-        .range-slider:active::-moz-range-thumb { transform: scale(1.2); }
-        
-        .radio-group-label { transition: all 0.2s ease-in-out; background-color: var(--bg-input); border: 1px solid var(--border-input); color: var(--text-secondary); }
-        .radio-group-input:checked + .radio-group-label { background-color: #FBBF24; color: var(--text-on-primary-radio); border-color: #FBBF24; font-weight: 600; }
-        
-        select.muscle-group-select.input-field { color: var(--muscle-group-color); }
-        select.exercise-select.input-field { color: var(--exercise-color); font-weight: 700; }
-        
-        /* Single Page Preview Styles */
-        .preview-container {
-            background-color: var(--bg-preview-container);
-            padding: 1rem;
-            border-radius: 1rem;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-        }
-        @media (min-width: 640px) { .preview-container { padding: 2rem; } }
-        .program-page {
-            background-color: #fff;
-            color: #111827;
-            width: 100%;
-            padding: 1rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1), 0 5px 10px rgba(0,0,0,0.04);
-            border: 1px solid #e5e5e5;
-            border-radius: 3px;
-            display: flex;
-            flex-direction: column;
-            font-family: 'Vazirmatn', sans-serif;
-        }
-        @media (min-width: 1024px) { .program-page { padding: 2cm; } }
-        .page-content { flex-grow: 1; }
-        .page-header { flex-shrink: 0; }
-        .page-footer {
-            flex-shrink: 0;
-            margin-top: auto; /* Push footer to the bottom */
-            padding-top: 1rem;
-            border-top: 1px solid #E5E7EB;
-            text-align: center;
-            font-size: 0.8rem;
-            color: #6B7280;
-        }
-        .program-page .bmi-needle, .program-page .weight-needle { background-color: #1F2937; border: 2px solid #fff; }
-        .program-page .bmi-value-box, .program-page .weight-value-box { background-color: #1F2937; color: #fff; }
-        .program-page .bmi-value-box::after, .program-page .weight-value-box::after { border-color: #1F2937 transparent transparent transparent; }
-        .program-page .bmi-labels, .program-page .weight-labels { color: #6B7280; }
-        .program-page .bmi-status-text, .program-page .weight-status-text { color: #374151; }
-
-        .preview-vitals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; background-color: transparent; padding: 0; border: none; }
-        .preview-vitals-grid div { font-size: 0.875rem; display: flex; justify-content: space-between; align-items: center; background-color: #F9FAFB; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #E5E7EB; }
-        .preview-vitals-grid span { display: block; color: #6B7280; font-weight: 500; }
-        .preview-vitals-grid strong { color: #1F2937; font-size: 1rem; font-weight: 700; }
-        
-        .preview-section-header {
-            font-size: 1.25rem;
+        /* General Components */
+        .card { background-color: var(--bg-secondary); border: 1px solid var(--border-primary); }
+        .input-field { background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: 0.5rem; padding: 0.75rem; transition: all 0.2s; }
+        .input-field:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.3); }
+        .input-error { border-color: #ef4444; }
+        .primary-button { background-color: var(--accent); color: white; font-weight: bold; padding: 0.75rem 1.5rem; border-radius: 0.5rem; transition: all 0.2s; }
+        .primary-button:hover:not(:disabled) { background-color: var(--accent-hover); }
+        .primary-button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .secondary-button { background-color: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-primary); font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 0.5rem; transition: background-color 0.2s; }
+        .secondary-button:hover { background-color: var(--border-primary); }
+        .green-button {
+            background-color: var(--green-accent);
+            color: white;
             font-weight: 700;
-            padding-bottom: 0.75rem;
-            margin-bottom: 1.25rem;
-            border-bottom: 2px solid #E5E7EB;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            color: #1F2937;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px -5px var(--green-accent);
         }
-        .preview-section-header i { width: 24px; height: 24px; color: #F59E0B; }
-        
-        .preview-table-pro { border-collapse: collapse; margin-top: 1rem; font-family: 'Vazirmatn', sans-serif; }
-        .preview-table-pro th, .preview-table-pro td { padding: 1rem; text-align: right; border-bottom: 1px solid #E5E7EB; vertical-align: middle; }
-        .preview-table-pro th { background-color: #F9FAFB; font-weight: 600; color: #374151; font-size: 1rem; letter-spacing: 0.05em; }
-        .preview-table-pro td { color: #111827; font-size: 1.1rem; font-weight: 500; }
-        .preview-table-pro tbody tr:nth-child(even) { background-color: #F9FAFB; }
-        .preview-table-pro .superset-group-pro { border-right: 4px solid #FBBF24; }
-        .preview-table-pro .superset-label-pro { font-size: 0.75rem; font-weight: bold; color: #D97706; background-color: #FEF3C7; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-left: 8px; }
-        .preview-notes-pro { background-color: #F3F4F6; border-right: 4px solid #60A5FA; padding: 1rem; margin-top: 1rem; font-size: 0.9rem; color: #374151; border-radius: 0 0.5rem 0.5rem 0; white-space: pre-wrap; }
-        
-        .day-separator { border-bottom: 2px dashed var(--border-secondary); margin: 2rem 0; }
+        .green-button:hover:not(:disabled) {
+            background-color: var(--green-accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px -5px var(--green-accent);
+        }
+        .is-loading { position: relative; color: transparent !important; }
+        .is-loading::after { content: ''; display: block; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.3); border-top-color: #fff; animation: spin 1s linear infinite; }
+        .is-loading.secondary::after { border: 3px solid rgba(0, 0, 0, 0.3); border-top-color: var(--text-primary); }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Styles for better table layout in preview */
-        .preview-table-pro th:nth-child(n+2), .preview-table-pro td:nth-child(n+2) { text-align: center; width: 110px; }
-        .preview-table-pro td:first-child { font-weight: 700; }
+        /* Toast Notifications */
+        #toast-container { position: fixed; top: 1.5rem; left: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem; }
 
-        /* Visualizers */
-        .bmi-visualizer, .weight-visualizer { padding-top: 1rem; }
-        .bmi-scale, .weight-scale { position: relative; width: 100%; height: 16px; display: flex; border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+        /* Custom Checkbox */
+        .custom-checkbox-label { display: flex; align-items: center; cursor: pointer; user-select: none; gap: 0.75rem; }
+        .custom-checkbox { display: none; }
+        .custom-checkbox + span::before { content: ''; display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border-secondary); border-radius: 6px; margin-left: 0.5rem; vertical-align: middle; transition: all 0.2s; }
+        .custom-checkbox:checked + span::before { background-color: var(--accent); border-color: var(--accent); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E"); background-position: center; background-repeat: no-repeat; }
+        
+        /* Tooltip */
+        .tooltip { position: relative; display: inline-block; }
+        .tooltip .tooltiptext { visibility: hidden; width: 220px; background-color: #334155; color: #fff; text-align: center; border-radius: 6px; padding: 8px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.8rem; }
+        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+
+        /* Range Sliders */
+        .range-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 4px; background: var(--range-track-bg); outline: none; transition: opacity .2s; cursor: pointer; }
+        .range-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); cursor: pointer; }
+        .range-slider.rep-slider::-webkit-slider-thumb { border-color: #22c55e; }
+        .range-slider.rest-slider::-webkit-slider-thumb { border-color: #a78bfa; }
+        .range-slider.age-slider::-webkit-slider-thumb { border-color: #f97316; }
+        .range-slider.height-slider::-webkit-slider-thumb { border-color: #ec4899; }
+        .range-slider.weight-slider::-webkit-slider-thumb { border-color: #fbbf24; }
+        .range-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); cursor: pointer; }
+
+        /* Program Preview Styles */
+        .program-page { max-width: 800px; margin: auto; padding: 2rem; background-color: white; color: #000; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 0.5rem; }
+        .preview-section-header { font-size: 1.25rem; font-weight: 700; color: #000; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .preview-section-header i { color: var(--accent); }
+        .preview-vitals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; }
+        .preview-vitals-grid div { background-color: #f9fafb; padding: 0.5rem; border-radius: 0.5rem; text-align: center; }
+        .preview-vitals-grid span { display: block; font-size: 0.9rem; color: #6b7280; }
+        .preview-vitals-grid strong { font-size: 1.3rem; font-weight: 800; color: #000; }
+        .preview-table-pro { font-size: 0.9rem; }
+        .preview-table-pro th, .preview-table-pro td { padding: 0.75rem; text-align: right; border-bottom: 1px solid #e5e7eb; }
+        .preview-table-pro td { color: #111827; }
+        .preview-table-pro th { background-color: #f3f4f6; font-weight: 700; color: #000; }
+        .superset-group-pro { background-color: #fefce8; }
+        .superset-label-pro { background-color: var(--accent); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-left: 8px; }
+        .preview-notes-pro { background-color: #f3f4f6; border-right: 4px solid var(--accent); padding: 1rem; border-radius: 0.25rem; }
+        .day-separator { border-bottom: 1px dashed #d1d5db; margin: 1.5rem 0; }
+        .page-footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 0.875rem; }
+
+        /* BMI & Weight Visualizers */
+        .bmi-visualizer, .weight-visualizer { margin-top: 1rem; }
+        .bmi-scale, .weight-scale { position: relative; width: 100%; height: 20px; border-radius: 10px; display: flex; overflow: hidden; }
         .bmi-segment, .weight-segment { height: 100%; background-color: var(--color); }
-        .bmi-needle, .weight-needle { position: absolute; top: -8px; left: 0; width: 4px; height: 32px; background-color: var(--text-primary); border-radius: 2px; border: 2px solid var(--bg-secondary); box-shadow: 0 2px 4px rgba(0,0,0,0.3); transform: translateX(-50%); z-index: 10; animation: needle-slide 1.5s 0.2s cubic-bezier(0.1, 0.7, 0.5, 1) forwards; }
-        .bmi-value-box, .weight-value-box { position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); padding: 4px 10px; background-color: var(--text-primary); color: var(--bg-secondary); border-radius: 6px; font-size: 1rem; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-        .bmi-value-box::after, .weight-value-box::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border-width: 6px; border-style: solid; border-color: var(--text-primary) transparent transparent transparent; }
-        @keyframes needle-slide { from { left: 0%; } to { left: var(--position); } }
-        .bmi-labels, .weight-labels { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); padding: 0 5px; }
-        .bmi-status-text, .weight-status-text { text-align: center; margin-top: 1.25rem; font-size: 1.125rem; color: var(--text-primary); }
-        .bmi-status-text strong, .weight-status-text strong { font-weight: 700; }
+        .bmi-needle, .weight-needle { position: absolute; bottom: 10px; left: var(--position); transform: translateX(-50%); width: 2px; height: 25px; background-color: #1f2937; }
+        html[data-theme='dark'] .bmi-needle, html[data-theme='dark'] .weight-needle { background-color: #f1f5f9; }
+        .bmi-value-box, .weight-value-box { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background-color: #1f2937; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        .bmi-labels, .weight-labels { display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 0.5rem; color: var(--text-secondary); }
         .bmi-status-underweight, .weight-status-underweight { color: #3b82f6; }
         .bmi-status-normal, .weight-status-normal { color: #22c55e; }
         .bmi-status-overweight, .weight-status-overweight { color: #f97316; }
         .bmi-status-obese { color: #ef4444; }
+        .bmi-status-text, .weight-status-text { text-align: center; margin-top: 0.75rem; }
 
-        .tooltip { position: relative; display: inline-block; }
-        .tooltip .tooltiptext { visibility: hidden; width: 220px; background-color: var(--bg-primary); color: var(--text-primary); text-align: center; border-radius: 6px; padding: 8px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; border: 1px solid var(--border-input); font-size: 0.8rem; }
-        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
-        .custom-checkbox-label { display: flex; align-items: center; cursor: pointer; gap: 0.75rem; }
-        .custom-checkbox { -webkit-appearance: none; appearance: none; background-color: var(--bg-tertiary); width: 1.25rem; height: 1.25rem; border-radius: 0.25rem; position: relative; transition: all 0.2s ease; border: 1px solid var(--border-input); }
-        .custom-checkbox:checked { background-color: #22C55E; border-color: #22C55E; }
-        .custom-checkbox:checked::after { content: '\\2713'; position: absolute; color: white; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.8rem; font-weight: bold; }
-
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .loader-icon { display: none; animation: spin 1s linear infinite; }
-        .is-loading .loader-icon { display: inline-block; }
-        .is-loading .button-text { display: none; }
-
-        html[data-theme='dark'] #theme-icon-sun, html[data-theme='dark'] #theme-icon-sun-dashboard { display: block; }
-        html[data-theme='dark'] #theme-icon-moon, html[data-theme='dark'] #theme-icon-moon-dashboard { display: none; }
-        html[data-theme='light'] #theme-icon-sun, html[data-theme='light'] #theme-icon-sun-dashboard { display: none; }
-        html[data-theme='light'] #theme-icon-moon, html[data-theme='light'] #theme-icon-moon-dashboard { display: block; }
-
-        /* AI Assistant pulse animation */
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); }
-        }
-        .ai-pulse { animation: pulse-glow 2s infinite; }
+        /* AI Chat */
+        #ai-chat-fab { position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 50; }
+        #ai-chat-modal .message { max-width: 80%; padding: 0.75rem; border-radius: 1rem; }
+        #ai-chat-modal .user-message { background-color: var(--accent); color: white; border-bottom-right-radius: 0.25rem; align-self: flex-end; }
+        #ai-chat-modal .ai-message { background-color: var(--bg-tertiary); border-bottom-left-radius: 0.25rem; align-self: flex-start; }
+        .blinking-cursor { display: inline-block; width: 3px; height: 1.2em; background-color: var(--text-primary); animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
         
-        #admin-panel-modal.active { opacity: 1; }
-        #admin-panel-modal.active > .card { transform: scale(1); }
-        
-        /* New Auth Screen Styles */
-        #user-selection-screen.auth-bg {
-            background-image: linear-gradient(to right, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.6)), url('https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=2069&auto=format&fit=crop');
-            background-size: cover;
-            background-position: center;
-        }
-        .auth-tab { border-bottom: 3px solid transparent; transition: all 0.2s ease-in-out; }
-        .auth-tab.active { border-bottom-color: #FBBF24; color: var(--text-primary); }
-        .auth-input-field { 
-            padding-right: 2.5rem; /* For RTL icon */
-            background-color: rgba(30, 41, 59, 0.5); /* bg-slate-800/50 */
-            border: 1px solid var(--border-secondary);
-            backdrop-filter: blur(4px);
-        }
-        .auth-input-field:focus {
-            background-color: rgba(30, 41, 59, 0.8);
-        }
-        html[data-theme='light'] .auth-input-field {
-             background-color: rgba(255, 255, 255, 0.5);
-             border-color: #cbd5e1; /* slate-300 */
-        }
-        html[data-theme='light'] .auth-input-field:focus {
-            background-color: rgba(255, 255, 255, 0.8);
-        }
-        .auth-card {
-            background-color: var(--bg-secondary);
+        /* Login Screen Enhancements */
+        #user-selection-screen .card {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.05);
             border: 1px solid var(--border-primary);
+            position: relative;
+            overflow: hidden;
         }
-        html[data-theme='dark'] .auth-card {
-            background-color: rgba(15, 23, 42, 0.6); /* slate-900/60 */
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border-secondary);
+        html[data-theme='dark'] #user-selection-screen .card {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         }
-        html[data-theme='light'] .auth-card {
-            background-color: rgba(248, 250, 252, 0.6); /* slate-50/60 */
-            backdrop-filter: blur(10px);
-            border: 1px solid #e2e8f0; /* slate-200 */
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background-color: var(--border-secondary); border-radius: 10px; border: 2px solid var(--bg-secondary); }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
-
-        /* Admin Panel Tabs */
-        .admin-tab {
-            padding: 0.75rem 1rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s ease;
-        }
-        .admin-tab:hover {
-            color: var(--text-primary);
-        }
-        .admin-tab.active {
-            color: var(--text-primary);
-            border-bottom-color: #FBBF24;
+        #user-selection-screen .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px solid transparent;
+            border-radius: 0.75rem;
+            background: conic-gradient(from 180deg at 50% 50%, var(--accent) 0deg, var(--green-accent) 180deg, var(--accent) 360deg) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 0.5;
         }
 
-        /* Admin Panel User Filters */
-        .user-filter-btn {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            background-color: var(--bg-tertiary);
-            color: var(--text-secondary);
-            font-weight: 500;
-            transition: all 0.2s ease;
-            border: 1px solid transparent;
+        #user-selection-screen .input-field {
+            background-color: var(--bg-secondary); /* Changed from tertiary for floating label */
+            border: 1px solid var(--border-primary);
+            transition: all 0.2s;
         }
-        .user-filter-btn:hover {
-            background-color: var(--border-primary);
-            color: var(--text-primary);
+        #user-selection-screen .input-field:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.2);
         }
-        .user-filter-btn.active {
-            background-color: rgba(251, 191, 36, 0.1);
-            color: #FBBF24;
+        #user-selection-screen .primary-button {
+            background-color: var(--accent);
+            color: #111827;
             font-weight: 700;
-            border-color: #FBBF24;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px -5px var(--accent);
         }
+        #user-selection-screen .primary-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px -5px var(--accent);
+        }
+
+        /* Tab styling */
+        .tabs-container { position: relative; display: flex; }
+        .tab-btn {
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+            border-bottom: 1px solid var(--border-primary);
+            flex: 1;
+            text-align: center;
+            font-weight: bold;
+            padding: 0.75rem 0;
+            z-index: 1;
+        }
+        .tab-btn.active { color: var(--accent); }
+        .tab-underline {
+            position: absolute;
+            bottom: 0;
+            height: 3px;
+            background-color: var(--accent);
+            border-radius: 3px 3px 0 0;
+            transition: left 0.3s ease, width 0.3s ease;
+        }
+        .form-container {
+            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+        }
+        .form-container.hidden {
+            opacity: 0;
+            transform: translateY(20px);
+            position: absolute;
+            pointer-events: none;
+            inset: 0;
+            padding: 2rem;
+        }
+        .input-group { position: relative; }
+        .input-group .input-field { padding-top: 1.25rem; }
+        .input-group .input-label {
+            position: absolute;
+            top: 0.85rem;
+            right: 0.75rem;
+            color: var(--text-secondary);
+            transition: all 0.2s ease-out;
+            pointer-events: none;
+            background-color: var(--bg-secondary);
+            padding: 0 0.25rem;
+        }
+        .input-group .input-field:focus + .input-label,
+        .input-group .input-field:not(:placeholder-shown) + .input-label {
+            top: -0.6rem;
+            font-size: 0.75rem;
+            color: var(--accent);
+        }
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            left: 0.75rem;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .social-login-divider { display: flex; align-items: center; color: var(--text-secondary); font-size: 0.8rem; margin: 1.5rem 0; }
+        .social-login-divider::before, .social-login-divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--border-primary); }
+        .social-login-divider:not(:empty)::before { margin-left: .5em; }
+        .social-login-divider:not(:empty)::after { margin-right: .5em; }
+        .social-btn { display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%; padding: 0.6rem; border-radius: 0.5rem; border: 1px solid var(--border-primary); background-color: var(--bg-tertiary); transition: background-color 0.2s; }
+        .social-btn:hover { background-color: var(--border-primary); }
+        .social-btn svg { width: 20px; height: 20px; }
+        .validation-message { font-size: 0.75rem; color: #ef4444; height: 1rem; margin-top: 0.25rem; }
         
+        /* Stepper */
+        .stepper-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; color: var(--text-secondary); }
+        .stepper-item > div { transition: all 0.3s ease; border-color: var(--border-secondary); }
+        .stepper-item > span { font-size: 0.8rem; margin-top: 0.5rem; }
+        .stepper-item.active > div { border-color: var(--accent); color: var(--accent); }
+        .stepper-item.active { color: var(--text-primary); }
+        .stepper-item.completed > div { border-color: var(--green-accent); background-color: var(--green-accent); color: white; }
+        .selected-card {
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 0 2px var(--accent);
+            background-color: rgba(250, 204, 21, 0.1);
+            transform: translateY(-2px);
+            transition: all 0.2s ease-out;
+        }
+
+        /* Goal & Gender Card Colors */
+        .card-goal-bulk.selected-card { background-color: rgba(59, 130, 246, 0.1); border-color: #3b82f6 !important; box-shadow: 0 0 0 2px #3b82f6; }
+        .card-goal-loss.selected-card { background-color: rgba(249, 115, 22, 0.1); border-color: #f97316 !important; box-shadow: 0 0 0 2px #f97316; }
+        .card-goal-fitness.selected-card { background-color: rgba(34, 197, 94, 0.1); border-color: #22c55e !important; box-shadow: 0 0 0 2px #22c55e; }
+        .card-goal-strength.selected-card { background-color: rgba(239, 68, 68, 0.1); border-color: #ef4444 !important; box-shadow: 0 0 0 2px #ef4444; }
+
+        .card-gender-male.selected-card { background-color: rgba(6, 182, 212, 0.1); border-color: #06b6d4 !important; box-shadow: 0 0 0 2px #06b6d4; }
+        .card-gender-female.selected-card { background-color: rgba(217, 70, 239, 0.1); border-color: #d946ef !important; box-shadow: 0 0 0 2px #d946ef; }
+
+
+        /* Spring theme for Admin Panel & User Dashboard Tabs */
+        #admin-panel-modal .card {
+            background-color: var(--bg-secondary);
+            background-image: 
+                radial-gradient(circle at 100% 0, rgba(167, 243, 208, 0.2) 0%, transparent 30%),
+                radial-gradient(circle at 0 100%, rgba(253, 224, 71, 0.1) 0%, transparent 30%);
+        }
+        html[data-theme='dark'] #admin-panel-modal .card {
+            background-color: var(--bg-secondary);
+            background-image: 
+                radial-gradient(circle at 100% 0, rgba(52, 211, 153, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 0 100%, rgba(250, 204, 21, 0.1) 0%, transparent 40%);
+        }
+        #admin-panel-modal header {
+            border-color: rgba(74, 222, 128, 0.3);
+        }
+        .admin-tab-btn, .user-dashboard-tab {
+            transition: all 0.3s ease;
+        }
+        .admin-tab-btn.active-spring-tab {
+            color: #15803d; /* green-700 */
+            border-color: #22c55e; /* green-500 */
+        }
+        .user-dashboard-tab.active-spring-tab {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+        html[data-theme='dark'] .admin-tab-btn.active-spring-tab {
+            color: #86efac; /* green-300 */
+        }
+
+        /* Colorful Key Vitals */
+        .key-vitals-container .space-y-3 > div > span { font-weight: 600; }
+        .key-vitals-container .space-y-3 > div:nth-child(1) > span { color: #3b82f6; } /* Blue */
+        .key-vitals-container .space-y-3 > div:nth-child(2) > span { color: #10b981; } /* Green */
+        .key-vitals-container .space-y-3 > div:nth-child(3) > span { color: #f97316; } /* Orange */
+        .key-vitals-container .space-y-3 > div:nth-child(4) > span { color: #ef4444; } /* Red */
+        .key-vitals-container .space-y-3 > div:nth-child(5) > span { color: #8b5cf6; } /* Violet */
+        .key-vitals-container .space-y-3 > div:nth-child(6) > span { color: #ec4899; } /* Pink */
+
     </style>
 </head>
-<body class="antialiased">
-    <!-- Auth Screen -->
-    <div id="user-selection-screen" class="fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-500 auth-bg">
-        <div class="w-full max-w-md auth-card rounded-2xl shadow-2xl overflow-hidden">
-             <!-- Right Panel (Forms) -->
-            <div class="p-8 sm:p-12">
-                <div class="mb-6 text-center">
-                    <i data-lucide="dumbbell" class="w-16 h-16 text-yellow-400 mb-4 mx-auto"></i>
-                     <h1 class="text-3xl font-extrabold">به <span class="gradient-text">FitGym Pro</span> خوش آمدید</h1>
-                     <p class="text-secondary mt-2">وارد حساب کاربری خود شوید یا ثبت نام کنید.</p>
-                </div>
+<body class="antialiased min-h-screen">
     
-                <!-- Tabs -->
-                <div class="flex border-b border-border-primary mb-6">
-                    <button id="login-tab-btn" class="auth-tab active w-1/2 pb-3 font-bold text-lg">ورود</button>
-                    <button id="signup-tab-btn" class="auth-tab w-1/2 pb-3 font-bold text-lg text-secondary">ثبت نام</button>
+    <div id="toast-container" class="fixed top-6 right-6 z-[100] flex flex-col gap-3"></div>
+
+    <!-- User Selection Screen -->
+    <div id="user-selection-screen" class="min-h-screen transition-opacity duration-300">
+        <div class="grid grid-cols-1 lg:grid-cols-2 min-h-screen">
+            <!-- Left Side: Image and Branding -->
+            <div class="hidden lg:block relative bg-cover bg-center" style="background-image: url('https://images.pexels.com/photos/1552242/pexels-photo-1552242.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2');">
+                <div class="absolute inset-0 bg-black/60 flex flex-col justify-center items-center text-center p-12">
+                    <i data-lucide="dumbbell" class="w-20 h-20 text-yellow-400"></i>
+                    <h1 class="text-5xl font-black text-white mt-6">فیت‌جیم‌پرو</h1>
+                    <p class="text-gray-300 mt-4 text-xl leading-relaxed">
+                        جایی که قدرت ساخته می‌شود، اهداف محقق می‌شوند و اسطوره‌ها متولد می‌شوند.
+                    </p>
                 </div>
-    
-                <!-- Login Form Container -->
-                <div id="login-form-container">
-                    <form id="login-form" class="space-y-6">
-                        <div>
-                            <label for="login-username" class="font-semibold text-sm text-secondary">نام کاربری</label>
-                            <div class="relative mt-1">
-                                <i data-lucide="user" class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary w-5 h-5"></i>
-                                <input type="text" id="login-username" class="input-field auth-input-field pr-10" placeholder="نام کاربری">
-                            </div>
-                        </div>
-                        <div>
-                            <label for="login-password" class="font-semibold text-sm text-secondary">رمز عبور</label>
-                             <div class="relative mt-1">
-                                <i data-lucide="lock" class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary w-5 h-5"></i>
-                                <input type="password" id="login-password" class="input-field auth-input-field pr-10" placeholder="رمز عبور">
-                            </div>
-                        </div>
-                        <button type="submit" class="primary-button w-full font-bold py-3 rounded-lg text-base">ورود</button>
-                    </form>
-                </div>
-    
-                <!-- Signup Form Container -->
-                <div id="signup-form-container" class="hidden">
-                     <form id="signup-form" class="space-y-6">
-                        <div>
-                            <label for="signup-username" class="font-semibold text-sm text-secondary">نام کاربری</label>
-                             <div class="relative mt-1">
-                                 <i data-lucide="user-plus" class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary w-5 h-5"></i>
-                                 <input type="text" id="signup-username" class="input-field auth-input-field pr-10" placeholder="حداقل ۳ کاراکتر">
-                             </div>
-                        </div>
-                        <div>
-                            <label for="signup-email" class="font-semibold text-sm text-secondary">ایمیل</label>
-                             <div class="relative mt-1">
-                                 <i data-lucide="at-sign" class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary w-5 h-5"></i>
-                                <input type="email" id="signup-email" class="input-field auth-input-field pr-10" placeholder="email@example.com">
-                             </div>
-                        </div>
-                        <div>
-                            <label for="signup-password" class="font-semibold text-sm text-secondary">رمز عبور</label>
-                             <div class="relative mt-1">
-                                 <i data-lucide="key-round" class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary w-5 h-5"></i>
-                                <input type="password" id="signup-password" class="input-field auth-input-field pr-10" placeholder="حداقل ۶ کاراکتر">
-                             </div>
-                        </div>
-                        <button type="submit" class="secondary-button w-full font-bold py-3 rounded-lg text-base">ثبت نام و ورود</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Admin Panel Modal -->
-    <div id="admin-panel-modal" class="hidden opacity-0 fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 transition-all duration-300">
-        <div class="card rounded-2xl p-0 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-300 border-0 shadow-2xl">
-            <!-- Header -->
-            <div class="p-4 sm:p-5 border-b border-border-primary flex justify-between items-center flex-shrink-0 bg-tertiary/50">
-                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-lg bg-yellow-400/10 flex items-center justify-center">
-                        <i data-lucide="shield-check" class="w-8 h-8 text-yellow-400"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-xl sm:text-2xl font-bold">پنل مدیریت</h2>
-                        <p class="text-sm text-secondary">داشبورد و مدیریت حساب‌های کاربری</p>
-                    </div>
-                </div>
-                <button id="close-admin-panel-btn" class="p-2 rounded-full text-secondary hover:bg-black/10 hover:text-primary"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <!-- Tabs -->
-            <div class="flex-shrink-0 border-b border-border-primary px-4 sm:px-6">
-                 <nav class="-mb-px flex space-x-4" aria-label="Tabs">
-                     <button id="admin-dashboard-tab" type="button" class="admin-tab active flex items-center gap-2">
-                         <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-                         <span>داشبورد</span>
-                     </button>
-                     <button id="admin-users-tab" type="button" class="admin-tab flex items-center gap-2">
-                         <i data-lucide="users" class="w-4 h-4"></i>
-                         <span>مدیریت کاربران</span>
-                     </button>
-                 </nav>
             </div>
             
-            <!-- Content -->
-            <div class="flex-grow p-4 sm:p-6 overflow-y-auto">
-                <!-- Dashboard Content -->
-                <div id="admin-dashboard-content">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                        <!-- Total Users -->
-                        <div class="card p-4 rounded-lg flex items-start gap-4 bg-blue-500/10 border-blue-500/20">
-                            <div class="bg-blue-500/20 p-3 rounded-lg"><i data-lucide="users" class="w-6 h-6 text-blue-400"></i></div>
-                            <div>
-                                <p class="text-sm font-semibold text-secondary">کل شاگردان</p>
-                                <p id="total-users-stat" class="text-3xl font-bold">0</p>
-                            </div>
-                        </div>
-                        <!-- Unpaid Users -->
-                        <div class="card p-4 rounded-lg flex items-start gap-4 bg-red-500/10 border-red-500/20">
-                            <div class="bg-red-500/20 p-3 rounded-lg"><i data-lucide="credit-card" class="w-6 h-6 text-red-400"></i></div>
-                            <div>
-                                <p class="text-sm font-semibold text-secondary">پرداخت نشده</p>
-                                <p id="unpaid-users-stat" class="text-3xl font-bold">0</p>
-                            </div>
-                        </div>
-                        <!-- Info Unconfirmed -->
-                        <div class="card p-4 rounded-lg flex items-start gap-4 bg-yellow-500/10 border-yellow-500/20">
-                            <div class="bg-yellow-500/20 p-3 rounded-lg"><i data-lucide="user-cog" class="w-6 h-6 text-yellow-400"></i></div>
-                            <div>
-                                <p class="text-sm font-semibold text-secondary">نیاز به تایید</p>
-                                <p id="unconfirmed-users-stat" class="text-3xl font-bold">0</p>
-                            </div>
-                        </div>
+            <!-- Right Side: Form -->
+            <div class="flex flex-col justify-center items-center p-8 bg-primary">
+                 <div class="w-full max-w-md">
+                    <!-- Logo for mobile -->
+                    <div class="text-center mb-8 lg:hidden">
+                        <i data-lucide="dumbbell" class="w-16 h-16 mx-auto text-yellow-400"></i>
+                        <h1 class="text-4xl font-black mt-4">فیت‌جیم‌پرو</h1>
+                        <p class="text-secondary mt-2">مربی هوشمند و برنامه‌ساز حرفه‌ای شما</p>
                     </div>
-                    <div>
-                         <h3 class="font-bold text-lg mb-4">آخرین فعالیت‌ها</h3>
-                         <div id="admin-activity-log" class="space-y-3">
-                             <!-- Activity log generated by JS -->
-                         </div>
+                    
+                    <div class="tabs-container">
+                        <button id="login-tab-btn" class="tab-btn">ورود</button>
+                        <button id="signup-tab-btn" class="tab-btn">ثبت نام</button>
+                        <div id="tab-underline" class="tab-underline"></div>
                     </div>
-                </div>
-                <!-- User Management Content -->
-                <div id="admin-users-content" class="hidden">
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="lg:col-span-1 space-y-4">
-                            <h3 class="font-bold text-lg">ایجاد کاربر جدید</h3>
-                            <div class="space-y-3">
-                                <input type="text" id="new-username-input" class="input-field text-sm" placeholder="نام کاربری جدید">
-                                <input type="email" id="new-user-email-input" class="input-field text-sm" placeholder="ایمیل جدید">
-                                <input type="password" id="new-user-password-input" class="input-field text-sm" placeholder="رمز عبور جدید">
-                                <button id="create-user-btn" class="secondary-button w-full font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2">
-                                     <i data-lucide="user-plus" class="w-4 h-4"></i><span>ایجاد کاربر</span>
-                                </button>
-                                <p id="create-user-error" class="text-red-500 text-sm h-4 text-center"></p>
+    
+                    <div class="card rounded-xl p-8 mt-[-1px] relative min-h-[500px] overflow-hidden">
+                        <!-- Login Form -->
+                        <div id="login-form-container" class="form-container">
+                            <h2 class="font-bold text-xl text-center mb-6">خوش آمدید!</h2>
+                            <form id="login-form" class="space-y-4">
+                                <div class="input-group">
+                                    <input id="login-username" type="text" class="input-field w-full" placeholder=" " required>
+                                    <label for="login-username" class="input-label">نام کاربری</label>
+                                </div>
+                                <div class="input-group relative">
+                                    <input id="login-password" type="password" class="input-field w-full" placeholder=" " required>
+                                    <label for="login-password" class="input-label">رمز عبور</label>
+                                    <button type="button" class="password-toggle" data-target="login-password">
+                                        <i data-lucide="eye" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                                <div class="space-y-3 pt-2">
+                                    <button id="login-client-btn" type="submit" class="primary-button w-full !py-3 !text-base">ورود به پنل شاگرد</button>
+                                    <button id="login-coach-btn" type="button" class="w-full text-center text-sm font-semibold text-secondary hover:text-accent transition-colors">ورود به پنل مربی</button>
+                                </div>
+                            </form>
+                            <div class="social-login-divider">یا</div>
+                            <div class="space-y-2">
+                                <button class="social-btn"><svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Google</title><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.84-4.63 1.84-5.62 0-9.98-4.5-9.98-10s4.36-10 9.98-10c2.93 0 5.15 1.18 6.78 2.72l2.25-2.25C19.5 1.18 16.33 0 12.48 0 5.88 0 .02 5.82.02 12.82s5.86 12.82 12.46 12.82c3.55 0 6.32-1.24 8.35-3.38 2.13-2.13 2.8-5.48 2.8-8.62 0-.92-.08-1.5-.2-2.18h-11Z" fill="#4285F4"/></svg><span>ورود با گوگل</span></button>
                             </div>
                         </div>
-                        <div class="lg:col-span-2">
-                            <div class="mb-4 space-y-3">
-                                <div class="relative">
-                                    <i data-lucide="search" class="absolute top-1/2 right-3 -translate-y-1/2 text-secondary w-5 h-5"></i>
-                                    <input type="text" id="admin-user-search" class="input-field pr-10" placeholder="جستجو بر اساس نام یا ایمیل...">
+                        <!-- Signup Form -->
+                        <div id="signup-form-container" class="form-container hidden">
+                            <h2 class="font-bold text-xl text-center mb-6">ایجاد حساب کاربری</h2>
+                            <form id="signup-form" class="space-y-2">
+                                <div class="input-group">
+                                    <input id="signup-username" type="text" class="input-field w-full" placeholder=" " required minlength="3">
+                                    <label for="signup-username" class="input-label">نام کاربری</label>
+                                    <div class="validation-message"></div>
                                 </div>
-                                <div id="user-filter-btn-group" class="flex flex-wrap items-center gap-2 text-sm">
-                                    <span class="font-semibold text-secondary">فیلتر:</span>
-                                    <button class="user-filter-btn active" data-filter="all">نمایش همه</button>
-                                    <button class="user-filter-btn" data-filter="unpaid">پرداخت نشده</button>
-                                    <button class="user-filter-btn" data-filter="unconfirmed">تایید نکرده</button>
-                                    <button class="user-filter-btn" data-filter="inactive">غیرفعال (۱+ هفته)</button>
+                                <div class="input-group">
+                                    <input id="signup-email" type="email" class="input-field w-full" placeholder=" " required>
+                                    <label for="signup-email" class="input-label">ایمیل</label>
+                                    <div class="validation-message"></div>
                                 </div>
-                            </div>
-                            <h3 class="font-bold text-lg mb-4">لیست شاگردان</h3>
-                            <div id="admin-user-list" class="space-y-2">
-                                <!-- User list populated by JS -->
-                            </div>
+                                <div class="input-group relative">
+                                    <input id="signup-password" type="password" class="input-field w-full" placeholder=" " required minlength="6">
+                                    <label for="signup-password" class="input-label">رمز عبور</label>
+                                    <button type="button" class="password-toggle" data-target="signup-password">
+                                        <i data-lucide="eye" class="w-5 h-5"></i>
+                                    </button>
+                                    <div class="validation-message"></div>
+                                </div>
+                                <button type="submit" class="green-button w-full !py-3 !text-base mt-2">ثبت نام</button>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -621,488 +419,644 @@
         </div>
     </div>
 
-    <!-- User Dashboard Container -->
-    <div id="user-dashboard-container" class="container mx-auto p-4 sm:p-6 lg:p-8 opacity-0 transition-opacity duration-500 hidden">
-        <header class="mb-8 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-            <div>
-                <h1 id="dashboard-welcome-message" class="text-3xl font-bold">خوش آمدید!</h1>
-                <p class="mt-1 text-secondary">برنامه تمرینی و پروفایل خود را مدیریت کنید.</p>
-            </div>
-            <div class="flex items-center gap-2">
-                 <button id="logout-btn-dashboard" class="secondary-button p-2 rounded-full" title="خروج">
-                    <i data-lucide="log-out" class="w-5 h-5"></i>
-                </button>
-                 <button id="theme-toggle-btn-dashboard" class="secondary-button p-2 rounded-full">
-                    <i id="theme-icon-sun-dashboard" data-lucide="sun" class="w-6 h-6"></i>
-                    <i id="theme-icon-moon-dashboard" data-lucide="moon" class="w-6 h-6"></i>
-                </button>
+
+    <!-- Main App Container (Coach) -->
+    <div id="main-app-container" class="hidden opacity-0 transition-opacity duration-500">
+        <header class="bg-secondary/80 backdrop-blur-sm sticky top-0 z-40 border-b border-border-primary">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="dumbbell" class="w-8 h-8 text-amber-400"></i>
+                    <h1 class="text-xl font-bold">پنل مربی FitGym Pro</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div id="current-user-display" class="hidden items-center gap-2">
+                         <i data-lucide="shield-check" class="text-green-400"></i>
+                         <span id="current-user-name" class="font-bold"></span>
+                    </div>
+                    <button id="admin-panel-btn" class="secondary-button !px-3 !py-2 hidden" title="پنل مدیریت"><i data-lucide="settings-2"></i></button>
+                    <button id="logout-btn" class="secondary-button !px-3 !py-2 hidden" title="خروج"><i data-lucide="log-out"></i></button>
+                </div>
             </div>
         </header>
-        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Main Content Column -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Stats Row -->
-                <div id="dashboard-stats-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <!-- Stat cards will be injected here by JS -->
-                </div>
-    
-                <!-- Today's Focus -->
-                <div id="today-focus-card" class="card rounded-xl p-6">
-                    <!-- Today's focus content will be injected here by JS -->
-                </div>
-    
-                <!-- Progress Chart -->
-                <div id="progress-chart-card" class="card rounded-xl p-6 relative min-h-[300px]">
-                     <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="text-yellow-400"></i>نمودار پیشرفت وزن</h3>
-                     <div id="no-chart-data" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center text-secondary p-4">
-                        <i data-lucide="chart-no-data" class="w-12 h-12 mb-4 text-border-secondary"></i>
-                        <p class="font-bold">داده‌ای برای نمایش وجود ندارد</p>
-                        <p class="text-sm">اولین وزن خود را از پنل پروفایل در کنار صفحه ثبت کنید.</p>
-                    </div>
-                     <canvas id="weight-progress-chart"></canvas>
-                </div>
-                
-                 <!-- Full Program View -->
-                <div class="card rounded-xl p-0 overflow-hidden">
-                     <h3 class="font-bold text-lg p-6">برنامه کامل شما</h3>
-                     <div id="dashboard-program-view" class="preview-container bg-transparent p-0 sm:p-0 border-t border-border-primary">
-                        <!-- The user's program sheet will be rendered here -->
-                    </div>
-                    <div class="p-6 border-t border-border-primary text-center">
-                        <button type="button" id="dashboard-save-pdf-btn" class="primary-button flex items-center justify-center gap-2 font-bold py-3 px-6 rounded-lg mx-auto">
-                           <i data-lucide="save" class="button-icon"></i>
-                           <i data-lucide="loader-circle" class="loader-icon"></i>
-                           <span class="button-text">ذخیره برنامه به صورت PDF</span>
-                        </button>
-                   </div>
-                </div>
-            </div>
-    
-            <!-- Sidebar Column -->
-            <div class="lg:col-span-1 space-y-6">
-                <div id="dashboard-status-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
-                    <!-- Status badges will be injected here -->
-                </div>
-                <!-- Profile Panel -->
-                <aside id="dashboard-profile-panel" class="space-y-6 card rounded-xl p-6 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
-                    <h2 class="text-2xl font-bold">پروفایل و شاخص‌ها</h2>
-                    <p class="text-sm text-secondary -mt-4">اطلاعات خود را برای دریافت برنامه دقیق‌تر به‌روز نگه دارید.</p>
-    
-                    <!-- Profile Info Form (Replicated from Admin's Step 1) -->
-                     <div class="flex items-center gap-6">
-                        <label class="cursor-pointer">
-                            <img class="profile-pic-preview w-24 h-24 rounded-full object-cover border-2 border-border-secondary hover:border-yellow-400 transition-all" src="https://placehold.co/100x100/374151/E5E7EB?text=عکس" alt="عکس پروفایل">
-                            <input type="file" class="profile-pic-input hidden" accept="image/*">
-                        </label>
-                        <div class="flex-grow">
-                            <label class="font-semibold text-sm text-secondary">نام و نام خانوادگی</label>
-                            <input type="text" class="client-name-input input-field mt-1 text-lg font-bold" readonly>
-                        </div>
-                    </div>
-                    <div class="space-y-6">
-                        <div><label class="font-semibold text-sm text-secondary">ایمیل</label><input type="email" class="client-email-input input-field mt-1" placeholder="email@example.com"></div>
-                        <div class="training-goal-container">
-                            <label class="font-semibold text-sm mb-2 block">هدف اصلی تمرین</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div><input type="radio" name="training-goal-user" value="افزایش حجم عضلانی" id="goal-bulk-user" class="sr-only radio-group-input training-goal"><label for="goal-bulk-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">افزایش حجم</label></div>
-                                <div><input type="radio" name="training-goal-user" value="چربی سوزی" id="goal-cut-user" class="sr-only radio-group-input training-goal"><label for="goal-cut-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">چربی سوزی</label></div>
-                                <div><input type="radio" name="training-goal-user" value="افزایش قدرت" id="goal-strength-user" class="sr-only radio-group-input training-goal"><label for="goal-strength-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">افزایش قدرت</label></div>
-                                <div><input type="radio" name="training-goal-user" value="تناسب اندام عمومی" id="goal-fit-user" class="sr-only radio-group-input training-goal"><label for="goal-fit-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">تناسب اندام</label></div>
+        
+        <main class="container mx-auto p-4 lg:p-6">
+            <form id="program-builder-form" class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                <!-- Left Column: Stepper and Form Sections -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Stepper -->
+                    <div class="card rounded-xl p-4">
+                        <div class="flex justify-between items-center">
+                            <div class="stepper-item active" data-step="1">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold">1</div>
+                                <span class="hidden md:inline font-semibold">اطلاعات شاگرد</span>
+                            </div>
+                            <div class="flex-1 h-0.5 bg-border-primary mx-4"></div>
+                            <div class="stepper-item" data-step="2">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold">2</div>
+                                <span class="hidden md:inline font-semibold">برنامه تمرین</span>
+                            </div>
+                             <div class="flex-1 h-0.5 bg-border-primary mx-4"></div>
+                            <div class="stepper-item" data-step="3">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold">3</div>
+                                <span class="hidden md:inline font-semibold">مکمل‌ها</span>
+                            </div>
+                            <div class="flex-1 h-0.5 bg-border-primary mx-4"></div>
+                            <div class="stepper-item" data-step="4">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold">4</div>
+                                <span class="hidden md:inline font-semibold">بازبینی</span>
+                            </div>
+                            <div class="flex-1 h-0.5 bg-border-primary mx-4"></div>
+                            <div class="stepper-item" data-step="5">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold">5</div>
+                                <span class="hidden md:inline font-semibold">تغذیه</span>
                             </div>
                         </div>
                     </div>
-                    <div class="space-y-6">
-                        <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">سن</label><span class="age-value font-bold text-lg text-orange-400">25</span></div><input type="range" min="15" max="80" value="25" class="range-slider age-slider"></div>
-                        <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">قد (cm)</label><span class="height-value font-bold text-lg text-pink-400">180 cm</span></div><input type="range" min="140" max="220" value="180" class="range-slider height-slider"></div>
-                        <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">وزن (kg)</label><span class="weight-value font-bold text-lg text-yellow-400">80 kg</span></div><input type="range" min="40" max="150" value="80" class="range-slider weight-slider"></div>
+                    
+                    <!-- Form Sections -->
+                    <div id="section-1" class="form-section active card rounded-xl p-6">
+                        <!-- Personal Info Content Here -->
+                        <h2 class="text-2xl font-bold mb-6 border-b border-border-primary pb-4">گام اول: اطلاعات شاگرد</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Basic Info -->
+                            <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                                <label for="profile-pic-upload" class="flex flex-col items-center gap-2 cursor-pointer">
+                                    <img class="profile-pic-preview w-24 h-24 rounded-full object-cover border-4 border-border-primary" src="https://placehold.co/100x100/374151/E5E7EB?text=عکس" alt="Profile">
+                                    <span class="text-xs font-semibold text-secondary">تغییر عکس</span>
+                                    <input type="file" id="profile-pic-upload" class="profile-pic-input hidden" accept="image/*">
+                                </label>
+                                <div class="sm:col-span-2 space-y-4">
+                                    <input type="text" id="client-name-input" class="client-name-input input-field w-full" placeholder="نام و نام خانوادگی شاگرد">
+                                    <input type="email" class="client-email-input input-field w-full" placeholder="ایمیل شاگرد (اختیاری)">
+                                    <input type="text" id="coach-name-input" class="coach-name-input input-field w-full" placeholder="نام مربی">
+                                </div>
+                            </div>
+
+                            <!-- Body Metrics -->
+                            <div class="space-y-4">
+                                <label class="font-semibold">سن: <span class="age-value font-bold text-amber-400">25</span></label>
+                                <input type="range" min="15" max="80" value="25" class="range-slider age-slider">
+                            </div>
+                            <div class="space-y-4">
+                                <label class="font-semibold">قد (cm): <span class="height-value font-bold text-amber-400">180 cm</span></label>
+                                <input type="range" min="140" max="220" value="180" class="range-slider height-slider">
+                            </div>
+                             <div class="space-y-4">
+                                <label class="font-semibold">وزن (kg): <span class="weight-value font-bold text-amber-400">80 kg</span></label>
+                                <input type="range" min="40" max="150" value="80" step="0.5" class="range-slider weight-slider">
+                            </div>
+                            <div class="space-y-2">
+                                <h3 class="font-bold">جنسیت</h3>
+                                <div class="grid grid-cols-2 gap-2">
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-gender-male"><input type="radio" name="gender" value="مرد" class="gender sr-only" checked>مرد</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-gender-female"><input type="radio" name="gender" value="زن" class="gender sr-only">زن</label>
+                                </div>
+                            </div>
+                            <!-- More inputs for neck, waist, hip -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 md:col-span-2">
+                               <input type="number" class="neck-input input-field" placeholder="دور گردن (cm)">
+                               <input type="number" class="waist-input input-field" placeholder="دور کمر (cm)">
+                               <div class="hip-input-container hidden">
+                                   <input type="number" class="hip-input input-field w-full" placeholder="دور باسن (cm)">
+                               </div>
+                            </div>
+
+                            <!-- Training Goal -->
+                            <div class="md:col-span-2 space-y-2">
+                                <h3 class="font-bold">هدف تمرینی</h3>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-goal-bulk"><input type="radio" name="training_goal" class="training-goal sr-only" value="افزایش حجم">افزایش حجم</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-goal-loss"><input type="radio" name="training_goal" class="training-goal sr-only" value="کاهش وزن">کاهش وزن</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-goal-fitness"><input type="radio" name="training_goal" class="training-goal sr-only" value="فیتنس">فیتنس</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-goal-strength"><input type="radio" name="training_goal" class="training-goal sr-only" value="قدرت">قدرت</label>
+                                </div>
+                            </div>
+                             <!-- Activity Level -->
+                            <div class="md:col-span-2 space-y-2">
+                                <h3 class="font-bold">سطح فعالیت روزانه</h3>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.2">بدون فعالیت</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.375">کم (۱-۳ روز)</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.55" checked>متوسط (۳-۵ روز)</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.725">زیاد (۶-۷ روز)</label>
+                                </div>
+                            </div>
+                            <!-- Training Days -->
+                            <div class="md:col-span-2 space-y-2">
+                                <h3 class="font-bold">تعداد روزهای تمرین در هفته</h3>
+                                <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="1">۱</label>
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="2">۲</label>
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="3">۳</label>
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="4" checked>۴</label>
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="5">۵</label>
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="6">۶</label>
+                                </div>
+                            </div>
+
+                        </div>
                     </div>
-                    <div class="space-y-4">
-                        <h3 class="font-semibold text-base text-secondary">اندازه‌های بدن</h3>
-                        <div><label class="font-semibold text-sm text-secondary">دور گردن (cm)</label><input type="number" class="neck-input input-field mt-1" placeholder="مثال: 40"></div>
-                        <div><label class="font-semibold text-sm text-secondary">دور کمر (cm)</label><input type="number" class="waist-input input-field mt-1" placeholder="مثال: 85"></div>
-                        <div class="hip-input-container hidden"><label class="font-semibold text-sm text-secondary">دور باسن (cm)</label><input type="number" class="hip-input input-field mt-1" placeholder="مثال: 95"></div>
+                    
+                    <div id="section-2" class="form-section hidden card rounded-xl p-6">
+                        <div class="flex flex-wrap gap-4 justify-between items-center mb-6 border-b border-border-primary pb-4">
+                           <h2 class="text-2xl font-bold">گام دوم: برنامه تمرینی</h2>
+                           <button id="generate-ai-plan-btn" type="button" class="primary-button flex items-center gap-2"><i data-lucide="sparkles"></i>تولید برنامه با AI</button>
+                        </div>
+                        <div id="workout-days-container" class="space-y-6">
+                            <!-- Workout days will be injected here -->
+                        </div>
+                         <button id="add-day-btn" type="button" class="mt-6 w-full text-lg secondary-button font-bold flex items-center justify-center gap-2"><i data-lucide="plus-circle"></i> افزودن روز تمرینی</button>
                     </div>
-                    <div class="border-t border-border-primary pt-4 space-y-4">
-                         <h3 class="font-semibold text-base text-secondary">شاخص‌های کلیدی (محاسبه خودکار)</h3>
-                         <div class="grid grid-cols-2 gap-4">
-                             <div><label class="font-semibold text-sm text-secondary">BMI</label><input type="text" class="bmi-input input-field mt-1" readonly></div>
-                             <div><label class="font-semibold text-sm text-secondary">BMR (kcal)</label><input type="text" class="bmr-input input-field mt-1" readonly></div>
-                             <div><label class="font-semibold text-sm text-secondary">TDEE (kcal)</label><input type="text" class="tdee-input input-field mt-1" readonly></div>
-                             <div><label class="font-semibold text-sm text-secondary">چربی (%)</label><input type="text" class="bodyfat-input input-field mt-1" readonly></div>
-                             <div><label class="font-semibold text-sm text-secondary">توده بدون چربی (kg)</label><input type="text" class="lbm-input input-field mt-1" readonly></div>
-                             <div class="col-span-2"><label class="font-semibold text-sm text-secondary">محدوده وزن ایده‌آل (kg)</label><input type="text" class="ideal-weight-input input-field mt-1" readonly></div>
-                         </div>
+
+                    <div id="section-3" class="form-section hidden card rounded-xl p-6">
+                        <h2 class="text-2xl font-bold mb-2">گام سوم: برنامه مکمل‌ها</h2>
+                        <p class="text-secondary mb-6">مکمل‌های پیشنهادی را برای شاگرد انتخاب کنید.</p>
+                        <input type="search" id="supplement-search" placeholder="جستجوی مکمل..." class="input-field w-full mb-6">
+                        <div id="supplements-container" class="space-y-6">
+                            <!-- Supplement categories will be injected here -->
+                        </div>
                     </div>
-                     <div class="realtime-visualizers grid grid-cols-1 gap-6"></div>
-                     <div class="space-y-6">
-                        <div><label class="font-semibold text-sm mb-2 block text-secondary">جنسیت</label><div class="grid grid-cols-2 gap-2"><div><input type="radio" name="gender-user" value="مرد" id="male-user" class="sr-only radio-group-input gender"><label for="male-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer">مرد</label></div><div><input type="radio" name="gender-user" value="زن" id="female-user" class="sr-only radio-group-input gender"><label for="female-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer">زن</label></div></div></div>
+
+                    <div id="section-4" class="form-section hidden card rounded-xl p-6">
+                        <h2 class="text-2xl font-bold mb-6">گام چهارم: بازبینی و توصیه‌های نهایی</h2>
                         <div>
-                             <label class="font-semibold text-sm mb-2 block text-secondary">سطح فعالیت روزانه</label>
-                             <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                 <div><input type="radio" name="activity-level-user" value="1.2" id="sedentary-user" class="sr-only radio-group-input activity-level"><label for="sedentary-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">بی‌تحرک</label></div>
-                                 <div><input type="radio" name="activity-level-user" value="1.375" id="light-user" class="sr-only radio-group-input activity-level"><label for="light-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">کم</label></div>
-                                 <div><input type="radio" name="activity-level-user" value="1.55" id="moderate-user" class="sr-only radio-group-input activity-level"><label for="moderate-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">متوسط</label></div>
-                                 <div><input type="radio" name="activity-level-user" value="1.725" id="active-user" class="sr-only radio-group-input activity-level"><label for="active-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">زیاد</label></div>
-                                 <div class="col-span-2 md:col-span-1"><input type="radio" name="activity-level-user" value="1.9" id="very-active-user" class="sr-only radio-group-input activity-level"><label for="very-active-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">خیلی زیاد</label></div>
+                            <label for="general-notes-input" class="font-bold mb-2 block">توصیه‌های کلی مربی</label>
+                            <textarea id="general-notes-input" rows="6" class="input-field w-full" placeholder="مثال: حتما قبل از تمرین بدن خود را گرم کنید و بعد از تمرین حرکات کششی انجام دهید..."></textarea>
+                        </div>
+                        <div class="mt-8">
+                             <h3 class="text-xl font-bold mb-4">پیش‌نمایش برنامه</h3>
+                             <div id="program-sheet-container" class="bg-gray-100 p-2 rounded-lg">
+                                 <!-- Preview will be rendered here -->
                              </div>
                         </div>
-                        <div>
-                             <label class="font-semibold text-sm mb-2 block text-secondary">تعداد روزهای تمرین در هفته</label>
-                             <div class="grid grid-cols-4 gap-2">
-                                 <div><input type="radio" name="training-days-user" value="1" id="days-1-user" class="sr-only radio-group-input training-days"><label for="days-1-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۱</label></div>
-                                 <div><input type="radio" name="training-days-user" value="2" id="days-2-user" class="sr-only radio-group-input training-days"><label for="days-2-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۲</label></div>
-                                 <div><input type="radio" name="training-days-user" value="3" id="days-3-user" class="sr-only radio-group-input training-days"><label for="days-3-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۳</label></div>
-                                 <div><input type="radio" name="training-days-user" value="4" id="days-4-user" class="sr-only radio-group-input training-days"><label for="days-4-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۴</label></div>
-                                 <div><input type="radio" name="training-days-user" value="5" id="days-5-user" class="sr-only radio-group-input training-days"><label for="days-5-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۵</label></div>
-                                 <div><input type="radio" name="training-days-user" value="6" id="days-6-user" class="sr-only radio-group-input training-days"><label for="days-6-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۶</label></div>
-                                 <div><input type="radio" name="training-days-user" value="7" id="days-7-user" class="sr-only radio-group-input training-days"><label for="days-7-user" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">۷</label></div>
+                    </div>
+                    
+                    <div id="section-5" class="form-section hidden card rounded-xl p-6">
+                        <h2 class="text-2xl font-bold mb-6">گام پنجم: برنامه تغذیه (با هوش مصنوعی)</h2>
+                        <div class="card bg-tertiary/50 p-4 rounded-lg">
+                            <p class="text-secondary text-sm">با استفاده از هوش مصنوعی یک برنامه غذایی نمونه بر اساس اطلاعات شاگرد (مانند TDEE محاسبه شده) تولید کنید. می‌توانید این برنامه را ویرایش و شخصی‌سازی کنید.</p>
+                            <button id="generate-ai-nutrition-btn" type="button" class="primary-button mt-4 w-full md:w-auto flex items-center gap-2 justify-center">
+                                <i data-lucide="sparkles"></i> تولید برنامه غذایی نمونه
+                            </button>
+                        </div>
+
+                        <div id="ai-nutrition-result" class="mt-6 prose prose-sm max-w-none prose-p:my-2 prose-h4:my-3 prose-table:my-2 hidden" contenteditable="true">
+                            <!-- AI Nutrition plan will be injected here -->
+                        </div>
+                         <div class="mt-8">
+                             <h3 class="text-xl font-bold mb-4">پیش‌نمایش نهایی برنامه (با تغذیه)</h3>
+                             <div id="program-sheet-container-step5" class="bg-gray-100 p-2 rounded-lg">
+                                 <!-- Preview will be rendered here -->
                              </div>
                         </div>
                     </div>
-                     <div class="border-t border-border-primary pt-6 mt-6 space-y-3">
-                        <button type="button" id="confirm-info-btn" class="secondary-button w-full font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2">
-                            <i data-lucide="check-circle"></i>
-                            <span>تایید اطلاعات</span>
-                        </button>
-                        <button type="button" id="pay-program-btn" class="primary-button w-full font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2">
-                            <i data-lucide="credit-card"></i>
-                            <span>پرداخت هزینه برنامه تمرینی</span>
-                        </button>
+
+                </div>
+                
+                <!-- Right Column: Actions & Preview -->
+                <div class="lg:col-span-1 space-y-6 sticky top-24">
+                    <div class="card rounded-xl p-6">
+                        <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="zap" class="text-amber-400"></i>عملیات</h3>
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-3 gap-2">
+                                <button id="save-pdf-btn" type="button" class="secondary-button w-full !text-sm !px-2">ذخیره PDF</button>
+                                <button id="save-word-btn" type="button" class="secondary-button w-full !text-sm !px-2">ذخیره Word</button>
+                                <button id="save-changes-btn" type="button" class="secondary-button w-full !text-sm !px-2">ذخیره تغییرات</button>
+                            </div>
+                            <button id="send-program-btn" type="button" class="primary-button w-full">ارسال برنامه به شاگرد</button>
+                            <button id="send-nutrition-btn" type="button" class="green-button w-full hidden">ارسال تغذیه به شاگرد</button>
+                        </div>
                     </div>
-                    <div class="border-t border-border-primary pt-6 mt-6">
-                        <h3 class="font-bold text-lg mb-4">ثبت وزن امروز</h3>
-                        <form id="add-weight-form" class="flex gap-2">
-                            <input type="number" step="0.1" id="new-weight-input" class="input-field" placeholder="وزن امروز (kg)" required>
-                            <button type="submit" class="primary-button p-3 rounded-lg flex-shrink-0"><i data-lucide="plus" class="w-5 h-5"></i></button>
-                        </form>
+
+                    <div class="card rounded-xl p-6">
+                        <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="graduation-cap" class="text-blue-400"></i>دستیار هوشمند مربی</h3>
+                         <div class="relative">
+                            <input type="text" id="ai-question-input" class="input-field w-full" placeholder="سوال خود را بپرسید...">
+                            <button id="get-ai-suggestion-btn" class="absolute top-1/2 -translate-y-1/2 left-2 primary-button !p-2">
+                                <i data-lucide="search"></i>
+                            </button>
+                        </div>
+                        <div id="ai-assistant-content" class="mt-4 text-sm text-secondary prose prose-sm max-w-none">
+                           <p>مثال: "یک حرکت جایگزین برای اسکوات هالتر پیشنهاد بده."</p>
+                        </div>
                     </div>
-                </aside>
-            </div>
+
+                    <div class="card rounded-xl p-6 key-vitals-container">
+                        <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="bar-chart-3" class="text-green-400"></i>شاخص‌های کلیدی</h3>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between"><span>شاخص توده بدنی (BMI)</span><input readonly class="bmi-input input-field !p-1 !text-center w-20 font-mono"></div>
+                            <div class="flex justify-between"><span>متابولیسم پایه (BMR)</span><input readonly class="bmr-input input-field !p-1 !text-center w-20 font-mono"></div>
+                            <div class="flex justify-between"><span>کالری مصرفی روزانه (TDEE)</span><input readonly class="tdee-input input-field !p-1 !text-center w-20 font-mono"></div>
+                             <div class="flex justify-between"><span>درصد چربی بدن</span><input readonly class="bodyfat-input input-field !p-1 !text-center w-20 font-mono"></div>
+                             <div class="flex justify-between"><span>توده بدون چربی (LBM)</span><input readonly class="lbm-input input-field !p-1 !text-center w-20 font-mono"></div>
+                             <div class="flex justify-between"><span>وزن ایده‌آل</span><input readonly class="ideal-weight-input input-field !p-1 !text-center w-32 font-mono"></div>
+                        </div>
+                    </div>
+
+                     <div class="card rounded-xl p-6">
+                        <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="save" class="text-purple-400"></i>الگوها</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                             <button id="save-template-btn" type="button" class="secondary-button w-full">ذخیره الگو</button>
+                             <button id="load-template-btn" type="button" class="secondary-button w-full">بارگذاری الگو</button>
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- Stepper Navigation -->
+                <div class="lg:col-span-2 flex justify-between items-center mt-6">
+                    <button id="prev-btn" type="button" class="secondary-button" disabled>قبلی</button>
+                    <button id="next-btn" type="button" class="primary-button">بعدی</button>
+                </div>
+            </form>
         </main>
     </div>
 
-    <!-- Main App Container (for Admin) -->
-    <div id="main-app-container" class="container mx-auto p-4 sm:p-6 lg:p-8 opacity-0 transition-opacity duration-500 hidden">
-        <header class="mb-8 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-            <div>
-                <h1 class="text-4xl font-extrabold">سازنده برنامه <span class="gradient-text">FitGym Pro</span></h1>
-                <p class="mt-2 text-secondary">ابزار مدرن و هوشمند طراحی برنامه تمرینی و مکمل‌ها</p>
-            </div>
-            <div class="flex items-center gap-2">
-                <div id="current-user-display" class="hidden items-center gap-2 text-right">
-                    <i data-lucide="user-cog" class="w-10 h-10 text-yellow-400"></i>
-                    <div>
-                        <span id="current-user-name" class="font-bold"></span>
-                        <span class="text-secondary text-sm block">حالت مربی</span>
-                    </div>
+    <!-- User Dashboard -->
+    <div id="user-dashboard-container" class="hidden opacity-0 transition-opacity duration-500">
+         <header class="bg-secondary/80 backdrop-blur-sm sticky top-0 z-40 border-b border-border-primary">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="dumbbell" class="w-8 h-8 text-amber-400"></i>
+                    <h1 id="dashboard-welcome-message" class="text-xl font-bold">خوش آمدی!</h1>
                 </div>
-                 <button id="admin-panel-btn" class="secondary-button font-bold py-2 px-4 rounded-lg flex items-center gap-2">
-                    <i data-lucide="users"></i>
-                    <span>پنل مدیریت</span>
-                </button>
-                <button id="logout-btn" class="secondary-button p-2 rounded-full" title="خروج و انتخاب کاربر">
-                    <i data-lucide="log-out" class="w-5 h-5"></i>
-                </button>
-                <button id="theme-toggle-btn" class="secondary-button p-2 rounded-full">
-                    <i id="theme-icon-sun" data-lucide="sun" class="w-6 h-6"></i>
-                    <i id="theme-icon-moon" data-lucide="moon" class="w-6 h-6"></i>
-                </button>
+                <div class="flex items-center gap-4 relative">
+                    <div id="notification-bell-container"></div>
+                    <button id="theme-toggle-btn-dashboard" class="secondary-button !px-3 !py-2" title="تغییر تم"><i data-lucide="moon"></i></button>
+                    <button id="logout-btn-dashboard" class="secondary-button !px-3 !py-2" title="خروج"><i data-lucide="log-out"></i></button>
+                </div>
             </div>
         </header>
-        
-        <div class="flex flex-col lg:flex-row gap-8">
-            <!-- Right Sidebar -->
-            <aside class="lg:w-1/4 lg:order-last">
-                 <div class="sticky top-8 space-y-8">
-                    <div id="stepper" class="card rounded-xl p-4 space-y-2">
-                        <div id="step-1" class="stepper-item active completed p-4 rounded-lg cursor-pointer">
-                            <div class="flex items-center gap-4"><div class="step-circle w-10 h-10 rounded-full flex items-center justify-center font-bold">۱</div><div><h3 class="font-bold">اطلاعات شاگرد</h3><p class="text-xs text-secondary">اطلاعات پایه و شخصی</p></div></div>
+
+        <main class="container mx-auto p-4 lg:p-6">
+            <!-- Tab Navigation -->
+            <div class="mb-6 border-b border-border-primary">
+                <nav id="user-dashboard-tabs" class="flex items-center gap-2 sm:gap-6 -mb-px text-sm sm:text-base overflow-x-auto">
+                    <button data-tab="dashboard" class="user-dashboard-tab active-spring-tab py-3 px-2 font-bold border-b-2 flex items-center gap-2 flex-shrink-0"><i data-lucide="layout-dashboard"></i>داشبورد</button>
+                    <button data-tab="program" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="clipboard-list"></i>برنامه من</button>
+                    <button data-tab="progress" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="trending-up"></i>روند پیشرفت</button>
+                    <button data-tab="profile" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="user-circle"></i>پروفایل</button>
+                </nav>
+            </div>
+    
+            <!-- Tab Content -->
+            <div class="transition-opacity duration-300">
+                <!-- Dashboard Tab -->
+                <div id="dashboard-tab-content" class="user-dashboard-tab-content grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 space-y-6">
+                        <div id="dashboard-stats-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+                        <div id="coach-message-card" class="card rounded-lg p-4 bg-amber-500/10 border-amber-500/20 hidden">
+                             <h3 class="font-bold mb-3 flex items-center gap-2"><i data-lucide="message-square" class="text-amber-400"></i>پیام جدید از مربی</h3>
+                             <div id="coach-message-content" class="text-sm space-y-2"></div>
                         </div>
-                        <div id="step-2" class="stepper-item p-4 rounded-lg cursor-pointer">
-                            <div class="flex items-center gap-4"><div class="step-circle w-10 h-10 rounded-full flex items-center justify-center font-bold">۲</div><div><h3 class="font-bold">طراحی تمرین</h3><p class="text-xs text-secondary">چیدمان حرکات</p></div></div>
-                        </div>
-                        <div id="step-3" class="stepper-item nutrition p-4 rounded-lg cursor-pointer">
-                            <div class="flex items-center gap-4"><div class="step-circle w-10 h-10 rounded-full flex items-center justify-center font-bold">۳</div><div><h3 class="font-bold">مکمل‌ها</h3><p class="text-xs text-secondary">ویتامین و مواد معدنی</p></div></div>
-                        </div>
-                        <div id="step-4" class="stepper-item p-4 rounded-lg cursor-pointer">
-                            <div class="flex items-center gap-4"><div class="step-circle w-10 h-10 rounded-full flex items-center justify-center font-bold">۴</div><div><h3 class="font-bold">پیش‌نمایش و ارسال</h3><p class="text-xs text-secondary">برگه نهایی برنامه</p></div></div>
+                        <div id="today-focus-card" class="card rounded-lg p-4"></div>
+                    </div>
+                    <div class="lg:col-span-1 space-y-6">
+                         <div class="card rounded-lg p-4">
+                            <h3 class="font-bold text-lg mb-4">ثبت وزن امروز</h3>
+                            <div class="h-48 relative">
+                               <canvas id="weight-progress-chart-small"></canvas>
+                            </div>
+                            <form id="add-weight-form" class="flex gap-2 mt-4">
+                                <input type="number" step="0.1" id="new-weight-input" class="input-field flex-1" placeholder="وزن امروز (kg)" required>
+                                <button type="submit" class="primary-button !px-4"><i data-lucide="plus"></i></button>
+                            </form>
                         </div>
                     </div>
-                    <!-- AI Assistant Block -->
-                    <div class="ai-assistant-card card rounded-xl p-5 space-y-4">
-                        <!-- Header -->
-                        <div class="flex items-center gap-4">
-                            <i id="ai-assistant-icon" data-lucide="bot" class="w-10 h-10 text-yellow-400 flex-shrink-0 ai-pulse rounded-full"></i>
-                            <div>
-                                <h3 class="text-lg font-bold">دستیار هوش مصنوعی</h3>
-                                <p class="text-sm text-secondary">سؤال خود را برای دریافت نکات تخصصی وارد کنید.</p>
+                </div>
+    
+                <!-- Program Tab -->
+                <div id="program-tab-content" class="user-dashboard-tab-content hidden space-y-6">
+                     <div class="flex flex-wrap gap-4 justify-between items-center">
+                         <h2 class="text-2xl font-bold">برنامه تمرینی هفتگی شما</h2>
+                         <button id="dashboard-save-pdf-btn" type="button" class="secondary-button !text-sm !py-2 !px-4 flex items-center gap-1.5"><i data-lucide="download" class="w-4 h-4"></i>ذخیره PDF</button>
+                     </div>
+                     <div id="program-weekly-view" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Weekly program cards will be injected here -->
+                     </div>
+                     <div class="card rounded-lg p-4 mt-6">
+                         <h3 class="font-bold text-lg mb-4">جزئیات کامل برنامه</h3>
+                         <div id="dashboard-program-view" class="bg-gray-100 p-2 rounded-lg">
+                             <!-- Full program will be rendered here -->
+                         </div>
+                     </div>
+                </div>
+    
+                <!-- Progress Tab -->
+                <div id="progress-tab-content" class="user-dashboard-tab-content hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="card rounded-lg p-4">
+                        <h3 class="font-bold text-lg mb-4">نمودار کامل پیشرفت وزن</h3>
+                        <div class="h-80 relative">
+                            <canvas id="weight-progress-chart"></canvas>
+                            <div id="no-chart-data" class="absolute inset-0 flex items-center justify-center text-secondary hidden">
+                                <p>برای نمایش نمودار حداقل ۲ بار وزن خود را ثبت کنید.</p>
                             </div>
                         </div>
-                
-                        <!-- Input Form -->
-                        <div class="flex flex-col sm:flex-row gap-2">
-                             <input type="text" id="ai-question-input" class="input-field flex-grow" placeholder="مثال: ۵ نکته برای ریکاوری سریع‌تر...">
-                             <button type="button" id="get-ai-suggestion-btn" class="primary-button font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2">
-                                <span class="button-text">بپرس</span>
-                                <i data-lucide="loader-circle" class="loader-icon"></i>
-                             </button>
-                        </div>
-                
-                        <!-- Content Area -->
-                        <div id="ai-assistant-content" class="ai-assistant-content rounded-lg p-4 min-h-[100px] text-sm leading-relaxed border border-border-primary overflow-y-auto w-full max-h-[40vh]">
-                            <p class="text-secondary">پاسخ هوش مصنوعی در اینجا نمایش داده می‌شود.</p>
+                    </div>
+                    <div class="card rounded-lg p-4">
+                        <h3 class="font-bold text-lg mb-4">تاریخچه تمرینات ثبت شده</h3>
+                        <div id="workout-history-container" class="space-y-3 max-h-96 overflow-y-auto">
+                            <!-- Workout history will be injected here -->
                         </div>
                     </div>
-                 </div>
-            </aside>
-            
-            <!-- Main Content Area -->
-            <main class="lg:w-3/4 lg:order-first">
-                <form id="program-builder-form" class="card rounded-xl flex flex-col">
-                    <div class="flex-grow overflow-y-auto p-6 sm:p-8">
-                        <!-- Section 1: Client Info -->
-                        <section id="section-1" class="form-section active">
-                             <h2 class="text-2xl font-bold mb-6">۱. اطلاعات پایه و شخصی</h2>
-                             <div class="flex items-center gap-6 mb-6">
-                                <label class="cursor-pointer">
-                                    <img id="profile-pic-preview" class="profile-pic-preview w-24 h-24 rounded-full object-cover border-2 border-border-secondary hover:border-yellow-400 transition-all" src="https://placehold.co/100x100/374151/E5E7EB?text=عکس" alt="عکس پروفایل">
-                                    <input type="file" id="profile-pic-input" class="profile-pic-input hidden" accept="image/*">
+                </div>
+                
+                <!-- Profile Tab -->
+                <div id="profile-tab-content" class="user-dashboard-tab-content hidden max-w-4xl mx-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-6">
+                            <div class="card rounded-lg p-4">
+                                <h3 class="font-bold text-lg mb-4">وضعیت حساب</h3>
+                                <div id="dashboard-status-container" class="space-y-3 mb-4"></div>
+                                 <div class="space-y-3">
+                                     <button id="confirm-info-btn" class="w-full secondary-button !border-blue-500/30 !bg-blue-500/10 !text-blue-400 hover:!bg-blue-500/20">تایید و قفل کردن اطلاعات</button>
+                                     <button id="pay-program-btn" class="w-full green-button">پرداخت و فعالسازی برنامه</button>
+                                 </div>
+                            </div>
+                             <div class="card rounded-xl p-6 key-vitals-container">
+                                <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="bar-chart-3" class="text-green-400"></i>شاخص‌های شما</h3>
+                                <div class="space-y-3 text-sm">
+                                    <div class="flex justify-between"><span>شاخص توده بدنی (BMI)</span><input readonly class="bmi-input input-field !p-1 !text-center w-20 font-mono"></div>
+                                    <div class="flex justify-between"><span>متابولیسم پایه (BMR)</span><input readonly class="bmr-input input-field !p-1 !text-center w-20 font-mono"></div>
+                                    <div class="flex justify-between"><span>کالری مصرفی روزانه (TDEE)</span><input readonly class="tdee-input input-field !p-1 !text-center w-20 font-mono"></div>
+                                     <div class="flex justify-between"><span>درصد چربی بدن</span><input readonly class="bodyfat-input input-field !p-1 !text-center w-20 font-mono"></div>
+                                     <div class="flex justify-between"><span>توده بدون چربی (LBM)</span><input readonly class="lbm-input input-field !p-1 !text-center w-20 font-mono"></div>
+                                     <div class="flex justify-between"><span>وزن ایده‌آل</span><input readonly class="ideal-weight-input input-field !p-1 !text-center w-32 font-mono"></div>
+                                </div>
+                            </div>
+                        </div>
+                         <div id="dashboard-profile-panel" class="card rounded-lg p-4 space-y-4">
+                            <div class="flex flex-col items-center gap-2">
+                                <label for="profile-pic-upload-user" class="cursor-pointer">
+                                    <img class="profile-pic-preview w-24 h-24 rounded-full object-cover border-4 border-border-primary" src="https://placehold.co/100x100/374151/E5E7EB?text=عکس" alt="Profile">
                                 </label>
-                                <div class="flex-grow">
-                                    <label for="client-name-input" class="font-semibold text-sm text-secondary">نام و نام خانوادگی شاگرد</label>
-                                    <input type="text" id="client-name-input" class="client-name-input input-field mt-1 text-lg font-bold" placeholder="نام شاگرد...">
-                                </div>
+                                <input type="file" id="profile-pic-upload-user" class="profile-pic-input hidden" accept="image/*">
+                                <input type="text" class="client-name-input input-field w-full text-center font-bold text-lg" placeholder="نام شما">
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-8">
-                                <div><label for="client-email-input" class="font-semibold text-sm text-secondary">ایمیل شاگرد</label><input type="email" id="client-email-input" class="client-email-input input-field mt-1" placeholder="email@example.com"></div>
-                                <div><label for="coach-name-input" class="font-semibold text-sm text-secondary">نام مربی</label><input type="text" id="coach-name-input" class="coach-name-input input-field mt-1" placeholder="نام شما..."></div>
-                                <div class="md:col-span-2 training-goal-container">
-                                    <label class="font-semibold text-sm mb-2 block text-secondary">هدف اصلی تمرین
-                                        <span class="text-xs">(برای دستیار هوش مصنوعی)</span>
-                                    </label>
-                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                        <div>
-                                            <input type="radio" name="training-goal-admin" value="افزایش حجم عضلانی" id="goal-bulk-admin" class="sr-only radio-group-input training-goal" checked>
-                                            <label for="goal-bulk-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">افزایش حجم</label>
-                                        </div>
-                                        <div>
-                                            <input type="radio" name="training-goal-admin" value="چربی سوزی" id="goal-cut-admin" class="sr-only radio-group-input training-goal">
-                                            <label for="goal-cut-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">چربی سوزی</label>
-                                        </div>
-                                        <div>
-                                            <input type="radio" name="training-goal-admin" value="افزایش قدرت" id="goal-strength-admin" class="sr-only radio-group-input training-goal">
-                                            <label for="goal-strength-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">افزایش قدرت</label>
-                                        </div>
-                                        <div>
-                                            <input type="radio" name="training-goal-admin" value="تناسب اندام عمومی" id="goal-fit-admin" class="sr-only radio-group-input training-goal">
-                                            <label for="goal-fit-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">تناسب اندام</label>
-                                        </div>
+                             <input type="email" class="client-email-input input-field w-full text-center" placeholder="ایمیل شما">
+                            <div class="realtime-visualizers"></div>
+                            <div class="space-y-4 pt-4 border-t border-border-primary">
+                                <div class="space-y-2">
+                                    <label class="font-semibold text-sm">قد (cm): <span class="height-value font-bold text-pink-400">180 cm</span></label>
+                                    <input type="range" min="140" max="220" value="180" class="range-slider height-slider">
+                                </div>
+                                 <div class="space-y-2">
+                                    <label class="font-semibold text-sm">وزن (kg): <span class="weight-value font-bold text-amber-400">80 kg</span></label>
+                                    <input type="range" min="40" max="150" value="80" step="0.5" class="range-slider weight-slider">
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="font-semibold text-sm">سن: <span class="age-value font-bold text-orange-400">25</span></label>
+                                    <input type="range" min="15" max="80" value="25" class="range-slider age-slider">
+                                </div>
+                                <div class="space-y-2">
+                                    <h3 class="font-semibold text-sm">جنسیت</h3>
+                                    <div class="grid grid-cols-2 gap-2">
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-gender-male"><input type="radio" name="gender_user" value="مرد" class="gender sr-only">مرد</label>
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-gender-female"><input type="radio" name="gender_user" value="زن" class="gender sr-only">زن</label>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                   <input type="number" class="neck-input input-field text-sm" placeholder="گردن (cm)">
+                                   <input type="number" class="waist-input input-field text-sm" placeholder="کمر (cm)">
+                                   <div class="hip-input-container hidden">
+                                       <input type="number" class="hip-input input-field w-full text-sm" placeholder="باسن (cm)">
+                                   </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <h3 class="font-semibold text-sm">هدف تمرینی</h3>
+                                    <div class="grid grid-cols-2 gap-2">
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-goal-bulk"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="افزایش حجم">افزایش حجم</label>
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-goal-loss"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="کاهش وزن">کاهش وزن</label>
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-goal-fitness"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="فیتنس">فیتنس</label>
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-goal-strength"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="قدرت">قدرت</label>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <h3 class="font-semibold text-sm">سطح فعالیت روزانه</h3>
+                                    <div class="grid grid-cols-2 gap-2">
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.2">بدون فعالیت</label>
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.375">کم</label>
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.55">متوسط</label>
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.725">زیاد</label>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <h3 class="font-semibold text-sm">روزهای تمرین در هفته</h3>
+                                    <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="1">۱</label>
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="2">۲</label>
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="3">۳</label>
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="4">۴</label>
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="5">۵</label>
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="6">۶</label>
                                     </div>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 mb-8">
-                                <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">سن</label><span id="age-value" class="age-value font-bold text-lg text-orange-400">25</span></div><input type="range" id="age-slider" min="15" max="80" value="25" class="range-slider age-slider"></div>
-                                <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">قد (cm)</label><span id="height-value" class="height-value font-bold text-lg text-pink-400">180 cm</span></div><input type="range" id="height-slider" min="140" max="220" value="180" class="range-slider height-slider"></div>
-                                <div><div class="flex justify-between items-center mb-2"><label class="font-semibold text-sm text-secondary">وزن (kg)</label><span id="weight-value" class="weight-value font-bold text-lg text-yellow-400">80 kg</span></div><input type="range" id="weight-slider" min="40" max="150" value="80" class="range-slider weight-slider"></div>
-                            </div>
-                            
-                            <div class="mb-8">
-                                <h3 class="font-semibold text-lg mb-4">اندازه‌های بدن (برای تخمین چربی)</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
-                                    <div><label for="neck-input" class="font-semibold text-sm text-secondary">دور گردن (cm)</label><input type="number" id="neck-input" class="neck-input input-field mt-1" placeholder="مثال: 40"></div>
-                                    <div><label for="waist-input" class="font-semibold text-sm text-secondary">دور کمر (cm)</label><input type="number" id="waist-input" class="waist-input input-field mt-1" placeholder="مثال: 85"></div>
-                                    <div id="hip-input-container" class="hip-input-container hidden"><label for="hip-input" class="font-semibold text-sm text-secondary">دور باسن (cm)</label><input type="number" id="hip-input" class="hip-input input-field mt-1" placeholder="مثال: 95"></div>
-                                </div>
-                            </div>
-
-                            <div class="border-t border-b border-border-primary py-6 my-6">
-                                <h3 class="font-semibold text-lg mb-4">شاخص‌های کلیدی بدن (محاسبه خودکار)</h3>
-                                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    <div><label class="font-semibold text-sm text-secondary">BMI</label><input type="text" id="bmi-input" class="bmi-input input-field mt-1" readonly></div>
-                                    <div><label class="font-semibold text-sm text-secondary">BMR (kcal)</label><input type="text" id="bmr-input" class="bmr-input input-field mt-1" readonly></div>
-                                    <div><label class="font-semibold text-sm text-secondary">TDEE (kcal)</label><input type="text" id="tdee-input" class="tdee-input input-field mt-1" readonly></div>
-                                    <div><label class="font-semibold text-sm text-secondary">چربی بدن (%)</label><input type="text" id="bodyfat-input" class="bodyfat-input input-field mt-1" readonly></div>
-                                    <div><label class="font-semibold text-sm text-secondary">توده بدون چربی (kg)</label><input type="text" id="lbm-input" class="lbm-input input-field mt-1" readonly></div>
-                                    <div class="col-span-2"><label class="font-semibold text-sm text-secondary">محدوده وزن ایده‌آل (kg)</label><input type="text" id="ideal-weight-input" class="ideal-weight-input input-field mt-1" readonly></div>
-                                </div>
-                            </div>
-                            
-                            <!-- Real-time Visualizers Container -->
-                            <div class="realtime-visualizers grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
-                                <!-- Visualizers will be inserted here by JS -->
-                            </div>
-
-                            <div class="space-y-6 mb-8">
-                               <div><label class="font-semibold text-sm mb-2 block text-secondary">جنسیت</label><div class="grid grid-cols-2 gap-2"><div><input type="radio" name="gender-admin" value="مرد" id="male-admin" class="sr-only radio-group-input gender" checked><label for="male-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer">مرد</label></div><div><input type="radio" name="gender-admin" value="زن" id="female-admin" class="sr-only radio-group-input gender"><label for="female-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer">زن</label></div></div></div>
-                               <div>
-                                    <label class="font-semibold text-sm mb-2 block text-secondary">سطح فعالیت روزانه</label>
-                                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-                                        <div><input type="radio" name="activity-level-admin" value="1.2" id="sedentary-admin" class="sr-only radio-group-input activity-level" checked><label for="sedentary-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">بی‌تحرک</label></div>
-                                        <div><input type="radio" name="activity-level-admin" value="1.375" id="light-admin" class="sr-only radio-group-input activity-level"><label for="light-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">کم</label></div>
-                                        <div><input type="radio" name="activity-level-admin" value="1.55" id="moderate-admin" class="sr-only radio-group-input activity-level"><label for="moderate-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">متوسط</label></div>
-                                        <div><input type="radio" name="activity-level-admin" value="1.725" id="active-admin" class="sr-only radio-group-input activity-level"><label for="active-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">زیاد</label></div>
-                                        <div class="col-span-2 lg:col-span-1"><input type="radio" name="activity-level-admin" value="1.9" id="very-active-admin" class="sr-only radio-group-input activity-level"><label for="very-active-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-xs">بسیار زیاد</label></div>
-                                    </div>
-                               </div>
-                               <div>
-                                    <label class="font-semibold text-sm mb-2 block text-secondary">تعداد روزهای تمرین در هفته</label>
-                                    <div class="grid grid-cols-4 md:grid-cols-7 gap-2">
-                                        <div><input type="radio" name="training-days-admin" value="1" id="days-1-admin" class="sr-only radio-group-input training-days"><label for="days-1-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">۱</label></div>
-                                        <div><input type="radio" name="training-days-admin" value="2" id="days-2-admin" class="sr-only radio-group-input training-days"><label for="days-2-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">۲</label></div>
-                                        <div><input type="radio" name="training-days-admin" value="3" id="days-3-admin" class="sr-only radio-group-input training-days"><label for="days-3-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">۳</label></div>
-                                        <div><input type="radio" name="training-days-admin" value="4" id="days-4-admin" class="sr-only radio-group-input training-days" checked><label for="days-4-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">۴</label></div>
-                                        <div><input type="radio" name="training-days-admin" value="5" id="days-5-admin" class="sr-only radio-group-input training-days"><label for="days-5-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">۵</label></div>
-                                        <div><input type="radio" name="training-days-admin" value="6" id="days-6-admin" class="sr-only radio-group-input training-days"><label for="days-6-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">۶</label></div>
-                                        <div><input type="radio" name="training-days-admin" value="7" id="days-7-admin" class="sr-only radio-group-input training-days"><label for="days-7-admin" class="radio-group-label block p-3 text-center rounded-lg cursor-pointer text-sm">۷</label></div>
-                                    </div>
-                               </div>
-                            </div>
-                        </section>
-                        
-                        <!-- Section 2: Workout Day Designer -->
-                        <section id="section-2" class="form-section">
-                            <h2 class="text-2xl font-bold mb-6">۲. طراحی روزهای تمرین</h2>
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 p-4 rounded-lg border border-dashed border-yellow-400/50 bg-yellow-400/5">
-                                <div>
-                                    <h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="sparkles" class="text-yellow-400"></i>ایجاد برنامه با هوش مصنوعی</h3>
-                                    <p class="text-sm text-secondary mt-1">بر اساس اطلاعات شاگرد در گام اول، یک برنامه کامل بسازید.</p>
-                                </div>
-                                <button type="button" id="generate-ai-plan-btn" class="primary-button font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2 flex-shrink-0">
-                                    <span class="button-text">ایجاد برنامه</span>
-                                    <i data-lucide="loader-circle" class="loader-icon"></i>
-                                </button>
-                            </div>
-                            <div id="workout-days-container" class="space-y-6"></div>
-                            <button type="button" id="add-day-btn" class="mt-6 secondary-button font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2"><i data-lucide="plus-circle"></i>اضافه کردن روز تمرین</button>
-                        </section>
-
-                        <!-- Section 3: Supplements Plan -->
-                        <section id="section-3" class="form-section">
-                            <h2 class="text-2xl font-bold mb-6">۳. انتخاب مکمل‌ها، ویتامین‌ها و مواد معدنی</h2>
-                            <div class="relative margin-bottom: 1.5rem;">
-                                 <i data-lucide="search" class="absolute top-1/2 right-3 -translate-y-1/2 text-gray-500"></i>
-                                <input type="text" id="supplement-search" class="input-field pr-10" placeholder="جستجوی مکمل...">
-                            </div>
-                             <div id="supplements-container" class="space-y-6 mt-6">
-                                <!-- Fieldsets will be generated by JS -->
-                             </div>
-                        </section>
-                        
-                        <!-- Section 4: Preview and Actions -->
-                        <section id="section-4" class="form-section">
-                            <h2 class="text-2xl font-bold mb-6">۴. پیش‌نمایش و ارسال برنامه</h2>
-                            
-                            <div class="space-y-6">
-                                <div>
-                                    <label for="general-notes-input" class="font-semibold text-lg mb-3 block">یادداشت‌های کلی مربی</label>
-                                    <textarea id="general-notes-input" class="input-field" rows="4" placeholder="توصیه‌های کلی، نکات ریکاوری، هیدراتاسیون و..."></textarea>
-                                </div>
-                                <div id="program-sheet-container" class="preview-container">
-                                    <!-- A single continuous page will be generated here by JS -->
-                                </div>
-                            </div>
-
-                             <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                 <button type="button" id="send-program-btn" class="lg:col-span-2 flex items-center justify-center gap-2 text-white font-bold py-3 px-4 rounded-lg bg-green-600 hover:bg-green-700 transition-all hover:shadow-lg hover:shadow-green-500/20">
-                                    <i data-lucide="send"></i>
-                                    <span>ارسال و ذخیره برای کاربر</span>
-                                 </button>
-                                 <button type="button" id="save-changes-btn" class="secondary-button flex items-center justify-center gap-2 font-bold py-3 px-4 rounded-lg">
-                                     <i data-lucide="save"></i>
-                                     <span>ذخیره تغییرات</span>
-                                 </button>
-                                 <button type="button" id="save-pdf-btn" class="primary-button flex items-center justify-center gap-2 font-bold py-3 px-4 rounded-lg">
-                                    <i data-lucide="save" class="button-icon"></i>
-                                    <i data-lucide="loader-circle" class="loader-icon"></i>
-                                    <span class="button-text">ذخیره به صورت PDF</span>
-                                 </button>
-                                 <button type="button" id="save-word-btn" class="word-button flex items-center justify-center gap-2 font-bold py-3 px-4 rounded-lg lg:col-start-4">
-                                    <i data-lucide="file-text"></i>
-                                    <span>ذخیره به صورت Word</span>
-                                 </button>
-                             </div>
-                        </section>
+                        </div>
                     </div>
-                    <!-- Navigation Buttons -->
-                    <div class="p-6 border-t border-border-primary bg-secondary/20 flex-shrink-0 flex justify-between items-center rounded-b-xl">
-                        <button type="button" id="prev-btn" class="secondary-button font-bold py-2 px-6 rounded-lg">قبلی</button>
-                        <button type="button" id="next-btn" class="primary-button font-bold py-2 px-6 rounded-lg">بعدی</button>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- AI Chat FAB -->
+    <button id="ai-chat-fab" class="primary-button !rounded-full !p-4 hidden" style="box-shadow: 0 8px 30px rgba(250, 204, 21, 0.4);">
+        <i data-lucide="bot" class="w-8 h-8"></i>
+    </button>
+    
+    <!-- Modals -->
+    <!-- Admin Panel Modal -->
+    <div id="admin-panel-modal" class="fixed inset-0 bg-black/60 z-50 flex justify-center items-center opacity-0 hidden transition-opacity duration-300">
+        <div class="card rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col scale-95 transition-transform duration-300">
+            <header class="flex justify-between items-center p-4 border-b border-border-primary">
+                <h2 class="text-2xl font-bold flex items-center gap-3"><i data-lucide="shield-check" class="text-green-400"></i>پنل مدیریت</h2>
+                <button id="close-admin-panel-btn" class="p-2 rounded-full hover:bg-tertiary"><i data-lucide="x"></i></button>
+            </header>
+            <div class="flex-1 p-6 overflow-y-auto">
+                 <div class="flex border-b border-border-primary mb-6">
+                    <button data-tab="users" class="admin-tab-btn active-spring-tab py-3 px-6 text-lg font-bold border-b-2">مدیریت شاگردان</button>
+                    <button data-tab="review" class="admin-tab-btn text-secondary py-3 px-6 text-lg font-bold border-b-2 border-transparent">بررسی و بازخورد</button>
+                    <button data-tab="templates" class="admin-tab-btn text-secondary py-3 px-6 text-lg font-bold border-b-2 border-transparent">الگوها</button>
+                </div>
+
+                <!-- Users Tab -->
+                <div id="admin-users-content" class="admin-tab-content">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Left: User List -->
+                        <div class="space-y-4">
+                            <h3 class="font-bold text-xl">لیست شاگردان</h3>
+                            <div class="grid grid-cols-3 gap-3">
+                               <div class="card p-3 rounded-lg text-center"><p class="text-secondary text-sm">کل شاگردان</p><p id="total-users-stat" class="font-bold text-2xl">0</p></div>
+                               <div class="card p-3 rounded-lg text-center"><p class="text-secondary text-sm">پرداخت نشده</p><p id="unpaid-users-stat" class="font-bold text-2xl text-red-400">0</p></div>
+                               <div class="card p-3 rounded-lg text-center"><p class="text-secondary text-sm">اطلاعات ناقص</p><p id="unconfirmed-users-stat" class="font-bold text-2xl text-yellow-400">0</p></div>
+                            </div>
+                            <input type="search" id="admin-user-search" placeholder="جستجوی شاگرد..." class="input-field w-full">
+                            <div id="user-filter-btn-group" class="flex flex-wrap gap-2 text-sm">
+                                <button data-filter="all" class="user-filter-btn secondary-button !px-3 !py-1 active">همه</button>
+                                <button data-filter="unpaid" class="user-filter-btn secondary-button !px-3 !py-1">پرداخت نشده</button>
+                                <button data-filter="unconfirmed" class="user-filter-btn secondary-button !px-3 !py-1">تایید نشده</button>
+                                <button data-filter="inactive" class="user-filter-btn secondary-button !px-3 !py-1">نیاز به توجه</button>
+                            </div>
+                            <div id="admin-user-list" class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                                <!-- User list will be injected here -->
+                            </div>
+                        </div>
+                        <!-- Right: Actions -->
+                        <div class="space-y-6">
+                            <div class="card p-4 rounded-lg">
+                               <h3 class="font-bold text-xl mb-4">ایجاد کاربر جدید</h3>
+                               <form id="create-user-form" class="space-y-3">
+                                   <input type="text" id="new-username-input" class="input-field w-full" placeholder="نام کاربری">
+                                   <input type="email" id="new-user-email-input" class="input-field w-full" placeholder="ایمیل">
+                                   <input type="password" id="new-user-password-input" class="input-field w-full" placeholder="رمز عبور">
+                                   <button id="create-user-btn" type="button" class="primary-button w-full">ایجاد کاربر</button>
+                                   <p id="create-user-error" class="text-red-500 text-sm"></p>
+                               </form>
+                            </div>
+                             <div class="card p-4 rounded-lg">
+                                <h3 class="font-bold text-xl mb-4">گزارش فعالیت‌ها</h3>
+                                <div id="admin-activity-log" class="space-y-2 max-h-64 overflow-y-auto">
+                                    <!-- Log items here -->
+                                </div>
+                             </div>
+                        </div>
                     </div>
-                </form>
-            </main>
+                </div>
+
+                 <!-- Review Tab -->
+                <div id="admin-review-content" class="admin-tab-content hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(90vh-160px)]">
+                        <div class="md:col-span-1 overflow-y-auto pr-2">
+                            <h3 class="font-bold text-xl mb-4">انتخاب شاگرد</h3>
+                            <div id="admin-review-user-list" class="space-y-2"></div>
+                        </div>
+                        <div id="admin-review-details" class="md:col-span-2 overflow-y-auto pr-2">
+                             <div class="flex flex-col items-center justify-center h-full text-secondary">
+                                <i data-lucide="users" class="w-16 h-16"></i>
+                                <p class="mt-4">یک شاگرد را برای مشاهده جزئیات انتخاب کنید.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Templates Tab -->
+                <div id="admin-templates-content" class="admin-tab-content hidden">
+                     <h3 class="font-bold text-xl mb-4">مدیریت الگوهای برنامه</h3>
+                     <p class="text-secondary mb-4">الگوهای ذخیره شده در اینجا نمایش داده می‌شوند. می‌توانید آن‌ها را حذف کنید.</p>
+                     <div id="admin-template-list" class="space-y-3 max-w-lg mx-auto">
+                         <!-- Template list here -->
+                     </div>
+                </div>
+            </div>
         </div>
     </div>
     
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed top-5 right-5 z-[100] space-y-3"></div>
+    <!-- AI Chat Modal -->
+    <div id="ai-chat-modal" class="fixed inset-0 bg-black/60 z-50 flex justify-center items-end sm:items-center opacity-0 hidden transition-opacity duration-300">
+        <div class="card rounded-t-2xl sm:rounded-2xl w-full max-w-2xl h-full sm:h-[80vh] flex flex-col scale-95 transition-transform duration-300">
+             <header class="flex justify-between items-center p-4 border-b border-border-primary">
+                <h2 class="text-xl font-bold flex items-center gap-3"><i data-lucide="bot" class="text-amber-400"></i>FitBot - مربی هوش مصنوعی</h2>
+                <button id="close-ai-chat-btn" class="p-2 rounded-full hover:bg-tertiary"><i data-lucide="x"></i></button>
+            </header>
+            <div id="ai-chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col">
+                <div class="message ai-message">سلام! من FitBot هستم، مربی هوش مصنوعی شما. چطور می‌توانم در مورد برنامه تمرینی یا تغذیه‌تان به شما کمک کنم؟</div>
+            </div>
+            <form id="ai-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2">
+                <input id="ai-chat-input" type="text" class="input-field flex-1" placeholder="پیام خود را بنویسید..." required>
+                <button type="submit" class="primary-button !rounded-full !p-3"><i data-lucide="send"></i></button>
+            </form>
+        </div>
+    </div>
 
-    <!-- JS Templates (Hidden) -->
+    <!-- Workout Log Modal -->
+    <div id="workout-log-modal" class="fixed inset-0 bg-black/60 z-50 flex justify-center items-center opacity-0 hidden transition-opacity duration-300">
+        <div class="card rounded-2xl w-full max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col scale-95 transition-transform duration-300">
+             <header class="flex justify-between items-center p-4 border-b border-border-primary">
+                <h2 id="workout-log-title" class="text-xl font-bold">ثبت جزئیات تمرین</h2>
+                <button id="close-workout-log-btn" class="p-2 rounded-full hover:bg-tertiary"><i data-lucide="x"></i></button>
+            </header>
+            <div id="workout-log-exercises-container" class="flex-1 p-4 space-y-4 overflow-y-auto">
+                <!-- Exercise log items will be injected here -->
+            </div>
+            <div class="p-4 border-t border-border-primary">
+                <button id="finish-workout-btn" class="primary-button w-full">پایان و ذخیره تمرین</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Template Modals -->
+    <div id="save-template-modal" class="fixed inset-0 bg-black/60 z-50 flex justify-center items-center opacity-0 hidden transition-opacity duration-300">
+        <div class="card rounded-xl w-full max-w-md p-6 scale-95 transition-transform duration-300">
+            <h3 class="text-xl font-bold mb-4">ذخیره به عنوان الگو</h3>
+            <p class="text-secondary mb-4">یک نام برای این الگو وارد کنید تا بعدا بتوانید از آن استفاده کنید.</p>
+            <input type="text" id="template-name-input" class="input-field w-full" placeholder="مثال: برنامه حجم ۴ روزه">
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="cancel-save-template-btn" class="secondary-button">انصراف</button>
+                <button id="confirm-save-template-btn" class="primary-button">ذخیره</button>
+            </div>
+        </div>
+    </div>
+    <div id="load-template-modal" class="fixed inset-0 bg-black/60 z-50 flex justify-center items-center opacity-0 hidden transition-opacity duration-300">
+        <div class="card rounded-xl w-full max-w-md p-6 scale-95 transition-transform duration-300">
+            <h3 class="text-xl font-bold mb-4">بارگذاری الگو</h3>
+            <p class="text-secondary mb-4">یکی از الگوهای ذخیره شده را برای بارگذاری انتخاب کنید.</p>
+            <div id="template-list-container" class="space-y-2 max-h-64 overflow-y-auto">
+                <!-- Template list here -->
+            </div>
+            <div class="flex justify-end mt-6">
+                 <button id="cancel-load-template-btn" class="secondary-button">بستن</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Templates for cloning -->
     <template id="exercise-template">
-        <div class="exercise-row p-4 my-2 bg-tertiary/50 rounded-xl border border-transparent transition-all duration-300">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-x-6 gap-y-4 items-center">
-                <!-- Exercise Selection (Narrower with new styles) -->
-                <div class="lg:col-span-4 flex flex-col gap-3">
-                    <select class="muscle-group-select input-field font-bold text-base"></select>
-                    <select class="exercise-select input-field text-lg"></select>
+        <div class="exercise-row p-3 bg-tertiary/50 rounded-lg space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <select class="muscle-group-select input-field"></select>
+                <select class="exercise-select input-field md:col-span-2"></select>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                 <div class="space-y-2">
+                    <div class="flex justify-between text-sm"><label>ست</label><span class="set-value font-bold">4</span></div>
+                    <input type="range" min="1" max="10" value="4" class="range-slider set-slider">
                 </div>
-                
-                <!-- Parameters -->
-                <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-4">
-                    <div>
-                        <div class="flex justify-between items-center mb-1">
-                            <label class="text-sm font-semibold text-secondary">ست</label>
-                            <span class="set-value font-bold text-lg text-blue-400">1</span>
-                        </div>
-                        <input type="range" min="1" max="12" value="1" class="w-full range-slider set-slider">
-                    </div>
-                    <div>
-                         <div class="flex justify-between items-center mb-1">
-                            <label class="text-sm font-semibold text-secondary">تکرار</label>
-                            <span class="rep-value font-bold text-lg text-green-400">1</span>
-                        </div>
-                        <input type="range" min="1" max="50" value="1" class="w-full range-slider rep-slider">
-                    </div>
-                    <div>
-                         <div class="flex justify-between items-center mb-1">
-                            <label class="text-sm font-semibold text-secondary">استراحت</label>
-                            <span class="rest-value font-bold text-lg text-purple-400">0s</span>
-                        </div>
-                        <input type="range" min="0" max="180" step="15" value="0" class="w-full range-slider rest-slider">
-                    </div>
+                 <div class="space-y-2">
+                    <div class="flex justify-between text-sm"><label>تکرار</label><span class="rep-value font-bold">12</span></div>
+                    <input type="range" min="1" max="30" value="12" class="range-slider rep-slider">
                 </div>
-                
-                <!-- Actions -->
-                <div class="lg:col-span-1 flex items-center justify-end lg:justify-center lg:flex-row gap-2">
-                    <button type="button" class="superset-btn p-3 rounded-lg hover:bg-tertiary text-secondary hover:text-yellow-400 transition-colors" title="ایجاد سوپرست">
-                        <i data-lucide="link" class="w-5 h-5"></i>
-                    </button>
-                    <button type="button" class="remove-exercise-btn p-3 rounded-lg hover:bg-tertiary text-secondary hover:text-red-400 transition-colors" title="حذف حرکت">
-                        <i data-lucide="trash-2" class="w-5 h-5"></i>
-                    </button>
+                 <div class="space-y-2">
+                    <div class="flex justify-between text-sm"><label>استراحت</label><span class="rest-value font-bold">60s</span></div>
+                    <input type="range" min="15" max="180" value="60" step="15" class="range-slider rest-slider">
                 </div>
+            </div>
+            <div class="flex justify-end items-center gap-2 border-t border-border-primary/50 pt-2">
+                <button type="button" class="superset-btn text-xs font-semibold text-secondary hover:text-amber-400 p-2 rounded-md flex items-center gap-1"><i data-lucide="layers"></i>سوپرست</button>
+                <button type="button" class="remove-exercise-btn text-xs font-semibold text-secondary hover:text-red-400 p-2 rounded-md flex items-center gap-1"><i data-lucide="trash-2" class="w-4 h-4"></i>حذف</button>
             </div>
         </div>
     </template>
     
-    <script type="module" src="./index.tsx"></script>
-    <script type="module">
-      // Import SDKs
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-    
-      // Your web app's Firebase configuration
-      const firebaseConfig = {
-        apiKey: "AIza....",
-        authDomain: "fitgympro.firebaseapp.com",
-        projectId: "fitgympro",
-        storageBucket: "fitgympro.appspot.com",
-        messagingSenderId: "123456789",
-        appId: "1:123456789:web:abcd1234"
-      };
-    
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-    </script>
+    <template id="exercise-log-template">
+        <div class="exercise-log-item bg-tertiary/50 p-3 rounded-lg">
+            <h4 class="font-bold border-b border-border-primary pb-2 mb-2"></h4>
+            <div class="sets-log-container space-y-2">
+                <!-- Set rows will be injected here -->
+            </div>
+        </div>
+    </template>
+
+    <template id="set-log-row-template">
+        <div class="set-log-row grid grid-cols-12 gap-2 items-center text-sm">
+            <span class="col-span-2 font-semibold text-secondary"></span>
+            <input type="number" class="weight-log-input input-field col-span-4" placeholder="وزنه (kg)">
+            <input type="number" class="reps-log-input input-field col-span-4" placeholder="تکرار">
+            <button type="button" class="add-set-btn text-green-500 hover:bg-green-500/10 p-2 rounded-md col-span-2"><i data-lucide="plus-circle" class="w-5 h-5 mx-auto"></i></button>
+        </div>
+    </template>
+
+
+    <script type="module" src="/index.tsx"></script>
+
 </body>
 </html>

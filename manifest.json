@@ -1,7 +1,8 @@
+
 {
-  "short_name": "FitGymPro",
-  "name": "فیت‌جیم‌پرو - مربی هوشمند شما",
-  "description": "یک پلتفرم جامع تناسب اندام که با استفاده از هوش مصنوعی، برنامه‌های تمرینی و غذایی شخصی‌سازی شده، ردیابی پیشرفت، چالش‌های انگیزشی و وبلاگ تخصصی ارائه می‌دهد.",
+  "short_name": "FitGym Pro",
+  "name": "FitGym Pro - Modern Fitness Club",
+  "description": "A modern, single-page website for FitGym Pro, showcasing classes, trainers, and membership information to attract new clients.",
   "icons": [
     {
       "src": "https://assets.website-files.com/63f5b734614a2ce081831035/63f5b734614a2c07a3831065_icon-256w.png",
@@ -16,6 +17,6 @@
   ],
   "start_url": "/index.html",
   "display": "standalone",
-  "theme_color": "#121212",
-  "background_color": "#121212"
+  "theme_color": "#020617",
+  "background_color": "#020617"
 }
