@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type as R, Chat, GenerateContentResponse } from "https://esm.run/@google/genai";
 
 // Type declarations for window properties and external libraries
@@ -883,7 +882,14 @@ const renderDashboardTab = (username, userData) => {
     `;
     const m = document.getElementById("coach-message-card")!,
         d = document.getElementById("coach-message-content")!;
-    userData.coachMessages && userData.coachMessages.length > 0 ? (d.innerHTML = userData.coachMessages.map(x => `<p class="border-r-2 border-amber-500 pr-2">${A(x)}</p>`).join(""), m.classList.remove("hidden")) : m.classList.add("hidden");
+    const lastCoachMessage = (userData.chatHistory || []).filter(msg => msg.sender === 'coach').pop();
+    if (lastCoachMessage) {
+        d.innerHTML = `<p class="border-r-2 border-amber-500 pr-2">${A(lastCoachMessage.message)}</p><button id="view-full-chat-btn" class="text-sm text-amber-500 font-semibold mt-2 hover:underline">مشاهده کامل گفتگو</button>`;
+        m.classList.remove("hidden");
+        document.getElementById("view-full-chat-btn")?.addEventListener('click', () => switchUserDashboardTab('chat'));
+    } else {
+        m.classList.add("hidden");
+    }
     const c = it(userData);
     let x = `<div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="target" class="text-blue-400"></i>تمرکز امروز</h3><span class="text-sm font-semibold text-secondary">${new Date().toLocaleDateString("fa-IR",{weekday:"long",day:"numeric",month:"long"})}</span></div>`;
     if (c) {
@@ -906,9 +912,37 @@ const renderDashboardTab = (username, userData) => {
     } else x += '<div class="text-center bg-tertiary/50 rounded-lg p-8"><i data-lucide="coffee" class="w-10 h-10 mx-auto text-green-400 mb-3"></i><h4 class="font-bold">امروز روز استراحت است!</h4><p class="text-sm text-secondary mt-1">از ریکاوری لذت ببر و برای جلسه بعدی آماده شو.</p></div>';
     r.innerHTML = x;
     Xe(userData.weightHistory, 'weight-progress-chart-small', 'no-chart-data', true);
+    Xe(userData.weightHistory, 'weight-progress-chart', 'no-chart-data');
+    
+    const historyContainer = document.getElementById('workout-history-container');
+    if (historyContainer) {
+        const history = (userData.workoutHistory || []).slice().reverse();
+        if (history.length > 0) {
+            historyContainer.innerHTML = history.map(log => `
+                <details class="bg-tertiary/50 rounded-lg">
+                    <summary class="p-3 cursor-pointer font-semibold flex justify-between items-center">
+                        <span>تمرین ${new Date(log.date).toLocaleDateString("fa-IR", { day: 'numeric', month: 'long' })}</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 transition-transform details-arrow"></i>
+                    </summary>
+                    <div class="p-3 border-t border-border-primary text-sm">
+                        ${log.workoutData.map(ex => `
+                            <div class="mb-2">
+                                <p class="font-bold">${A(ex.exerciseName)}</p>
+                                <div class="flex flex-wrap gap-2 text-xs mt-1">
+                                    ${ex.sets.map((set, i) => `<span class="bg-secondary/80 rounded-full px-2 py-0.5">${i+1}: ${set.reps} تکرار @ ${set.weight || '-'}kg</span>`).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </details>
+            `).join('');
+        } else {
+            historyContainer.innerHTML = '<p class="text-secondary text-center p-4">هیچ تمرینی برای نمایش وجود ندارد.</p>';
+        }
+    }
 }
 
-const renderProgramTab = (userData) => {
+const renderWorkoutTab = (userData) => {
     const weeklyViewContainer = document.getElementById('program-weekly-view');
     if (!weeklyViewContainer) return;
     
@@ -945,37 +979,46 @@ const renderProgramTab = (userData) => {
     Ue(userData, "#dashboard-program-view");
 }
 
-const renderProgressTab = (userData) => {
-    Xe(userData.weightHistory, 'weight-progress-chart', 'no-chart-data');
-    const historyContainer = document.getElementById('workout-history-container');
-    if (!historyContainer) return;
-
-    const history = (userData.workoutHistory || []).slice().reverse();
-
-    if (history.length > 0) {
-        historyContainer.innerHTML = history.map(log => `
-            <details class="bg-tertiary/50 rounded-lg">
-                <summary class="p-3 cursor-pointer font-semibold flex justify-between items-center">
-                    <span>تمرین ${new Date(log.date).toLocaleDateString("fa-IR", { day: 'numeric', month: 'long' })}</span>
-                    <i data-lucide="chevron-down" class="w-5 h-5 transition-transform details-arrow"></i>
-                </summary>
-                <div class="p-3 border-t border-border-primary text-sm">
-                    ${log.workoutData.map(ex => `
-                        <div class="mb-2">
-                            <p class="font-bold">${A(ex.exerciseName)}</p>
-                            <div class="flex flex-wrap gap-2 text-xs mt-1">
-                                ${ex.sets.map((set, i) => `<span class="bg-secondary/80 rounded-full px-2 py-0.5">${i+1}: ${set.reps} تکرار @ ${set.weight || '-'}kg</span>`).join('')}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </details>
-        `).join('');
+const renderNutritionTab = (userData) => {
+    const container = document.getElementById('dashboard-nutrition-view');
+    if (!container) return;
+    
+    const nutritionHTML = (userData.step5 || {}).nutritionPlanHTML;
+    if (nutritionHTML && nutritionHTML.trim() !== '' && !nutritionHTML.includes("در حال تولید برنامه غذایی")) {
+        container.innerHTML = nutritionHTML;
     } else {
-        historyContainer.innerHTML = '<p class="text-secondary text-center p-4">هیچ تمرینی برای نمایش وجود ندارد.</p>';
+        container.innerHTML = `
+            <div class="text-center text-secondary p-8">
+                <i data-lucide="utensils-crossed" class="w-12 h-12 mx-auto mb-4"></i>
+                <p class="font-bold">هنوز برنامه تغذیه‌ای برای شما ثبت نشده است.</p>
+                <p class="text-sm">مربی شما به زودی آن را آماده و ارسال خواهد کرد.</p>
+            </div>
+        `;
+        window.lucide.createIcons();
     }
 }
 
+const renderChatTab = (username, userData) => {
+    const messagesContainer = document.getElementById('coach-chat-messages');
+    if (!messagesContainer) return;
+
+    messagesContainer.innerHTML = "";
+    const chatHistory = userData.chatHistory || [];
+
+    if (chatHistory.length === 0) {
+        messagesContainer.innerHTML = `<div class="message coach-message">سلام! اینجا می‌توانید با مربی خود در ارتباط باشید. سوالات خود را بپرسید و بازخورد دریافت کنید.</div>`;
+        return;
+    }
+    
+    chatHistory.forEach(msg => {
+        const messageEl = document.createElement('div');
+        messageEl.className = `message ${msg.sender === 'user' ? 'user-message' : 'coach-message'}`;
+        messageEl.textContent = msg.message;
+        messagesContainer.appendChild(messageEl);
+    });
+    
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
 
 const renderProfileTab = (username, userData) => {
     const s = document.getElementById("profile-tab-content")!,
@@ -1038,8 +1081,9 @@ function de(e, t) {
     document.getElementById("dashboard-welcome-message")!.textContent = `خوش آمدی، ${e}!`;
     
     renderDashboardTab(e, t);
-    renderProgramTab(t);
-    renderProgressTab(t);
+    renderWorkoutTab(t);
+    renderNutritionTab(t);
+    renderChatTab(e, t);
     renderProfileTab(e, t);
     
     const c = document.getElementById("notification-bell-container")!;
@@ -1056,10 +1100,25 @@ function de(e, t) {
             delete g.newProgram;
             W(e, g);
             c.innerHTML = "";
-            switchUserDashboardTab('program');
+            switchUserDashboardTab('workout');
         }, {
             once: !0
         });
+    } else if (t.newMessageFromCoach) {
+        c.innerHTML = `
+            <button id="notification-bell-btn" class="secondary-button !px-3 !py-2" title="پیام جدیدی از مربی دریافت کرده‌اید">
+                <i data-lucide="message-square"></i>
+                <span class="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-secondary"></span>
+            </button>
+        `;
+        document.getElementById("notification-bell-btn")?.addEventListener("click", () => {
+            w("مربی شما یک پیام جدید ارسال کرده است.");
+            const g = D(e);
+            delete g.newMessageFromCoach;
+            W(e, g);
+            c.innerHTML = "";
+            switchUserDashboardTab('chat');
+        }, { once: true });
     } else {
         c.innerHTML = "";
     }
@@ -1086,7 +1145,10 @@ const switchUserDashboardTab = (e) => {
     const t = localStorage.getItem("fitgympro_last_user");
     if (t && f !== "admin") {
         const s = D(t);
-        e === "progress" && Xe(s.weightHistory, "weight-progress-chart", "no-chart-data"), e === "dashboard" && Xe(s.weightHistory, 'weight-progress-chart-small', 'no-chart-data', true);
+        if (e === "dashboard") {
+            Xe(s.weightHistory, 'weight-progress-chart-small', 'no-chart-data', true);
+            Xe(s.weightHistory, "weight-progress-chart", "no-chart-data");
+        }
     }
 };
 
@@ -1346,8 +1408,32 @@ const openModal = e => {
         r.disabled = !1
     }
 };
+const sendMessageToCoach = async () => {
+    if (!f || f === 'admin') return;
+    const input = document.getElementById("coach-chat-input") as HTMLInputElement;
+    const message = input.value.trim();
+    if (!message) return;
+
+    const userData = D(f);
+    if (!userData.chatHistory) {
+        userData.chatHistory = [];
+    }
+    
+    userData.chatHistory.push({
+        sender: 'user',
+        message: message,
+        timestamp: new Date().toISOString()
+    });
+    
+    W(f, userData);
+    
+    renderChatTab(f, userData);
+    input.value = '';
+
+    ae(`پیام جدیدی از ${f} دریافت شد.`);
+};
 document.addEventListener("DOMContentLoaded", () => {
-    var N, G, M, K, le, Y, Z, Q, j, _, ee, ce, Ee, Se, Le, Ie, qe, ke, Be, $e, Ce, Te, De, Ne, Me, ut, ft, gt, mt, bt, wt, Ct, Tt, Dt, Lt, zt, Ut, Vt, Nt;
+    var N, G, M, K, le, Y, Z, Q, j, _, ee, ce, Ee, Se, Le, Ie, qe, ke, Be, $e, Ce, Te, De, Ne, Me, ut, ft, gt, mt, bt, wt, Ct, Tt, Dt, Lt, zt, Ut, Vt;
     window.lucide.createIcons();
     const e = localStorage.getItem("fitgympro_theme") || "dark";
     document.documentElement.setAttribute("data-theme", e);
@@ -1435,7 +1521,8 @@ document.addEventListener("DOMContentLoaded", () => {
             step4: {},
             joinDate: new Date().toISOString(),
             workoutHistory: [],
-            weightHistory: []
+            weightHistory: [],
+            chatHistory: []
         };
         W(i, S), ae(`کاربر جدید ${i} ثبت نام کرد.`), w(`خوش آمدی، ${i}! ثبت نام با موفقیت انجام شد.`, "success"), fe(i)
     });
@@ -1593,7 +1680,8 @@ Question: ${l}`,
         };
     h == null || h.addEventListener("click", k), E == null || E.addEventListener("keyup", l => {
         l.key === "Enter" && k()
-    }), (j = document.getElementById("generate-ai-plan-btn")) == null || j.addEventListener("click", async () => {
+    });
+    (j = document.getElementById("generate-ai-plan-btn")) == null || j.addEventListener("click", async () => {
         const l = document.getElementById("generate-ai-plan-btn") as HTMLButtonElement;
         l.classList.add("is-loading"), l.disabled = !0;
         try {
@@ -1691,6 +1779,47 @@ Question: ${l}`,
             l.classList.remove("is-loading"), l.disabled = !1
         }
     });
+
+    const generateNutritionBtn = document.getElementById("generate-ai-nutrition-btn");
+    generateNutritionBtn?.addEventListener("click", async () => {
+        generateNutritionBtn.classList.add("is-loading");
+        (generateNutritionBtn as HTMLButtonElement).disabled = true;
+        const resultContainer = document.getElementById("ai-nutrition-result")!;
+        resultContainer.classList.remove("hidden");
+        resultContainer.innerHTML = `<div class="flex items-center justify-center gap-2 text-secondary p-4"><div class="animate-spin rounded-full h-5 w-5 border-b-2 border-secondary"></div><span>در حال تولید برنامه غذایی...</span></div>`;
+
+        try {
+            if (!X) {
+                X = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            }
+            const clientData = ye().step1;
+            const prompt = `You are an expert nutritionist. Create a sample one-day meal plan in Persian for a client with the following details. The plan should be simple, practical, and based on common foods available in Iran. Provide 3 main meals (breakfast, lunch, dinner) and 2 snacks. For each meal, suggest food items and approximate portion sizes. The final output must be formatted in simple HTML, using <h4> for meal titles and <ul><li> for food items. Do not include any other HTML tags like <html>, <body>, or <head>. Your response must be only the HTML content.
+
+Client Details:
+- Goal: ${clientData.trainingGoal || 'General Fitness'}
+- Gender: ${clientData.gender || 'Not specified'}
+- Age: ${clientData.age || '25'}
+- Weight: ${clientData.weight || '75'} kg
+- Height: ${clientData.height || '180'} cm
+- Estimated Daily Calorie Needs (TDEE): ${clientData.tdee || '2500'} kcal`;
+
+            const response = await X.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt
+            });
+            
+            resultContainer.innerHTML = response.text;
+
+        } catch (error) {
+            console.error("AI Nutrition Generation Error:", error);
+            resultContainer.innerHTML = `<p class="text-red-400 text-center">متاسفانه خطایی در تولید برنامه غذایی رخ داد. لطفاً دوباره تلاش کنید.</p>`;
+            w("خطا در ارتباط با هوش مصنوعی.", "error");
+        } finally {
+            generateNutritionBtn.classList.remove("is-loading");
+            (generateNutritionBtn as HTMLButtonElement).disabled = false;
+        }
+    });
+
     const $ = () => {
         U.classList.remove("active", "opacity-100"), setTimeout(() => U.classList.add("hidden"), 300)
     };
@@ -1765,7 +1894,7 @@ Question: ${l}`,
     (Se = document.getElementById("dashboard-profile-panel")) == null || Se.addEventListener("input", l => {
         const i = l.target as HTMLElement;
         i && i.matches('input[type="radio"]') && updateRadioCardSelection(document.getElementById("dashboard-profile-panel")!), clearTimeout(B), B = window.setTimeout(() => {
-            var v, y, p, S, T, P;
+            var v, y, p, S, T;
             if (f && f !== "admin") {
                 const H = D(f),
                     te = document.getElementById("dashboard-profile-panel")!,
@@ -1832,9 +1961,9 @@ Question: ${l}`,
         }
     });
 
-    (ke = document.getElementById("logout-btn")) == null || ke.addEventListener("click", We), (Be = document.getElementById("logout-btn-dashboard")) == null || Be.addEventListener("click", We), ($e = document.getElementById("save-pdf-btn")) == null || $e.addEventListener("click", Fe), (Ce = document.getElementById("save-word-btn")) == null || Ce.addEventListener("click", nt), (Te = document.getElementById("send-program-btn")) == null || Te.addEventListener("click", rt), (De = document.getElementById("save-changes-btn")) == null || De.addEventListener("click", at), (Nt = document.getElementById("send-nutrition-btn")) == null || Nt.addEventListener("click", dt), (Ne = document.getElementById("dashboard-save-pdf-btn")) == null || Ne.addEventListener("click", Fe), (Me = document.getElementById("ai-chat-fab")) == null || Me.addEventListener("click", openChat), (ut = document.getElementById("close-ai-chat-btn")) == null || ut.addEventListener("click", () => closeModal(document.getElementById("ai-chat-modal")!)), (ft = document.getElementById("ai-chat-form")) == null || ft.addEventListener("submit", l => {
+    (ke = document.getElementById("logout-btn")) == null || ke.addEventListener("click", We), (Be = document.getElementById("logout-btn-dashboard")) == null || Be.addEventListener("click", We), ($e = document.getElementById("save-pdf-btn")) == null || $e.addEventListener("click", Fe), (Ce = document.getElementById("save-word-btn")) == null || Ce.addEventListener("click", nt), (Te = document.getElementById("send-program-btn")) == null || Te.addEventListener("click", rt), (De = document.getElementById("save-changes-btn")) == null || De.addEventListener("click", at), (Ne = document.getElementById("send-nutrition-btn")) == null || Ne.addEventListener("click", dt), (Me = document.getElementById("dashboard-save-pdf-btn")) == null || Me.addEventListener("click", Fe), (ut = document.getElementById("ai-chat-fab")) == null || ut.addEventListener("click", openChat), (ft = document.getElementById("close-ai-chat-btn")) == null || ft.addEventListener("click", () => closeModal(document.getElementById("ai-chat-modal")!)), (gt = document.getElementById("ai-chat-form")) == null || gt.addEventListener("submit", l => {
         l.preventDefault(), sendMessageToAiChat()
-    }), (gt = document.getElementById("close-workout-log-btn")) == null || gt.addEventListener("click", () => closeModal(document.getElementById("workout-log-modal")!)), (mt = document.getElementById("finish-workout-btn")) == null || mt.addEventListener("click", saveWorkoutLog), st(), ((bt = document.getElementById("workout-days-container")) == null ? void 0 : bt.children.length) === 0 && re(!0), (wt = document.getElementById("admin-review-user-list")) == null || wt.addEventListener("click", l => {
+    }), (mt = document.getElementById("close-workout-log-btn")) == null || mt.addEventListener("click", () => closeModal(document.getElementById("workout-log-modal")!)), (bt = document.getElementById("finish-workout-btn")) == null || bt.addEventListener("click", saveWorkoutLog), (document.getElementById("coach-chat-form") as HTMLFormElement)?.addEventListener('submit', (e) => { e.preventDefault(); sendMessageToCoach(); }), st(), ((wt = document.getElementById("workout-days-container")) == null ? void 0 : wt.children.length) === 0 && re(!0), (Ct = document.getElementById("admin-review-user-list")) == null || Ct.addEventListener("click", l => {
         const i = (l.target as HTMLElement).closest(".admin-review-user-item") as HTMLElement | null;
         if (i) {
             document.querySelectorAll(".admin-review-user-item").forEach(u => u.classList.remove("bg-tertiary")), i.classList.add("bg-tertiary");
@@ -1842,138 +1971,118 @@ Question: ${l}`,
             if (u) {
                 const v = D(u),
                     y = document.getElementById("admin-review-details")!;
-                y.innerHTML = `<div class="space-y-6"><h3 class="text-2xl font-bold mb-4">${u}</h3><div class="card rounded-xl p-4"><h4 class="font-bold text-lg mb-4">روند پیشرفت وزن</h4><div class="h-64 relative"><canvas id="admin-review-weight-chart"></canvas><div id="admin-review-no-chart-data" class="absolute inset-0 flex items-center justify-center text-secondary hidden"><p>داده کافی برای نمودار نیست.</p></div></div></div><div class="card rounded-xl p-4"><h4 class="font-bold text-lg mb-4">ارسال پیام به شاگرد</h4><form id="send-coach-message-form" class="flex gap-2"><input type="text" id="coach-message-input" class="input-field flex-1" placeholder="پیام شما..." required><button type="submit" class="primary-button !px-4"><i data-lucide="send"></i></button></form></div><div class="card rounded-xl p-4"><h4 class="font-bold text-lg mb-4">تاریخچه تمرینات</h4><div id="admin-review-history" class="space-y-2 text-sm max-h-64 overflow-y-auto">${(v.workoutHistory||[]).length===0?'<p class="text-secondary">تاریخچه‌ای ثبت نشده.</p>':v.workoutHistory.map(p=>`<div class="bg-tertiary/50 p-2 rounded-md"><strong>${new Date(p.date).toLocaleDateString("fa-IR")}</strong>: ${p.workoutData.map(S=>S.exerciseName).join(", ")}</div>`).join("")}</div></div></div>`, Xe(v.weightHistory, "admin-review-weight-chart", "admin-review-no-chart-data"), window.lucide.createIcons(), (document.getElementById("send-coach-message-form") as HTMLFormElement).addEventListener("submit", p => {
+                    
+                const chatHistoryHTML = (v.chatHistory || [])
+                    .map(msg => `<div class="p-2 rounded-md text-sm ${msg.sender === 'user' ? 'bg-tertiary/50' : 'bg-green-500/10 text-right'}">${A(msg.message)}</div>`)
+                    .join('');
+
+                y.innerHTML = `<div class="space-y-6"><h3 class="text-2xl font-bold mb-4">${u}</h3>
+                    <div class="card rounded-xl p-4"><h4 class="font-bold text-lg mb-4">روند پیشرفت وزن</h4><div class="h-64 relative"><canvas id="admin-review-weight-chart"></canvas><div id="admin-review-no-chart-data" class="absolute inset-0 flex items-center justify-center text-secondary hidden"><p>داده کافی برای نمودار نیست.</p></div></div></div>
+                    <div class="card rounded-xl p-4">
+                        <h4 class="font-bold text-lg mb-4">گفتگو با ${u}</h4>
+                        <div id="admin-chat-history" class="space-y-2 text-sm max-h-64 overflow-y-auto mb-4 border p-2 rounded-md bg-tertiary/20">
+                            ${chatHistoryHTML || '<p class="text-secondary text-center p-2">هنوز پیامی رد و بدل نشده است.</p>'}
+                        </div>
+                        <form id="send-coach-message-form" class="flex gap-2">
+                            <input type="text" id="coach-message-input" class="input-field flex-1" placeholder="پاسخ شما..." required>
+                            <button type="submit" class="primary-button !px-4"><i data-lucide="send"></i></button>
+                        </form>
+                    </div>
+                    <div class="card rounded-xl p-4"><h4 class="font-bold text-lg mb-4">تاریخچه تمرینات</h4><div id="admin-review-history" class="space-y-2 text-sm max-h-64 overflow-y-auto">${(v.workoutHistory||[]).length===0?'<p class="text-secondary">تاریخچه‌ای ثبت نشده.</p>':v.workoutHistory.slice().reverse().map(p=>`<div class="bg-tertiary/50 p-2 rounded-md"><strong>${new Date(p.date).toLocaleDateString("fa-IR")}</strong>: ${p.workoutData.map(S=>S.exerciseName).join(", ")}</div>`).join("")}</div></div>
+                </div>`, Xe(v.weightHistory, "admin-review-weight-chart", "admin-review-no-chart-data"), window.lucide.createIcons(), (document.getElementById("send-coach-message-form") as HTMLFormElement).addEventListener("submit", p => {
                     p.preventDefault();
                     const S = (document.getElementById("coach-message-input") as HTMLInputElement).value.trim();
-                    S && (v.coachMessages || (v.coachMessages = []), v.coachMessages.push(S), W(u, v), w(`پیام برای ${u} ارسال شد.`), (document.getElementById("coach-message-input") as HTMLInputElement).value = "")
-                })
+                    if (S) {
+                         const currentData = D(u);
+                         currentData.chatHistory || (currentData.chatHistory = []);
+                         currentData.chatHistory.push({
+                            sender: 'coach',
+                            message: S,
+                            timestamp: new Date().toISOString()
+                         });
+                         currentData.newMessageFromCoach = true;
+                         W(u, currentData);
+                         w(`پیام برای ${u} ارسال شد.`);
+                         const coachMessageInput = (document.getElementById("coach-message-input") as HTMLInputElement);
+                         coachMessageInput.value = "";
+                         
+                         const adminChatHistory = document.getElementById("admin-chat-history")!;
+                         const noMessageP = adminChatHistory.querySelector('p');
+                         if(noMessageP && noMessageP.textContent?.includes('هنوز پیامی رد و بدل نشده است')) {
+                             noMessageP.remove();
+                         }
+                         const newMessageDiv = document.createElement('div');
+                         newMessageDiv.className = 'p-2 rounded-md text-sm bg-green-500/10 text-right';
+                         newMessageDiv.textContent = A(S);
+                         adminChatHistory.appendChild(newMessageDiv);
+                         adminChatHistory.scrollTop = adminChatHistory.scrollHeight;
+                    }
+                });
             }
         }
-    });
-    
-    const adminTabsContainer = document.getElementById("admin-panel-modal")?.querySelector(".flex-1.p-6 > .flex.border-b");
-    if (adminTabsContainer) {
-        adminTabsContainer.addEventListener("click", (l) => {
-            const i = (l.target as HTMLElement).closest(".admin-tab-btn");
-            if (!i) return;
-
-            const u = i.getAttribute('data-tab');
-            if (!u) return;
-
-            adminTabsContainer.querySelectorAll(".admin-tab-btn").forEach(p => {
-                const isClicked = p.getAttribute('data-tab') === u;
-                p.classList.toggle("active-spring-tab", isClicked);
-                p.classList.toggle("text-secondary", !isClicked);
-                p.classList.toggle("border-transparent", !isClicked);
+    }), (Tt = document.getElementById("save-template-btn")) == null || Tt.addEventListener("click", () => {
+        openModal(document.getElementById("save-template-modal")!)
+    }), (Dt = document.getElementById("cancel-save-template-btn")) == null || Dt.addEventListener("click", () => {
+        closeModal(document.getElementById("save-template-modal")!)
+    }), (Lt = document.getElementById("confirm-save-template-btn")) == null || Lt.addEventListener("click", () => {
+        const l = document.getElementById("template-name-input") as HTMLInputElement,
+            i = l.value.trim();
+        i ? (yt(i, ye()), w(`الگوی «${i}» با موفقیت ذخیره شد.`), l.value = "", closeModal(document.getElementById("save-template-modal")!)) : w("لطفا یک نام برای الگو وارد کنید.", "error")
+    }), (zt = document.getElementById("load-template-btn")) == null || zt.addEventListener("click", () => {
+        const l = document.getElementById("template-list-container")!,
+            i = ht();
+        l.innerHTML = "", Object.keys(i).length === 0 ? l.innerHTML = '<p class="text-secondary text-center">هیچ الگوی ذخیره شده‌ای وجود ندارد.</p>' : Object.keys(i).forEach(u => {
+            const v = document.createElement("button");
+            v.className = "secondary-button w-full text-right", v.textContent = u, v.onclick = () => {
+                Je(i[u]), w(`الگوی «${u}» با موفقیت بارگذاری شد.`), closeModal(document.getElementById("load-template-modal")!)
+            }, l.appendChild(v)
+        }), openModal(document.getElementById("load-template-modal")!)
+    }), (Ut = document.getElementById("cancel-load-template-btn")) == null || Ut.addEventListener("click", () => {
+        closeModal(document.getElementById("load-template-modal")!)
+    }), (Vt = document.getElementById("admin-panel-modal")?.querySelector('.admin-tab-btn[data-tab="templates"]')) == null || Vt.addEventListener("click", () => {
+        const l = document.getElementById("admin-template-list")!,
+            i = ht();
+        l.innerHTML = "", Object.keys(i).length === 0 ? l.innerHTML = '<p class="text-secondary text-center">هیچ الگوی ذخیره شده‌ای وجود ندارد.</p>' : Object.keys(i).forEach(u => {
+            const v = document.createElement("div");
+            v.className = "flex justify-between items-center p-3 bg-tertiary/50 rounded-lg", v.innerHTML = `<span>${A(u)}</span><button data-name="${A(u)}" class="remove-template-btn text-red-500 hover:bg-red-500/10 p-2 rounded-md"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`, l.appendChild(v)
+        }), window.lucide.createIcons()
+    }), document.getElementById("admin-template-list")?.addEventListener("click", l => {
+        const i = (l.target as HTMLElement).closest(".remove-template-btn");
+        if (i) {
+            const u = (i as HTMLElement).dataset.name;
+            u && confirm(`آیا از حذف الگوی «${u}» مطمئن هستید؟`) && (pt(u), w(`الگوی «${u}» حذف شد.`), (document.getElementById("admin-panel-modal")?.querySelector('.admin-tab-btn[data-tab="templates"]') as HTMLElement).click())
+        }
+    }), document.querySelector("#admin-panel-modal .flex.border-b")?.addEventListener("click", (l) => {
+        const i = (l.target as HTMLElement).closest(".admin-tab-btn");
+        if(i) {
+            const tabName = i.getAttribute("data-tab");
+            document.querySelectorAll("#admin-panel-modal .admin-tab-btn").forEach(btn => {
+                 btn.classList.toggle("active-spring-tab", btn.getAttribute("data-tab") === tabName);
+                 btn.classList.toggle("text-secondary", btn.getAttribute("data-tab") !== tabName);
+                 btn.classList.toggle("border-transparent", btn.getAttribute("data-tab") !== tabName);
             });
-
-            document.querySelectorAll(".admin-tab-content").forEach(p => {
-                p.classList.add("hidden");
+            document.querySelectorAll("#admin-panel-modal .admin-tab-content").forEach(content => {
+                content.classList.toggle("hidden", content.id !== `admin-${tabName}-content`);
             });
-
-            const v = document.getElementById(`admin-${u}-content`);
-            v?.classList.remove("hidden");
-
-            if (u === "review") {
-                const p = document.getElementById("admin-review-user-list");
-                if (p) {
-                    p.innerHTML = "در حال بارگذاری...";
-                    setTimeout(() => {
-                        const S = O().filter(P => P.username !== "admin");
-                        p.innerHTML = "";
-                        S.forEach(P => {
-                            var te;
-                            const H = document.createElement("div");
-                            H.className = "flex items-center gap-3 p-3 rounded-lg hover:bg-tertiary/50 transition-colors cursor-pointer admin-review-user-item";
-                            H.dataset.username = P.username;
-                            H.innerHTML = `<img src="${((te=D(P.username).step1)==null?void 0:te.profilePic)||"https://placehold.co/40x40/374151/E5E7EB?text=?"}" class="w-10 h-10 rounded-full object-cover"><div><p class="font-bold">${P.username}</p><p class="text-xs text-secondary">${P.email}</p></div>`;
-                            p.appendChild(H);
-                        });
-                    }, 100);
-                }
-            } else if (u === "templates") {
-                const p = document.getElementById("admin-template-list")!;
-                p.innerHTML = "";
-                const S = ht();
-                Object.keys(S).length === 0 
-                    ? p.innerHTML = '<p class="text-secondary text-center">الگویی ذخیره نشده است.</p>' 
-                    : Object.keys(S).forEach(T => {
-                        const H = document.createElement("div");
-                        H.className = "flex items-center justify-between p-3 rounded-lg bg-tertiary/50";
-                        H.innerHTML = `<span class="font-bold">${A(T)}</span><button data-name="${A(T)}" class="delete-template-btn text-red-500 hover:bg-red-500/10 p-2 rounded-md"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
-                        p.appendChild(H);
-                    });
+            if (tabName === 'review') {
+                 const userList = document.getElementById("admin-review-user-list")!;
+                 userList.innerHTML = '';
+                 const users = O().filter(u => u.username !== 'admin');
+                 users.forEach(u => {
+                     const item = document.createElement('div');
+                     item.className = 'admin-review-user-item p-3 rounded-lg cursor-pointer hover:bg-tertiary/50';
+                     item.dataset.username = u.username;
+                     item.textContent = u.username;
+                     userList.appendChild(item);
+                 });
+                 document.getElementById('admin-review-details')!.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-secondary">
+                        <i data-lucide="users" class="w-16 h-16"></i>
+                        <p class="mt-4">یک شاگرد را برای مشاهده جزئیات انتخاب کنید.</p>
+                    </div>`;
                 window.lucide.createIcons();
             }
-        });
-    }
-
-    (Ct = document.getElementById("generate-ai-nutrition-btn")) == null || Ct.addEventListener("click", async l => {
-        const i = l.currentTarget as HTMLButtonElement;
-        i.classList.add("is-loading"), i.disabled = !0;
-        const u = document.getElementById("ai-nutrition-result")!;
-        u.innerHTML = '<p class="text-secondary">در حال تولید برنامه غذایی...</p>', u.classList.remove("hidden");
-        try {
-            X || (X = new GoogleGenAI({
-                apiKey: process.env.API_KEY
-            }));
-            const v = ye().step1,
-                y = (document.querySelector("#program-builder-form .tdee-input") as HTMLInputElement).value,
-                p = `Create a sample one-day meal plan in Persian for a client with these details:
-                - Goal: ${v.trainingGoal}
-                - TDEE: ${y} kcal
-
-                Instructions:
-                1.  Provide a simple, balanced meal plan including Breakfast, Lunch, Dinner, and 2 Snacks.
-                2.  For each meal, give a brief description and an estimated macronutrient breakdown (Protein, Carbs, Fat in grams).
-                3.  The total calories should be close to the provided TDEE.
-                4.  Format the response as a single block of HTML. Use h4 for meal titles, p for descriptions, and a small table for macros. Use Tailwind CSS classes for basic styling (e.g., font-bold, text-sm, grid).
-                5.  Wrap the entire output in a div.
-                `,
-                S = await X.models.generateContent({
-                    model: "gemini-2.5-flash",
-                    contents: p
-                });
-            u.innerHTML = S.text
-        } catch (v) {
-            console.error("AI Nutrition Error:", v), u.innerHTML = '<p class="text-red-400">خطا در تولید برنامه غذایی.</p>'
-        } finally {
-            i.classList.remove("is-loading"), i.disabled = !1;
-            Ue(ye(), "#program-sheet-container-step5");
-        }
-    }), (Tt = document.getElementById("admin-templates-content")) == null || Tt.addEventListener("click", l => {
-        const i = (l.target as HTMLElement).closest(".delete-template-btn") as HTMLElement | null;
-        if (i) {
-            const u = i.dataset.name;
-            u && confirm(`آیا از حذف الگوی «${u}» مطمئن هستید؟`) && (pt(u), (document.querySelector(".admin-tab-btn[data-tab='templates']") as HTMLButtonElement).click(), w(`الگوی ${u} حذف شد.`))
-        }
-    }), (Dt = document.getElementById("program-builder-form")) == null || Dt.addEventListener("click", l => {
-        const i = l.target as HTMLElement,
-            u = document.getElementById("save-template-modal")!,
-            v = document.getElementById("load-template-modal")!,
-            y = document.getElementById("template-list-container")!;
-        if (i.closest("#save-template-btn")) openModal(u);
-        else if (i.closest("#confirm-save-template-btn")) {
-            const p = (document.getElementById("template-name-input") as HTMLInputElement).value.trim();
-            p ? (yt(p, ye()), w(`الگو با نام «${p}» ذخیره شد.`), closeModal(u), (document.getElementById("template-name-input") as HTMLInputElement).value = "") : w("لطفا نام الگو را وارد کنید.", "error")
-        } else if (i.closest("#load-template-btn")) {
-            const p = ht();
-            y.innerHTML = "", Object.keys(p).length === 0 ? y.innerHTML = '<p class="text-secondary text-center">الگویی برای بارگذاری وجود ندارد.</p>' : Object.keys(p).forEach(S => {
-                const T = document.createElement("button");
-                T.className = "block w-full text-right p-3 rounded-lg hover:bg-tertiary/50", T.dataset.name = S, T.textContent = S, T.onclick = () => {
-                    Je(p[S]), w(`الگوی «${S}» بارگذاری شد.`), closeModal(v)
-                }, y.appendChild(T)
-            }), openModal(v)
         }
     });
-    document.getElementById("cancel-save-template-btn")?.addEventListener('click', () => closeModal(document.getElementById('save-template-modal')!));
-    document.getElementById("cancel-load-template-btn")?.addEventListener('click', () => closeModal(document.getElementById('load-template-modal')!));
-    
-    window.addEventListener('storage', (event) => {
-        if (f && f !== 'admin' && event.key === `fitgympro_data_${f}`) {
-            const freshData = D(f);
-            de(f, freshData);
-            w('برنامه شما توسط مربی به‌روزرسانی شد.', 'success');
-        }
-    });
+
 });

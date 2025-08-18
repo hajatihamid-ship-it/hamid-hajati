@@ -141,11 +141,11 @@
         .bmi-status-obese { color: #ef4444; }
         .bmi-status-text, .weight-status-text { text-align: center; margin-top: 0.75rem; }
 
-        /* AI Chat */
+        /* AI & Coach Chat */
         #ai-chat-fab { position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 50; }
-        #ai-chat-modal .message { max-width: 80%; padding: 0.75rem; border-radius: 1rem; }
-        #ai-chat-modal .user-message { background-color: var(--accent); color: white; border-bottom-right-radius: 0.25rem; align-self: flex-end; }
-        #ai-chat-modal .ai-message { background-color: var(--bg-tertiary); border-bottom-left-radius: 0.25rem; align-self: flex-start; }
+        #ai-chat-modal .message, #coach-chat-messages .message { max-width: 80%; padding: 0.75rem; border-radius: 1rem; }
+        #ai-chat-modal .user-message, #coach-chat-messages .user-message { background-color: var(--accent); color: white; border-bottom-right-radius: 0.25rem; align-self: flex-end; }
+        #ai-chat-modal .ai-message, #coach-chat-messages .coach-message { background-color: var(--bg-tertiary); border-bottom-left-radius: 0.25rem; align-self: flex-start; }
         .blinking-cursor { display: inline-block; width: 3px; height: 1.2em; background-color: var(--text-primary); animation: blink 1s step-end infinite; }
         @keyframes blink { 50% { opacity: 0; } }
         
@@ -749,8 +749,9 @@
             <div class="mb-6 border-b border-border-primary">
                 <nav id="user-dashboard-tabs" class="flex items-center gap-2 sm:gap-6 -mb-px text-sm sm:text-base overflow-x-auto">
                     <button data-tab="dashboard" class="user-dashboard-tab active-spring-tab py-3 px-2 font-bold border-b-2 flex items-center gap-2 flex-shrink-0"><i data-lucide="layout-dashboard"></i>داشبورد</button>
-                    <button data-tab="program" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="clipboard-list"></i>برنامه من</button>
-                    <button data-tab="progress" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="trending-up"></i>روند پیشرفت</button>
+                    <button data-tab="workout" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="dumbbell"></i>تمرین</button>
+                    <button data-tab="nutrition" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="utensils-crossed"></i>تغذیه</button>
+                    <button data-tab="chat" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="message-square"></i>گفتگو</button>
                     <button data-tab="profile" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="user-circle"></i>پروفایل</button>
                 </nav>
             </div>
@@ -758,31 +759,50 @@
             <!-- Tab Content -->
             <div class="transition-opacity duration-300">
                 <!-- Dashboard Tab -->
-                <div id="dashboard-tab-content" class="user-dashboard-tab-content grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 space-y-6">
-                        <div id="dashboard-stats-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-                        <div id="coach-message-card" class="card rounded-lg p-4 bg-amber-500/10 border-amber-500/20 hidden">
-                             <h3 class="font-bold mb-3 flex items-center gap-2"><i data-lucide="message-square" class="text-amber-400"></i>پیام جدید از مربی</h3>
-                             <div id="coach-message-content" class="text-sm space-y-2"></div>
-                        </div>
-                        <div id="today-focus-card" class="card rounded-lg p-4"></div>
-                    </div>
-                    <div class="lg:col-span-1 space-y-6">
-                         <div class="card rounded-lg p-4">
-                            <h3 class="font-bold text-lg mb-4">ثبت وزن امروز</h3>
-                            <div class="h-48 relative">
-                               <canvas id="weight-progress-chart-small"></canvas>
+                <div id="dashboard-tab-content" class="user-dashboard-tab-content space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 space-y-6">
+                            <div id="dashboard-stats-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+                            <div id="coach-message-card" class="card rounded-lg p-4 bg-amber-500/10 border-amber-500/20 hidden">
+                                 <h3 class="font-bold mb-3 flex items-center gap-2"><i data-lucide="message-square" class="text-amber-400"></i>آخرین پیام از مربی</h3>
+                                 <div id="coach-message-content" class="text-sm space-y-2"></div>
                             </div>
-                            <form id="add-weight-form" class="flex gap-2 mt-4">
-                                <input type="number" step="0.1" id="new-weight-input" class="input-field flex-1" placeholder="وزن امروز (kg)" required>
-                                <button type="submit" class="primary-button !px-4"><i data-lucide="plus"></i></button>
-                            </form>
+                            <div id="today-focus-card" class="card rounded-lg p-4"></div>
+                        </div>
+                        <div class="lg:col-span-1 space-y-6">
+                             <div class="card rounded-lg p-4">
+                                <h3 class="font-bold text-lg mb-4">ثبت وزن امروز</h3>
+                                <div class="h-48 relative">
+                                   <canvas id="weight-progress-chart-small"></canvas>
+                                </div>
+                                <form id="add-weight-form" class="flex gap-2 mt-4">
+                                    <input type="number" step="0.1" id="new-weight-input" class="input-field flex-1" placeholder="وزن امروز (kg)" required>
+                                    <button type="submit" class="primary-button !px-4"><i data-lucide="plus"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card rounded-lg p-4">
+                            <h3 class="font-bold text-lg mb-4">نمودار کامل پیشرفت وزن</h3>
+                            <div class="h-80 relative">
+                                <canvas id="weight-progress-chart"></canvas>
+                                <div id="no-chart-data" class="absolute inset-0 flex items-center justify-center text-secondary hidden">
+                                    <p>برای نمایش نمودار حداقل ۲ بار وزن خود را ثبت کنید.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card rounded-lg p-4">
+                            <h3 class="font-bold text-lg mb-4">تاریخچه تمرینات ثبت شده</h3>
+                            <div id="workout-history-container" class="space-y-3 max-h-96 overflow-y-auto">
+                                <!-- Workout history will be injected here -->
+                            </div>
                         </div>
                     </div>
                 </div>
     
-                <!-- Program Tab -->
-                <div id="program-tab-content" class="user-dashboard-tab-content hidden space-y-6">
+                <!-- Workout Tab -->
+                <div id="workout-tab-content" class="user-dashboard-tab-content hidden space-y-6">
                      <div class="flex flex-wrap gap-4 justify-between items-center">
                          <h2 class="text-2xl font-bold">برنامه تمرینی هفتگی شما</h2>
                          <button id="dashboard-save-pdf-btn" type="button" class="secondary-button !text-sm !py-2 !px-4 flex items-center gap-1.5"><i data-lucide="download" class="w-4 h-4"></i>ذخیره PDF</button>
@@ -797,26 +817,33 @@
                          </div>
                      </div>
                 </div>
-    
-                <!-- Progress Tab -->
-                <div id="progress-tab-content" class="user-dashboard-tab-content hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="card rounded-lg p-4">
-                        <h3 class="font-bold text-lg mb-4">نمودار کامل پیشرفت وزن</h3>
-                        <div class="h-80 relative">
-                            <canvas id="weight-progress-chart"></canvas>
-                            <div id="no-chart-data" class="absolute inset-0 flex items-center justify-center text-secondary hidden">
-                                <p>برای نمایش نمودار حداقل ۲ بار وزن خود را ثبت کنید.</p>
-                            </div>
-                        </div>
+                
+                 <!-- Nutrition Tab -->
+                <div id="nutrition-tab-content" class="user-dashboard-tab-content hidden">
+                    <div class="flex flex-wrap gap-4 justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">برنامه تغذیه شما</h2>
                     </div>
-                    <div class="card rounded-lg p-4">
-                        <h3 class="font-bold text-lg mb-4">تاریخچه تمرینات ثبت شده</h3>
-                        <div id="workout-history-container" class="space-y-3 max-h-96 overflow-y-auto">
-                            <!-- Workout history will be injected here -->
-                        </div>
+                    <div id="dashboard-nutrition-view" class="card rounded-lg p-6 prose prose-sm max-w-none">
+                        <!-- Nutrition plan will be injected here -->
                     </div>
                 </div>
-                
+
+                <!-- Chat Tab -->
+                <div id="chat-tab-content" class="user-dashboard-tab-content hidden">
+                    <div class="card rounded-2xl w-full max-w-4xl mx-auto h-[70vh] flex flex-col">
+                        <header class="flex justify-between items-center p-4 border-b border-border-primary">
+                            <h2 class="text-xl font-bold flex items-center gap-3"><i data-lucide="user-round-search" class="text-amber-400"></i>گفتگو با مربی</h2>
+                        </header>
+                        <div id="coach-chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col">
+                            <!-- Chat messages will be injected here -->
+                        </div>
+                        <form id="coach-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2">
+                            <input id="coach-chat-input" type="text" class="input-field flex-1" placeholder="پیام خود را بنویسید..." required>
+                            <button type="submit" class="primary-button !rounded-full !p-3"><i data-lucide="send"></i></button>
+                        </form>
+                    </div>
+                </div>
+    
                 <!-- Profile Tab -->
                 <div id="profile-tab-content" class="user-dashboard-tab-content hidden max-w-4xl mx-auto">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
