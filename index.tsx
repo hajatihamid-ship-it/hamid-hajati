@@ -135,7 +135,7 @@ const we = {
     }, {
         name: "ویتامین D3",
         dosage: "روزانه ۱۰۰۰-۴۰۰۰ IU",
-        note: "ضروری برای سلامت استخوان، سیستم ایمنی و عملکرد هورمونی."
+        note: "ضروری برای سلامت استخوان، سیستم ایمنی و عملکرد هورمونالی."
     }, {
         name: "اُمگا-۳ (روغن ماهی)",
         dosage: "روزانه ۱-۳ گرم (EPA+DHA)",
@@ -183,7 +183,7 @@ const V = document.getElementById("user-selection-screen")!,
         r.className = `flex items-center gap-3 ${n} text-white py-3 px-5 rounded-lg shadow-xl border-b-4 transform opacity-0 translate-x-full`, r.style.transition = "transform 0.5s ease, opacity 0.5s ease", r.innerHTML = `
         <i data-lucide="${a}" class="w-6 h-6"></i>
         <span>${A(e)}</span>
-    `, s.appendChild(r), window.lucide.createIcons(), requestAnimationFrame(() => {
+    `, s.appendChild(r), window.lucide?.createIcons(), requestAnimationFrame(() => {
             r.classList.remove("opacity-0", "translate-x-full")
         }), setTimeout(() => {
             r.classList.add("opacity-0"), r.style.transform = "translateX(120%)", r.addEventListener("transitionend", () => r.remove(), {
@@ -258,7 +258,7 @@ const V = document.getElementById("user-selection-screen")!,
         const d = parseFloat((e.querySelector(".weight-slider") as HTMLInputElement).value),
             c = r.querySelector(".ideal-weight-input") as HTMLInputElement;
         if (!c) {
-            s.innerHTML = o, window.lucide.createIcons();
+            s.innerHTML = o, window.lucide?.createIcons();
             return
         }
         const g = c.value;
@@ -277,7 +277,7 @@ const V = document.getElementById("user-selection-screen")!,
                 d < x ? (b = "کمبود وزن", B = "underweight") : d > h && (b = "اضافه وزن", B = "overweight"), m = `<div class="p-4 rounded-xl"><h3 class="font-bold text-lg mb-3 border-b border-border-primary pb-2 flex items-center gap-2"><i data-lucide="scale" class="text-teal-400"></i>محدوده وزن ایده‌آل</h3><div class="weight-visualizer"><div class="weight-scale"><div class="weight-segment" style="--color: #3b82f6; width: ${I}%;"></div><div class="weight-segment" style="--color: #22c55e; width: ${C}%;"></div><div class="weight-segment" style="--color: #f97316; width: ${L}%;"></div><div class="weight-needle" style="--position: ${$}%;"><div class="weight-value-box">${d.toFixed(1)} kg</div></div></div><div class="weight-labels"><span>${x.toFixed(1)}kg</span><span class="font-bold">ایده‌آل</span><span>${h.toFixed(1)}kg</span></div><p class="weight-status-text">وضعیت: <strong class="weight-status-${B}">${b}</strong></p></div></div>`
             }
         }
-        s.innerHTML = o + m, window.lucide.createIcons()
+        s.innerHTML = o + m, window.lucide?.createIcons()
     },
     he = e => {
         const t = e.id === "section-1" ? e.closest("form")! : e,
@@ -342,12 +342,12 @@ const V = document.getElementById("user-selection-screen")!,
     ge = e => {
         const t = (document.getElementById("exercise-template") as HTMLTemplateElement).content.cloneNode(!0) as DocumentFragment,
             s = t.querySelector(".muscle-group-select") as HTMLSelectElement;
-        tt(s), pe(s.value, t.querySelector(".exercise-select") as HTMLSelectElement), e.appendChild(t), e.querySelectorAll(".range-slider").forEach(r => ie(r as HTMLInputElement)), window.lucide.createIcons()
+        tt(s), pe(s.value, t.querySelector(".exercise-select") as HTMLSelectElement), e.appendChild(t), e.querySelectorAll(".range-slider").forEach(r => ie(r as HTMLInputElement)), window.lucide?.createIcons()
     },
     re = (e = !1) => {
         const t = document.getElementById("workout-days-container")!.children.length + 1,
             s = document.createElement("div");
-        s.className = "card rounded-lg day-card", s.innerHTML = `<div class="flex justify-between items-center p-4 bg-tertiary/50 rounded-t-lg border-b border-border-secondary"><div class="flex items-center gap-3"><i data-lucide="calendar-days" class="text-yellow-400"></i><input type="text" value="روز ${t}: " class="day-title-input input-field font-bold text-lg bg-transparent border-0 p-1 focus:ring-0 focus:border-yellow-400 w-auto"></div> ${e?"":'<button type="button" class="remove-day-btn p-1 text-secondary hover:text-red-400"><i data-lucide="x-circle" class="w-5 h-5"></i></button>'}</div><div class="p-4 space-y-3"><div class="exercise-list space-y-3"></div><button type="button" class="add-exercise-btn mt-2 w-full text-sm text-yellow-400 font-semibold hover:bg-yellow-400/10 py-2.5 px-4 rounded-lg border-2 border-dashed border-yellow-400/30 transition-all flex items-center justify-center gap-2"><i data-lucide="plus"></i> افزودن حرکت</button></div><div class="p-4 border-t border-border-primary/50"><label class="font-semibold text-sm text-secondary mb-2 block">یادداشت‌های مربی</label><textarea class="day-notes-input input-field text-sm bg-tertiary/50" rows="2" placeholder="مثال: روی فرم صحیح حرکت تمرکز کنید..."></textarea></div>`, document.getElementById("workout-days-container")!.appendChild(s), ge(s.querySelector(".exercise-list") as HTMLDivElement), window.lucide.createIcons()
+        s.className = "card rounded-lg day-card", s.innerHTML = `<div class="flex justify-between items-center p-4 bg-tertiary/50 rounded-t-lg border-b border-border-secondary"><div class="flex items-center gap-3"><i data-lucide="calendar-days" class="text-yellow-400"></i><input type="text" value="روز ${t}: " class="day-title-input input-field font-bold text-lg bg-transparent border-0 p-1 focus:ring-0 focus:border-yellow-400 w-auto"></div> ${e?"":'<button type="button" class="remove-day-btn p-1 text-secondary hover:text-red-400"><i data-lucide="x-circle" class="w-5 h-5"></i></button>'}</div><div class="p-4 space-y-3"><div class="exercise-list space-y-3"></div><button type="button" class="add-exercise-btn mt-2 w-full text-sm text-yellow-400 font-semibold hover:bg-yellow-400/10 py-2.5 px-4 rounded-lg border-2 border-dashed border-yellow-400/30 transition-all flex items-center justify-center gap-2"><i data-lucide="plus"></i> افزودن حرکت</button></div><div class="p-4 border-t border-border-primary/50"><label class="font-semibold text-sm text-secondary mb-2 block">یادداشت‌های مربی</label><textarea class="day-notes-input input-field text-sm bg-tertiary/50" rows="2" placeholder="مثال: روی فرم صحیح حرکت تمرکز کنید..."></textarea></div>`, document.getElementById("workout-days-container")!.appendChild(s), ge(s.querySelector(".exercise-list") as HTMLDivElement), window.lucide?.createIcons()
     },
     st = () => {
         const e = document.getElementById("supplements-container")!;
@@ -361,7 +361,7 @@ const V = document.getElementById("user-selection-screen")!,
                 n.className = "supplement-item flex items-center justify-between", n.innerHTML = `<label class="custom-checkbox-label"><input type="checkbox" value="${a.name}" data-dosage="${a.dosage}" data-note="${a.note}" class="supplement-checkbox custom-checkbox"><span>${a.name}</span></label><div class="flex items-center gap-2"><div class="tooltip"><i data-lucide="info" class="w-4 h-4 text-gray-500 cursor-pointer"></i><span class="tooltiptext">${a.note}</span></div><i data-lucide="pill" class="w-5 h-5 text-gray-400 flex-shrink-0"></i><input type="text" class="dosage-input input-field text-sm w-32" placeholder="دوز..."></div>`, r.appendChild(n)
             }), e.appendChild(s)
         }
-        window.lucide.createIcons()
+        window.lucide?.createIcons()
     };
 const Ue = (e, t) => {
     const s = document.querySelector(t);
@@ -423,7 +423,7 @@ const Ue = (e, t) => {
     const $ = (e.step5 || {}).nutritionPlanHTML;
     $ && $.trim() !== "" && g(`<div class="day-separator"></div><div class="mt-6"><h3 class="preview-section-header"><i data-lucide="utensils-crossed"></i>راهنمای تغذیه</h3><div class="preview-notes-pro">${$}</div></div>`);
     const I = (e.step4 || {}).generalNotes;
-    I && g(`<div class="mt-6"><h3 class="preview-section-header"><i data-lucide="clipboard-edit"></i>توصیه‌های کلی مربی</h3><div class="preview-notes-pro">${A(I).replace(/\n/g,"<br>")}</div></div>`), window.lucide.createIcons()
+    I && g(`<div class="mt-6"><h3 class="preview-section-header"><i data-lucide="clipboard-edit"></i>توصیه‌های کلی مربی</h3><div class="preview-notes-pro">${A(I).replace(/\n/g,"<br>")}</div></div>`), window.lucide?.createIcons()
 };
 const Fe = async () => {
     var n;
@@ -581,11 +581,32 @@ rt = () => {
         }
         s.step5 = s.step5 || {}, s.step5.nutritionPlanHTML = r, s.lastUpdatedByAdmin = new Date().toISOString(), s.newProgram = !0, W(t, s), ae(`برنامه غذایی برای ${t} ارسال شد`), w(`برنامه غذایی با موفقیت برای کاربر «${t}» ارسال شد.`)
     },
-    O = () => JSON.parse(localStorage.getItem("fitgympro_users") || "[]"),
+    O = () => {
+        try {
+            return JSON.parse(localStorage.getItem("fitgympro_users") || "[]");
+        } catch (e) {
+            console.error("Error parsing users from localStorage:", e);
+            return [];
+        }
+    },
     Ge = e => localStorage.setItem("fitgympro_users", JSON.stringify(e)),
-    D = e => JSON.parse(localStorage.getItem(`fitgympro_data_${e}`) || "{}"),
+    D = e => {
+        try {
+            return JSON.parse(localStorage.getItem(`fitgympro_data_${e}`) || "{}");
+        } catch (t) {
+            console.error(`Error parsing data for user ${e}:`, t);
+            return {};
+        }
+    },
     W = (e, t) => localStorage.setItem(`fitgympro_data_${e}`, JSON.stringify(t)),
-    ze = () => JSON.parse(localStorage.getItem("fitgympro_activity_log") || "[]"),
+    ze = () => {
+        try {
+            return JSON.parse(localStorage.getItem("fitgympro_activity_log") || "[]");
+        } catch (e) {
+            console.error("Error parsing activity log from localStorage:", e);
+            return [];
+        }
+    },
     ae = e => {
         let t = ze();
         t.unshift({
@@ -593,7 +614,14 @@ rt = () => {
             date: new Date().toISOString()
         }), t.length > 20 && (t = t.slice(0, 20)), localStorage.setItem("fitgympro_activity_log", JSON.stringify(t))
     };
-const ht = () => JSON.parse(localStorage.getItem("fitgympro_templates") || "{}"),
+const ht = () => {
+        try {
+            return JSON.parse(localStorage.getItem("fitgympro_templates") || "{}");
+        } catch (e) {
+            console.error("Error parsing templates from localStorage:", e);
+            return {};
+        }
+    },
     xt = e => localStorage.setItem("fitgympro_templates", JSON.stringify(e)),
     yt = (e, t) => {
         const s = ht();
@@ -779,6 +807,7 @@ const ot = (e = []) => {
     } : null
 }, Xe = (e = [], t = "weight-progress-chart", s = "no-chart-data", smallChart = false) => {
     var a;
+    if (!window.Chart) return;
     const r = (a = document.getElementById(t) as HTMLCanvasElement) == null ? void 0 : a.getContext("2d");
     if (!r) return;
     const n = document.getElementById(s),
@@ -994,7 +1023,7 @@ const renderNutritionTab = (userData) => {
                 <p class="text-sm">مربی شما به زودی آن را آماده و ارسال خواهد کرد.</p>
             </div>
         `;
-        window.lucide.createIcons();
+        window.lucide?.createIcons();
     }
 }
 
@@ -1122,7 +1151,7 @@ function de(e, t) {
     } else {
         c.innerHTML = "";
     }
-    window.lucide.createIcons();
+    window.lucide?.createIcons();
     switchUserDashboardTab('dashboard');
 }
 
@@ -1177,6 +1206,7 @@ function We() {
     }, 300), switchAuthTab("login", !0), (e = document.getElementById("login-form")) == null || e.reset(), (t = document.getElementById("signup-form")) == null || t.reset()
 }
 const renderSparkline = (e, t) => {
+    if (!window.Chart) return;
     const s = document.getElementById(e) as HTMLCanvasElement;
     if (!s || !t || t.length < 2) return;
     const r = [...t].sort((c, g) => new Date(c.date).getTime() - new Date(g.date).getTime()).slice(-30),
@@ -1282,7 +1312,7 @@ const renderSparkline = (e, t) => {
                 <button class="remove-user-btn text-red-500 hover:bg-red-500/10 p-2 rounded-md" data-username="${n.username}" title="حذف کاربر"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </div>
         `, e.appendChild(o), renderSparkline(`spark-${n.username}`, d.weightHistory)
-    }), window.lucide.createIcons()
+    }), window.lucide?.createIcons()
 }, lt = e => {
     const t = new Date(e),
         r = Math.round((new Date().getTime() - t.getTime()) / 1e3),
@@ -1351,7 +1381,7 @@ const openModal = e => {
             }), x.appendChild(E)
         }
         a.appendChild(d)
-    }), window.lucide.createIcons(), openModal(s)
+    }), window.lucide?.createIcons(), openModal(s)
 }, saveWorkoutLog = () => {
     if (!f) return;
     const e = document.getElementById("workout-log-modal")!,
@@ -1434,7 +1464,7 @@ const sendMessageToCoach = async () => {
 };
 document.addEventListener("DOMContentLoaded", () => {
     var N, G, M, K, le, Y, Z, Q, j, _, ee, ce, Ee, Se, Le, Ie, qe, ke, Be, $e, Ce, Te, De, Ne, Me, ut, ft, gt, mt, bt, wt, Ct, Tt, Dt, Lt, zt, Ut, Vt;
-    window.lucide.createIcons();
+    window.lucide?.createIcons();
     const e = localStorage.getItem("fitgympro_theme") || "dark";
     document.documentElement.setAttribute("data-theme", e);
     const t = localStorage.getItem("fitgympro_last_user");
@@ -1533,7 +1563,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const u = document.getElementById(i) as HTMLInputElement;
             if (!u) return;
             const v = l.querySelector("i");
-            u.type === "password" ? (u.type = "text", v == null || v.setAttribute("data-lucide", "eye-off")) : (u.type = "password", v == null || v.setAttribute("data-lucide", "eye")), window.lucide.createIcons()
+            u.type === "password" ? (u.type = "text", v == null || v.setAttribute("data-lucide", "eye-off")) : (u.type = "password", v == null || v.setAttribute("data-lucide", "eye")), window.lucide?.createIcons()
         })
     });
     const c = (l, i) => {
@@ -1989,35 +2019,7 @@ Client Details:
                         </form>
                     </div>
                     <div class="card rounded-xl p-4"><h4 class="font-bold text-lg mb-4">تاریخچه تمرینات</h4><div id="admin-review-history" class="space-y-2 text-sm max-h-64 overflow-y-auto">${(v.workoutHistory||[]).length===0?'<p class="text-secondary">تاریخچه‌ای ثبت نشده.</p>':v.workoutHistory.slice().reverse().map(p=>`<div class="bg-tertiary/50 p-2 rounded-md"><strong>${new Date(p.date).toLocaleDateString("fa-IR")}</strong>: ${p.workoutData.map(S=>S.exerciseName).join(", ")}</div>`).join("")}</div></div>
-                </div>`, Xe(v.weightHistory, "admin-review-weight-chart", "admin-review-no-chart-data"), window.lucide.createIcons(), (document.getElementById("send-coach-message-form") as HTMLFormElement).addEventListener("submit", p => {
-                    p.preventDefault();
-                    const S = (document.getElementById("coach-message-input") as HTMLInputElement).value.trim();
-                    if (S) {
-                         const currentData = D(u);
-                         currentData.chatHistory || (currentData.chatHistory = []);
-                         currentData.chatHistory.push({
-                            sender: 'coach',
-                            message: S,
-                            timestamp: new Date().toISOString()
-                         });
-                         currentData.newMessageFromCoach = true;
-                         W(u, currentData);
-                         w(`پیام برای ${u} ارسال شد.`);
-                         const coachMessageInput = (document.getElementById("coach-message-input") as HTMLInputElement);
-                         coachMessageInput.value = "";
-                         
-                         const adminChatHistory = document.getElementById("admin-chat-history")!;
-                         const noMessageP = adminChatHistory.querySelector('p');
-                         if(noMessageP && noMessageP.textContent?.includes('هنوز پیامی رد و بدل نشده است')) {
-                             noMessageP.remove();
-                         }
-                         const newMessageDiv = document.createElement('div');
-                         newMessageDiv.className = 'p-2 rounded-md text-sm bg-green-500/10 text-right';
-                         newMessageDiv.textContent = A(S);
-                         adminChatHistory.appendChild(newMessageDiv);
-                         adminChatHistory.scrollTop = adminChatHistory.scrollHeight;
-                    }
-                });
+                </div>`, Xe(v.weightHistory, "admin-review-weight-chart", "admin-review-no-chart-data"), window.lucide?.createIcons()
             }
         }
     }), (Tt = document.getElementById("save-template-btn")) == null || Tt.addEventListener("click", () => {
@@ -2045,7 +2047,7 @@ Client Details:
         l.innerHTML = "", Object.keys(i).length === 0 ? l.innerHTML = '<p class="text-secondary text-center">هیچ الگوی ذخیره شده‌ای وجود ندارد.</p>' : Object.keys(i).forEach(u => {
             const v = document.createElement("div");
             v.className = "flex justify-between items-center p-3 bg-tertiary/50 rounded-lg", v.innerHTML = `<span>${A(u)}</span><button data-name="${A(u)}" class="remove-template-btn text-red-500 hover:bg-red-500/10 p-2 rounded-md"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`, l.appendChild(v)
-        }), window.lucide.createIcons()
+        }), window.lucide?.createIcons()
     }), document.getElementById("admin-template-list")?.addEventListener("click", l => {
         const i = (l.target as HTMLElement).closest(".remove-template-btn");
         if (i) {
@@ -2080,7 +2082,46 @@ Client Details:
                         <i data-lucide="users" class="w-16 h-16"></i>
                         <p class="mt-4">یک شاگرد را برای مشاهده جزئیات انتخاب کنید.</p>
                     </div>`;
-                window.lucide.createIcons();
+                window.lucide?.createIcons();
+            }
+        }
+    });
+
+    document.getElementById("admin-review-details")?.addEventListener("submit", (p) => {
+        const form = p.target as HTMLFormElement;
+        if (form && form.id === 'send-coach-message-form') {
+            p.preventDefault();
+            
+            const activeUserItem = document.querySelector("#admin-review-user-list .admin-review-user-item.bg-tertiary") as HTMLElement;
+            if (!activeUserItem) return;
+            const u = activeUserItem.dataset.username;
+            if (!u) return;
+    
+            const S = (document.getElementById("coach-message-input") as HTMLInputElement).value.trim();
+            if (S) {
+                const currentData = D(u);
+                currentData.chatHistory || (currentData.chatHistory = []);
+                currentData.chatHistory.push({
+                    sender: 'coach',
+                    message: S,
+                    timestamp: new Date().toISOString()
+                });
+                currentData.newMessageFromCoach = true;
+                W(u, currentData);
+                w(`پیام برای ${u} ارسال شد.`);
+                const coachMessageInput = (document.getElementById("coach-message-input") as HTMLInputElement);
+                coachMessageInput.value = "";
+                
+                const adminChatHistory = document.getElementById("admin-chat-history")!;
+                const noMessageP = adminChatHistory.querySelector('p');
+                if(noMessageP && noMessageP.textContent?.includes('هنوز پیامی رد و بدل نشده است')) {
+                    noMessageP.remove();
+                }
+                const newMessageDiv = document.createElement('div');
+                newMessageDiv.className = 'p-2 rounded-md text-sm bg-green-500/10 text-right';
+                newMessageDiv.textContent = A(S);
+                adminChatHistory.appendChild(newMessageDiv);
+                adminChatHistory.scrollTop = adminChatHistory.scrollHeight;
             }
         }
     });
