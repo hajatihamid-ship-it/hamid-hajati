@@ -1052,6 +1052,11 @@ const renderChatTab = (username, userData) => {
 const renderProfileTab = (username, userData) => {
     const s = document.getElementById("profile-tab-content")!,
         r = document.getElementById("dashboard-status-container")!;
+    const notice = document.getElementById('profile-completion-notice');
+    if (notice) {
+        notice.classList.toggle('hidden', !!userData.infoConfirmed);
+        window.lucide?.createIcons();
+    }
     r.innerHTML = "";
     const a = userData.hasPaid ?? !1,
         n = userData.infoConfirmed ?? !1,
@@ -1152,7 +1157,13 @@ function de(e, t) {
         c.innerHTML = "";
     }
     window.lucide?.createIcons();
-    switchUserDashboardTab('dashboard');
+    const initialTab = t.infoConfirmed ? 'dashboard' : 'profile';
+    switchUserDashboardTab(initialTab);
+    if (!t.infoConfirmed) {
+        setTimeout(() => {
+            w('خوش آمدید! لطفا پروفایل خود را تکمیل کنید.');
+        }, 500);
+    }
 }
 
 function fe(e) {
