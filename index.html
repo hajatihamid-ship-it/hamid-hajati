@@ -80,6 +80,10 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px -5px var(--green-accent);
         }
+        .green-button:active:not(:disabled) {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 2px 10px -5px var(--green-accent);
+        }
         .is-loading { position: relative; color: transparent !important; }
         .is-loading::after { content: ''; display: block; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.3); border-top-color: #fff; animation: spin 1s linear infinite; }
         .is-loading.secondary::after { border: 3px solid rgba(0, 0, 0, 0.3); border-top-color: var(--text-primary); }
@@ -443,7 +447,7 @@
                                 </div>
                                 <div class="space-y-3 pt-2">
                                     <button id="login-client-btn" type="submit" class="primary-button w-full !py-3 !text-base">ورود به پنل شاگرد</button>
-                                    <button id="login-coach-btn" type="button" class="w-full text-center text-sm font-semibold text-secondary hover:text-accent transition-colors">ورود به پنل مربی</button>
+                                    <button id="login-coach-btn" type="button" class="green-button w-full !py-3 !text-base">ورود به پنل مربی</button>
                                 </div>
                             </form>
                             <div class="social-login-divider">یا</div>
