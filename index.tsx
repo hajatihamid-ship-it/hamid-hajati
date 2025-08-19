@@ -1306,23 +1306,27 @@ const renderSparkline = (e, t) => {
         const o = document.createElement("div");
         const d = D(n.username);
         const c = getUserStatus(d);
-        o.className = "grid grid-cols-4 items-center gap-2 p-3 rounded-lg hover:bg-tertiary/50 transition-colors", o.dataset.username = n.username, o.innerHTML = `
-            <div class="flex items-center gap-3 col-span-2">
-                <img src="${((m=d.step1)==null?void 0:m.profilePic)||"https://placehold.co/40x40/374151/E5E7EB?text=?"}" class="w-10 h-10 rounded-full object-cover">
-                <div>
-                    <p class="font-bold">${n.username}</p>
-                    <div class="flex items-center gap-2">
-                       <p class="text-xs text-secondary">${n.email}</p>
-                       <span class="text-xs font-bold px-2 py-0.5 rounded-full ${c.className}">${c.text}</span>
+        o.className = "card p-4 rounded-xl space-y-4 flex flex-col";
+        o.dataset.username = n.username;
+        o.innerHTML = `
+            <div class="flex justify-between items-start">
+                <div class="flex items-center gap-4">
+                    <img src="${((m=d.step1)==null?void 0:m.profilePic)||"https://placehold.co/56x56/374151/E5E7EB?text=?"}" class="w-14 h-14 rounded-full object-cover border-2 border-border-primary">
+                    <div>
+                        <p class="font-bold text-lg">${n.username}</p>
+                        <p class="text-sm text-secondary">${n.email}</p>
                     </div>
                 </div>
+                <span class="text-xs font-bold px-2 py-1 rounded-full ${c.className} flex-shrink-0">${c.text}</span>
             </div>
-            <div class="h-8"><canvas id="spark-${n.username}"></canvas></div>
-            <div class="flex items-center gap-1 justify-end">
-                <button class="load-user-btn secondary-button !text-xs !font-bold !py-1 !px-2 rounded-md" data-username="${n.username}">بارگذاری</button>
-                <button class="remove-user-btn text-red-500 hover:bg-red-500/10 p-2 rounded-md" data-username="${n.username}" title="حذف کاربر"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            <div class="flex-1 h-12 w-full"><canvas id="spark-${n.username}"></canvas></div>
+            <div class="flex items-center gap-2 pt-3 border-t border-border-primary">
+                <button class="load-user-btn secondary-button !font-bold !py-2 !px-4 rounded-lg flex-1" data-username="${n.username}">بارگذاری</button>
+                <button class="remove-user-btn text-red-500 hover:bg-red-500/10 p-3 rounded-lg" data-username="${n.username}" title="حذف کاربر"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
             </div>
-        `, e.appendChild(o), renderSparkline(`spark-${n.username}`, d.weightHistory)
+        `;
+        e.appendChild(o);
+        renderSparkline(`spark-${n.username}`, d.weightHistory);
     }), window.lucide?.createIcons()
 }, lt = e => {
     const t = new Date(e),

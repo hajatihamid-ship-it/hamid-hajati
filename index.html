@@ -374,6 +374,12 @@
             inset: 0;
             padding: 2rem;
         }
+
+        /* Details/Summary styling */
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        .details-arrow { transition: transform 0.2s; }
+        details[open] > summary .details-arrow { transform: rotate(180deg); }
     </style>
 </head>
 <body class="antialiased min-h-screen">
@@ -989,22 +995,30 @@
                                 <button data-filter="unconfirmed" class="user-filter-btn secondary-button !px-3 !py-1">تایید نشده</button>
                                 <button data-filter="inactive" class="user-filter-btn secondary-button !px-3 !py-1">نیاز به توجه</button>
                             </div>
-                            <div id="admin-user-list" class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                            <div id="admin-user-list" class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[480px] overflow-y-auto p-1">
                                 <!-- User list will be injected here -->
                             </div>
                         </div>
                         <!-- Right: Actions -->
                         <div class="space-y-6">
-                            <div class="card p-4 rounded-lg">
-                               <h3 class="font-bold text-xl mb-4">ایجاد کاربر جدید</h3>
-                               <form id="create-user-form" class="space-y-3">
-                                   <input type="text" id="new-username-input" class="input-field w-full" placeholder="نام کاربری">
-                                   <input type="email" id="new-user-email-input" class="input-field w-full" placeholder="ایمیل">
-                                   <input type="password" id="new-user-password-input" class="input-field w-full" placeholder="رمز عبور">
-                                   <button id="create-user-btn" type="button" class="primary-button w-full">ایجاد کاربر</button>
-                                   <p id="create-user-error" class="text-red-500 text-sm"></p>
-                               </form>
-                            </div>
+                             <details class="card rounded-lg overflow-hidden">
+                                <summary class="p-4 font-bold text-xl cursor-pointer flex justify-between items-center list-none hover:bg-tertiary/50">
+                                    <div class="flex items-center gap-2">
+                                        <i data-lucide="user-plus" class="w-5 h-5"></i>
+                                        <span>ایجاد کاربر جدید</span>
+                                    </div>
+                                    <i data-lucide="chevron-down" class="w-5 h-5 transition-transform details-arrow"></i>
+                                </summary>
+                                <div class="p-4 border-t border-border-primary">
+                                    <form id="create-user-form" class="space-y-3">
+                                        <input type="text" id="new-username-input" class="input-field w-full" placeholder="نام کاربری">
+                                        <input type="email" id="new-user-email-input" class="input-field w-full" placeholder="ایمیل">
+                                        <input type="password" id="new-user-password-input" class="input-field w-full" placeholder="رمز عبور">
+                                        <button id="create-user-btn" type="button" class="primary-button w-full">ایجاد کاربر</button>
+                                        <p id="create-user-error" class="text-red-500 text-sm pt-1 h-6"></p>
+                                    </form>
+                                </div>
+                            </details>
                              <div class="card p-4 rounded-lg">
                                 <h3 class="font-bold text-xl mb-4">گزارش فعالیت‌ها</h3>
                                 <div id="admin-activity-log" class="space-y-2 max-h-64 overflow-y-auto">
