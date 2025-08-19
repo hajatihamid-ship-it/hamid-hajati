@@ -759,6 +759,7 @@
                     <button data-tab="nutrition" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="utensils-crossed"></i>تغذیه</button>
                     <button data-tab="chat" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="message-square"></i>گفتگو</button>
                     <button data-tab="profile" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="user-circle"></i>پروفایل</button>
+                    <button data-tab="contact" class="user-dashboard-tab text-secondary py-3 px-2 font-bold border-b-2 border-transparent flex items-center gap-2 flex-shrink-0"><i data-lucide="mail"></i>تماس با ما</button>
                 </nav>
             </div>
     
@@ -953,6 +954,44 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Contact Tab -->
+                <div id="contact-tab-content" class="user-dashboard-tab-content hidden">
+                    <div class="card rounded-2xl w-full max-w-2xl mx-auto p-6 sm:p-8">
+                        <h2 class="text-2xl font-bold mb-6 text-center">تماس با پشتیبانی</h2>
+                        <p class="text-secondary text-center mb-8">سوالی دارید یا به کمک نیاز دارید؟ فرم زیر را پر کنید تا با شما در تماس باشیم.</p>
+                        <form id="contact-form" name="contact" data-netlify="true">
+                            <input type="hidden" name="form-name" value="contact" />
+                            <div class="space-y-6">
+                                <div>
+                                    <label for="contact-name" class="font-semibold mb-2 block">نام شما</label>
+                                    <div class="relative">
+                                        <i data-lucide="user" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary"></i>
+                                        <input type="text" id="contact-name" name="name" class="input-field w-full !pr-10 !bg-tertiary/50" readonly>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="contact-email" class="font-semibold mb-2 block">ایمیل شما</label>
+                                    <div class="relative">
+                                        <i data-lucide="mail" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary"></i>
+                                        <input type="email" id="contact-email" name="email" class="input-field w-full !pr-10" required>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="contact-message" class="font-semibold mb-2 block">پیام شما</label>
+                                     <div class="relative">
+                                        <i data-lucide="message-circle" class="absolute top-5 right-3 w-5 h-5 text-secondary"></i>
+                                        <textarea id="contact-message" name="message" rows="5" class="input-field w-full !pr-10" placeholder="پیام خود را اینجا بنویسید..." required></textarea>
+                                    </div>
+                                </div>
+                                <div>
+                                    <button type="submit" class="primary-button w-full !py-3">ارسال پیام</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>

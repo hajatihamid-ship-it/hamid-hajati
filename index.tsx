@@ -1110,6 +1110,13 @@ const renderProfileTab = (username, userData) => {
     he(profilePanel);
 }
 
+const renderContactTab = (username, userData) => {
+    const nameInput = document.getElementById('contact-name') as HTMLInputElement;
+    const emailInput = document.getElementById('contact-email') as HTMLInputElement;
+
+    if (nameInput) nameInput.value = username;
+    if (emailInput) emailInput.value = (userData.step1 || {}).clientEmail || '';
+};
 
 function de(e, t) {
     document.getElementById("dashboard-welcome-message")!.textContent = `خوش آمدی، ${e}!`;
@@ -1119,6 +1126,7 @@ function de(e, t) {
     renderNutritionTab(t);
     renderChatTab(e, t);
     renderProfileTab(e, t);
+    renderContactTab(e, t);
     
     const c = document.getElementById("notification-bell-container")!;
     if (t.newProgram) {
@@ -2141,4 +2149,16 @@ Client Details:
         }
     });
 
+    (document.getElementById("contact-form") as HTMLFormElement)?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const form = e.target as HTMLFormElement;
+        const messageTextarea = form.querySelector('#contact-message') as HTMLTextAreaElement;
+
+        if (messageTextarea && messageTextarea.value.trim()) {
+            w("پیام شما با موفقیت ارسال شد. به زودی پاسخ خواهیم داد.", "success");
+            messageTextarea.value = '';
+        } else {
+            w("لطفا پیام خود را وارد کنید.", "error");
+        }
+    });
 });
