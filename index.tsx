@@ -1200,21 +1200,39 @@ const switchUserDashboardTab = (e) => {
     }
 };
 
-function switchAuthTab(e, t = !1) {
-    const s = document.getElementById("login-tab-btn"),
-        r = document.getElementById("signup-tab-btn"),
-        a = document.getElementById("tab-underline"),
-        n = document.getElementById("login-form-container"),
-        o = document.getElementById("signup-form-container"),
-        m = document.getElementById("signup-form") as HTMLFormElement,
-        d = document.getElementById("login-form") as HTMLFormElement;
-    if (!s || !r || !a || !n || !o) return;
-    const c = e === "login" ? s : r,
-        g = e === "login";
-    a.style.transition = t ? "none" : "left 0.3s ease, width 0.3s ease", s.classList.toggle("active", g), r.classList.toggle("active", !g), n.classList.toggle("hidden", !g), o.classList.toggle("hidden", g), g ? (m == null || m.reset(), o.querySelectorAll(".validation-message").forEach(h => h.textContent = "")) : d == null || d.reset(), a.style.left = `${c.offsetLeft}px`, a.style.width = `${c.offsetWidth}px`, t && setTimeout(() => {
-        a.style.transition = "left 0.3s ease, width 0.3s ease"
-    }, 50)
-}
+const switchAuthForm = (formToShow: 'login' | 'signup', isInitial: boolean = false) => {
+    const loginContainer = document.getElementById("login-form-container")!;
+    const signupContainer = document.getElementById("signup-form-container")!;
+    const loginForm = document.getElementById("login-form") as HTMLFormElement;
+    const signupForm = document.getElementById("signup-form") as HTMLFormElement;
+
+    const containers = [loginContainer, signupContainer];
+    
+    containers.forEach(c => {
+        if (isInitial) {
+            c.style.transition = 'none';
+        } else {
+            c.style.transition = ''; // Re-enable transitions
+        }
+    });
+
+    if (formToShow === 'login') {
+        loginContainer.classList.remove('is-inactive');
+        signupContainer.classList.add('is-inactive');
+        signupForm?.reset();
+    } else {
+        loginContainer.classList.add('is-inactive');
+        signupContainer.classList.remove('is-inactive');
+        loginForm?.reset();
+    }
+
+    if (isInitial) {
+        setTimeout(() => {
+            containers.forEach(c => c.style.transition = '');
+        }, 50);
+    }
+};
+
 
 function We() {
     var e, t;
@@ -1222,7 +1240,7 @@ function We() {
         me.classList.add("hidden"), oe.classList.add("hidden"), V.classList.remove("hidden"), setTimeout(() => {
             V.classList.remove("opacity-0")
         }, 50)
-    }, 300), switchAuthTab("login", !0), (e = document.getElementById("login-form")) == null || e.reset(), (t = document.getElementById("signup-form")) == null || t.reset()
+    }, 300), switchAuthForm("login", true), (e = document.getElementById("login-form")) == null || e.reset(), (t = document.getElementById("signup-form")) == null || t.reset()
 }
 const renderSparkline = (e, t) => {
     if (!window.Chart) return;
@@ -1507,9 +1525,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.documentElement.setAttribute("data-theme", e);
     const t = localStorage.getItem("fitgympro_last_user");
     t && (t === "admin" ? Oe() : O().some(l => l.username === t) && fe(t));
-    const s = document.getElementById("login-tab-btn"),
-        r = document.getElementById("signup-tab-btn");
-    s == null || s.addEventListener("click", () => switchAuthTab("login")), r == null || r.addEventListener("click", () => switchAuthTab("signup")), switchAuthTab("login", !0);
+    
+    document.getElementById('switch-to-signup-btn')?.addEventListener('click', () => switchAuthForm('signup'));
+    document.getElementById('switch-to-login-btn')?.addEventListener('click', () => switchAuthForm('login'));
+    switchAuthForm('login', true);
 
     const loginAndRoute = (event) => {
         event.preventDefault();

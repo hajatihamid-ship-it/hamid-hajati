@@ -198,28 +198,6 @@
             box-shadow: 0 6px 20px -5px var(--accent);
         }
 
-        /* Tab styling */
-        .tabs-container { position: relative; display: flex; }
-        .tab-btn {
-            color: var(--text-secondary);
-            transition: all 0.3s ease;
-            border-bottom: 1px solid var(--border-primary);
-            flex: 1;
-            text-align: center;
-            font-weight: bold;
-            padding: 0.75rem 0;
-            z-index: 1;
-        }
-        .tab-btn.active { color: var(--accent); }
-        .tab-underline {
-            position: absolute;
-            bottom: 0;
-            height: 3px;
-            background-color: var(--accent);
-            border-radius: 3px 3px 0 0;
-            transition: left 0.3s ease, width 0.3s ease;
-        }
-        
         .input-group { position: relative; }
         .input-group .input-field { padding-top: 1.25rem; }
         .input-group .input-label {
@@ -344,15 +322,18 @@
         }
 
         .form-container {
-            transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-        .form-container.hidden {
-            opacity: 0;
-            transform: scale(0.95);
+            transition: opacity 0.4s ease-in-out, transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
             position: absolute;
-            pointer-events: none;
             inset: 0;
-            padding: 2rem;
+            padding: 2rem; /* Matches card padding */
+        }
+        .form-container.is-inactive {
+            opacity: 0;
+            transform: translateX(30px) scale(0.98);
+            pointer-events: none;
+        }
+        #signup-form-container.is-inactive {
+            transform: translateX(-30px) scale(0.98);
         }
 
         /* Details/Summary styling */
@@ -362,7 +343,7 @@
         details[open] > summary .details-arrow { transform: rotate(180deg); }
 
         /* Admin Drawer */
-        #admin-panel-modal.active { opacity: 1; pointer-events-auto; }
+        #admin-panel-modal.active { opacity: 1; pointer-events: auto; }
         #admin-panel-modal.active #admin-drawer-content { transform: translateX(0); }
         .admin-nav-btn {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -415,25 +396,21 @@
                         <h1 class="text-4xl font-black mt-4">فیت‌جیم‌پرو</h1>
                         <p class="text-secondary mt-2">مربی هوشمند و برنامه‌ساز حرفه‌ای شما</p>
                     </div>
-                    
-                    <div class="tabs-container">
-                        <button id="login-tab-btn" class="tab-btn">ورود</button>
-                        <button id="signup-tab-btn" class="tab-btn">ثبت نام</button>
-                        <div id="tab-underline" class="tab-underline"></div>
-                    </div>
     
-                    <div class="card rounded-xl p-8 mt-[-1px] relative min-h-[500px] overflow-hidden">
+                    <div class="card rounded-xl p-8 relative min-h-[520px] overflow-hidden">
                         <!-- Login Form -->
                         <div id="login-form-container" class="form-container">
-                            <h2 class="font-bold text-xl text-center mb-6">خوش آمدید!</h2>
+                            <h2 class="font-bold text-2xl text-center mb-6">خوش آمدید!</h2>
                             <form id="login-form" class="space-y-4">
                                 <div class="input-group">
-                                    <input id="login-username" type="text" class="input-field w-full" placeholder=" " required>
-                                    <label for="login-username" class="input-label">نام کاربری</label>
+                                    <i data-lucide="user" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary pointer-events-none"></i>
+                                    <input id="login-username" type="text" class="input-field w-full !pr-10" placeholder=" " required>
+                                    <label for="login-username" class="input-label !right-10">نام کاربری</label>
                                 </div>
                                 <div class="input-group relative">
-                                    <input id="login-password" type="password" class="input-field w-full" placeholder=" " required>
-                                    <label for="login-password" class="input-label">رمز عبور</label>
+                                    <i data-lucide="lock" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary pointer-events-none"></i>
+                                    <input id="login-password" type="password" class="input-field w-full !pr-10" placeholder=" " required>
+                                    <label for="login-password" class="input-label !right-10">رمز عبور</label>
                                     <button type="button" class="password-toggle" data-target="login-password">
                                         <i data-lucide="eye" class="w-5 h-5"></i>
                                     </button>
@@ -447,24 +424,33 @@
                             <div class="space-y-2">
                                 <button class="social-btn"><svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Google</title><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.84-4.63 1.84-5.62 0-9.98-4.5-9.98-10s4.36-10 9.98-10c2.93 0 5.15 1.18 6.78 2.72l2.25-2.25C19.5 1.18 16.33 0 12.48 0 5.88 0 .02 5.82.02 12.82s5.86 12.82 12.46 12.82c3.55 0 6.32-1.24 8.35-3.38 2.13-2.13 2.8-5.48 2.8-8.62 0-.92-.08-1.5-.2-2.18h-11Z" fill="#4285F4"/></svg><span>ورود با گوگل</span></button>
                             </div>
+                            <p class="text-center text-sm text-secondary mt-6">
+                                حساب کاربری ندارید؟
+                                <button id="switch-to-signup-btn" type="button" class="font-bold text-amber-500 hover:underline focus:outline-none">
+                                    ثبت نام کنید
+                                </button>
+                            </p>
                         </div>
                         <!-- Signup Form -->
-                        <div id="signup-form-container" class="form-container hidden">
-                            <h2 class="font-bold text-xl text-center mb-6">ایجاد حساب کاربری</h2>
+                        <div id="signup-form-container" class="form-container is-inactive">
+                            <h2 class="font-bold text-2xl text-center mb-6">ایجاد حساب کاربری</h2>
                             <form id="signup-form" class="space-y-2">
                                 <div class="input-group">
-                                    <input id="signup-username" type="text" class="input-field w-full" placeholder=" " required minlength="3">
-                                    <label for="signup-username" class="input-label">نام کاربری</label>
+                                    <i data-lucide="user" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary pointer-events-none"></i>
+                                    <input id="signup-username" type="text" class="input-field w-full !pr-10" placeholder=" " required minlength="3">
+                                    <label for="signup-username" class="input-label !right-10">نام کاربری</label>
                                     <div class="validation-message"></div>
                                 </div>
                                 <div class="input-group">
-                                    <input id="signup-email" type="email" class="input-field w-full" placeholder=" " required>
-                                    <label for="signup-email" class="input-label">ایمیل</label>
+                                    <i data-lucide="at-sign" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary pointer-events-none"></i>
+                                    <input id="signup-email" type="email" class="input-field w-full !pr-10" placeholder=" " required>
+                                    <label for="signup-email" class="input-label !right-10">ایمیل</label>
                                     <div class="validation-message"></div>
                                 </div>
                                 <div class="input-group relative">
-                                    <input id="signup-password" type="password" class="input-field w-full" placeholder=" " required minlength="6">
-                                    <label for="signup-password" class="input-label">رمز عبور</label>
+                                    <i data-lucide="lock" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary pointer-events-none"></i>
+                                    <input id="signup-password" type="password" class="input-field w-full !pr-10" placeholder=" " required minlength="6">
+                                    <label for="signup-password" class="input-label !right-10">رمز عبور</label>
                                     <button type="button" class="password-toggle" data-target="signup-password">
                                         <i data-lucide="eye" class="w-5 h-5"></i>
                                     </button>
@@ -472,6 +458,12 @@
                                 </div>
                                 <button type="submit" class="green-button w-full !py-3 !text-base mt-2">ثبت نام</button>
                             </form>
+                             <p class="text-center text-sm text-secondary mt-6">
+                                قبلا ثبت نام کرده‌اید؟
+                                <button id="switch-to-login-btn" type="button" class="font-bold text-amber-500 hover:underline focus:outline-none">
+                                    وارد شوید
+                                </button>
+                            </p>
                         </div>
                     </div>
                 </div>
