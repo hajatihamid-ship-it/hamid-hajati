@@ -1347,15 +1347,24 @@ const renderSparkline = (e, t) => {
     const e = O().filter(o => o.username !== "admin"),
         t = e.length;
     let s = 0,
-        r = 0;
+        r = 0,
+        l = 0;
     e.forEach(o => {
         const m = D(o.username);
-        m.hasPaid || s++, m.infoConfirmed || r++
-    }), document.getElementById("total-users-stat")!.textContent = t.toString(), document.getElementById("unpaid-users-stat")!.textContent = s.toString(), document.getElementById("unconfirmed-users-stat")!.textContent = r.toString();
+        m.hasPaid || s++;
+        m.infoConfirmed || r++;
+        const status = getUserStatus(m);
+        if (status.text === 'در مسیر پیشرفت') l++;
+    }), 
+    document.getElementById("total-users-stat")!.textContent = t.toString(), 
+    document.getElementById("unpaid-users-stat")!.textContent = s.toString(), 
+    document.getElementById("unconfirmed-users-stat")!.textContent = r.toString();
+    document.getElementById("active-users-stat")!.textContent = l.toString();
+
     const a = ze(),
         n = document.getElementById("admin-activity-log")!;
     if (n.innerHTML = "", a.length === 0) {
-        n.innerHTML = '<p class="text-secondary text-center">فعالیتی برای نمایش وجود ندارد.</p>';
+        n.innerHTML = '<p class="text-secondary text-center p-4">فعالیتی برای نمایش وجود ندارد.</p>';
         return
     }
     a.forEach(o => {
@@ -1367,9 +1376,15 @@ const renderSparkline = (e, t) => {
     })
 };
 const openModal = e => {
-    e.classList.remove("hidden"), setTimeout(() => e.classList.add("active", "opacity-100"), 10)
+    e.classList.remove("hidden");
+    setTimeout(() => {
+        e.classList.add("active", "opacity-100", "pointer-events-auto");
+    }, 10)
 }, closeModal = e => {
-    e.classList.remove("active", "opacity-100"), setTimeout(() => e.classList.add("hidden"), 300)
+    e.classList.remove("active", "opacity-100", "pointer-events-auto");
+    setTimeout(() => {
+        e.classList.add("hidden");
+    }, 500);
 }, openWorkoutLogModal = () => {
     if (!f) return;
     const e = D(f),
@@ -1873,19 +1888,16 @@ Client Details:
         }
     });
 
-    const $ = () => {
-        U.classList.remove("active", "opacity-100"), setTimeout(() => U.classList.add("hidden"), 300)
-    };
+    const $ = () => closeModal(U);
     je.addEventListener("click", () => {
-        be(), (document.getElementById("admin-user-search") as HTMLInputElement).value = "", document.querySelectorAll("#user-filter-btn-group .user-filter-btn").forEach(l => {
-            l.classList.remove("active"), l.getAttribute("data-filter") === "all" && l.classList.add("active")
-        }), se(), U.classList.remove("hidden"), setTimeout(() => {
-            U.classList.add("active", "opacity-100")
-        }, 10)
+        be();
+        se();
+        openModal(U);
     });
     (_ = document.getElementById("close-admin-panel-btn")) == null || _.addEventListener("click", $), U.addEventListener("click", l => {
         l.target === U && $()
-    }), U.addEventListener("click", l => {
+    });
+    U.addEventListener("click", l => {
         const i = l.target as HTMLElement,
             u = i.closest(".load-user-btn");
         if (u) {
@@ -1903,7 +1915,8 @@ Client Details:
                 p = p.filter(S => S.username !== y), Ge(p), localStorage.removeItem(`fitgympro_data_${y}`), ae(`کاربر ${y} حذف شد.`), se(), be(), w(`کاربر ${y} با موفقیت حذف شد.`, "success")
             }
         }
-    }), (ee = document.getElementById("admin-user-search")) == null || ee.addEventListener("input", se), (ce = document.getElementById("user-filter-btn-group")) == null || ce.addEventListener("click", l => {
+    });
+    (ee = document.getElementById("admin-user-search")) == null || ee.addEventListener("input", se), (ce = document.getElementById("user-filter-btn-group")) == null || ce.addEventListener("click", l => {
         const u = (l.target as HTMLElement).closest(".user-filter-btn");
         u && (document.querySelectorAll("#user-filter-btn-group .user-filter-btn").forEach(v => v.classList.remove("active")), u.classList.add("active"), se())
     }), (Ee = document.getElementById("create-user-btn")) == null || Ee.addEventListener("click", () => {
@@ -2016,36 +2029,7 @@ Client Details:
 
     (ke = document.getElementById("logout-btn")) == null || ke.addEventListener("click", We), (Be = document.getElementById("logout-btn-dashboard")) == null || Be.addEventListener("click", We), ($e = document.getElementById("save-pdf-btn")) == null || $e.addEventListener("click", Fe), (Ce = document.getElementById("save-word-btn")) == null || Ce.addEventListener("click", nt), (Te = document.getElementById("send-program-btn")) == null || Te.addEventListener("click", rt), (De = document.getElementById("save-changes-btn")) == null || De.addEventListener("click", at), (Ne = document.getElementById("send-nutrition-btn")) == null || Ne.addEventListener("click", dt), (Me = document.getElementById("dashboard-save-pdf-btn")) == null || Me.addEventListener("click", Fe), (ut = document.getElementById("ai-chat-fab")) == null || ut.addEventListener("click", openChat), (ft = document.getElementById("close-ai-chat-btn")) == null || ft.addEventListener("click", () => closeModal(document.getElementById("ai-chat-modal")!)), (gt = document.getElementById("ai-chat-form")) == null || gt.addEventListener("submit", l => {
         l.preventDefault(), sendMessageToAiChat()
-    }), (mt = document.getElementById("close-workout-log-btn")) == null || mt.addEventListener("click", () => closeModal(document.getElementById("workout-log-modal")!)), (bt = document.getElementById("finish-workout-btn")) == null || bt.addEventListener("click", saveWorkoutLog), (document.getElementById("coach-chat-form") as HTMLFormElement)?.addEventListener('submit', (e) => { e.preventDefault(); sendMessageToCoach(); }), st(), ((wt = document.getElementById("workout-days-container")) == null ? void 0 : wt.children.length) === 0 && re(!0), (Ct = document.getElementById("admin-review-user-list")) == null || Ct.addEventListener("click", l => {
-        const i = (l.target as HTMLElement).closest(".admin-review-user-item") as HTMLElement | null;
-        if (i) {
-            document.querySelectorAll(".admin-review-user-item").forEach(u => u.classList.remove("bg-tertiary")), i.classList.add("bg-tertiary");
-            const u = i.dataset.username;
-            if (u) {
-                const v = D(u),
-                    y = document.getElementById("admin-review-details")!;
-                    
-                const chatHistoryHTML = (v.chatHistory || [])
-                    .map(msg => `<div class="p-2 rounded-md text-sm ${msg.sender === 'user' ? 'bg-tertiary/50' : 'bg-green-500/10 text-right'}">${A(msg.message)}</div>`)
-                    .join('');
-
-                y.innerHTML = `<div class="space-y-6"><h3 class="text-2xl font-bold mb-4">${u}</h3>
-                    <div class="card rounded-xl p-4"><h4 class="font-bold text-lg mb-4">روند پیشرفت وزن</h4><div class="h-64 relative"><canvas id="admin-review-weight-chart"></canvas><div id="admin-review-no-chart-data" class="absolute inset-0 flex items-center justify-center text-secondary hidden"><p>داده کافی برای نمودار نیست.</p></div></div></div>
-                    <div class="card rounded-xl p-4">
-                        <h4 class="font-bold text-lg mb-4">گفتگو با ${u}</h4>
-                        <div id="admin-chat-history" class="space-y-2 text-sm max-h-64 overflow-y-auto mb-4 border p-2 rounded-md bg-tertiary/20">
-                            ${chatHistoryHTML || '<p class="text-secondary text-center p-2">هنوز پیامی رد و بدل نشده است.</p>'}
-                        </div>
-                        <form id="send-coach-message-form" class="flex gap-2">
-                            <input type="text" id="coach-message-input" class="input-field flex-1" placeholder="پاسخ شما..." required>
-                            <button type="submit" class="primary-button !px-4"><i data-lucide="send"></i></button>
-                        </form>
-                    </div>
-                    <div class="card rounded-xl p-4"><h4 class="font-bold text-lg mb-4">تاریخچه تمرینات</h4><div id="admin-review-history" class="space-y-2 text-sm max-h-64 overflow-y-auto">${(v.workoutHistory||[]).length===0?'<p class="text-secondary">تاریخچه‌ای ثبت نشده.</p>':v.workoutHistory.slice().reverse().map(p=>`<div class="bg-tertiary/50 p-2 rounded-md"><strong>${new Date(p.date).toLocaleDateString("fa-IR")}</strong>: ${p.workoutData.map(S=>S.exerciseName).join(", ")}</div>`).join("")}</div></div>
-                </div>`, Xe(v.weightHistory, "admin-review-weight-chart", "admin-review-no-chart-data"), window.lucide?.createIcons()
-            }
-        }
-    }), (Tt = document.getElementById("save-template-btn")) == null || Tt.addEventListener("click", () => {
+    }), (mt = document.getElementById("close-workout-log-btn")) == null || mt.addEventListener("click", () => closeModal(document.getElementById("workout-log-modal")!)), (bt = document.getElementById("finish-workout-btn")) == null || bt.addEventListener("click", saveWorkoutLog), (document.getElementById("coach-chat-form") as HTMLFormElement)?.addEventListener('submit', (e) => { e.preventDefault(); sendMessageToCoach(); }), st(), ((wt = document.getElementById("workout-days-container")) == null ? void 0 : wt.children.length) === 0 && re(!0), (Tt = document.getElementById("save-template-btn")) == null || Tt.addEventListener("click", () => {
         openModal(document.getElementById("save-template-modal")!)
     }), (Dt = document.getElementById("cancel-save-template-btn")) == null || Dt.addEventListener("click", () => {
         closeModal(document.getElementById("save-template-modal")!)
@@ -2064,101 +2048,144 @@ Client Details:
         }), openModal(document.getElementById("load-template-modal")!)
     }), (Ut = document.getElementById("cancel-load-template-btn")) == null || Ut.addEventListener("click", () => {
         closeModal(document.getElementById("load-template-modal")!)
-    }), (Vt = document.getElementById("admin-panel-modal")?.querySelector('.admin-tab-btn[data-tab="templates"]')) == null || Vt.addEventListener("click", () => {
+    });
+    
+    // Admin Panel New Logic
+    document.getElementById("admin-drawer-nav")?.addEventListener("click", (l) => {
+        const i = (l.target as HTMLElement).closest(".admin-nav-btn");
+        if(i) {
+            const tabName = i.getAttribute("data-tab");
+            if (!tabName) return;
+
+            document.querySelectorAll("#admin-drawer-nav .admin-nav-btn").forEach(btn => {
+                 btn.classList.toggle("active", btn.getAttribute("data-tab") === tabName);
+            });
+            document.querySelectorAll("#admin-panel-modal .admin-tab-content").forEach(content => {
+                content.classList.toggle("hidden", content.id !== `admin-${tabName}-content`);
+            });
+
+            const titleText = document.getElementById('admin-title-text')!;
+            if (tabName === 'dashboard') titleText.textContent = 'داشبورد مدیریت';
+            if (tabName === 'clients') {
+                titleText.textContent = 'مدیریت شاگردان';
+                se();
+            }
+            if (tabName === 'conversations') {
+                titleText.textContent = 'گفتگو با شاگردان';
+                renderAdminConversations();
+            }
+            if (tabName === 'templates') {
+                titleText.textContent = 'مدیریت الگوها';
+                renderAdminTemplates();
+            }
+        }
+    });
+
+    const renderAdminTemplates = () => {
         const l = document.getElementById("admin-template-list")!,
             i = ht();
         l.innerHTML = "", Object.keys(i).length === 0 ? l.innerHTML = '<p class="text-secondary text-center">هیچ الگوی ذخیره شده‌ای وجود ندارد.</p>' : Object.keys(i).forEach(u => {
             const v = document.createElement("div");
             v.className = "flex justify-between items-center p-3 bg-tertiary/50 rounded-lg", v.innerHTML = `<span>${A(u)}</span><button data-name="${A(u)}" class="remove-template-btn text-red-500 hover:bg-red-500/10 p-2 rounded-md"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`, l.appendChild(v)
         }), window.lucide?.createIcons()
-    }), document.getElementById("admin-template-list")?.addEventListener("click", l => {
+    }
+    
+    document.getElementById("admin-template-list")?.addEventListener("click", l => {
         const i = (l.target as HTMLElement).closest(".remove-template-btn");
         if (i) {
             const u = (i as HTMLElement).dataset.name;
-            u && confirm(`آیا از حذف الگوی «${u}» مطمئن هستید؟`) && (pt(u), w(`الگوی «${u}» حذف شد.`), (document.getElementById("admin-panel-modal")?.querySelector('.admin-tab-btn[data-tab="templates"]') as HTMLElement).click())
-        }
-    }), document.querySelector("#admin-panel-modal .flex.border-b")?.addEventListener("click", (l) => {
-        const i = (l.target as HTMLElement).closest(".admin-tab-btn");
-        if(i) {
-            const tabName = i.getAttribute("data-tab");
-            document.querySelectorAll("#admin-panel-modal .admin-tab-btn").forEach(btn => {
-                 btn.classList.toggle("active-spring-tab", btn.getAttribute("data-tab") === tabName);
-                 btn.classList.toggle("text-secondary", btn.getAttribute("data-tab") !== tabName);
-                 btn.classList.toggle("border-transparent", btn.getAttribute("data-tab") !== tabName);
-            });
-            document.querySelectorAll("#admin-panel-modal .admin-tab-content").forEach(content => {
-                content.classList.toggle("hidden", content.id !== `admin-${tabName}-content`);
-            });
-            if (tabName === 'review') {
-                 const userList = document.getElementById("admin-review-user-list")!;
-                 userList.innerHTML = '';
-                 const users = O().filter(u => u.username !== 'admin');
-                 users.forEach(u => {
-                     const item = document.createElement('div');
-                     item.className = 'admin-review-user-item p-3 rounded-lg cursor-pointer hover:bg-tertiary/50';
-                     item.dataset.username = u.username;
-                     item.textContent = u.username;
-                     userList.appendChild(item);
-                 });
-                 document.getElementById('admin-review-details')!.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full text-secondary">
-                        <i data-lucide="users" class="w-16 h-16"></i>
-                        <p class="mt-4">یک شاگرد را برای مشاهده جزئیات انتخاب کنید.</p>
-                    </div>`;
-                window.lucide?.createIcons();
+            if (u && confirm(`آیا از حذف الگوی «${u}» مطمئن هستید؟`)) {
+                pt(u);
+                w(`الگوی «${u}» حذف شد.`);
+                renderAdminTemplates();
             }
         }
     });
 
-    document.getElementById("admin-review-details")?.addEventListener("submit", (p) => {
-        const form = p.target as HTMLFormElement;
-        if (form && form.id === 'send-coach-message-form') {
-            p.preventDefault();
-            
-            const activeUserItem = document.querySelector("#admin-review-user-list .admin-review-user-item.bg-tertiary") as HTMLElement;
-            if (!activeUserItem) return;
-            const u = activeUserItem.dataset.username;
-            if (!u) return;
-    
-            const S = (document.getElementById("coach-message-input") as HTMLInputElement).value.trim();
-            if (S) {
-                const currentData = D(u);
-                currentData.chatHistory || (currentData.chatHistory = []);
-                currentData.chatHistory.push({
-                    sender: 'coach',
-                    message: S,
-                    timestamp: new Date().toISOString()
-                });
-                currentData.newMessageFromCoach = true;
-                W(u, currentData);
-                w(`پیام برای ${u} ارسال شد.`);
-                const coachMessageInput = (document.getElementById("coach-message-input") as HTMLInputElement);
-                coachMessageInput.value = "";
-                
-                const adminChatHistory = document.getElementById("admin-chat-history")!;
-                const noMessageP = adminChatHistory.querySelector('p');
-                if(noMessageP && noMessageP.textContent?.includes('هنوز پیامی رد و بدل نشده است')) {
-                    noMessageP.remove();
-                }
-                const newMessageDiv = document.createElement('div');
-                newMessageDiv.className = 'p-2 rounded-md text-sm bg-green-500/10 text-right';
-                newMessageDiv.textContent = A(S);
-                adminChatHistory.appendChild(newMessageDiv);
-                adminChatHistory.scrollTop = adminChatHistory.scrollHeight;
+    const renderAdminConversations = () => {
+        const userListContainer = document.getElementById("admin-conversations-user-list")!;
+        userListContainer.innerHTML = '';
+        const users = O().filter(u => u.username !== 'admin');
+        users.forEach(u => {
+            const item = document.createElement('div');
+            item.className = 'p-3 border-b border-border-primary cursor-pointer hover:bg-tertiary/50 flex items-center gap-3';
+            item.dataset.username = u.username;
+            const userData = D(u.username);
+            const profilePic = (userData.step1 || {}).profilePic || "https://placehold.co/40x40/374151/E5E7EB?text=?";
+            item.innerHTML = `<img src="${profilePic}" class="w-10 h-10 rounded-full object-cover">
+                              <div>
+                                <p class="font-bold">${u.username}</p>
+                                <p class="text-xs text-secondary">${u.email}</p>
+                              </div>`;
+            userListContainer.appendChild(item);
+        });
+    };
+
+    document.getElementById("admin-conversations-user-list")?.addEventListener('click', e => {
+        const userItem = (e.target as HTMLElement).closest('[data-username]') as HTMLElement;
+        if (!userItem) return;
+
+        document.querySelectorAll('#admin-conversations-user-list > div').forEach(el => el.classList.remove('bg-tertiary'));
+        userItem.classList.add('bg-tertiary');
+
+        const username = userItem.dataset.username!;
+        const userData = D(username);
+        const chatHistory = userData.chatHistory || [];
+        const detailsContainer = document.getElementById('admin-conversation-details')!;
+        
+        detailsContainer.innerHTML = `
+            <div class="p-4 border-b border-border-primary font-bold text-lg">${username}</div>
+            <div id="admin-chat-history" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col">
+                ${chatHistory.length === 0 ? '<p class="text-secondary text-center m-auto">هنوز پیامی رد و بدل نشده است.</p>' :
+                chatHistory.map(msg => `
+                    <div class="message ${msg.sender === 'user' ? 'user-message' : 'coach-message'}">
+                        ${A(msg.message)}
+                    </div>
+                `).join('')
             }
-        }
+            </div>
+            <form id="send-coach-message-form" class="p-4 border-t border-border-primary flex items-center gap-2 bg-secondary">
+                <input type="text" id="coach-message-input" data-username="${username}" class="input-field flex-1" placeholder="پاسخ شما..." required>
+                <button type="submit" class="primary-button !rounded-full !p-3"><i data-lucide="send"></i></button>
+            </form>
+        `;
+        const chatHistoryEl = document.getElementById("admin-chat-history")!;
+        chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+        window.lucide?.createIcons();
     });
 
-    (document.getElementById("contact-form") as HTMLFormElement)?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const form = e.target as HTMLFormElement;
-        const messageTextarea = form.querySelector('#contact-message') as HTMLTextAreaElement;
+    document.getElementById("admin-conversation-details")?.addEventListener("submit", (p) => {
+        p.preventDefault();
+        const inputEl = document.getElementById("coach-message-input") as HTMLInputElement;
+        const username = inputEl?.dataset.username;
+        const message = inputEl?.value.trim();
 
-        if (messageTextarea && messageTextarea.value.trim()) {
-            w("پیام شما با موفقیت ارسال شد. به زودی پاسخ خواهیم داد.", "success");
-            messageTextarea.value = '';
-        } else {
-            w("لطفا پیام خود را وارد کنید.", "error");
+        if (!username || !message || !inputEl) return;
+
+        const userData = D(username);
+        userData.chatHistory = userData.chatHistory || [];
+        userData.chatHistory.push({
+            sender: 'coach',
+            message: message,
+            timestamp: new Date().toISOString()
+        });
+        userData.newMessageFromCoach = true;
+        W(username, userData);
+
+        // Update UI
+        const chatHistoryContainer = document.getElementById("admin-chat-history");
+        if (chatHistoryContainer) {
+            const placeholder = chatHistoryContainer.querySelector('p.text-secondary');
+            if (placeholder) placeholder.remove();
+
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message coach-message';
+            messageEl.textContent = message;
+            chatHistoryContainer.appendChild(messageEl);
+            chatHistoryContainer.scrollTop = chatHistoryContainer.scrollHeight;
         }
+
+        inputEl.value = '';
+        ae(`پیام برای ${username} ارسال شد.`);
     });
 });

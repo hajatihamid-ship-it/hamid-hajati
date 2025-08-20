@@ -147,9 +147,9 @@
 
         /* AI & Coach Chat */
         #ai-chat-fab { position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 50; }
-        #ai-chat-modal .message, #coach-chat-messages .message { max-width: 80%; padding: 0.75rem; border-radius: 1rem; }
-        #ai-chat-modal .user-message, #coach-chat-messages .user-message { background-color: var(--accent); color: white; border-bottom-right-radius: 0.25rem; align-self: flex-end; }
-        #ai-chat-modal .ai-message, #coach-chat-messages .coach-message { background-color: var(--bg-tertiary); border-bottom-left-radius: 0.25rem; align-self: flex-start; }
+        #ai-chat-modal .message, #coach-chat-messages .message, #admin-chat-history .message { max-width: 80%; padding: 0.75rem; border-radius: 1rem; }
+        #ai-chat-modal .user-message, #coach-chat-messages .user-message, #admin-chat-history .user-message { background-color: var(--accent); color: white; border-bottom-right-radius: 0.25rem; align-self: flex-end; }
+        #ai-chat-modal .ai-message, #coach-chat-messages .coach-message, #admin-chat-history .coach-message { background-color: var(--bg-tertiary); border-bottom-left-radius: 0.25rem; align-self: flex-start; }
         .blinking-cursor { display: inline-block; width: 3px; height: 1.2em; background-color: var(--text-primary); animation: blink 1s step-end infinite; }
         @keyframes blink { 50% { opacity: 0; } }
         
@@ -280,35 +280,11 @@
         .card-gender-female.selected-card { background-color: rgba(217, 70, 239, 0.1); border-color: #d946ef !important; box-shadow: 0 0 0 2px #d946ef; }
 
 
-        /* Spring theme for Admin Panel & User Dashboard Tabs */
-        #admin-panel-modal .card {
-            background-color: var(--bg-secondary);
-            background-image: 
-                radial-gradient(circle at 100% 0, rgba(167, 243, 208, 0.2) 0%, transparent 30%),
-                radial-gradient(circle at 0 100%, rgba(253, 224, 71, 0.1) 0%, transparent 30%);
-        }
-        html[data-theme='dark'] #admin-panel-modal .card {
-            background-color: var(--bg-secondary);
-            background-image: 
-                radial-gradient(circle at 100% 0, rgba(52, 211, 153, 0.15) 0%, transparent 40%),
-                radial-gradient(circle at 0 100%, rgba(250, 204, 21, 0.1) 0%, transparent 40%);
-        }
-        #admin-panel-modal header {
-            border-color: rgba(74, 222, 128, 0.3);
-        }
-        .admin-tab-btn, .user-dashboard-tab {
-            transition: all 0.3s ease;
-        }
-        .admin-tab-btn.active-spring-tab {
-            color: #15803d; /* green-700 */
-            border-color: #22c55e; /* green-500 */
-        }
+        /* Spring theme for User Dashboard Tabs */
+        .user-dashboard-tab { transition: all 0.3s ease; }
         .user-dashboard-tab.active-spring-tab {
             color: var(--accent);
             border-color: var(--accent);
-        }
-        html[data-theme='dark'] .admin-tab-btn.active-spring-tab {
-            color: #86efac; /* green-300 */
         }
 
         /* Colorful Key Vitals */
@@ -384,6 +360,23 @@
         details > summary::-webkit-details-marker { display: none; }
         .details-arrow { transition: transform 0.2s; }
         details[open] > summary .details-arrow { transform: rotate(180deg); }
+
+        /* Admin Drawer */
+        #admin-panel-modal.active { opacity: 1; pointer-events-auto; }
+        #admin-panel-modal.active #admin-drawer-content { transform: translateX(0); }
+        .admin-nav-btn {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; padding: 0.75rem 0.25rem; border-radius: 0.5rem;
+            color: var(--text-secondary); transition: all 0.2s ease-in-out;
+            border: 2px solid transparent;
+        }
+        .admin-nav-btn:hover { background-color: var(--border-primary); color: var(--text-primary); }
+        .admin-nav-btn.active {
+            background-color: var(--bg-secondary); color: var(--accent);
+            border-color: var(--accent);
+        }
+        .admin-nav-btn span { font-size: 0.75rem; font-weight: 600; margin-top: 0.25rem; }
+
     </style>
 </head>
 <body class="antialiased min-h-screen">
@@ -1006,97 +999,102 @@
     </button>
     
     <!-- Modals -->
-    <!-- Admin Panel Modal -->
-    <div id="admin-panel-modal" class="fixed inset-0 bg-black/60 z-50 flex justify-center items-center opacity-0 hidden transition-opacity duration-300">
-        <div class="card rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col scale-95 transition-transform duration-300">
-            <header class="flex justify-between items-center p-4 border-b border-border-primary">
-                <h2 class="text-2xl font-bold flex items-center gap-3"><i data-lucide="shield-check" class="text-green-400"></i>پنل مدیریت</h2>
-                <button id="close-admin-panel-btn" class="p-2 rounded-full hover:bg-tertiary"><i data-lucide="x"></i></button>
-            </header>
-            <div class="flex-1 p-6 overflow-y-auto">
-                 <div class="flex border-b border-border-primary mb-6">
-                    <button data-tab="users" class="admin-tab-btn active-spring-tab py-3 px-6 text-lg font-bold border-b-2">مدیریت شاگردان</button>
-                    <button data-tab="review" class="admin-tab-btn text-secondary py-3 px-6 text-lg font-bold border-b-2 border-transparent">گفتگو با شاگرد</button>
-                    <button data-tab="templates" class="admin-tab-btn text-secondary py-3 px-6 text-lg font-bold border-b-2 border-transparent">الگوها</button>
-                </div>
+    <!-- Admin Panel Modal / Drawer -->
+    <div id="admin-panel-modal" class="fixed inset-0 bg-black/70 z-50 hidden opacity-0 transition-opacity duration-500 pointer-events-none" aria-modal="true" role="dialog">
+        <div id="admin-drawer-content" class="absolute top-0 right-0 h-full w-full max-w-5xl bg-secondary shadow-2xl flex transform translate-x-full transition-transform duration-500 ease-in-out">
+            <!-- Sidebar Navigation -->
+            <nav id="admin-drawer-nav" class="w-24 bg-tertiary/50 p-2 flex flex-col items-center gap-2 border-l border-border-primary">
+                <button data-tab="dashboard" class="admin-nav-btn active">
+                    <i data-lucide="layout-grid"></i>
+                    <span>داشبورد</span>
+                </button>
+                <button data-tab="clients" class="admin-nav-btn">
+                    <i data-lucide="users"></i>
+                    <span>شاگردان</span>
+                </button>
+                <button data-tab="conversations" class="admin-nav-btn">
+                    <i data-lucide="message-circle"></i>
+                    <span>گفتگوها</span>
+                </button>
+                <button data-tab="templates" class="admin-nav-btn">
+                    <i data-lucide="clipboard-list"></i>
+                    <span>الگوها</span>
+                </button>
+            </nav>
 
-                <!-- Users Tab -->
-                <div id="admin-users-content" class="admin-tab-content">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Left: User List -->
-                        <div class="space-y-4">
-                            <h3 class="font-bold text-xl">لیست شاگردان</h3>
-                            <div class="grid grid-cols-3 gap-3">
-                               <div class="card p-3 rounded-lg text-center"><p class="text-secondary text-sm">کل شاگردان</p><p id="total-users-stat" class="font-bold text-2xl">0</p></div>
-                               <div class="card p-3 rounded-lg text-center"><p class="text-secondary text-sm">پرداخت نشده</p><p id="unpaid-users-stat" class="font-bold text-2xl text-red-400">0</p></div>
-                               <div class="card p-3 rounded-lg text-center"><p class="text-secondary text-sm">اطلاعات ناقص</p><p id="unconfirmed-users-stat" class="font-bold text-2xl text-yellow-400">0</p></div>
+            <!-- Main Content -->
+            <main class="flex-1 flex flex-col overflow-hidden">
+                <header class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
+                    <h2 id="admin-panel-title" class="text-2xl font-bold flex items-center gap-3"><i data-lucide="shield-check" class="text-green-400"></i><span id="admin-title-text">داشبورد مدیریت</span></h2>
+                    <button id="close-admin-panel-btn" class="p-2 rounded-full hover:bg-tertiary"><i data-lucide="x"></i></button>
+                </header>
+                
+                <div class="flex-1 overflow-y-auto">
+                    <!-- Dashboard Content -->
+                    <div id="admin-dashboard-content" class="admin-tab-content p-6">
+                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div class="card p-4 rounded-lg"><p class="text-secondary text-sm">کل شاگردان</p><p id="total-users-stat" class="font-bold text-3xl">0</p></div>
+                            <div class="card p-4 rounded-lg"><p class="text-secondary text-sm">پرداخت نشده</p><p id="unpaid-users-stat" class="font-bold text-3xl text-red-400">0</p></div>
+                            <div class="card p-4 rounded-lg"><p class="text-secondary text-sm">اطلاعات ناقص</p><p id="unconfirmed-users-stat" class="font-bold text-3xl text-yellow-400">0</p></div>
+                            <div class="card p-4 rounded-lg"><p class="text-secondary text-sm">شاگردان فعال</p><p id="active-users-stat" class="font-bold text-3xl text-green-400">0</p></div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                             <div class="lg:col-span-2 card p-4 rounded-lg">
+                                <h3 class="font-bold text-xl mb-4">گزارش فعالیت‌ها</h3>
+                                <div id="admin-activity-log" class="space-y-2 max-h-96 overflow-y-auto"></div>
+                             </div>
+                             <div class="card p-4 rounded-lg">
+                                <h3 class="font-bold text-xl mb-4">ایجاد کاربر جدید</h3>
+                                <form id="create-user-form" class="space-y-3">
+                                    <input type="text" id="new-username-input" class="input-field w-full" placeholder="نام کاربری">
+                                    <input type="email" id="new-user-email-input" class="input-field w-full" placeholder="ایمیل">
+                                    <input type="password" id="new-user-password-input" class="input-field w-full" placeholder="رمز عبور">
+                                    <button id="create-user-btn" type="button" class="primary-button w-full">ایجاد کاربر</button>
+                                    <p id="create-user-error" class="text-red-500 text-sm pt-1 h-6"></p>
+                                </form>
                             </div>
-                            <input type="search" id="admin-user-search" placeholder="جستجوی شاگرد..." class="input-field w-full">
+                        </div>
+                    </div>
+
+                    <!-- Clients Content -->
+                    <div id="admin-clients-content" class="admin-tab-content hidden p-6">
+                         <div class="flex flex-wrap gap-4 justify-between items-center mb-4">
+                            <input type="search" id="admin-user-search" placeholder="جستجوی شاگرد..." class="input-field w-full max-w-sm">
                             <div id="user-filter-btn-group" class="flex flex-wrap gap-2 text-sm">
                                 <button data-filter="all" class="user-filter-btn secondary-button !px-3 !py-1 active">همه</button>
                                 <button data-filter="unpaid" class="user-filter-btn secondary-button !px-3 !py-1">پرداخت نشده</button>
                                 <button data-filter="unconfirmed" class="user-filter-btn secondary-button !px-3 !py-1">تایید نشده</button>
                                 <button data-filter="inactive" class="user-filter-btn secondary-button !px-3 !py-1">نیاز به توجه</button>
                             </div>
-                            <div id="admin-user-list" class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[480px] overflow-y-auto p-1">
-                                <!-- User list will be injected here -->
-                            </div>
                         </div>
-                        <!-- Right: Actions -->
-                        <div class="space-y-6">
-                             <details class="card rounded-lg overflow-hidden">
-                                <summary class="p-4 font-bold text-xl cursor-pointer flex justify-between items-center list-none hover:bg-tertiary/50">
-                                    <div class="flex items-center gap-2">
-                                        <i data-lucide="user-plus" class="w-5 h-5"></i>
-                                        <span>ایجاد کاربر جدید</span>
-                                    </div>
-                                    <i data-lucide="chevron-down" class="w-5 h-5 transition-transform details-arrow"></i>
-                                </summary>
-                                <div class="p-4 border-t border-border-primary">
-                                    <form id="create-user-form" class="space-y-3">
-                                        <input type="text" id="new-username-input" class="input-field w-full" placeholder="نام کاربری">
-                                        <input type="email" id="new-user-email-input" class="input-field w-full" placeholder="ایمیل">
-                                        <input type="password" id="new-user-password-input" class="input-field w-full" placeholder="رمز عبور">
-                                        <button id="create-user-btn" type="button" class="primary-button w-full">ایجاد کاربر</button>
-                                        <p id="create-user-error" class="text-red-500 text-sm pt-1 h-6"></p>
-                                    </form>
-                                </div>
-                            </details>
-                             <div class="card p-4 rounded-lg">
-                                <h3 class="font-bold text-xl mb-4">گزارش فعالیت‌ها</h3>
-                                <div id="admin-activity-log" class="space-y-2 max-h-64 overflow-y-auto">
-                                    <!-- Log items here -->
-                                </div>
-                             </div>
-                        </div>
+                        <div id="admin-user-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
                     </div>
-                </div>
 
-                 <!-- Review Tab -->
-                <div id="admin-review-content" class="admin-tab-content hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(90vh-160px)]">
-                        <div class="md:col-span-1 overflow-y-auto pr-2">
-                            <h3 class="font-bold text-xl mb-4">انتخاب شاگرد</h3>
-                            <div id="admin-review-user-list" class="space-y-2"></div>
-                        </div>
-                        <div id="admin-review-details" class="md:col-span-2 overflow-y-auto pr-2">
-                             <div class="flex flex-col items-center justify-center h-full text-secondary">
-                                <i data-lucide="users" class="w-16 h-16"></i>
-                                <p class="mt-4">یک شاگرد را برای مشاهده جزئیات انتخاب کنید.</p>
+                    <!-- Conversations Content -->
+                    <div id="admin-conversations-content" class="admin-tab-content hidden h-full">
+                        <div class="grid grid-cols-12 h-full">
+                            <div class="col-span-4 border-l border-border-primary h-full flex flex-col">
+                                <div class="p-4 border-b border-border-primary"><input type="search" id="conversation-user-search" placeholder="جستجوی کاربر..." class="input-field w-full"></div>
+                                <div id="admin-conversations-user-list" class="flex-1 overflow-y-auto"></div>
+                            </div>
+                            <div id="admin-conversation-details" class="col-span-8 flex flex-col h-full bg-tertiary/30">
+                                <div class="flex flex-col items-center justify-center h-full text-secondary text-center p-4">
+                                    <i data-lucide="messages-square" class="w-16 h-16"></i>
+                                    <p class="mt-4 font-bold">گفتگویی انتخاب نشده</p>
+                                    <p class="text-sm">یک کاربر را از لیست سمت راست برای مشاهده و پاسخ به پیام‌ها انتخاب کنید.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Templates Tab -->
-                <div id="admin-templates-content" class="admin-tab-content hidden">
-                     <h3 class="font-bold text-xl mb-4">مدیریت الگوهای برنامه</h3>
-                     <p class="text-secondary mb-4">الگوهای ذخیره شده در اینجا نمایش داده می‌شوند. می‌توانید آن‌ها را حذف کنید.</p>
-                     <div id="admin-template-list" class="space-y-3 max-w-lg mx-auto">
-                         <!-- Template list here -->
-                     </div>
+                    <!-- Templates Content -->
+                    <div id="admin-templates-content" class="admin-tab-content hidden p-6">
+                         <h3 class="font-bold text-2xl mb-2">مدیریت الگوهای برنامه</h3>
+                         <p class="text-secondary mb-6">الگوهای ذخیره شده در اینجا نمایش داده می‌شوند. می‌توانید آن‌ها را حذف کنید.</p>
+                         <div id="admin-template-list" class="space-y-3 max-w-2xl mx-auto"></div>
+                    </div>
                 </div>
-            </div>
+            </main>
         </div>
     </div>
     
