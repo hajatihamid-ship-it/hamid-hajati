@@ -248,16 +248,14 @@
             transition: all 0.2s ease-out;
         }
 
-        /* Goal & Gender Card Colors */
+        /* Custom Radio Card Colors */
         .card-goal-bulk.selected-card { background-color: rgba(59, 130, 246, 0.1); border-color: #3b82f6 !important; box-shadow: 0 0 0 2px #3b82f6; }
         .card-goal-loss.selected-card { background-color: rgba(249, 115, 22, 0.1); border-color: #f97316 !important; box-shadow: 0 0 0 2px #f97316; }
         .card-goal-fitness.selected-card { background-color: rgba(34, 197, 94, 0.1); border-color: #22c55e !important; box-shadow: 0 0 0 2px #22c55e; }
         .card-goal-strength.selected-card { background-color: rgba(239, 68, 68, 0.1); border-color: #ef4444 !important; box-shadow: 0 0 0 2px #ef4444; }
-
-        .card-gender-male.selected-card { background-color: rgba(6, 182, 212, 0.1); border-color: #06b6d4 !important; box-shadow: 0 0 0 2px #06b6d4; }
-        .card-gender-female.selected-card { background-color: rgba(217, 70, 239, 0.1); border-color: #d946ef !important; box-shadow: 0 0 0 2px #d946ef; }
-
-
+        .card-activity.selected-card { background-color: rgba(20, 184, 166, 0.1); border-color: #14b8a6 !important; box-shadow: 0 0 0 2px #14b8a6; }
+        .card-days.selected-card { background-color: rgba(99, 102, 241, 0.1); border-color: #6366f1 !important; box-shadow: 0 0 0 2px #6366f1; }
+        
         /* Spring theme for User Dashboard Tabs */
         .user-dashboard-tab { transition: all 0.3s ease; }
         .user-dashboard-tab.active-spring-tab {
@@ -407,13 +405,20 @@
                                     <input id="login-username" type="text" class="input-field w-full !pr-10" placeholder=" " required>
                                     <label for="login-username" class="input-label !right-10">نام کاربری</label>
                                 </div>
-                                <div class="input-group relative">
-                                    <i data-lucide="lock" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary pointer-events-none"></i>
-                                    <input id="login-password" type="password" class="input-field w-full !pr-10" placeholder=" " required>
-                                    <label for="login-password" class="input-label !right-10">رمز عبور</label>
-                                    <button type="button" class="password-toggle" data-target="login-password">
-                                        <i data-lucide="eye" class="w-5 h-5"></i>
-                                    </button>
+                                <div>
+                                    <div class="input-group relative">
+                                        <i data-lucide="lock" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary pointer-events-none"></i>
+                                        <input id="login-password" type="password" class="input-field w-full !pr-10" placeholder=" " required>
+                                        <label for="login-password" class="input-label !right-10">رمز عبور</label>
+                                        <button type="button" class="password-toggle" data-target="login-password">
+                                            <i data-lucide="eye" class="w-5 h-5"></i>
+                                        </button>
+                                    </div>
+                                    <div class="text-left text-xs mt-2">
+                                        <button id="switch-to-forgot-btn" type="button" class="font-semibold text-secondary hover:text-amber-500 hover:underline focus:outline-none">
+                                            فراموشی رمز عبور؟
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="space-y-3 pt-2">
                                     <button id="login-client-btn" type="submit" class="primary-button w-full !py-3 !text-base">ورود به پنل شاگرد</button>
@@ -462,6 +467,24 @@
                                 قبلا ثبت نام کرده‌اید؟
                                 <button id="switch-to-login-btn" type="button" class="font-bold text-amber-500 hover:underline focus:outline-none">
                                     وارد شوید
+                                </button>
+                            </p>
+                        </div>
+                        <!-- Forgot Password Form -->
+                        <div id="forgot-password-form-container" class="form-container is-inactive">
+                            <h2 class="font-bold text-2xl text-center mb-6">بازیابی رمز عبور</h2>
+                            <p class="text-center text-sm text-secondary mb-6">ایمیل خود را وارد کنید تا لینک بازیابی رمز عبور برایتان ارسال شود.</p>
+                            <form id="forgot-password-form" class="space-y-4">
+                                <div class="input-group">
+                                    <i data-lucide="at-sign" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary pointer-events-none"></i>
+                                    <input id="forgot-email" type="email" class="input-field w-full !pr-10" placeholder=" " required>
+                                    <label for="forgot-email" class="input-label !right-10">ایمیل</label>
+                                </div>
+                                <button type="submit" class="primary-button w-full !py-3 !text-base">ارسال لینک بازیابی</button>
+                            </form>
+                            <p class="text-center text-sm text-secondary mt-6">
+                                <button id="switch-back-to-login-btn" type="button" class="font-bold text-amber-500 hover:underline focus:outline-none">
+                                    بازگشت به صفحه ورود
                                 </button>
                             </p>
                         </div>
@@ -587,22 +610,22 @@
                             <div class="md:col-span-2 space-y-2">
                                 <h3 class="font-bold">سطح فعالیت روزانه</h3>
                                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.2">بدون فعالیت</label>
-                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.375">کم (۱-۳ روز)</label>
-                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.55" checked>متوسط (۳-۵ روز)</label>
-                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.725">زیاد (۶-۷ روز)</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.2">بدون فعالیت</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.375">کم (۱-۳ روز)</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.55" checked>متوسط (۳-۵ روز)</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.725">زیاد (۶-۷ روز)</label>
                                 </div>
                             </div>
                             <!-- Training Days -->
                             <div class="md:col-span-2 space-y-2">
                                 <h3 class="font-bold">تعداد روزهای تمرین در هفته</h3>
                                 <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
-                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="1">۱</label>
-                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="2">۲</label>
-                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="3">۳</label>
-                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="4" checked>۴</label>
-                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="5">۵</label>
-                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="6">۶</label>
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days" class="training-days sr-only" value="1">۱</label>
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days" class="training-days sr-only" value="2">۲</label>
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days" class="training-days sr-only" value="3">۳</label>
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days" class="training-days sr-only" value="4" checked>۴</label>
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days" class="training-days sr-only" value="5">۵</label>
+                                    <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days" class="training-days sr-only" value="6">۶</label>
                                 </div>
                             </div>
 
@@ -853,15 +876,7 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="space-y-6">
-                            <div class="card rounded-lg p-4">
-                                <h3 class="font-bold text-lg mb-4">وضعیت حساب</h3>
-                                <div id="dashboard-status-container" class="space-y-3 mb-4"></div>
-                                 <div class="space-y-3">
-                                     <button id="confirm-info-btn" class="w-full secondary-button !border-blue-500/30 !bg-blue-500/10 !text-blue-400 hover:!bg-blue-500/20">تایید و قفل کردن اطلاعات</button>
-                                     <button id="pay-program-btn" class="w-full green-button">پرداخت و فعالسازی برنامه</button>
-                                 </div>
-                            </div>
-                             <div class="card rounded-xl p-6 key-vitals-container">
+                            <div class="card rounded-xl p-6 key-vitals-container">
                                 <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="bar-chart-3" class="text-green-400"></i>شاخص‌های شما</h3>
                                 <div class="space-y-3 text-sm">
                                     <div class="flex justify-between"><span>شاخص توده بدنی (BMI)</span><input readonly class="bmi-input input-field !p-1 !text-center w-20 font-mono"></div>
@@ -871,6 +886,14 @@
                                      <div class="flex justify-between"><span>توده بدون چربی (LBM)</span><input readonly class="lbm-input input-field !p-1 !text-center w-20 font-mono"></div>
                                      <div class="flex justify-between"><span>وزن ایده‌آل</span><input readonly class="ideal-weight-input input-field !p-1 !text-center w-32 font-mono"></div>
                                 </div>
+                            </div>
+                            <div class="card rounded-lg p-4">
+                                <h3 class="font-bold text-lg mb-4">وضعیت حساب</h3>
+                                <div id="dashboard-status-container" class="space-y-3 mb-4"></div>
+                                 <div class="space-y-3">
+                                     <button id="confirm-info-btn" class="w-full secondary-button !border-blue-500/30 !bg-blue-500/10 !text-blue-400 hover:!bg-blue-500/20">تایید و قفل کردن اطلاعات</button>
+                                     <button id="pay-program-btn" class="w-full green-button">پرداخت و فعالسازی برنامه</button>
+                                 </div>
                             </div>
                         </div>
                          <div id="dashboard-profile-panel" class="card rounded-lg p-4 space-y-4">
@@ -922,21 +945,21 @@
                                 <div class="space-y-2">
                                     <h3 class="font-semibold text-sm">سطح فعالیت روزانه</h3>
                                     <div class="grid grid-cols-2 gap-2">
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.2">بدون فعالیت</label>
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.375">کم</label>
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.55">متوسط</label>
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.725">زیاد</label>
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.2">بدون فعالیت</label>
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.375">کم</label>
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.55">متوسط</label>
+                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.725">زیاد</label>
                                     </div>
                                 </div>
                                 <div class="space-y-2">
                                     <h3 class="font-semibold text-sm">روزهای تمرین در هفته</h3>
                                     <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="1">۱</label>
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="2">۲</label>
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="3">۳</label>
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="4">۴</label>
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="5">۵</label>
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="6">۶</label>
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="1">۱</label>
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="2">۲</label>
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="3">۳</label>
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="4">۴</label>
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="5">۵</label>
+                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="6">۶</label>
                                     </div>
                                 </div>
                             </div>

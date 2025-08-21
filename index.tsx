@@ -237,8 +237,9 @@ const V = document.getElementById("user-selection-screen")!,
         var t;
         const s = e.querySelector(".realtime-visualizers");
         if (!s) return;
-        const r = e.id === "section-1" ? e.closest("form")! : e,
-            a = r.querySelector(".bmi-input") as HTMLInputElement;
+        const r = e.closest("#profile-tab-content") || (e.id === "section-1" ? e.closest("form")! : e);
+        if (!r) return;
+        const a = r.querySelector(".bmi-input") as HTMLInputElement;
         if (!a) return;
         const n = parseFloat(a.value);
         let o = "";
@@ -280,8 +281,9 @@ const V = document.getElementById("user-selection-screen")!,
         s.innerHTML = o + m, window.lucide?.createIcons()
     },
     he = e => {
-        const t = e.id === "section-1" ? e.closest("form")! : e,
-            s = parseFloat((e.querySelector(".age-slider") as HTMLInputElement).value),
+        const t = e.closest("#profile-tab-content") || (e.id === "section-1" ? e.closest("form")! : e);
+        if (!t) return;
+        const s = parseFloat((e.querySelector(".age-slider") as HTMLInputElement).value),
             r = parseFloat((e.querySelector(".height-slider") as HTMLInputElement).value),
             a = parseFloat((e.querySelector(".weight-slider") as HTMLInputElement).value),
             n = e.querySelector(".gender:checked") as HTMLInputElement;
@@ -1200,13 +1202,16 @@ const switchUserDashboardTab = (e) => {
     }
 };
 
-const switchAuthForm = (formToShow: 'login' | 'signup', isInitial: boolean = false) => {
+const switchAuthForm = (formToShow: 'login' | 'signup' | 'forgot-password', isInitial: boolean = false) => {
     const loginContainer = document.getElementById("login-form-container")!;
     const signupContainer = document.getElementById("signup-form-container")!;
+    const forgotPasswordContainer = document.getElementById("forgot-password-form-container")!;
+    
     const loginForm = document.getElementById("login-form") as HTMLFormElement;
     const signupForm = document.getElementById("signup-form") as HTMLFormElement;
+    const forgotPasswordForm = document.getElementById("forgot-password-form") as HTMLFormElement;
 
-    const containers = [loginContainer, signupContainer];
+    const containers = [loginContainer, signupContainer, forgotPasswordContainer];
     
     containers.forEach(c => {
         if (isInitial) {
@@ -1216,14 +1221,19 @@ const switchAuthForm = (formToShow: 'login' | 'signup', isInitial: boolean = fal
         }
     });
 
+    loginContainer.classList.toggle('is-inactive', formToShow !== 'login');
+    signupContainer.classList.toggle('is-inactive', formToShow !== 'signup');
+    forgotPasswordContainer.classList.toggle('is-inactive', formToShow !== 'forgot-password');
+
     if (formToShow === 'login') {
-        loginContainer.classList.remove('is-inactive');
-        signupContainer.classList.add('is-inactive');
         signupForm?.reset();
-    } else {
-        loginContainer.classList.add('is-inactive');
-        signupContainer.classList.remove('is-inactive');
+        forgotPasswordForm?.reset();
+    } else if (formToShow === 'signup') {
         loginForm?.reset();
+        forgotPasswordForm?.reset();
+    } else { // forgot-password
+        loginForm?.reset();
+        signupForm?.reset();
     }
 
     if (isInitial) {
@@ -1528,39 +1538,56 @@ document.addEventListener("DOMContentLoaded", () => {
     
     document.getElementById('switch-to-signup-btn')?.addEventListener('click', () => switchAuthForm('signup'));
     document.getElementById('switch-to-login-btn')?.addEventListener('click', () => switchAuthForm('login'));
+    document.getElementById('switch-to-forgot-btn')?.addEventListener('click', () => switchAuthForm('forgot-password'));
+    document.getElementById('switch-back-to-login-btn')?.addEventListener('click', () => switchAuthForm('login'));
     switchAuthForm('login', true);
 
-    const loginAndRoute = (event) => {
+    const handleClientLogin = (event: Event) => {
         event.preventDefault();
-        const i = (document.getElementById("login-username") as HTMLInputElement).value.trim(),
-            u = (document.getElementById("login-password") as HTMLInputElement).value;
-        if (!i || !u) {
+        const usernameInput = document.getElementById("login-username") as HTMLInputElement;
+        const passwordInput = document.getElementById("login-password") as HTMLInputElement;
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!username || !password) {
             w("لطفا نام کاربری و رمز عبور را وارد کنید.", "error");
             return;
         }
-        
-        // Check for admin credentials first. This will work on Enter press or any button click.
-        if (i.toLowerCase() === "admin" && u === "adminpass") {
-            Oe();
-            return;
+
+        if (username.toLowerCase() === 'admin') {
+             w("برای ورود به پنل مربی از دکمه «ورود به پنل مربی» استفاده کنید.", "error");
+             return;
         }
-        
-        // If not admin, proceed with client login.
-        const y = O().find(p => p.username.toLowerCase() === i.toLowerCase());
-        if (y && y.password === u) {
-            fe(y.username);
+
+        const user = O().find(p => p.username.toLowerCase() === username.toLowerCase());
+        if (user && user.password === password) {
+            fe(user.username);
         } else {
-            // If the login fails, give a specific error if they tried to log in as admin.
-            if (i.toLowerCase() === "admin") {
-                 w("نام کاربری یا رمز عبور مربی اشتباه است.", "error");
-            } else {
-                 w("نام کاربری یا رمز عبور اشتباه است.", "error");
-            }
+            w("نام کاربری یا رمز عبور اشتباه است.", "error");
         }
     };
 
-    (document.getElementById("login-form") as HTMLFormElement).addEventListener("submit", loginAndRoute);
-    (document.getElementById("login-coach-btn") as HTMLButtonElement).addEventListener("click", loginAndRoute);
+    const handleCoachLogin = (event: Event) => {
+        event.preventDefault();
+        const usernameInput = document.getElementById("login-username") as HTMLInputElement;
+        const passwordInput = document.getElementById("login-password") as HTMLInputElement;
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!username || !password) {
+            w("لطفا نام کاربری و رمز عبور را وارد کنید.", "error");
+            return;
+        }
+
+        if (username.toLowerCase() === "admin" && password === "adminpass") {
+            Oe();
+        } else {
+            w("نام کاربری یا رمز عبور مربی اشتباه است.", "error");
+        }
+    };
+
+    (document.getElementById("login-form") as HTMLFormElement).addEventListener("submit", handleClientLogin);
+    (document.getElementById("login-coach-btn") as HTMLButtonElement).addEventListener("click", handleCoachLogin);
 
 
     (G = document.getElementById("signup-form")) == null || G.addEventListener("submit", l => {
@@ -1613,6 +1640,32 @@ document.addEventListener("DOMContentLoaded", () => {
         };
         W(i, S), ae(`کاربر جدید ${i} ثبت نام کرد.`), w(`خوش آمدی، ${i}! ثبت نام با موفقیت انجام شد.`, "success"), fe(i)
     });
+
+    (document.getElementById("forgot-password-form") as HTMLFormElement)?.addEventListener("submit", l => {
+        l.preventDefault();
+        const emailInput = document.getElementById("forgot-email") as HTMLInputElement;
+        const email = emailInput.value.trim();
+        if (!email) {
+            w("لطفا ایمیل خود را وارد کنید.", "error");
+            return;
+        }
+
+        const user = O().find(u => u.email.toLowerCase() === email.toLowerCase());
+
+        if (user) {
+            // In a real app, you'd send an email. Here, we just simulate success.
+            w(`لینک بازیابی برای ${email} ارسال شد. (شبیه‌سازی)`, "success");
+            console.log(`Password for ${user.username} is ${user.password}`); // For demonstration
+        } else {
+            // Show a generic message to prevent user enumeration
+            w(`اگر کاربری با این ایمیل وجود داشته باشد، لینک بازیابی ارسال خواهد شد.`, "success");
+        }
+        
+        setTimeout(() => {
+            switchAuthForm('login');
+        }, 1000);
+    });
+
     document.querySelectorAll(".password-toggle").forEach(l => {
         l.addEventListener("click", () => {
             const i = (l as HTMLElement).dataset.target;
@@ -1639,14 +1692,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
     const g = () => {
-        const i = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-        if (document.documentElement.setAttribute("data-theme", i), localStorage.setItem("fitgympro_theme", i), f && f !== "admin") {
-            const u = D(f);
-            Xe(u.weightHistory, 'weight-progress-chart-small', 'no-chart-data', true);
-            Xe(u.weightHistory, 'weight-progress-chart', 'no-chart-data');
+        const newTheme = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", newTheme);
+        localStorage.setItem("fitgympro_theme", newTheme);
+
+        if (f && f !== "admin") {
+            const userData = D(f);
+            Xe(userData.weightHistory, 'weight-progress-chart-small', 'no-chart-data', true);
+            Xe(userData.weightHistory, 'weight-progress-chart', 'no-chart-data');
         }
     };
-    (M = document.getElementById("theme-toggle-btn-dashboard")) == null || M.addEventListener("click", g), (K = document.getElementById("theme-toggle-btn-dashboard")) == null || K.addEventListener("click", g), (le = document.getElementById("next-btn")) == null || le.addEventListener("click", () => ne(Re(F, 1))), (Y = document.getElementById("prev-btn")) == null || Y.addEventListener("click", () => ne(Re(F, -1))), document.querySelectorAll(".stepper-item").forEach((l, i) => {
+    (M = document.getElementById("theme-toggle-btn-dashboard")) == null || M.addEventListener("click", g);
+    (le = document.getElementById("next-btn")) == null || le.addEventListener("click", () => ne(Re(F, 1))), (Y = document.getElementById("prev-btn")) == null || Y.addEventListener("click", () => ne(Re(F, -1))), document.querySelectorAll(".stepper-item").forEach((l, i) => {
         l.addEventListener("click", () => {
             (l.classList.contains("completed") || l.classList.contains("active")) && ne(i + 1)
         })
@@ -1978,11 +2035,38 @@ Client Details:
     let B;
     (Se = document.getElementById("dashboard-profile-panel")) == null || Se.addEventListener("input", l => {
         const i = l.target as HTMLElement;
-        i && i.matches('input[type="radio"]') && updateRadioCardSelection(document.getElementById("dashboard-profile-panel")!), clearTimeout(B), B = window.setTimeout(() => {
+        const panel = i.closest("#dashboard-profile-panel");
+        if (!panel) return;
+        if (i.matches(".range-slider")) {
+            ie(i as HTMLInputElement);
+            const container = i.parentElement;
+            if (container) {
+                const label = container.querySelector("label");
+                if (label) {
+                    const valueSpan = label.querySelector(".age-value") || label.querySelector(".height-value") || label.querySelector(".weight-value");
+                    if (valueSpan) {
+                        let unit = "";
+                        if (i.classList.contains("height-slider")) unit = " cm";
+                        else if (i.classList.contains("weight-slider")) unit = " kg";
+                        valueSpan.textContent = (i as HTMLInputElement).value + unit
+                    }
+                }
+            }
+        }
+        if (i.matches('input[type="radio"]')) {
+            updateRadioCardSelection(panel)
+        }
+        if (i.matches(".gender")) {
+            xe(panel)
+        }
+        if (i.matches(".gender, .age-slider, .height-slider, .weight-slider, .activity-level, .neck-input, .waist-input, .hip-input")) {
+            he(panel)
+        }
+        clearTimeout(B), B = window.setTimeout(() => {
             var v, y, p, S, T;
             if (f && f !== "admin") {
                 const H = D(f),
-                    te = document.getElementById("dashboard-profile-panel")!,
+                    te = panel,
                     z: any = {
                         clientName: (te.querySelector(".client-name-input") as HTMLInputElement).value,
                         clientEmail: (te.querySelector(".client-email-input") as HTMLInputElement).value,
@@ -2000,14 +2084,10 @@ Client Details:
                     };
                 H.step1 = { ...H.step1,
                     ...z
-                };
-                 W(f, H);
-                 he(te);
-                 w("تغییرات شما ذخیره شد.", "success");
+                }, W(f, H), w("تغییرات شما ذخیره شد.", "success")
             }
         }, 1500)
     });
-    
     (Le = document.getElementById("confirm-info-btn")) == null || Le.addEventListener("click", () => {
         if (f && f !== "admin") {
             const l = D(f);
