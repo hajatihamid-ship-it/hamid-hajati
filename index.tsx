@@ -34,7 +34,7 @@ declare global {
 
     function s(a: HTMLLinkElement) {
         const n: RequestInit = {};
-        return a.integrity && (n.integrity = a.integrity), a.referrerPolicy && (n.referrerPolicy as ReferrerPolicy), a.crossOrigin === "use-credentials" ? n.credentials = "include" : a.crossOrigin === "anonymous" ? n.credentials = "omit" : n.credentials = "same-origin", n
+        return a.integrity && (n.integrity = a.integrity), a.referrerPolicy && (n.referrerPolicy = a.referrerPolicy as ReferrerPolicy), a.crossOrigin === "use-credentials" ? n.credentials = "include" : a.crossOrigin === "anonymous" ? n.credentials = "omit" : n.credentials = "same-origin", n
     }
 
     function r(a: HTMLLinkElement) {
@@ -188,7 +188,7 @@ window.exerciseDB = we;
 let F = 1;
 const ue = 5;
 let f: string | null = null,
-    X: GoogleGenAI, ve: any = null, smallChartInstance: any = null,
+    X: GoogleGenAI, ve: any = null,
     adminChartInstance: any = null,
     currentChatSession: Chat | null = null;
 const V = document.getElementById("user-selection-screen")!,
@@ -223,8 +223,8 @@ const V = document.getElementById("user-selection-screen")!,
         const t = +e.min || 0,
             s = +e.max || 100,
             a = ((+e.value || 0) - t) / (s - t) * 100;
-        let n = "#3B82F6";
-        e.classList.contains("rep-slider") && (n = "#22C55E"), e.classList.contains("rest-slider") && (n = "#A78BFA"), e.classList.contains("age-slider") && (n = "#F97316"), e.classList.contains("height-slider") && (n = "#EC4899"), e.classList.contains("weight-slider") && (n = "#FBBF24");
+        let n = "var(--accent)";
+        e.classList.contains("rep-slider") && (n = "var(--green-accent)"), e.classList.contains("rest-slider") && (n = "var(--purple-accent)"), e.classList.contains("age-slider") && (n = "var(--orange-accent)"), e.classList.contains("height-slider") && (n = "var(--pink-accent)"), e.classList.contains("weight-slider") && (n = "var(--yellow-accent)");
         const o = getComputedStyle(document.documentElement).getPropertyValue("--range-track-bg").trim();
         e.style.background = `linear-gradient(to left, ${n} ${a}%, ${o} ${a}%)`
     },
@@ -262,50 +262,43 @@ const V = document.getElementById("user-selection-screen")!,
     },
     et = e => {
         var t;
-        const s = e.querySelector(".realtime-visualizers");
+        e.querySelector(".realtime-visualizers");
+        const s = e.closest("#profile-tab-content") || (e.id === "section-1" ? e.closest("form")! : e);
         if (!s) return;
-        const r = e.closest("#profile-tab-content") || (e.id === "section-1" ? e.closest("form")! : e);
+        const r = s.querySelector(".bmi-input") as HTMLInputElement;
         if (!r) return;
-        const a = r.querySelector(".bmi-input") as HTMLInputElement;
-        if (!a) return;
-        const n = parseFloat(a.value);
-        let o = "";
-        if (!isNaN(n) && n > 0) {
-            let h = (n - 15) / 25 * 100;
-            h = Math.max(0, Math.min(100, h));
-            let E = "نرمال",
-                q = "normal";
-            n < 18.5 ? (E = "کمبود وزن", q = "underweight") : n >= 25 && n < 30 ? (E = "اضافه وزن", q = "overweight") : n >= 30 && (E = "چاقی", q = "obese");
-            const k = (18.5 - 15) / 25 * 100,
-                $ = (25 - 18.5) / 25 * 100,
-                I = 5 / 25 * 100,
-                C = 100 - k - $ - I;
-            o = `<div class="p-4 rounded-xl"><h3 class="font-bold text-lg mb-3 border-b border-border-primary pb-2 flex items-center gap-2"><i data-lucide="activity" class="text-purple-400"></i>شاخص توده بدنی (BMI)</h3><div class="bmi-visualizer"><div class="bmi-scale"><div class="bmi-segment" style="--color: #3b82f6; width: ${k}%;"></div><div class="bmi-segment" style="--color: #22c55e; width: ${$}%;"></div><div class="bmi-segment" style="--color: #f97316; width: ${I}%;"></div><div class="bmi-segment" style="--color: #ef4444; width: ${C}%;"></div><div class="bmi-needle" style="--position: ${h}%;"><div class="bmi-value-box">${n.toFixed(1)}</div></div></div><div class="bmi-labels"><span>کمبود</span><span>نرمال</span><span>اضافه</span><span>چاقی</span></div><p class="bmi-status-text">وضعیت: <strong class="bmi-status-${q}">${E}</strong></p></div></div>`
+        const a = parseFloat(r.value);
+        if (!isNaN(a) && a > 0) {
+            let n = (a - 15) / 25 * 100;
+            n = Math.max(0, Math.min(100, n));
+            let o = "نرمال",
+                m = "normal";
+            a < 18.5 ? (o = "کمبود وزن", m = "underweight") : a >= 25 && a < 30 ? (o = "اضافه وزن", m = "overweight") : a >= 30 && (o = "چاقی", m = "obese")
         }
-        let m = "";
-        const d = parseFloat((e.querySelector(".weight-slider") as HTMLInputElement).value),
-            c = r.querySelector(".ideal-weight-input") as HTMLInputElement;
-        if (!c) {
-            s.innerHTML = o, window.lucide?.createIcons();
+        let d = "";
+        const c = parseFloat((e.querySelector(".weight-slider") as HTMLInputElement).value),
+            g = s.querySelector(".ideal-weight-input") as HTMLInputElement;
+        if (!g) {
+            window.lucide?.createIcons();
             return
         }
-        const g = c.value;
-        if (g && g.includes(" - ")) {
-            const [x, h] = g.replace(" kg", "").split(" - ").map(parseFloat);
-            if (!isNaN(d) && !isNaN(x) && !isNaN(h)) {
-                const q = Math.max(0, x - 15),
-                    k = h + 15 - q;
-                let $ = (d - q) / k * 100;
+        const x = g.value;
+        if (x && x.includes(" - ")) {
+            const [h, E] = x.replace(" kg", "").split(" - ").map(parseFloat);
+            if (!isNaN(c) && !isNaN(h) && !isNaN(E)) {
+                const q = Math.max(0, h - 15),
+                    k = E + 15 - q;
+                let $ = (c - q) / k * 100;
                 $ = Math.max(0, Math.min(100, $));
-                const I = Math.max(0, (x - q) / k * 100),
-                    C = Math.max(0, (h - x) / k * 100),
-                    L = Math.max(0, 100 - I - C);
-                let b = "ایده‌آل",
-                    B = "normal";
-                d < x ? (b = "کمبود وزن", B = "underweight") : d > h && (b = "اضافه وزن", B = "overweight"), m = `<div class="p-4 rounded-xl"><h3 class="font-bold text-lg mb-3 border-b border-border-primary pb-2 flex items-center gap-2"><i data-lucide="scale" class="text-teal-400"></i>محدوده وزن ایده‌آل</h3><div class="weight-visualizer"><div class="weight-scale"><div class="weight-segment" style="--color: #3b82f6; width: ${I}%;"></div><div class="weight-segment" style="--color: #22c55e; width: ${C}%;"></div><div class="weight-segment" style="--color: #f97316; width: ${L}%;"></div><div class="weight-needle" style="--position: ${$}%;"><div class="weight-value-box">${d.toFixed(1)} kg</div></div></div><div class="weight-labels"><span>${x.toFixed(1)}kg</span><span class="font-bold">ایده‌آل</span><span>${h.toFixed(1)}kg</span></div><p class="weight-status-text">وضعیت: <strong class="weight-status-${B}">${b}</strong></p></div></div>`
+                const I = Math.max(0, (h - q) / k * 100),
+                    C = Math.max(0, (E - h) / k * 100);
+                Math.max(0, 100 - I - C);
+                let L = "ایده‌آل",
+                    b = "normal";
+                c < h ? (L = "کمبود وزن", b = "underweight") : c > E && (L = "اضافه وزن", b = "overweight")
             }
         }
-        s.innerHTML = o + m, window.lucide?.createIcons()
+        window.lucide?.createIcons()
     },
     he = e => {
         const t = e.closest("#profile-tab-content") || (e.id === "section-1" ? e.closest("form")! : e);
@@ -313,10 +306,10 @@ const V = document.getElementById("user-selection-screen")!,
         const s = parseFloat((e.querySelector(".age-slider") as HTMLInputElement).value),
             r = parseFloat((e.querySelector(".height-slider") as HTMLInputElement).value),
             a = parseFloat((e.querySelector(".weight-slider") as HTMLInputElement).value),
-            n = e.querySelector(".gender:checked") as HTMLInputElement;
+            n = e.querySelector('input[name^="gender"]:checked') as HTMLInputElement;
         if (!n) return;
         const o = n.value === "مرد",
-            m = e.querySelector(".activity-level:checked") as HTMLInputElement,
+            m = e.querySelector('input[name^="activity_level"]:checked') as HTMLInputElement,
             d = m ? parseFloat(m.value) : 1.2,
             c = parseFloat((e.querySelector(".neck-input") as HTMLInputElement).value),
             g = parseFloat((e.querySelector(".waist-input") as HTMLInputElement).value),
@@ -353,8 +346,8 @@ const V = document.getElementById("user-selection-screen")!,
     xe = e => {
         const t = e.querySelector(".hip-input-container");
         if (!t) return;
-        const s = e.querySelector('.gender[value="مرد"]') as HTMLInputElement;
-        t.classList.toggle("hidden", s.checked), he(e)
+        const s = e.querySelector('input[name^="gender"][value="مرد"]') as HTMLInputElement;
+        t.classList.toggle("hidden", s?.checked ?? false), he(e)
     },
     tt = e => {
         e.innerHTML = "", Object.keys(we).forEach(t => {
@@ -376,14 +369,14 @@ const V = document.getElementById("user-selection-screen")!,
     re = (e = !1) => {
         const t = document.getElementById("workout-days-container")!.children.length + 1,
             s = document.createElement("div");
-        s.className = "card rounded-lg day-card", s.innerHTML = `<div class="flex justify-between items-center p-4 bg-tertiary/50 rounded-t-lg border-b border-border-secondary"><div class="flex items-center gap-3"><i data-lucide="calendar-days" class="text-yellow-400"></i><input type="text" value="روز ${t}: " class="day-title-input input-field font-bold text-lg bg-transparent border-0 p-1 focus:ring-0 focus:border-yellow-400 w-auto"></div> ${e?"":'<button type="button" class="remove-day-btn p-1 text-secondary hover:text-red-400"><i data-lucide="x-circle" class="w-5 h-5"></i></button>'}</div><div class="p-4 space-y-3"><div class="exercise-list space-y-3"></div><button type="button" class="add-exercise-btn mt-2 w-full text-sm text-yellow-400 font-semibold hover:bg-yellow-400/10 py-2.5 px-4 rounded-lg border-2 border-dashed border-yellow-400/30 transition-all flex items-center justify-center gap-2"><i data-lucide="plus"></i> افزودن حرکت</button></div><div class="p-4 border-t border-border-primary/50"><label class="font-semibold text-sm text-secondary mb-2 block">یادداشت‌های مربی</label><textarea class="day-notes-input input-field text-sm bg-tertiary/50" rows="2" placeholder="مثال: روی فرم صحیح حرکت تمرکز کنید..."></textarea></div>`, document.getElementById("workout-days-container")!.appendChild(s), ge(s.querySelector(".exercise-list") as HTMLDivElement), window.lucide?.createIcons()
+        s.className = "card day-card", s.innerHTML = `<div class="flex justify-between items-center p-4 bg-tertiary/50 rounded-t-2xl border-b border-border-secondary"><div class="flex items-center gap-3"><i data-lucide="calendar-days" class="text-yellow-400"></i><input type="text" value="روز ${t}: " class="day-title-input input-field font-bold text-lg bg-transparent border-0 p-1 focus:ring-0 focus:border-yellow-400 w-auto"></div> ${e?"":'<button type="button" class="remove-day-btn p-1 text-secondary hover:text-red-400"><i data-lucide="x-circle" class="w-5 h-5"></i></button>'}</div><div class="p-4 space-y-3"><div class="exercise-list space-y-3"></div><button type="button" class="add-exercise-btn mt-2 w-full text-sm text-yellow-400 font-semibold hover:bg-yellow-400/10 py-2.5 px-4 rounded-xl border-2 border-dashed border-yellow-400/30 transition-all flex items-center justify-center gap-2"><i data-lucide="plus"></i> افزودن حرکت</button></div><div class="p-4 border-t border-border-primary/50"><label class="font-semibold text-sm text-secondary mb-2 block">یادداشت‌های مربی</label><textarea class="day-notes-input input-field text-sm bg-tertiary/80" rows="2" placeholder="مثال: روی فرم صحیح حرکت تمرکز کنید..."></textarea></div>`, document.getElementById("workout-days-container")!.appendChild(s), ge(s.querySelector(".exercise-list") as HTMLDivElement), window.lucide?.createIcons()
     },
     st = () => {
         const e = document.getElementById("supplements-container")!;
         e.innerHTML = "";
         for (const t in Pe) {
             const s = document.createElement("div");
-            s.className = "supp-category-card bg-tertiary/50 rounded-lg overflow-hidden", s.innerHTML = `<h3 class="font-bold p-4 border-b border-border-secondary text-blue-400">${t}</h3><div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></div>`;
+            s.className = "supp-category-card bg-tertiary/50 rounded-2xl overflow-hidden", s.innerHTML = `<h3 class="font-bold p-4 border-b border-border-secondary text-accent">${t}</h3><div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></div>`;
             const r = s.querySelector(".grid")!;
             Pe[t].forEach(a => {
                 const n = document.createElement("div");
@@ -402,7 +395,7 @@ const Ue = (e, t) => {
         n = A(a.clientName || "نامشخص"),
         o = A(a.coachName || "مربی شما"),
         m = a.profilePic || "https://placehold.co/100x100/374151/E5E7EB?text=عکس";
-    const d = `<header class="page-header flex justify-between items-start mb-6"><div class="flex items-center gap-3"><span class="font-bold text-2xl text-amber-500">FitGym Pro</span></div><img src="${m}" alt="Profile" class="w-20 h-20 rounded-full object-cover border-4 border-gray-100"></header><div class="mb-6"><h2 class="text-3xl font-extrabold text-gray-900 mb-2">${n}</h2><p class="text-gray-500">تهیه شده در تاریخ: ${new Date().toLocaleDateString("fa-IR")}</p></div>`;
+    const d = `<header class="page-header flex justify-between items-start mb-6"><div class="flex items-center gap-3"><span class="font-bold text-2xl" style="color: #007AFF;">FitGym Pro</span></div><img src="${m}" alt="Profile" class="w-20 h-20 rounded-full object-cover border-4 border-gray-100"></header><div class="mb-6"><h2 class="text-3xl font-extrabold text-gray-900 mb-2">${n}</h2><p class="text-gray-500">تهیه شده در تاریخ: ${new Date().toLocaleDateString("fa-IR")}</p></div>`;
     r.innerHTML = `${d}<div class="page-content"></div><footer class="page-footer"><p>این برنامه توسط <strong>${o}</strong> برای شما آماده شده است. موفق باشید!</p></footer>`, s.appendChild(r);
     const c = r.querySelector(".page-content")!,
         g = B => {
@@ -930,7 +923,7 @@ const ot = (e = []) => {
         day: e.step2.days[n],
         dayIndex: n
     } : null
-}, Xe = (e = [], t = "weight-progress-chart", s = "no-chart-data", smallChart = false) => {
+}, Xe = (e = [], t = "weight-progress-chart", s = "no-chart-data") => {
     var a;
     if (!window.Chart) return;
     const r = (a = document.getElementById(t) as HTMLCanvasElement) == null ? void 0 : a.getContext("2d");
@@ -940,12 +933,9 @@ const ot = (e = []) => {
     if (!o) return;
     n && (!e || e.length < 2) ? (n.classList.remove("hidden"), o.classList.add("hidden")) : (n && n.classList.add("hidden"), o.classList.remove("hidden"), (() => {
         let m = null;
-        if(t === "weight-progress-chart") m = ve;
-        if(t === "weight-progress-chart-small") m = smallChartInstance;
-        if(t.startsWith("admin")) m = adminChartInstance;
-        
+        if (t === "weight-progress-chart") m = ve;
+        if (t.startsWith("admin")) m = adminChartInstance;
         m && m.destroy();
-        
         const c = [...e].sort((E, q) => new Date(E.date).getTime() - new Date(q.date).getTime()),
             g = c.map(E => new Date(E.date).toLocaleDateString("fa-IR", {
                 month: "short",
@@ -962,14 +952,14 @@ const ot = (e = []) => {
                     datasets: [{
                         label: "وزن (kg)",
                         data: x,
-                        borderColor: "#FBBF24",
-                        backgroundColor: "rgba(251, 191, 36, 0.2)",
+                        borderColor: "var(--yellow-accent)",
+                        backgroundColor: "color-mix(in srgb, var(--yellow-accent) 20%, transparent)",
                         fill: !0,
                         tension: .3,
-                        pointBackgroundColor: "#FBBF24",
+                        pointBackgroundColor: "var(--yellow-accent)",
                         pointBorderColor: "#fff",
                         pointHoverRadius: 7,
-                        pointRadius: smallChart ? 0 : 5
+                        pointRadius: 5
                     }]
                 },
                 options: {
@@ -980,13 +970,13 @@ const ot = (e = []) => {
                             display: !1
                         },
                         tooltip: {
-                            enabled: !smallChart
+                            enabled: !0
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: !1,
-                            display: !smallChart,
+                            display: !0,
                             grid: {
                                 color: I
                             },
@@ -995,7 +985,7 @@ const ot = (e = []) => {
                             }
                         },
                         x: {
-                             display: !smallChart,
+                            display: !0,
                             grid: {
                                 display: !1
                             },
@@ -1006,10 +996,8 @@ const ot = (e = []) => {
                     }
                 }
             });
-        if(t === "weight-progress-chart") ve = L;
-        if(t === "weight-progress-chart-small") smallChartInstance = L;
-        if(t.startsWith("admin")) adminChartInstance = L;
-
+        if (t === "weight-progress-chart") ve = L;
+        if (t.startsWith("admin")) adminChartInstance = L
     })())
 };
 
@@ -1021,18 +1009,18 @@ const renderDashboardTab = (username, userData) => {
         n = ((g = userData.workoutHistory) == null ? void 0 : g.length) || 0,
         o = userData.joinDate ? new Date(userData.joinDate).toLocaleDateString("fa-IR") : "نامشخص";
     
-    s.className = "grid grid-cols-1 md:grid-cols-4 gap-6";
+    s.className = "grid grid-cols-2 md:grid-cols-4 gap-6";
     s.innerHTML = `
-        <div class="card p-4 rounded-lg flex items-start gap-4 bg-orange-500/10 border-orange-500/20">
-            <div class="bg-orange-500/20 p-3 rounded-lg"><i data-lucide="flame" class="w-6 h-6 text-orange-400"></i></div>
+        <div class="card p-5 flex items-center gap-4">
+            <div class="bg-orange-500/20 p-3 rounded-xl"><i data-lucide="flame" class="w-6 h-6 text-orange-400"></i></div>
             <div><p class="text-sm font-semibold text-secondary">روند تمرینی</p><p class="text-3xl font-bold">${a} <span class="text-base font-medium">روز</span></p></div>
         </div>
-        <div class="card p-4 rounded-lg flex items-start gap-4 bg-green-500/10 border-green-500/20">
-            <div class="bg-green-500/20 p-3 rounded-lg"><i data-lucide="swords" class="w-6 h-6 text-green-400"></i></div>
+        <div class="card p-5 flex items-center gap-4">
+            <div class="bg-green-500/20 p-3 rounded-xl"><i data-lucide="swords" class="w-6 h-6 text-green-400"></i></div>
             <div><p class="text-sm font-semibold text-secondary">کل تمرینات</p><p class="text-3xl font-bold">${n}</p></div>
         </div>
-        <div class="card p-4 rounded-lg flex items-start gap-4 bg-indigo-500/10 border-indigo-500/20">
-            <div class="bg-indigo-500/20 p-3 rounded-lg"><i data-lucide="calendar-plus" class="w-6 h-6 text-indigo-400"></i></div>
+        <div class="card p-5 flex items-center gap-4">
+            <div class="bg-indigo-500/20 p-3 rounded-xl"><i data-lucide="calendar-plus" class="w-6 h-6 text-indigo-400"></i></div>
             <div><p class="text-sm font-semibold text-secondary">عضویت از</p><p class="text-xl font-bold pt-2">${o}</p></div>
         </div>
     `;
@@ -1040,22 +1028,22 @@ const renderDashboardTab = (username, userData) => {
     const latestPurchase = getLatestPurchase(userData);
     const subCard = document.createElement("div");
     if (latestPurchase) {
-        if (latestPurchase.fulfilled === !1) subCard.className = "card p-4 rounded-lg flex items-start gap-4 bg-blue-500/10 border-blue-500/20", subCard.innerHTML = `
-                <div class="bg-blue-500/20 p-3 rounded-lg"><i data-lucide="loader" class="w-6 h-6 text-blue-400 animate-spin"></i></div>
+        if (latestPurchase.fulfilled === !1) subCard.className = "card p-5 flex items-center gap-4", subCard.innerHTML = `
+                <div class="bg-blue-500/20 p-3 rounded-xl"><i data-lucide="loader" class="w-6 h-6 text-blue-400 animate-spin"></i></div>
                 <div>
                     <p class="text-sm font-semibold text-secondary">وضعیت پلن</p>
                     <p class="text-xl font-bold pt-2">در انتظار آماده‌سازی</p>
                 </div>
             `;
-        else subCard.className = "card p-4 rounded-lg flex items-start gap-4 bg-teal-500/10 border-teal-500/20", subCard.innerHTML = `
-                <div class="bg-teal-500/20 p-3 rounded-lg"><i data-lucide="star" class="w-6 h-6 text-teal-400"></i></div>
+        else subCard.className = "card p-5 flex items-center gap-4", subCard.innerHTML = `
+                <div class="bg-teal-500/20 p-3 rounded-xl"><i data-lucide="star" class="w-6 h-6 text-teal-400"></i></div>
                 <div>
                     <p class="text-sm font-semibold text-secondary">آخرین پلن فعال</p>
                     <p class="text-xl font-bold pt-2">${A(latestPurchase.planName)}</p>
                 </div>
             `
-    } else subCard.className = "card p-4 rounded-lg flex items-start gap-4 bg-gray-500/10 border-gray-500/20", subCard.innerHTML = `
-            <div class="bg-gray-500/20 p-3 rounded-lg"><i data-lucide="shopping-cart" class="w-6 h-6 text-gray-400"></i></div>
+    } else subCard.className = "card p-5 flex items-center gap-4", subCard.innerHTML = `
+            <div class="bg-gray-500/20 p-3 rounded-xl"><i data-lucide="shopping-cart" class="w-6 h-6 text-gray-400"></i></div>
             <div>
                 <p class="text-sm font-semibold text-secondary">وضعیت پلن</p>
                 <p class="text-xl font-bold pt-2">بدون پلن فعال</p>
@@ -1068,23 +1056,23 @@ const renderDashboardTab = (username, userData) => {
         d = document.getElementById("coach-message-content")!;
     const lastCoachMessage = (userData.chatHistory || []).filter(msg => msg.sender === 'coach').pop();
     if (lastCoachMessage) {
-        d.innerHTML = `<p class="border-r-2 border-amber-500 pr-2">${A(lastCoachMessage.message)}</p><button id="view-full-chat-btn" class="text-sm text-amber-500 font-semibold mt-2 hover:underline">مشاهده کامل گفتگو</button>`;
+        d.innerHTML = `<p class="border-r-2 border-yellow-accent pr-2">${A(lastCoachMessage.message)}</p><button id="view-full-chat-btn" class="text-sm text-yellow-accent font-semibold mt-2 hover:underline">مشاهده کامل گفتگو</button>`;
         m.classList.remove("hidden");
         document.getElementById("view-full-chat-btn")?.addEventListener('click', () => switchUserDashboardTab('chat'));
     } else {
         m.classList.add("hidden");
     }
     const c = it(userData);
-    let x = `<div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="target" class="text-blue-400"></i>تمرکز امروز</h3><span class="text-sm font-semibold text-secondary">${new Date().toLocaleDateString("fa-IR",{weekday:"long",day:"numeric",month:"long"})}</span></div>`;
+    let x = `<div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="target" class="text-accent"></i>تمرکز امروز</h3><span class="text-sm font-semibold text-secondary">${new Date().toLocaleDateString("fa-IR",{weekday:"long",day:"numeric",month:"long"})}</span></div>`;
     if (c) {
         const h = new Date().toISOString().split("T")[0],
             E = (userData.workoutHistory || []).some(q => q.date.startsWith(h));
         x += `
-            <div class="bg-tertiary/50 rounded-lg p-4">
+            <div class="bg-tertiary/50 rounded-2xl p-4">
                 <h4 class="font-bold text-xl mb-3">${A(c.day.title)}</h4>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-4">
-                    ${c.day.exercises.slice(0,4).map(q=>`<div class="bg-secondary/50 p-2 rounded-md text-xs font-semibold">${A(q.exercise)}</div>`).join("")}
-                    ${c.day.exercises.length>4?`<div class="bg-secondary/50 p-2 rounded-md text-xs font-semibold">+ ${c.day.exercises.length-4} حرکت دیگر</div>`:""}
+                    ${c.day.exercises.slice(0,4).map(q=>`<div class="bg-secondary/50 p-2 rounded-lg text-xs font-semibold">${A(q.exercise)}</div>`).join("")}
+                    ${c.day.exercises.length>4?`<div class="bg-secondary/50 p-2 rounded-lg text-xs font-semibold">+ ${c.day.exercises.length-4} حرکت دیگر</div>`:""}
                 </div>
                  <button id="start-workout-btn" class="primary-button w-full font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 ${E?"bg-green-500 hover:bg-green-600":""}">
                     <i data-lucide="${E?"check-check":"clipboard-list"}"></i>
@@ -1093,9 +1081,8 @@ const renderDashboardTab = (username, userData) => {
             </div>
             <p class="text-xs text-secondary text-center italic mt-4">نکته روز: "قدرت از چیزی که فکر می‌کنی می‌توانی انجام دهی، یک قدم فراتر است."</p>
         `
-    } else x += '<div class="text-center bg-tertiary/50 rounded-lg p-8"><i data-lucide="coffee" class="w-10 h-10 mx-auto text-green-400 mb-3"></i><h4 class="font-bold">امروز روز استراحت است!</h4><p class="text-sm text-secondary mt-1">از ریکاوری لذت ببر و برای جلسه بعدی آماده شو.</p></div>';
+    } else x += '<div class="text-center bg-tertiary/50 rounded-2xl p-8"><i data-lucide="coffee" class="w-10 h-10 mx-auto text-green-400 mb-3"></i><h4 class="font-bold">امروز روز استراحت است!</h4><p class="text-sm text-secondary mt-1">از ریکاوری لذت ببر و برای جلسه بعدی آماده شو.</p></div>';
     r.innerHTML = x;
-    Xe(userData.weightHistory, 'weight-progress-chart-small', 'no-chart-data', true);
     Xe(userData.weightHistory, 'weight-progress-chart', 'no-chart-data');
     
     const historyContainer = document.getElementById('workout-history-container');
@@ -1103,7 +1090,7 @@ const renderDashboardTab = (username, userData) => {
         const history = (userData.workoutHistory || []).slice().reverse();
         if (history.length > 0) {
             historyContainer.innerHTML = history.map(log => `
-                <details class="bg-tertiary/50 rounded-lg">
+                <details class="bg-tertiary/50 rounded-xl">
                     <summary class="p-3 cursor-pointer font-semibold flex justify-between items-center">
                         <span>تمرین ${new Date(log.date).toLocaleDateString("fa-IR", { day: 'numeric', month: 'long' })}</span>
                         <i data-lucide="chevron-down" class="w-5 h-5 transition-transform details-arrow"></i>
@@ -1130,7 +1117,7 @@ const renderDashboardTab = (username, userData) => {
         const subs = (userData.subscriptions || []).slice().reverse();
         if (subs.length > 0) {
             subHistoryContainer.innerHTML = subs.map(sub => `
-                <div class="bg-tertiary/50 p-3 rounded-lg text-sm">
+                <div class="bg-tertiary/50 p-3 rounded-xl text-sm">
                     <div class="flex justify-between items-center font-bold">
                         <span>${A(sub.planName)}</span>
                         <span class="text-xs ${sub.fulfilled ? 'text-green-400' : 'text-blue-400'}">${sub.fulfilled ? 'انجام شده' : 'در انتظار'}</span>
@@ -1165,7 +1152,7 @@ const renderWorkoutTab = (userData) => {
         if (schedule.includes(index) && programDayIndex < programDays.length) {
             const dayData = programDays[programDayIndex++];
             return `
-                <div class="card rounded-lg p-4 border-l-4 border-amber-400">
+                <div class="card p-4 border-l-4 border-yellow-accent">
                     <p class="font-bold text-lg">${dayName}</p>
                     <p class="text-sm text-secondary truncate">${A(dayData.title)}</p>
                     <p class="text-xs mt-2 font-semibold bg-tertiary/80 rounded-full px-2 py-1 inline-block">${dayData.exercises.length} حرکت</p>
@@ -1173,7 +1160,7 @@ const renderWorkoutTab = (userData) => {
             `;
         } else {
             return `
-                <div class="card rounded-lg p-4 bg-tertiary/50">
+                <div class="card p-4 bg-tertiary/50">
                     <p class="font-bold text-lg">${dayName}</p>
                     <p class="text-sm text-secondary">استراحت</p>
                 </div>
@@ -1234,8 +1221,8 @@ const renderProfileTab = (username, userData) => {
         confirmBtn.disabled = !!userData.infoConfirmed;
         confirmBtn.innerHTML = userData.infoConfirmed ? '<i data-lucide="check-circle" class="w-5 h-5"></i> اطلاعات شما تایید شده است' : 'تایید و قفل کردن اطلاعات';
         if (userData.infoConfirmed) {
-            confirmBtn.classList.remove('!border-blue-500/30', '!bg-blue-500/10', '!text-blue-400', 'hover:!bg-blue-500/20');
-            confirmBtn.classList.add('!border-green-500/30', '!bg-green-500/10', '!text-green-400', 'cursor-not-allowed');
+            confirmBtn.classList.remove('!border-blue-500/30', '!bg-blue-500/10', '!text-accent', 'hover:!bg-blue-500/20');
+            confirmBtn.classList.add('!border-green-500/30', '!bg-green-500/10', '!text-green-accent', 'cursor-not-allowed');
         }
     }
 
@@ -1247,18 +1234,18 @@ const renderProfileTab = (username, userData) => {
     const n = userData.infoConfirmed ?? !1;
     const subStatusEl = document.createElement("div");
     if (latestPurchase) {
-        if (latestPurchase.fulfilled === !1) subStatusEl.className = "flex items-center gap-3 p-3 rounded-lg bg-blue-500/10 text-blue-400", subStatusEl.innerHTML = `<i data-lucide="loader" class="w-6 h-6 animate-spin"></i><div><p class="font-bold">پلن در انتظار آماده‌سازی</p><p class="text-sm">${A(latestPurchase.planName)}</p></div>`;
-        else subStatusEl.className = "flex items-center gap-3 p-3 rounded-lg bg-green-500/10 text-green-400", subStatusEl.innerHTML = `<i data-lucide="check-circle" class="w-6 h-6"></i><div><p class="font-bold">آخرین پلن دریافتی</p><p class="text-sm">${A(latestPurchase.planName)}</p></div>`
-    } else subStatusEl.className = "flex items-center gap-3 p-3 rounded-lg bg-gray-500/10 text-gray-400", subStatusEl.innerHTML = `<i data-lucide="alert-circle" class="w-6 h-6"></i><div><p class="font-bold">وضعیت پلن</p><p class="text-sm">بدون پلن فعال</p></div>`;
+        if (latestPurchase.fulfilled === !1) subStatusEl.className = "flex items-center gap-3 p-3 rounded-xl bg-blue-500/10 text-accent", subStatusEl.innerHTML = `<i data-lucide="loader" class="w-6 h-6 animate-spin"></i><div><p class="font-bold">پلن در انتظار آماده‌سازی</p><p class="text-sm">${A(latestPurchase.planName)}</p></div>`;
+        else subStatusEl.className = "flex items-center gap-3 p-3 rounded-xl bg-green-500/10 text-green-accent", subStatusEl.innerHTML = `<i data-lucide="check-circle" class="w-6 h-6"></i><div><p class="font-bold">آخرین پلن دریافتی</p><p class="text-sm">${A(latestPurchase.planName)}</p></div>`
+    } else subStatusEl.className = "flex items-center gap-3 p-3 rounded-xl bg-gray-500/10 text-gray-400", subStatusEl.innerHTML = `<i data-lucide="alert-circle" class="w-6 h-6"></i><div><p class="font-bold">وضعیت پلن</p><p class="text-sm">بدون پلن فعال</p></div>`;
     r.appendChild(subStatusEl);
     const infoStatusEl = document.createElement("div");
-    infoStatusEl.className = `flex items-center gap-3 p-3 rounded-lg ${n?"bg-green-500/10 text-green-400":"bg-yellow-500/10 text-yellow-400"}`, infoStatusEl.innerHTML = `<i data-lucide="${n?"user-check":"user-cog"}" class="w-6 h-6"></i><div><p class="font-bold">وضعیت اطلاعات</p><p class="text-sm">${n?"تایید شده":"نیاز به تایید"}</p></div>`, r.appendChild(infoStatusEl);
+    infoStatusEl.className = `flex items-center gap-3 p-3 rounded-xl ${n?"bg-green-500/10 text-green-accent":"bg-yellow-500/10 text-yellow-accent"}`, infoStatusEl.innerHTML = `<i data-lucide="${n?"user-check":"user-cog"}" class="w-6 h-6"></i><div><p class="font-bold">وضعیت اطلاعات</p><p class="text-sm">${n?"تایید شده":"نیاز به تایید"}</p></div>`, r.appendChild(infoStatusEl);
     const subSelectionContainer = document.getElementById("subscription-selection-container"),
         hasUnfulfilledPurchase = latestPurchase && latestPurchase.fulfilled === !1;
     if (subSelectionContainer) subSelectionContainer.classList.toggle("hidden", hasUnfulfilledPurchase);
     if (hasUnfulfilledPurchase) {
         const c = document.getElementById("waiting-for-plan-notice-container")!;
-        c.innerHTML = `<div class="card p-6 text-center bg-blue-500/10 text-blue-300 rounded-xl"><i data-lucide="info" class="w-8 h-8 mx-auto mb-3"></i><p class="font-bold">شما یک پلن در انتظار آماده‌سازی توسط مربی دارید.</p><p class="text-sm text-secondary">به محض آماده شدن به شما اطلاع‌رسانی خواهد شد.</p></div>`
+        c.innerHTML = `<div class="card p-6 text-center bg-blue-500/10 text-accent rounded-2xl"><i data-lucide="info" class="w-8 h-8 mx-auto mb-3"></i><p class="font-bold">شما یک پلن در انتظار آماده‌سازی توسط مربی دارید.</p><p class="text-sm text-secondary">به محض آماده شدن به شما اطلاع‌رسانی خواهد شد.</p></div>`
     }
     window.lucide?.createIcons();
 
@@ -1364,7 +1351,7 @@ function de(e, t) {
     }
     window.lucide?.createIcons();
     const initialTab = t.infoConfirmed ? 'dashboard' : 'profile';
-    switchUserDashboardTab(initialTab);
+    setTimeout(() => switchUserDashboardTab(initialTab), 50);
     if (!t.infoConfirmed) {
         setTimeout(() => {
             w('خوش آمدید! لطفا پروفایل خود را تکمیل کنید.');
@@ -1381,18 +1368,34 @@ function fe(e) {
 }
 
 const switchUserDashboardTab = (e) => {
+    const tabsContainer = document.getElementById("user-dashboard-tabs")!;
+    const indicator = document.getElementById("tab-indicator") as HTMLElement;
+    let activeTab: HTMLElement | null = null;
+
     document.querySelectorAll(".user-dashboard-tab").forEach(s => {
-        const r = s.getAttribute("data-tab") === e;
-        s.classList.toggle("active-spring-tab", r), s.classList.toggle("text-secondary", !r), s.classList.toggle("border-transparent", !r)
+        const tab = s as HTMLElement;
+        const r = tab.getAttribute("data-tab") === e;
+        tab.classList.toggle("active-spring-tab", r);
+        if (r) {
+            activeTab = tab;
+        }
     });
+    
+    if (activeTab && indicator && tabsContainer) {
+        const containerRect = tabsContainer.getBoundingClientRect();
+        const tabRect = activeTab.getBoundingClientRect();
+        indicator.style.width = `${tabRect.width}px`;
+        indicator.style.left = `${tabRect.left - containerRect.left}px`;
+    }
+
     document.querySelectorAll(".user-dashboard-tab-content").forEach(s => {
         s.classList.toggle("hidden", s.id !== `${e}-tab-content`)
     });
+
     const t = localStorage.getItem("fitgympro_last_user");
     if (t && f !== "admin") {
         const s = D(t);
         if (e === "dashboard") {
-            Xe(s.weightHistory, 'weight-progress-chart-small', 'no-chart-data', true);
             Xe(s.weightHistory, "weight-progress-chart", "no-chart-data");
         }
     }
@@ -1455,7 +1458,7 @@ const renderSparkline = (e, t) => {
     const r = [...t].sort((c, g) => new Date(c.date).getTime() - new Date(g.date).getTime()).slice(-30),
         a = r.map(c => new Date(c.date).toLocaleDateString("fa-IR")),
         n = r.map(c => c.weight),
-        o = n[n.length - 1] > n[0] ? "#22c55e" : "#ef4444",
+        o = n[n.length - 1] > n[0] ? "var(--green-accent)" : "var(--red-accent)",
         m = document.documentElement.getAttribute("data-theme") === "dark",
         d = m ? "#e2e8f0" : "#111827";
     new window.Chart(s.getContext("2d"), {
@@ -1495,16 +1498,16 @@ const renderSparkline = (e, t) => {
 }, getUserStatus = e => {
     if (!e.workoutHistory || e.workoutHistory.length === 0) return {
         text: "جدید",
-        className: "bg-blue-500/20 text-blue-400"
+        className: "bg-blue-500/20 text-accent"
     };
     const t = e.workoutHistory.sort((r, a) => new Date(a.date).getTime() - new Date(r.date).getTime())[0].date,
         s = (new Date().getTime() - new Date(t).getTime()) / 864e5;
     return s > 7 ? {
         text: "نیاز به توجه",
-        className: "bg-red-500/20 text-red-400"
+        className: "bg-red-500/20 text-red-accent"
     } : {
         text: "در مسیر پیشرفت",
-        className: "bg-green-500/20 text-green-400"
+        className: "bg-green-500/20 text-green-accent"
     }
 }, se = () => {
     var a;
@@ -1538,7 +1541,7 @@ const renderSparkline = (e, t) => {
         const o = document.createElement("div");
         const d = D(n.username);
         const c = getUserStatus(d);
-        o.className = "card p-4 rounded-xl space-y-4 flex flex-col";
+        o.className = "card p-4 space-y-4 flex flex-col";
         o.dataset.username = n.username;
         o.innerHTML = `
             <div class="flex justify-between items-start">
@@ -1554,7 +1557,7 @@ const renderSparkline = (e, t) => {
             <div class="flex-1 h-12 w-full"><canvas id="spark-${n.username}"></canvas></div>
             <div class="flex items-center gap-2 pt-3 border-t border-border-primary">
                 <button class="load-user-btn secondary-button !font-bold !py-2 !px-4 rounded-lg flex-1" data-username="${A(n.username)}">بارگذاری</button>
-                <button class="remove-user-btn text-red-500 hover:bg-red-500/10 p-3 rounded-lg" data-username="${A(n.username)}" title="حذف کاربر"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                <button class="remove-user-btn text-red-accent hover:bg-red-500/10 p-3 rounded-lg" data-username="${A(n.username)}" title="حذف کاربر"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
             </div>
         `;
         e.appendChild(o);
@@ -1592,7 +1595,7 @@ const renderSparkline = (e, t) => {
     }
     a.forEach(o => {
         const m = document.createElement("div");
-        m.className = "flex items-center justify-between p-3 rounded-lg bg-tertiary/50 text-sm", m.innerHTML = `
+        m.className = "flex items-center justify-between p-3 rounded-xl bg-tertiary/50 text-sm", m.innerHTML = `
             <p>${A(o.message)}</p>
             <p class="text-secondary flex-shrink-0">${lt(o.date)}</p>
         `, n.appendChild(m)
@@ -1817,7 +1820,7 @@ const renderAdminConversationsList = () => {
         div.innerHTML = `
             <div class="flex justify-between items-center">
                 <span class="font-bold">${A(username)}</span>
-                ${data.hasNewMessageForCoach ? '<span class="w-3 h-3 bg-blue-500 rounded-full"></span>' : ''}
+                ${data.hasNewMessageForCoach ? '<span class="w-3 h-3 bg-accent rounded-full"></span>' : ''}
             </div>
             <p class="text-sm text-secondary truncate">${A(lastMessage.message)}</p>
         `;
@@ -1890,7 +1893,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const s = e.currentTarget as HTMLButtonElement;
         s.innerHTML = t === "dark" ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>', window.lucide?.createIcons();
         const r = D(f);
-        t && f !== "admin" && (Xe(r.weightHistory, "weight-progress-chart", "no-chart-data"), Xe(r.weightHistory, 'weight-progress-chart-small', 'no-chart-data', true))
+        t && f !== "admin" && (Xe(r.weightHistory, "weight-progress-chart", "no-chart-data"))
     };
     T?.addEventListener("click", Y);
     const Z = localStorage.getItem("fitgympro_last_user");
@@ -2080,6 +2083,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (t.classList.contains("muscle-group-select")) {
             const s = t.closest(".exercise-row")?.querySelector(".exercise-select");
             s && pe((t as HTMLSelectElement).value, s as HTMLSelectElement)
+        }
+        if (t.closest('input[type="radio"]')) {
+            updateRadioCardSelection(t.closest("form")!);
         }
     });
     document.getElementById("program-builder-form")?.addEventListener("input", e => {
@@ -2439,7 +2445,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const t = e.target as HTMLInputElement;
             if (["gender_user", "activity_level_user"].some(s => t.name === s)) he(profilePanel as HTMLElement);
             if (t.name === "gender_user") xe(profilePanel as HTMLElement);
-            (t.closest('input[type="radio"]'))?.name && updateRadioCardSelection(profilePanel);
+            (t.closest('input[type="radio"]')) && updateRadioCardSelection(profilePanel);
         });
         profilePanel.querySelector(".profile-pic-input")?.addEventListener("change", e => {
             const t = (e.target as HTMLInputElement).files?.[0];
