@@ -19,7 +19,7 @@
     <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdn.jsdelivr/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     
     <!-- GenAI Module Preload -->
     <link rel="modulepreload" href="https://esm.run/@google/genai">
@@ -356,6 +356,16 @@
         }
         .admin-nav-btn span { font-size: 0.75rem; font-weight: 600; margin-top: 0.25rem; }
 
+        /* Shake Animation for Validation */
+        @keyframes shake {
+          10%, 90% { transform: translate3d(-1px, 0, 0); }
+          20%, 80% { transform: translate3d(2px, 0, 0); }
+          30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+          40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .shake-animation {
+          animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
     </style>
 </head>
 <body class="antialiased min-h-screen">
@@ -399,7 +409,7 @@
                         <!-- Login Form -->
                         <div id="login-form-container" class="form-container">
                             <h2 class="font-bold text-2xl text-center mb-6">خوش آمدید!</h2>
-                            <form id="login-form" class="space-y-4">
+                            <form id="login-form" class="space-y-4" novalidate>
                                 <div class="input-group">
                                     <i data-lucide="user" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary pointer-events-none"></i>
                                     <input id="login-username" type="text" class="input-field w-full !pr-10" placeholder=" " required>
@@ -439,7 +449,7 @@
                         <!-- Signup Form -->
                         <div id="signup-form-container" class="form-container is-inactive">
                             <h2 class="font-bold text-2xl text-center mb-6">ایجاد حساب کاربری</h2>
-                            <form id="signup-form" class="space-y-2">
+                            <form id="signup-form" class="space-y-2" novalidate>
                                 <div class="input-group">
                                     <i data-lucide="user" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary pointer-events-none"></i>
                                     <input id="signup-username" type="text" class="input-field w-full !pr-10" placeholder=" " required minlength="3">
@@ -474,7 +484,7 @@
                         <div id="forgot-password-form-container" class="form-container is-inactive">
                             <h2 class="font-bold text-2xl text-center mb-6">بازیابی رمز عبور</h2>
                             <p class="text-center text-sm text-secondary mb-6">ایمیل خود را وارد کنید تا لینک بازیابی رمز عبور برایتان ارسال شود.</p>
-                            <form id="forgot-password-form" class="space-y-4">
+                            <form id="forgot-password-form" class="space-y-4" novalidate>
                                 <div class="input-group">
                                     <i data-lucide="at-sign" class="absolute top-1/2 right-3 -translate-y-1/2 w-5 h-5 text-secondary pointer-events-none"></i>
                                     <input id="forgot-email" type="email" class="input-field w-full !pr-10" placeholder=" " required>
@@ -581,8 +591,8 @@
                                 <input type="range" min="40" max="150" value="80" step="0.5" class="range-slider weight-slider">
                             </div>
                             <div class="space-y-2">
-                                <h3 class="font-bold">جنسیت</h3>
-                                <div class="grid grid-cols-2 gap-2">
+                                <h3 class="font-bold text-lg">جنسیت</h3>
+                                <div class="grid grid-cols-2 gap-2 text-base">
                                      <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-gender-male"><input type="radio" name="gender" value="مرد" class="gender sr-only" checked>مرد</label>
                                      <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-gender-female"><input type="radio" name="gender" value="زن" class="gender sr-only">زن</label>
                                 </div>
@@ -595,31 +605,30 @@
                                    <input type="number" class="hip-input input-field w-full" placeholder="دور باسن (cm)">
                                </div>
                             </div>
-
+                             <!-- Activity Level -->
+                            <div class="md:col-span-2 space-y-2">
+                                <h3 class="font-bold text-lg mb-1">سطح فعالیت روزانه</h3>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-base">
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.2">بدون فعالیت</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.375">کم (۱-۳ روز)</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.55" checked>متوسط (۳-۵ روز)</label>
+                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.725">زیاد (۶-۷ روز)</label>
+                                </div>
+                            </div>
                             <!-- Training Goal -->
                             <div class="md:col-span-2 space-y-2">
-                                <h3 class="font-bold">هدف تمرینی</h3>
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                <h3 class="font-bold text-lg mb-1">هدف تمرینی</h3>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-base">
                                      <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-goal-bulk"><input type="radio" name="training_goal" class="training-goal sr-only" value="افزایش حجم">افزایش حجم</label>
                                      <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-goal-loss"><input type="radio" name="training_goal" class="training-goal sr-only" value="کاهش وزن">کاهش وزن</label>
                                      <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-goal-fitness"><input type="radio" name="training_goal" class="training-goal sr-only" value="فیتنس">فیتنس</label>
                                      <label class="card text-center p-3 rounded-lg cursor-pointer transition-all card-goal-strength"><input type="radio" name="training_goal" class="training-goal sr-only" value="قدرت">قدرت</label>
                                 </div>
                             </div>
-                             <!-- Activity Level -->
-                            <div class="md:col-span-2 space-y-2">
-                                <h3 class="font-bold">سطح فعالیت روزانه</h3>
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.2">بدون فعالیت</label>
-                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.375">کم (۱-۳ روز)</label>
-                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.55" checked>متوسط (۳-۵ روز)</label>
-                                     <label class="card text-center p-3 rounded-lg cursor-pointer transition-all text-sm card-activity"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.725">زیاد (۶-۷ روز)</label>
-                                </div>
-                            </div>
                             <!-- Training Days -->
                             <div class="md:col-span-2 space-y-2">
-                                <h3 class="font-bold">تعداد روزهای تمرین در هفته</h3>
-                                <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
+                                <h3 class="font-bold text-lg mb-1">تعداد روزهای تمرین در هفته</h3>
+                                <div class="grid grid-cols-3 md:grid-cols-6 gap-2 text-base">
                                     <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days" class="training-days sr-only" value="1">۱</label>
                                     <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days" class="training-days sr-only" value="2">۲</label>
                                     <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days" class="training-days sr-only" value="3">۳</label>
@@ -799,6 +808,12 @@
                                     <button type="submit" class="primary-button !px-4"><i data-lucide="plus"></i></button>
                                 </form>
                             </div>
+                             <div class="card rounded-lg p-4">
+                                <h3 class="font-bold text-lg mb-4">تاریخچه خریدها</h3>
+                                <div id="subscription-history-container" class="space-y-3 max-h-96 overflow-y-auto">
+                                    <!-- Subscription history will be injected here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -869,7 +884,7 @@
                 </div>
     
                 <!-- Profile Tab -->
-                <div id="profile-tab-content" class="user-dashboard-tab-content hidden max-w-4xl mx-auto">
+                <div id="profile-tab-content" class="user-dashboard-tab-content hidden max-w-6xl mx-auto">
                     <div id="profile-completion-notice" class="hidden bg-yellow-500/10 border-r-4 border-yellow-500 text-yellow-200 p-4 mb-6 rounded-lg" role="alert">
                         <div class="flex items-center">
                             <i data-lucide="alert-triangle" class="w-8 h-8 text-yellow-400 mr-4 flex-shrink-0"></i>
@@ -879,8 +894,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="space-y-6 lg:col-span-1">
                             <div class="card rounded-xl p-6 key-vitals-container">
                                 <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="bar-chart-3" class="text-green-400"></i>شاخص‌های شما</h3>
                                 <div class="space-y-3 text-sm">
@@ -896,80 +911,120 @@
                                 <h3 class="font-bold text-lg mb-4">وضعیت حساب</h3>
                                 <div id="dashboard-status-container" class="space-y-3 mb-4"></div>
                                  <div class="space-y-3">
-                                     <button id="confirm-info-btn" class="w-full secondary-button !border-blue-500/30 !bg-blue-500/10 !text-blue-400 hover:!bg-blue-500/20">تایید و قفل کردن اطلاعات</button>
-                                     <button id="pay-program-btn" class="w-full green-button">پرداخت و فعالسازی برنامه</button>
+                                     <button id="confirm-info-btn" class="w-full secondary-button !border-blue-500/30 !bg-blue-500/10 !text-blue-400 hover:!bg-blue-500/20 flex items-center justify-center gap-2">تایید و قفل کردن اطلاعات</button>
                                  </div>
                             </div>
                         </div>
-                         <div id="dashboard-profile-panel" class="card rounded-lg p-4 space-y-4">
-                            <div class="flex flex-col items-center gap-2">
-                                <label for="profile-pic-upload-user" class="cursor-pointer">
-                                    <img class="profile-pic-preview w-24 h-24 rounded-full object-cover border-4 border-border-primary" src="https://placehold.co/100x100/374151/E5E7EB?text=عکس" alt="Profile">
-                                </label>
-                                <input type="file" id="profile-pic-upload-user" class="profile-pic-input hidden" accept="image/*">
-                                <input type="text" class="client-name-input input-field w-full text-center font-bold text-lg" placeholder="نام شما">
-                            </div>
-                             <input type="email" class="client-email-input input-field w-full text-center" placeholder="ایمیل شما">
-                            <div class="realtime-visualizers"></div>
-                            <div class="space-y-4 pt-4 border-t border-border-primary">
-                                <div class="space-y-2">
-                                    <label class="font-semibold text-sm">قد (cm): <span class="height-value font-bold text-pink-400">180 cm</span></label>
-                                    <input type="range" min="140" max="220" value="180" class="range-slider height-slider">
-                                </div>
-                                 <div class="space-y-2">
-                                    <label class="font-semibold text-sm">وزن (kg): <span class="weight-value font-bold text-amber-400">80 kg</span></label>
-                                    <input type="range" min="40" max="150" value="80" step="0.5" class="range-slider weight-slider">
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="font-semibold text-sm">سن: <span class="age-value font-bold text-orange-400">25</span></label>
-                                    <input type="range" min="15" max="80" value="25" class="range-slider age-slider">
-                                </div>
-                                <div class="space-y-2">
-                                    <h3 class="font-semibold text-sm">جنسیت</h3>
-                                    <div class="grid grid-cols-2 gap-2">
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-gender-male"><input type="radio" name="gender_user" value="مرد" class="gender sr-only">مرد</label>
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-gender-female"><input type="radio" name="gender_user" value="زن" class="gender sr-only">زن</label>
+                        <div id="dashboard-profile-panel" class="card rounded-lg p-6 lg:col-span-2">
+                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                                <div class="xl:col-span-1 space-y-4">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <label for="profile-pic-upload-user" class="cursor-pointer">
+                                            <img class="profile-pic-preview w-24 h-24 rounded-full object-cover border-4 border-border-primary" src="https://placehold.co/100x100/374151/E5E7EB?text=عکس" alt="Profile">
+                                        </label>
+                                        <input type="file" id="profile-pic-upload-user" class="profile-pic-input hidden" accept="image/*">
+                                        <input type="text" class="client-name-input input-field w-full text-center font-bold text-lg" placeholder="نام شما">
                                     </div>
+                                    <input type="email" class="client-email-input input-field w-full text-center" placeholder="ایمیل شما">
+                                     <div class="realtime-visualizers space-y-4"></div>
                                 </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                   <input type="number" class="neck-input input-field text-sm" placeholder="گردن (cm)">
-                                   <input type="number" class="waist-input input-field text-sm" placeholder="کمر (cm)">
-                                   <div class="hip-input-container hidden">
-                                       <input type="number" class="hip-input input-field w-full text-sm" placeholder="باسن (cm)">
-                                   </div>
-                                </div>
-                                <div class="space-y-2">
-                                    <h3 class="font-semibold text-sm">هدف تمرینی</h3>
-                                    <div class="grid grid-cols-2 gap-2">
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-goal-bulk"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="افزایش حجم">افزایش حجم</label>
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-goal-loss"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="کاهش وزن">کاهش وزن</label>
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-goal-fitness"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="فیتنس">فیتنس</label>
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-goal-strength"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="قدرت">قدرت</label>
+                                <div class="space-y-4 xl:col-span-2">
+                                    <div class="space-y-2">
+                                        <label class="font-semibold text-sm">سن: <span class="age-value font-bold text-orange-400">25</span></label>
+                                        <input type="range" min="15" max="80" value="25" class="range-slider age-slider">
                                     </div>
-                                </div>
-                                <div class="space-y-2">
-                                    <h3 class="font-semibold text-sm">سطح فعالیت روزانه</h3>
-                                    <div class="grid grid-cols-2 gap-2">
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.2">بدون فعالیت</label>
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.375">کم</label>
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.55">متوسط</label>
-                                         <label class="card text-center p-2 rounded-lg cursor-pointer transition-all text-xs card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.725">زیاد</label>
+                                    <div class="space-y-2">
+                                        <label class="font-semibold text-sm">قد (cm): <span class="height-value font-bold text-pink-400">180 cm</span></label>
+                                        <input type="range" min="140" max="220" value="180" class="range-slider height-slider">
                                     </div>
-                                </div>
-                                <div class="space-y-2">
-                                    <h3 class="font-semibold text-sm">روزهای تمرین در هفته</h3>
-                                    <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="1">۱</label>
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="2">۲</label>
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="3">۳</label>
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="4">۴</label>
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="5">۵</label>
-                                        <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="6">۶</label>
+                                     <div class="space-y-2">
+                                        <label class="font-semibold text-sm">وزن (kg): <span class="weight-value font-bold text-amber-400">80 kg</span></label>
+                                        <input type="range" min="40" max="150" value="80" step="0.5" class="range-slider weight-slider">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <h3 class="font-semibold text-base mb-1">سطح فعالیت روزانه</h3>
+                                        <div class="grid grid-cols-2 gap-2 text-sm">
+                                             <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.2">بدون فعالیت</label>
+                                             <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.375">کم</label>
+                                             <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.55">متوسط</label>
+                                             <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-activity"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.725">زیاد</label>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <h3 class="font-semibold text-base mb-1">جنسیت</h3>
+                                        <div class="grid grid-cols-2 gap-2 text-sm">
+                                             <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-gender-male"><input type="radio" name="gender_user" value="مرد" class="gender sr-only">مرد</label>
+                                             <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-gender-female"><input type="radio" name="gender_user" value="زن" class="gender sr-only">زن</label>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                       <input type="number" class="neck-input input-field text-sm" placeholder="گردن (cm)">
+                                       <input type="number" class="waist-input input-field text-sm" placeholder="کمر (cm)">
+                                       <div class="hip-input-container hidden">
+                                           <input type="number" class="hip-input input-field w-full text-sm" placeholder="باسن (cm)">
+                                       </div>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <h3 class="font-semibold text-base mb-1">هدف تمرینی</h3>
+                                        <div class="grid grid-cols-2 gap-2 text-sm">
+                                             <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-goal-bulk"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="افزایش حجم">افزایش حجم</label>
+                                             <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-goal-loss"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="کاهش وزن">کاهش وزن</label>
+                                             <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-goal-fitness"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="فیتنس">فیتنس</label>
+                                             <label class="card text-center p-2 rounded-lg cursor-pointer transition-all card-goal-strength"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="قدرت">قدرت</label>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <h3 class="font-semibold text-base mb-1">روزهای تمرین در هفته</h3>
+                                        <div class="grid grid-cols-3 md:grid-cols-6 gap-2 text-sm">
+                                            <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="1">۱</label>
+                                            <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="2">۲</label>
+                                            <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="3">۳</label>
+                                            <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="4">۴</label>
+                                            <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="5">۵</label>
+                                            <label class="card text-center py-2 px-3 rounded-lg cursor-pointer transition-all card-days"><input type="radio" name="training_days_user" class="training-days sr-only" value="6">۶</label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                     <div id="subscription-selection-container" class="space-y-6 mt-6">
+                        <h3 class="text-xl font-bold text-center">برای شروع، یکی از پلن‌های زیر را انتخاب کنید</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Plan 1: Workout -->
+                            <div class="card rounded-xl p-6 text-center border-2 border-transparent hover:border-blue-400 transition-all flex flex-col justify-between">
+                                <div class="flex-1">
+                                    <i data-lucide="dumbbell" class="w-12 h-12 mx-auto text-blue-400"></i>
+                                    <h4 class="text-xl font-bold mt-4">برنامه تمرینی</h4>
+                                    <p class="text-secondary text-sm mt-2 mb-4 h-20">دریافت یک برنامه تمرینی کاملا شخصی‌سازی شده بر اساس اهداف و مشخصات بدنی شما.</p>
+                                    <p class="text-3xl font-extrabold my-4">250<span class="text-base font-medium">,000 تومان</span></p>
+                                </div>
+                                <button class="select-plan-btn secondary-button w-full mt-4" data-plan-type="workout" data-plan-name="برنامه تمرینی اختصاصی" data-price="250000">دریافت برنامه تمرینی</button>
+                            </div>
+                            <!-- Plan 2: Full Package (Recommended) -->
+                            <div class="card rounded-xl p-6 text-center border-2 border-amber-400 relative overflow-hidden ring-4 ring-amber-400/20 flex flex-col justify-between">
+                                 <div class="absolute top-2 -right-10 bg-amber-400 text-black text-xs font-bold px-10 py-1 transform rotate-45">پیشنهادی</div>
+                                 <div class="flex-1">
+                                    <i data-lucide="star" class="w-12 h-12 mx-auto text-amber-400"></i>
+                                    <h4 class="text-xl font-bold mt-4 text-amber-400">پکیج کامل</h4>
+                                    <p class="text-secondary text-sm mt-2 mb-4 h-20">بهترین انتخاب! شامل برنامه تمرین و تغذیه اختصاصی با تخفیف ویژه برای نتیجه‌گیری حداکثری.</p>
+                                    <p class="text-3xl font-extrabold my-4">400<span class="text-base font-medium">,000 تومان</span></p>
+                                </div>
+                                <button class="select-plan-btn primary-button w-full mt-4" data-plan-type="full_package" data-plan-name="پکیج کامل (تمرین + تغذیه)" data-price="400000">دریافت پکیج کامل</button>
+                            </div>
+                            <!-- Plan 3: Nutrition -->
+                            <div class="card rounded-xl p-6 text-center border-2 border-transparent hover:border-green-400 transition-all flex flex-col justify-between">
+                                <div class="flex-1">
+                                    <i data-lucide="utensils-crossed" class="w-12 h-12 mx-auto text-green-400"></i>
+                                    <h4 class="text-xl font-bold mt-4">برنامه تغذیه</h4>
+                                    <p class="text-secondary text-sm mt-2 mb-4 h-20">برنامه غذایی دقیق و متنوع، تولید شده توسط هوش مصنوعی و بازبینی شده توسط مربی.</p>
+                                    <p class="text-3xl font-extrabold my-4">200<span class="text-base font-medium">,000 تومان</span></p>
+                                </div>
+                                <button class="select-plan-btn secondary-button w-full mt-4" data-plan-type="nutrition" data-plan-name="برنامه تغذیه هوشمند" data-price="200000">دریافت برنامه تغذیه</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="waiting-for-plan-notice-container"></div>
                 </div>
 
                 <!-- Contact Tab -->
@@ -977,8 +1032,7 @@
                     <div class="card rounded-2xl w-full max-w-2xl mx-auto p-6 sm:p-8">
                         <h2 class="text-2xl font-bold mb-6 text-center">تماس با پشتیبانی</h2>
                         <p class="text-secondary text-center mb-8">سوالی دارید یا به کمک نیاز دارید؟ فرم زیر را پر کنید تا با شما در تماس باشیم.</p>
-                        <form id="contact-form" name="contact" data-netlify="true">
-                            <input type="hidden" name="form-name" value="contact" />
+                        <form id="contact-form" name="contact" netlify>
                             <div class="space-y-6">
                                 <div>
                                     <label for="contact-name" class="font-semibold mb-2 block">نام شما</label>
@@ -1054,7 +1108,7 @@
                     <div id="admin-dashboard-content" class="admin-tab-content p-6">
                          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div class="card p-4 rounded-lg"><p class="text-secondary text-sm">کل شاگردان</p><p id="total-users-stat" class="font-bold text-3xl">0</p></div>
-                            <div class="card p-4 rounded-lg"><p class="text-secondary text-sm">پرداخت نشده</p><p id="unpaid-users-stat" class="font-bold text-3xl text-red-400">0</p></div>
+                            <div class="card p-4 rounded-lg"><p class="text-secondary text-sm">در انتظار برنامه</p><p id="awaiting-plan-users-stat" class="font-bold text-3xl text-red-400">0</p></div>
                             <div class="card p-4 rounded-lg"><p class="text-secondary text-sm">اطلاعات ناقص</p><p id="unconfirmed-users-stat" class="font-bold text-3xl text-yellow-400">0</p></div>
                             <div class="card p-4 rounded-lg"><p class="text-secondary text-sm">شاگردان فعال</p><p id="active-users-stat" class="font-bold text-3xl text-green-400">0</p></div>
                         </div>
@@ -1082,7 +1136,7 @@
                             <input type="search" id="admin-user-search" placeholder="جستجوی شاگرد..." class="input-field w-full max-w-sm">
                             <div id="user-filter-btn-group" class="flex flex-wrap gap-2 text-sm">
                                 <button data-filter="all" class="user-filter-btn secondary-button !px-3 !py-1 active">همه</button>
-                                <button data-filter="unpaid" class="user-filter-btn secondary-button !px-3 !py-1">پرداخت نشده</button>
+                                <button data-filter="awaiting-plan" class="user-filter-btn secondary-button !px-3 !py-1">در انتظار برنامه</button>
                                 <button data-filter="unconfirmed" class="user-filter-btn secondary-button !px-3 !py-1">تایید نشده</button>
                                 <button data-filter="inactive" class="user-filter-btn secondary-button !px-3 !py-1">نیاز به توجه</button>
                             </div>
@@ -1185,46 +1239,49 @@
                 <select class="exercise-select input-field md:col-span-2"></select>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
-                 <div class="space-y-2">
-                    <div class="flex justify-between text-sm"><label>ست</label><span class="set-value font-bold">4</span></div>
-                    <input type="range" min="1" max="10" value="4" class="range-slider set-slider">
+                <div>
+                    <label class="text-sm font-semibold text-secondary">ست: <span class="font-bold text-primary">4</span></label>
+                    <input type="range" min="1" max="10" value="4" class="range-slider set-slider mt-1">
                 </div>
-                 <div class="space-y-2">
-                    <div class="flex justify-between text-sm"><label>تکرار</label><span class="rep-value font-bold">12</span></div>
-                    <input type="range" min="1" max="30" value="12" class="range-slider rep-slider">
+                <div>
+                    <label class="text-sm font-semibold text-secondary">تکرار: <span class="font-bold text-primary">12</span></label>
+                    <input type="range" min="1" max="50" value="12" class="range-slider rep-slider mt-1">
                 </div>
-                 <div class="space-y-2">
-                    <div class="flex justify-between text-sm"><label>استراحت</label><span class="rest-value font-bold">60s</span></div>
-                    <input type="range" min="15" max="180" value="60" step="15" class="range-slider rest-slider">
+                 <div>
+                    <label class="text-sm font-semibold text-secondary">استراحت (s): <span class="font-bold text-primary">60</span></label>
+                    <input type="range" min="10" max="180" value="60" step="5" class="range-slider rest-slider mt-1">
                 </div>
             </div>
-            <div class="flex justify-end items-center gap-2 border-t border-border-primary/50 pt-2">
-                <button type="button" class="superset-btn text-xs font-semibold text-secondary hover:text-amber-400 p-2 rounded-md flex items-center gap-1"><i data-lucide="layers"></i>سوپرست</button>
-                <button type="button" class="remove-exercise-btn text-xs font-semibold text-secondary hover:text-red-400 p-2 rounded-md flex items-center gap-1"><i data-lucide="trash-2" class="w-4 h-4"></i>حذف</button>
-            </div>
+             <div class="flex items-center justify-end gap-2 pt-2 border-t border-border-secondary">
+                <button type="button" class="superset-btn p-2 text-secondary hover:text-amber-400 rounded-lg hover:bg-amber-400/10" title="افزودن به سوپرست"><i data-lucide="link"></i></button>
+                <button type="button" class="remove-exercise-btn p-2 text-secondary hover:text-red-400 rounded-lg hover:bg-red-400/10" title="حذف حرکت"><i data-lucide="trash-2"></i></button>
+             </div>
         </div>
     </template>
     
     <template id="exercise-log-template">
-        <div class="exercise-log-item bg-tertiary/50 p-3 rounded-lg">
-            <h4 class="font-bold border-b border-border-primary pb-2 mb-2"></h4>
+        <div class="exercise-log-item bg-tertiary/50 rounded-lg p-3">
+            <h4 class="font-bold mb-3"></h4>
             <div class="sets-log-container space-y-2">
-                <!-- Set rows will be injected here -->
+                <!-- Set log rows will be injected here -->
             </div>
         </div>
     </template>
 
     <template id="set-log-row-template">
         <div class="set-log-row grid grid-cols-12 gap-2 items-center text-sm">
-            <span class="col-span-2 font-semibold text-secondary"></span>
+            <span class="col-span-2 font-semibold">ست ۱</span>
             <input type="number" class="weight-log-input input-field col-span-4" placeholder="وزنه (kg)">
+            <span class="col-span-1 text-center text-secondary">x</span>
             <input type="number" class="reps-log-input input-field col-span-4" placeholder="تکرار">
-            <button type="button" class="add-set-btn text-green-500 hover:bg-green-500/10 p-2 rounded-md col-span-2"><i data-lucide="plus-circle" class="w-5 h-5 mx-auto"></i></button>
+            <div class="col-span-1 text-center">
+                 <button type="button" class="add-set-btn text-green-400 hover:bg-green-400/10 p-1 rounded-full"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>
+            </div>
         </div>
     </template>
 
 
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
 
 </body>
 </html>
