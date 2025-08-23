@@ -94,6 +94,9 @@
         .purple-button { background-color: var(--purple-accent); color: white; font-weight: 600; padding: 0.8rem 1.5rem; border-radius: var(--radius-btn); transition: all 0.2s; }
         .purple-button:hover:not(:disabled) { background-color: #9646c8; transform: translateY(-2px); }
 
+        .yellow-button { background-color: var(--yellow-accent); color: #111827; font-weight: 600; padding: 0.8rem 1.5rem; border-radius: var(--radius-btn); transition: all 0.2s; }
+        .yellow-button:hover:not(:disabled) { background-color: #e6b800; transform: translateY(-2px); }
+
         .is-loading { position: relative; color: transparent !important; pointer-events: none; }
         .is-loading::after { content: ''; display: block; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.3); border-top-color: #fff; animation: spin 1s linear infinite; }
         .is-loading.secondary::after { border: 3px solid rgba(0, 0, 0, 0.3); border-top-color: var(--text-primary); }
@@ -385,7 +388,7 @@
                                     </button>
                                     <div class="validation-message"></div>
                                 </div>
-                                <button type="submit" class="green-button w-full !py-3 !text-base mt-2">ثبت نام</button>
+                                <button type="submit" class="yellow-button w-full !py-3 !text-base mt-2">ثبت نام</button>
                             </form>
                              <p class="text-center text-sm text-secondary mt-6">
                                 قبلا ثبت نام کرده‌اید؟
