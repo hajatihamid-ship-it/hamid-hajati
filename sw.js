@@ -2,7 +2,7 @@
 
 // Service Worker for FitGymPro PWA
 
-const CACHE_NAME = 'fitgympro-v14'; // Increment version to force update
+const CACHE_NAME = 'fitgympro-v15'; // Increment version to force update
 const urlsToCache = [
   '/',
   '/index.html',
