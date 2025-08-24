@@ -2,14 +2,12 @@
 
 // Service Worker for FitGymPro PWA
 
-const CACHE_NAME = 'fitgympro-v15'; // Increment version to force update
+const CACHE_NAME = 'fitgympro-v17'; // Increment version to force update
 const urlsToCache = [
   '/',
   '/index.html',
   '/index.tsx', // The browser will resolve this to the compiled JS
   '/manifest.json',
-  '/en.json',
-  '/fa.json',
   'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap'
 ];
 

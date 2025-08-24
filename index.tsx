@@ -34,7 +34,7 @@ declare global {
 
     function s(a: HTMLLinkElement) {
         const n: RequestInit = {};
-        return a.integrity && (n.integrity = a.integrity), a.referrerPolicy && (n.referrerPolicy = a.referrerPolicy as ReferrerPolicy), a.crossOrigin === "use-credentials" ? n.credentials = "include" : a.crossOrigin === "anonymous" ? n.credentials = "omit" : n.credentials = "same-origin", n
+        return a.integrity && (n.integrity = a.integrity), a.referrerPolicy && (n.referrerPolicy as ReferrerPolicy), a.crossOrigin === "use-credentials" ? n.credentials = "include" : a.crossOrigin === "anonymous" ? n.credentials = "omit" : n.credentials = "same-origin", n
     }
 
     function r(a: HTMLLinkElement) {
@@ -184,6 +184,12 @@ const we = {
         note: "آداپتوژن برای کاهش استرس، بهبود ریکاوری و افزایش قدرت."
     }]
 };
+const STORE_PLANS = [
+    { planId: 'workout-1m', planName: 'برنامه تمرینی ۱ ماهه', description: 'دریافت برنامه تمرینی شخصی‌سازی شده برای یک ماه.', price: 150000, planType: 'workout', features: ['آنالیز بدن', 'برنامه تمرینی اختصاصی', 'پشتیبانی آنلاین'] },
+    { planId: 'nutrition-1m', planName: 'برنامه غذایی ۱ ماهه', description: 'دریافت برنامه غذایی متناسب با اهداف شما برای یک ماه.', price: 120000, planType: 'nutrition', features: ['آنالیز بدن', 'برنامه غذایی اختصاصی', 'پشتیبانی آنلاین'] },
+    { planId: 'full-1m', planName: 'پکیج کامل ۱ ماهه', description: 'برنامه تمرینی و غذایی همراه با پشتیبانی کامل برای یک ماه.', price: 250000, planType: 'full', features: ['آنالیز بدن', 'برنامه تمرینی و غذایی', 'پشتیبانی ویژه', 'چکاپ هفتگی'] },
+    { planId: 'full-3m', planName: 'پکیج کامل ۳ ماهه', description: 'پکیج کامل سه‌ماهه با تخفیف ویژه برای نتایج پایدار.', price: 650000, planType: 'full', features: ['همه موارد پکیج کامل', 'تخفیف ویژه سه‌ماهه', 'اولویت در پشتیبانی'] }
+];
 window.exerciseDB = we;
 let F = 1;
 const ue = 5;
@@ -191,200 +197,197 @@ let f: string | null = null,
     X: GoogleGenAI, ve: any = null,
     adminChartInstance: any = null,
     currentChatSession: Chat | null = null;
-const V = document.getElementById("user-selection-screen")!,
-    me = document.getElementById("main-app-container")!,
-    oe = document.getElementById("user-dashboard-container")!,
-    U = document.getElementById("admin-panel-modal")!,
-    je = document.getElementById("admin-panel-btn")!,
-    A = e => {
-        if (typeof e !== 'string') return '';
-        const t = document.createElement("div");
-        return t.textContent = e, t.innerHTML
-    },
-    w = (e, t = "success") => {
-        const s = document.getElementById("toast-container");
-        if (!s) return;
-        const r = document.createElement("div"),
-            a = t === "success" ? "check-circle" : "alert-triangle",
-            n = t === "success" ? "bg-green-500 border-green-600" : "bg-red-500 border-red-600";
-        r.className = `flex items-center gap-3 ${n} text-white py-3 px-5 rounded-lg shadow-xl border-b-4 transform opacity-0 translate-x-full`, r.style.transition = "transform 0.5s ease, opacity 0.5s ease", r.innerHTML = `
-        <i data-lucide="${a}" class="w-6 h-6"></i>
-        <span>${A(e)}</span>
-    `, s.appendChild(r), window.lucide?.createIcons(), requestAnimationFrame(() => {
-            r.classList.remove("opacity-0", "translate-x-full")
-        }), setTimeout(() => {
-            r.classList.add("opacity-0"), r.style.transform = "translateX(120%)", r.addEventListener("transitionend", () => r.remove(), {
-                once: !0
-            })
-        }, 2e3)
-    },
-    ie = (e: HTMLInputElement) => {
-        if (!e) return;
-        const t = +e.min || 0,
-            s = +e.max || 100,
-            a = ((+e.value || 0) - t) / (s - t) * 100;
-        let n = "var(--accent)";
-        e.classList.contains("rep-slider") && (n = "var(--green-accent)"), e.classList.contains("rest-slider") && (n = "var(--purple-accent)"), e.classList.contains("age-slider") && (n = "var(--orange-accent)"), e.classList.contains("height-slider") && (n = "var(--pink-accent)"), e.classList.contains("weight-slider") && (n = "var(--yellow-accent)");
-        const o = getComputedStyle(document.documentElement).getPropertyValue("--range-track-bg").trim();
-        e.style.background = `linear-gradient(to left, ${n} ${a}%, ${o} ${a}%)`
-    },
-    Re = (e, t) => {
-        let s = e + t;
-        return s > 0 && s <= ue ? s : e
-    },
-    _e = () => {
-        document.querySelectorAll(".stepper-item").forEach((t, s) => {
-            const r = s + 1;
-            t.classList.toggle("active", r === F), t.classList.toggle("completed", r < F)
-        });
-        document.querySelectorAll(".form-section").forEach(t => t.classList.add("hidden"));
-        const e = document.getElementById(`section-${F}`);
-        if (e) e.classList.remove("hidden");
-        if (F === 4) Ue(ye(), "#program-sheet-container");
-        if (F === 5) Ue(ye(), "#program-sheet-container-step5");
-        (document.getElementById("prev-btn") as HTMLButtonElement).disabled = F === 1;
-        const t = document.getElementById("next-btn") as HTMLButtonElement;
-        t.disabled = F === ue, t.textContent = F === ue - 1 ? "برو به تغذیه" : "بعدی";
-        const s = document.getElementById("send-nutrition-btn"),
-            r = document.getElementById("send-program-btn"),
-            a = document.getElementById("save-changes-btn");
-        if (s && r && a) {
-            const n = F === 5;
-            s.classList.toggle("hidden", !n), r.classList.toggle("hidden", n), a.classList.toggle("hidden", n)
-        }
-    },
-    ne = e => {
-        var t;
-        e > 0 && e <= ue && (F = e, _e(), (t = document.getElementById("program-builder-form")) == null || t.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        }))
-    },
-    et = e => {
-        var t;
-        e.querySelector(".realtime-visualizers");
-        const s = e.closest("#profile-tab-content") || (e.id === "section-1" ? e.closest("form")! : e);
-        if (!s) return;
-        const r = s.querySelector(".bmi-input") as HTMLInputElement;
-        if (!r) return;
-        const a = parseFloat(r.value);
-        if (!isNaN(a) && a > 0) {
-            let n = (a - 15) / 25 * 100;
-            n = Math.max(0, Math.min(100, n));
-            let o = "نرمال",
-                m = "normal";
-            a < 18.5 ? (o = "کمبود وزن", m = "underweight") : a >= 25 && a < 30 ? (o = "اضافه وزن", m = "overweight") : a >= 30 && (o = "چاقی", m = "obese")
-        }
-        let d = "";
-        const c = parseFloat((e.querySelector(".weight-slider") as HTMLInputElement).value),
-            g = s.querySelector(".ideal-weight-input") as HTMLInputElement;
-        if (!g) {
-            window.lucide?.createIcons();
-            return
-        }
-        const x = g.value;
-        if (x && x.includes(" - ")) {
-            const [h, E] = x.replace(" kg", "").split(" - ").map(parseFloat);
-            if (!isNaN(c) && !isNaN(h) && !isNaN(E)) {
-                const q = Math.max(0, h - 15),
-                    k = E + 15 - q;
-                let $ = (c - q) / k * 100;
-                $ = Math.max(0, Math.min(100, $));
-                const I = Math.max(0, (h - q) / k * 100),
-                    C = Math.max(0, (E - h) / k * 100);
-                Math.max(0, 100 - I - C);
-                let L = "ایده‌آل",
-                    b = "normal";
-                c < h ? (L = "کمبود وزن", b = "underweight") : c > E && (L = "اضافه وزن", b = "overweight")
-            }
-        }
-        window.lucide?.createIcons()
-    },
-    he = e => {
-        const t = e.closest("#profile-tab-content") || (e.id === "section-1" ? e.closest("form")! : e);
-        if (!t) return;
-        const s = parseFloat((e.querySelector(".age-slider") as HTMLInputElement).value),
-            r = parseFloat((e.querySelector(".height-slider") as HTMLInputElement).value),
-            a = parseFloat((e.querySelector(".weight-slider") as HTMLInputElement).value),
-            n = e.querySelector('input[name^="gender"]:checked') as HTMLInputElement;
-        if (!n) return;
-        const o = n.value === "مرد",
-            m = e.querySelector('input[name^="activity_level"]:checked') as HTMLInputElement,
-            d = m ? parseFloat(m.value) : 1.2,
-            c = parseFloat((e.querySelector(".neck-input") as HTMLInputElement).value),
-            g = parseFloat((e.querySelector(".waist-input") as HTMLInputElement).value),
-            x = parseFloat((e.querySelector(".hip-input") as HTMLInputElement).value),
-            h = () => {
-                [".bmi-input", ".bmr-input", ".tdee-input", ".bodyfat-input", ".lbm-input", ".ideal-weight-input"].forEach(N => {
-                    const G = t.querySelector(N) as HTMLInputElement;
-                    G && (G.value = "")
-                });
-                const M = e.querySelector(".realtime-visualizers");
-                M && (M.innerHTML = "")
-            };
-        if (isNaN(r) || isNaN(a) || r <= 0 || a <= 0) {
-            h();
-            return
-        }
-        const E = r / 100,
-            q = a / (E * E),
-            k = t.querySelector(".bmi-input") as HTMLInputElement;
-        k && (k.value = q.toFixed(1));
-        const $ = o ? 10 * a + 6.25 * r - 5 * s + 5 : 10 * a + 6.25 * r - 5 * s - 161,
-            I = t.querySelector(".bmr-input") as HTMLInputElement;
-        I && (I.value = Math.round($).toString());
-        const C = t.querySelector(".tdee-input") as HTMLInputElement;
-        C && (!isNaN($) && !isNaN(d) ? C.value = Math.round($ * d).toString() : C.value = "");
-        const L = t.querySelector(".ideal-weight-input") as HTMLInputElement;
-        L && (L.value = `${(18.5*E*E).toFixed(1)} - ${(24.9*E*E).toFixed(1)} kg`);
-        let b = 0;
-        !isNaN(c) && !isNaN(g) && c > 0 && g > 0 && (o ? b = 86.01 * Math.log10(g - c) - 70.041 * Math.log10(r) + 36.76 : !isNaN(x) && x > 0 && (b = 163.205 * Math.log10(g + x - c) - 97.684 * Math.log10(r) - 78.387));
-        const B = t.querySelector(".bodyfat-input") as HTMLInputElement,
-            N = t.querySelector(".lbm-input") as HTMLInputElement;
-        b > 0 && b < 100 ? (B && (B.value = b.toFixed(1)), N && (N.value = (a * (1 - b / 100)).toFixed(1))) : (B && (B.value = ""), N && (N.value = "")), et(e)
-    },
-    xe = e => {
-        const t = e.querySelector(".hip-input-container");
-        if (!t) return;
-        const s = e.querySelector('input[name^="gender"][value="مرد"]') as HTMLInputElement;
-        t.classList.toggle("hidden", s?.checked ?? false), he(e)
-    },
-    tt = e => {
-        e.innerHTML = "", Object.keys(we).forEach(t => {
-            const s = document.createElement("option");
-            s.value = t, s.textContent = t, e.appendChild(s)
+
+const A = e => {
+    if (typeof e !== 'string') return '';
+    const t = document.createElement("div");
+    return t.textContent = e, t.innerHTML
+};
+
+const w = (e, t = "success") => {
+    const s = document.getElementById("toast-container");
+    if (!s) return;
+    const r = document.createElement("div"),
+        a = t === "success" ? "check-circle" : "alert-triangle",
+        n = t === "success" ? "bg-green-500 border-green-600" : "bg-red-500 border-red-600";
+    r.className = `flex items-center gap-3 ${n} text-white py-3 px-5 rounded-lg shadow-xl border-b-4 transform opacity-0 translate-x-full`, r.style.transition = "transform 0.5s ease, opacity 0.5s ease", r.innerHTML = `
+    <i data-lucide="${a}" class="w-6 h-6"></i>
+    <span>${A(e)}</span>
+`, s.appendChild(r), window.lucide?.createIcons(), requestAnimationFrame(() => {
+        r.classList.remove("opacity-0", "translate-x-full")
+    }), setTimeout(() => {
+        r.classList.add("opacity-0"), r.style.transform = "translateX(120%)", r.addEventListener("transitionend", () => r.remove(), {
+            once: !0
         })
-    },
-    pe = (e, t) => {
-        t.innerHTML = "", (we[e] || []).forEach(s => {
-            const r = document.createElement("option");
-            r.value = s, r.textContent = s, t.appendChild(r)
-        })
-    },
-    ge = e => {
-        const t = (document.getElementById("exercise-template") as HTMLTemplateElement).content.cloneNode(!0) as DocumentFragment,
-            s = t.querySelector(".muscle-group-select") as HTMLSelectElement;
-        tt(s), pe(s.value, t.querySelector(".exercise-select") as HTMLSelectElement), e.appendChild(t), e.querySelectorAll(".range-slider").forEach(r => ie(r as HTMLInputElement)), window.lucide?.createIcons()
-    },
-    re = (e = !1) => {
-        const t = document.getElementById("workout-days-container")!.children.length + 1,
-            s = document.createElement("div");
-        s.className = "card day-card", s.innerHTML = `<div class="flex justify-between items-center p-4 bg-tertiary/50 rounded-t-2xl border-b border-border-secondary"><div class="flex items-center gap-3"><i data-lucide="calendar-days" class="text-yellow-400"></i><input type="text" value="روز ${t}: " class="day-title-input input-field font-bold text-lg bg-transparent border-0 p-1 focus:ring-0 focus:border-yellow-400 w-auto"></div> ${e?"":'<button type="button" class="remove-day-btn p-1 text-secondary hover:text-red-400"><i data-lucide="x-circle" class="w-5 h-5"></i></button>'}</div><div class="p-4 space-y-3"><div class="exercise-list space-y-3"></div><button type="button" class="add-exercise-btn mt-2 w-full text-sm text-yellow-400 font-semibold hover:bg-yellow-400/10 py-2.5 px-4 rounded-xl border-2 border-dashed border-yellow-400/30 transition-all flex items-center justify-center gap-2"><i data-lucide="plus"></i> افزودن حرکت</button></div><div class="p-4 border-t border-border-primary/50"><label class="font-semibold text-sm text-secondary mb-2 block">یادداشت‌های مربی</label><textarea class="day-notes-input input-field text-sm bg-tertiary/80" rows="2" placeholder="مثال: روی فرم صحیح حرکت تمرکز کنید..."></textarea></div>`, document.getElementById("workout-days-container")!.appendChild(s), ge(s.querySelector(".exercise-list") as HTMLDivElement), window.lucide?.createIcons()
-    },
-    st = () => {
-        const e = document.getElementById("supplements-container")!;
-        e.innerHTML = "";
-        for (const t in Pe) {
-            const s = document.createElement("div");
-            s.className = "supp-category-card bg-tertiary/50 rounded-2xl overflow-hidden", s.innerHTML = `<h3 class="font-bold p-4 border-b border-border-secondary text-accent">${t}</h3><div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></div>`;
-            const r = s.querySelector(".grid")!;
-            Pe[t].forEach(a => {
-                const n = document.createElement("div");
-                n.className = "supplement-item flex items-center justify-between", n.innerHTML = `<label class="custom-checkbox-label"><input type="checkbox" value="${a.name}" data-dosage="${a.dosage}" data-timing="${a.timing}" data-note="${a.note}" class="supplement-checkbox custom-checkbox"><span>${a.name}</span></label><div class="flex items-center gap-2"><div class="tooltip"><i data-lucide="info" class="w-4 h-4 text-gray-500 cursor-pointer"></i><span class="tooltiptext">${a.note}</span></div><span class="text-xs bg-tertiary text-secondary rounded-full px-2 py-1 whitespace-nowrap">${a.timing}</span><input type="text" class="dosage-input input-field text-sm w-32" placeholder="دوز..."></div>`, r.appendChild(n)
-            }), e.appendChild(s)
+    }, 2e3)
+};
+
+const ie = (e: HTMLInputElement) => {
+    if (!e) return;
+    const t = +e.min || 0,
+        s = +e.max || 100,
+        a = ((+e.value || 0) - t) / (s - t) * 100;
+    let n = "var(--accent)";
+    const o = getComputedStyle(document.documentElement).getPropertyValue("--range-track-bg").trim();
+    e.style.background = `linear-gradient(to left, ${n} ${a}%, ${o} ${a}%)`
+};
+const Re = (e, t) => {
+    let s = e + t;
+    return s > 0 && s <= ue ? s : e
+};
+const _e = () => {
+    document.querySelectorAll(".stepper-item").forEach((t, s) => {
+        const r = s + 1;
+        t.classList.toggle("active", r === F), t.classList.toggle("completed", r < F)
+    });
+    document.querySelectorAll(".form-section").forEach(t => t.classList.add("hidden"));
+    const e = document.getElementById(`section-${F}`);
+    if (e) e.classList.remove("hidden");
+    if (F === 4) Ue(ye(), "#program-sheet-container");
+    if (F === 5) Ue(ye(), "#program-sheet-container-step5");
+    (document.getElementById("prev-btn") as HTMLButtonElement).disabled = F === 1;
+    const t = document.getElementById("next-btn") as HTMLButtonElement;
+    t.disabled = F === ue, t.textContent = F === ue - 1 ? "برو به تغذیه" : "بعدی";
+    const s = document.getElementById("send-nutrition-btn"),
+        r = document.getElementById("send-program-btn"),
+        a = document.getElementById("save-changes-btn");
+    if (s && r && a) {
+        const n = F === 5;
+        s.classList.toggle("hidden", !n), r.classList.toggle("hidden", n), a.classList.toggle("hidden", n)
+    }
+};
+const ne = e => {
+    var t;
+    e > 0 && e <= ue && (F = e, _e(), (t = document.getElementById("program-builder-form")) == null || t.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    }))
+};
+const et = e => {
+    var t;
+    e.querySelector(".realtime-visualizers");
+    const s = e.closest("#profile-tab-content") || (e.id === "section-1" ? e.closest("form")! : e);
+    if (!s) return;
+    const r = s.querySelector(".bmi-input") as HTMLInputElement;
+    if (!r) return;
+    const a = parseFloat(r.value);
+    if (!isNaN(a) && a > 0) {
+        let n = (a - 15) / 25 * 100;
+        n = Math.max(0, Math.min(100, n));
+        let o = "نرمال",
+            m = "normal";
+        a < 18.5 ? (o = "کمبود وزن", m = "underweight") : a >= 25 && a < 30 ? (o = "اضافه وزن", m = "overweight") : a >= 30 && (o = "چاقی", m = "obese")
+    }
+    let d = "";
+    const c = parseFloat((e.querySelector(".weight-slider") as HTMLInputElement).value),
+        g = s.querySelector(".ideal-weight-input") as HTMLInputElement;
+    if (!g) {
+        window.lucide?.createIcons();
+        return
+    }
+    const x = g.value;
+    if (x && x.includes(" - ")) {
+        const [h, E] = x.replace(" kg", "").split(" - ").map(parseFloat);
+        if (!isNaN(c) && !isNaN(h) && !isNaN(E)) {
+            const q = Math.max(0, h - 15),
+                k = E + 15 - q;
+            let $ = (c - q) / k * 100;
+            $ = Math.max(0, Math.min(100, $));
+            const I = Math.max(0, (h - q) / k * 100),
+                C = Math.max(0, (E - h) / k * 100);
+            Math.max(0, 100 - I - C);
+            let L = "ایده‌آل",
+                b = "normal";
+            c < h ? (L = "کمبود وزن", b = "underweight") : c > E && (L = "اضافه وزن", b = "overweight")
         }
-        window.lucide?.createIcons()
-    };
+    }
+    window.lucide?.createIcons()
+};
+const he = e => {
+    const t = e.closest("#profile-tab-content") || (e.id === "section-1" ? e.closest("form")! : e);
+    if (!t) return;
+    const s = parseFloat((e.querySelector(".age-slider") as HTMLInputElement).value),
+        r = parseFloat((e.querySelector(".height-slider") as HTMLInputElement).value),
+        a = parseFloat((e.querySelector(".weight-slider") as HTMLInputElement).value),
+        n = e.querySelector('input[name^="gender"]:checked') as HTMLInputElement;
+    if (!n) return;
+    const o = n.value === "مرد",
+        m = e.querySelector('input[name^="activity_level"]:checked') as HTMLInputElement,
+        d = m ? parseFloat(m.value) : 1.2,
+        c = parseFloat((e.querySelector(".neck-input") as HTMLInputElement).value),
+        g = parseFloat((e.querySelector(".waist-input") as HTMLInputElement).value),
+        x = parseFloat((e.querySelector(".hip-input") as HTMLInputElement).value),
+        h = () => {
+            [".bmi-input", ".bmr-input", ".tdee-input", ".bodyfat-input", ".lbm-input", ".ideal-weight-input"].forEach(N => {
+                const G = t.querySelector(N) as HTMLInputElement;
+                G && (G.value = "")
+            });
+            const M = e.querySelector(".realtime-visualizers");
+            M && (M.innerHTML = "")
+        };
+    if (isNaN(r) || isNaN(a) || r <= 0 || a <= 0) {
+        h();
+        return
+    }
+    const E = r / 100,
+        q = a / (E * E),
+        k = t.querySelector(".bmi-input") as HTMLInputElement;
+    k && (k.value = q.toFixed(1));
+    const $ = o ? 10 * a + 6.25 * r - 5 * s + 5 : 10 * a + 6.25 * r - 5 * s - 161,
+        I = t.querySelector(".bmr-input") as HTMLInputElement;
+    I && (I.value = Math.round($).toString());
+    const C = t.querySelector(".tdee-input") as HTMLInputElement;
+    C && (!isNaN($) && !isNaN(d) ? C.value = Math.round($ * d).toString() : C.value = "");
+    const L = t.querySelector(".ideal-weight-input") as HTMLInputElement;
+    L && (L.value = `${(18.5*E*E).toFixed(1)} - ${(24.9*E*E).toFixed(1)} kg`);
+    let b = 0;
+    !isNaN(c) && !isNaN(g) && c > 0 && g > 0 && (o ? b = 86.01 * Math.log10(g - c) - 70.041 * Math.log10(r) + 36.76 : !isNaN(x) && x > 0 && (b = 163.205 * Math.log10(g + x - c) - 97.684 * Math.log10(r) - 78.387));
+    const B = t.querySelector(".bodyfat-input") as HTMLInputElement,
+        N = t.querySelector(".lbm-input") as HTMLInputElement;
+    b > 0 && b < 100 ? (B && (B.value = b.toFixed(1)), N && (N.value = (a * (1 - b / 100)).toFixed(1))) : (B && (B.value = ""), N && (N.value = "")), et(e)
+};
+const xe = e => {
+    const t = e.querySelector(".hip-input-container");
+    if (!t) return;
+    const s = e.querySelector('input[name^="gender"][value="مرد"]') as HTMLInputElement;
+    t.classList.toggle("hidden", s?.checked ?? false), he(e)
+};
+const tt = e => {
+    e.innerHTML = "", Object.keys(we).forEach(t => {
+        const s = document.createElement("option");
+        s.value = t, s.textContent = t, e.appendChild(s)
+    })
+};
+const pe = (e, t) => {
+    t.innerHTML = "", (we[e] || []).forEach(s => {
+        const r = document.createElement("option");
+        r.value = s, r.textContent = s, t.appendChild(r)
+    })
+};
+const ge = e => {
+    const t = (document.getElementById("exercise-template") as HTMLTemplateElement).content.cloneNode(!0) as DocumentFragment,
+        s = t.querySelector(".muscle-group-select") as HTMLSelectElement;
+    tt(s), pe(s.value, t.querySelector(".exercise-select") as HTMLSelectElement), e.appendChild(t), e.querySelectorAll(".range-slider").forEach(r => ie(r as HTMLInputElement)), window.lucide?.createIcons()
+};
+const re = (e = !1) => {
+    const t = document.getElementById("workout-days-container")!.children.length + 1,
+        s = document.createElement("div");
+    s.className = "card day-card", s.innerHTML = `<div class="flex justify-between items-center p-4 bg-tertiary rounded-t-2xl border-b border-border-secondary"><div class="flex items-center gap-3"><i data-lucide="calendar-days" class="text-yellow-400"></i><input type="text" value="روز ${t}: " class="day-title-input input-field font-bold text-lg bg-transparent border-0 p-1 focus:ring-0 focus:border-yellow-400 w-auto"></div> ${e?"":'<button type="button" class="remove-day-btn p-1 text-secondary hover:text-red-400"><i data-lucide="x-circle" class="w-5 h-5"></i></button>'}</div><div class="p-4 space-y-3"><div class="exercise-list space-y-3"></div><button type="button" class="add-exercise-btn mt-2 w-full text-sm text-yellow-400 font-semibold hover:bg-yellow-400/10 py-2.5 px-4 rounded-xl border-2 border-dashed border-yellow-400/30 transition-all flex items-center justify-center gap-2"><i data-lucide="plus"></i> افزودن حرکت</button></div><div class="p-4 border-t border-border-primary/50"><label class="font-semibold text-sm text-secondary mb-2 block">یادداشت‌های مربی</label><textarea class="day-notes-input input-field text-sm bg-tertiary/80" rows="2" placeholder="مثال: روی فرم صحیح حرکت تمرکز کنید..."></textarea></div>`, document.getElementById("workout-days-container")!.appendChild(s), ge(s.querySelector(".exercise-list") as HTMLDivElement), window.lucide?.createIcons()
+};
+const st = () => {
+    const e = document.getElementById("supplements-container")!;
+    e.innerHTML = "";
+    for (const t in Pe) {
+        const s = document.createElement("div");
+        s.className = "supp-category-card bg-tertiary/50 rounded-2xl overflow-hidden", s.innerHTML = `<h3 class="font-bold p-4 border-b border-border-secondary text-accent">${t}</h3><div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"></div>`;
+        const r = s.querySelector(".grid")!;
+        Pe[t].forEach(a => {
+            const n = document.createElement("div");
+            n.className = "supplement-item flex items-center justify-between", n.innerHTML = `<label class="custom-checkbox-label"><input type="checkbox" value="${a.name}" data-dosage="${a.dosage}" data-timing="${a.timing}" data-note="${a.note}" class="supplement-checkbox custom-checkbox"><span>${a.name}</span></label><div class="flex items-center gap-2"><div class="tooltip"><i data-lucide="info" class="w-4 h-4 text-gray-500 cursor-pointer"></i><span class="tooltiptext">${a.note}</span></div><span class="text-xs bg-tertiary text-secondary rounded-full px-2 py-1 whitespace-nowrap">${a.timing}</span><input type="text" class="dosage-input input-field text-sm w-32" placeholder="دوز..."></div>`, r.appendChild(n)
+        }), e.appendChild(s)
+    }
+    window.lucide?.createIcons()
+};
 const Ue = (e, t) => {
     const s = document.querySelector(t);
     if (!s) return;
@@ -395,7 +398,7 @@ const Ue = (e, t) => {
         n = A(a.clientName || "نامشخص"),
         o = A(a.coachName || "مربی شما"),
         m = a.profilePic || "https://placehold.co/100x100/374151/E5E7EB?text=عکس";
-    const d = `<header class="page-header flex justify-between items-start mb-6"><div class="flex items-center gap-3"><span class="font-bold text-2xl" style="color: #007AFF;">FitGym Pro</span></div><img src="${m}" alt="Profile" class="w-20 h-20 rounded-full object-cover border-4 border-gray-100"></header><div class="mb-6"><h2 class="text-3xl font-extrabold text-gray-900 mb-2">${n}</h2><p class="text-gray-500">تهیه شده در تاریخ: ${new Date().toLocaleDateString("fa-IR")}</p></div>`;
+    const d = `<header class="page-header flex justify-between items-start mb-6"><div class="flex items-center gap-3"><span class="font-bold text-2xl" style="color: var(--accent);">FitGym Pro</span></div><img src="${m}" alt="Profile" class="w-20 h-20 rounded-full object-cover border-4 border-gray-100"></header><div class="mb-6"><h2 class="text-3xl font-extrabold text-gray-900 mb-2">${n}</h2><p class="text-gray-500">تهیه شده در تاریخ: ${new Date().toLocaleDateString("fa-IR")}</p></div>`;
     r.innerHTML = `${d}<div class="page-content"></div><footer class="page-footer"><p>این برنامه توسط <strong>${o}</strong> برای شما آماده شده است. موفق باشید!</p></footer>`, s.appendChild(r);
     const c = r.querySelector(".page-content")!,
         g = B => {
@@ -424,9 +427,8 @@ const Ue = (e, t) => {
         const K = B.exercises || [];
         for (let j = 0; j < K.length; j++) {
             const _ = K[j],
-                ee = _.isSuperset,
-                ce = ee && (j === 0 || !K[j - 1].isSuperset);
-            M += `<tr class="${ee?"superset-group-pro":""}"><td>${ce?'<span class="superset-label-pro">سوپرست</span>':""}${A(_.exercise)}</td><td>${A(_.sets)}</td><td>${A(_.reps)}</td><td>${A(_.rest)}s</td></tr>`
+                ee = _.isSuperset;
+            M += `<tr class="${ee?"superset-group-pro":""}"><td>${A(_.exercise)}</td><td>${A(_.sets)}</td><td>${A(_.reps)}</td><td>${A(_.rest)}s</td></tr>`
         }
         M += "</tbody></table></div>";
         const le = A(B.notes),
@@ -464,7 +466,7 @@ const Fe = async () => {
     const { jsPDF: Qe } = window.jspdf;
 
     let s;
-    if (f === "admin") {
+    if (f !== null && O().find(u => u.username === f)?.role === 'coach') {
         const previewContainerSelector = "#program-sheet-container";
         // In admin panel, always render fresh data to a consistent preview container.
         Ue(ye(), previewContainerSelector);
@@ -513,7 +515,7 @@ const Fe = async () => {
             h -= g;
         }
         
-        const clientNameElement = document.querySelector(f === "admin" ? "#client-name-input" : "#dashboard-profile-panel .client-name-input") as HTMLInputElement;
+        const clientNameElement = document.querySelector(f !== null && O().find(u => u.username === f)?.role === 'coach' ? "#client-name-input" : "#dashboard-profile-panel .client-name-input") as HTMLInputElement;
 
         if (!clientNameElement) {
             w("خطا: فیلد نام کاربر یافت نشد.", "error");
@@ -537,18 +539,18 @@ saveAsImage = async () => {
 
     if (!t || t.classList.contains("is-loading")) return;
 
-    t.classList.add("is-loading");
+    t.classList.add("is-loading", "secondary-button");
     t.disabled = true;
 
     if (!window.html2canvas) {
         w("کتابخانه مورد نیاز برای ساخت تصویر بارگیری نشده‌ است.", "error");
-        t.classList.remove("is-loading");
+        t.classList.remove("is-loading", "secondary-button");
         t.disabled = false;
         return;
     }
 
     let s;
-    if (f === "admin") {
+     if (f !== null && O().find(u => u.username === f)?.role === 'coach') {
         const previewContainerSelector = "#program-sheet-container";
         Ue(ye(), previewContainerSelector); // Ensure latest data is rendered
         s = `${previewContainerSelector} .program-page`;
@@ -559,7 +561,7 @@ saveAsImage = async () => {
     const r = document.querySelector(s) as HTMLElement;
     if (!r) {
         w("محتوایی برای ساخت تصویر وجود ندارد.", "error");
-        t.classList.remove("is-loading");
+        t.classList.remove("is-loading", "secondary-button");
         t.disabled = false;
         return;
     }
@@ -586,7 +588,7 @@ saveAsImage = async () => {
         const m = document.createElement("a");
         m.href = o.toDataURL("image/png");
 
-        const clientNameElement = document.querySelector(f === "admin" ? "#client-name-input" : "#dashboard-profile-panel .client-name-input") as HTMLInputElement;
+        const clientNameElement = document.querySelector(f !== null && O().find(u => u.username === f)?.role === 'coach' ? "#client-name-input" : "#dashboard-profile-panel .client-name-input") as HTMLInputElement;
         const q = clientNameElement?.value || "FitGymPro";
         m.download = `FitGymPro-Program-${q.replace(/ /g, "_")}.png`;
         
@@ -603,7 +605,7 @@ saveAsImage = async () => {
             document.body.removeChild(a);
         }
     } finally {
-        t.classList.remove("is-loading");
+        t.classList.remove("is-loading", "secondary-button");
         t.disabled = false;
     }
 },
@@ -681,7 +683,14 @@ rt = () => {
             return [];
         }
     },
-    Ge = e => localStorage.setItem("fitgympro_users", JSON.stringify(e)),
+    Ge = e => {
+        try {
+            localStorage.setItem("fitgympro_users", JSON.stringify(e));
+        } catch (t) {
+            console.error("Error saving users to localStorage:", t);
+            w("خطا در ذخیره‌سازی اطلاعات کاربران", "error");
+        }
+    },
     D = e => {
         try {
             return JSON.parse(localStorage.getItem(`fitgympro_data_${e}`) || "{}");
@@ -690,7 +699,14 @@ rt = () => {
             return {};
         }
     },
-    W = (e, t) => localStorage.setItem(`fitgympro_data_${e}`, JSON.stringify(t)),
+    W = (e, t) => {
+        try {
+            localStorage.setItem(`fitgympro_data_${e}`, JSON.stringify(t));
+        } catch (s) {
+            console.error(`Error saving data for user ${e} to localStorage:`, s);
+            w("خطا در ذخیره‌سازی اطلاعات برنامه", "error");
+        }
+    },
     ze = () => {
         try {
             return JSON.parse(localStorage.getItem("fitgympro_activity_log") || "[]");
@@ -700,11 +716,17 @@ rt = () => {
         }
     },
     ae = e => {
-        let t = ze();
-        t.unshift({
-            message: e,
-            date: new Date().toISOString()
-        }), t.length > 20 && (t = t.slice(0, 20)), localStorage.setItem("fitgympro_activity_log", JSON.stringify(t))
+        try {
+            let t = ze();
+            t.unshift({
+                message: e,
+                date: new Date().toISOString()
+            });
+            t.length > 50 && (t = t.slice(0, 50));
+            localStorage.setItem("fitgympro_activity_log", JSON.stringify(t));
+        } catch (t) {
+            console.error("Error saving activity log to localStorage:", t);
+        }
     };
 const ht = () => {
         try {
@@ -714,7 +736,14 @@ const ht = () => {
             return {};
         }
     },
-    xt = e => localStorage.setItem("fitgympro_templates", JSON.stringify(e)),
+    xt = e => {
+        try {
+            localStorage.setItem("fitgympro_templates", JSON.stringify(e));
+        } catch (t) {
+            console.error("Error saving templates to localStorage:", t);
+            w("خطا در ذخیره‌سازی الگوها", "error");
+        }
+    },
     yt = (e, t) => {
         const s = ht();
         s[e] = t, xt(s)
@@ -806,6 +835,8 @@ const updateSliderValueDisplay = (slider: HTMLInputElement) => {
         unit = " cm";
     } else if (slider.classList.contains("weight-slider")) {
         unit = " kg";
+    } else if (slider.classList.contains("rest-slider")) {
+        unit = "s";
     }
     
     span.textContent = slider.value + unit;
@@ -873,23 +904,6 @@ function Je(e) {
     }), xe(t), he(t), F = 1, _e()
 }
 
-function Oe() {
-    f = "admin", localStorage.setItem("fitgympro_last_user", "admin"), Je({
-        step1: {
-            coachName: "مربی فیت‌جیم‌پرو"
-        },
-        step2: {
-            days: []
-        },
-        step3: {
-            supplements: []
-        },
-        step4: {},
-        step5: {}
-    }), document.getElementById("current-user-name")!.textContent = "Admin";
-    const e = document.getElementById("current-user-display")!;
-    e.classList.remove("hidden"), e.classList.add("flex"), document.getElementById("logout-btn")!.classList.remove("hidden"), je.classList.remove("hidden"), V.classList.add("opacity-0"), setTimeout(() => V.classList.add("hidden"), 300), me.classList.remove("hidden"), setTimeout(() => me.classList.remove("opacity-0"), 50)
-}
 const getLatestPurchase = userData => {
     if (!userData.subscriptions || userData.subscriptions.length === 0) return null;
     const t = [...userData.subscriptions].sort((s, r) => new Date(r.purchaseDate).getTime() - new Date(s.purchaseDate).getTime()),
@@ -1213,19 +1227,29 @@ const renderChatTab = (username, userData) => {
 }
 
 const renderProfileTab = (username, userData) => {
+    const profilePanel = document.getElementById("dashboard-profile-panel")!;
+    const isConfirmed = !!userData.infoConfirmed;
+    
     const notice = document.getElementById('profile-completion-notice');
-    if (notice) notice.classList.toggle('hidden', !!userData.infoConfirmed);
+    if (notice) notice.classList.toggle('hidden', isConfirmed);
     
     const confirmBtn = document.getElementById('confirm-info-btn') as HTMLButtonElement;
     if (confirmBtn) {
-        confirmBtn.disabled = !!userData.infoConfirmed;
-        confirmBtn.innerHTML = userData.infoConfirmed ? '<i data-lucide="check-circle" class="w-5 h-5"></i> اطلاعات شما تایید شده است' : 'تایید و قفل کردن اطلاعات';
-        if (userData.infoConfirmed) {
+        confirmBtn.disabled = isConfirmed;
+        confirmBtn.innerHTML = isConfirmed ? '<i data-lucide="check-circle" class="w-5 h-5"></i> اطلاعات شما تایید شده است' : 'تایید و قفل کردن اطلاعات';
+        if (isConfirmed) {
             confirmBtn.classList.remove('!border-blue-500/30', '!bg-blue-500/10', '!text-accent', 'hover:!bg-blue-500/20');
             confirmBtn.classList.add('!border-green-500/30', '!bg-green-500/10', '!text-green-accent', 'cursor-not-allowed');
         }
     }
-
+    
+    profilePanel.querySelectorAll('input, select').forEach(el => {
+        const input = el as HTMLInputElement | HTMLSelectElement;
+        if (!input.classList.contains('client-name-input')) { // Keep name readonly
+             input.disabled = isConfirmed;
+        }
+    });
+    profilePanel.querySelector('.profile-pic-input')?.closest('label')?.classList.toggle('pointer-events-none', isConfirmed);
 
     document.getElementById("waiting-for-plan-notice-container")!.innerHTML = "";
     const r = document.getElementById("dashboard-status-container")!;
@@ -1240,18 +1264,11 @@ const renderProfileTab = (username, userData) => {
     r.appendChild(subStatusEl);
     const infoStatusEl = document.createElement("div");
     infoStatusEl.className = `flex items-center gap-3 p-3 rounded-xl ${n?"bg-green-500/10 text-green-accent":"bg-yellow-500/10 text-yellow-accent"}`, infoStatusEl.innerHTML = `<i data-lucide="${n?"user-check":"user-cog"}" class="w-6 h-6"></i><div><p class="font-bold">وضعیت اطلاعات</p><p class="text-sm">${n?"تایید شده":"نیاز به تایید"}</p></div>`, r.appendChild(infoStatusEl);
-    const subSelectionContainer = document.getElementById("subscription-selection-container"),
-        hasUnfulfilledPurchase = latestPurchase && latestPurchase.fulfilled === !1;
-    if (subSelectionContainer) subSelectionContainer.classList.toggle("hidden", hasUnfulfilledPurchase);
-    if (hasUnfulfilledPurchase) {
-        const c = document.getElementById("waiting-for-plan-notice-container")!;
-        c.innerHTML = `<div class="card p-6 text-center bg-blue-500/10 text-accent rounded-2xl"><i data-lucide="info" class="w-8 h-8 mx-auto mb-3"></i><p class="font-bold">شما یک پلن در انتظار آماده‌سازی توسط مربی دارید.</p><p class="text-sm text-secondary">به محض آماده شدن به شما اطلاع‌رسانی خواهد شد.</p></div>`
-    }
+    
     window.lucide?.createIcons();
 
 
     const d = userData.step1 || {};
-    const profilePanel = document.getElementById("dashboard-profile-panel")!;
     (profilePanel.querySelector(".client-name-input") as HTMLInputElement).value = username, (profilePanel.querySelector(".client-email-input") as HTMLInputElement).value = d.clientEmail || "", (profilePanel.querySelector(".profile-pic-preview") as HTMLImageElement).src = d.profilePic || "https://placehold.co/100x100/374151/E5E7EB?text=عکس";
     
     (profilePanel.querySelector(".height-slider") as HTMLInputElement).value = d.height || "180";
@@ -1303,6 +1320,28 @@ const renderContactTab = (username, userData) => {
     if (emailInput) emailInput.value = (userData.step1 || {}).clientEmail || '';
 };
 
+const renderStorePlans = () => {
+    const container = document.getElementById('store-plans-container');
+    if (!container) return;
+
+    container.innerHTML = STORE_PLANS.map(plan => `
+        <div class="card p-6 flex flex-col items-center text-center border-t-4 border-transparent hover:border-accent transition-colors duration-300">
+            <div class="bg-accent/10 p-4 rounded-full mb-4">
+                <i data-lucide="${plan.planType === 'workout' ? 'dumbbell' : plan.planType === 'nutrition' ? 'utensils-crossed' : 'sparkles'}" class="w-8 h-8 text-accent"></i>
+            </div>
+            <h3 class="font-bold text-xl">${A(plan.planName)}</h3>
+            <p class="text-secondary text-sm my-3 h-10">${A(plan.description)}</p>
+            <p class="text-3xl font-extrabold my-4">${formatPrice(plan.price)}</p>
+            <ul class="space-y-2 text-sm text-right mb-6">
+                ${plan.features.map(feature => `<li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-green-accent"></i>${A(feature)}</li>`).join('')}
+            </ul>
+            <button class="add-to-cart-btn primary-button w-full mt-auto" data-plan-id="${A(plan.planId)}">افزودن به سبد خرید</button>
+        </div>
+    `).join('');
+    
+    window.lucide?.createIcons();
+};
+
 function de(e, t) {
     document.getElementById("dashboard-welcome-message")!.textContent = `خوش آمدی، ${e}!`;
     
@@ -1311,7 +1350,8 @@ function de(e, t) {
     renderNutritionTab(t);
     renderChatTab(e, t);
     renderProfileTab(e, t);
-    renderContactTab(e, t);
+    renderStorePlans();
+    updateCartIcon();
     
     const c = document.getElementById("notification-bell-container")!;
     if (t.newProgram) {
@@ -1359,14 +1399,6 @@ function de(e, t) {
     }
 }
 
-function fe(e) {
-    f = e, localStorage.setItem("fitgympro_last_user", e);
-    const t = D(e);
-    t.step1 || (t.step1 = {
-        clientName: e
-    }, W(e, t)), de(e, t), document.getElementById("ai-chat-fab")?.classList.remove("hidden"), V.classList.add("opacity-0"), setTimeout(() => V.classList.add("hidden"), 300), oe.classList.remove("hidden"), setTimeout(() => oe.classList.remove("opacity-0"), 50)
-}
-
 const switchUserDashboardTab = (e) => {
     const tabsContainer = document.getElementById("user-dashboard-tabs")!;
     const indicator = document.getElementById("tab-indicator") as HTMLElement;
@@ -1393,15 +1425,30 @@ const switchUserDashboardTab = (e) => {
     });
 
     const t = localStorage.getItem("fitgympro_last_user");
-    if (t && f !== "admin") {
+    if (t && O().find(u => u.username === t)?.role === 'user') {
         const s = D(t);
         if (e === "dashboard") {
             Xe(s.weightHistory, "weight-progress-chart", "no-chart-data");
         }
+        if (e === 'store') {
+            const latestPurchase = getLatestPurchase(s);
+            const subSelectionContainer = document.getElementById("store-plans-container")?.parentElement;
+            const hasUnfulfilledPurchase = latestPurchase && latestPurchase.fulfilled === false;
+            
+            if (subSelectionContainer) subSelectionContainer.classList.toggle("hidden", hasUnfulfilledPurchase);
+    
+            const noticeContainer = document.getElementById("waiting-for-plan-notice-container-store")!;
+            if (hasUnfulfilledPurchase) {
+                noticeContainer.innerHTML = `<div class="card p-6 text-center bg-blue-500/10 text-accent rounded-2xl"><i data-lucide="info" class="w-8 h-8 mx-auto mb-3"></i><p class="font-bold">شما یک پلن در انتظار آماده‌سازی توسط مربی دارید.</p><p class="text-sm text-secondary">به محض آماده شدن به شما اطلاع‌رسانی خواهد شد.</p></div>`;
+                window.lucide?.createIcons();
+            } else {
+                 noticeContainer.innerHTML = '';
+            }
+        }
     }
 };
 
-const switchAuthForm = (formToShow: 'login' | 'signup' | 'forgot-password', isInitial: boolean = false) => {
+const switchAuthForm = (formToShow: 'login' | 'signup' | 'forgot-password') => {
     const loginContainer = document.getElementById("login-form-container")!;
     const signupContainer = document.getElementById("signup-form-container")!;
     const forgotPasswordContainer = document.getElementById("forgot-password-form-container")!;
@@ -1410,19 +1457,9 @@ const switchAuthForm = (formToShow: 'login' | 'signup' | 'forgot-password', isIn
     const signupForm = document.getElementById("signup-form") as HTMLFormElement;
     const forgotPasswordForm = document.getElementById("forgot-password-form") as HTMLFormElement;
 
-    const containers = [loginContainer, signupContainer, forgotPasswordContainer];
-    
-    containers.forEach(c => {
-        if (isInitial) {
-            c.style.transition = 'none';
-        } else {
-            c.style.transition = ''; // Re-enable transitions
-        }
-    });
-
-    loginContainer.classList.toggle('is-inactive', formToShow !== 'login');
-    signupContainer.classList.toggle('is-inactive', formToShow !== 'signup');
-    forgotPasswordContainer.classList.toggle('is-inactive', formToShow !== 'forgot-password');
+    loginContainer?.classList.toggle('hidden', formToShow !== 'login');
+    signupContainer?.classList.toggle('hidden', formToShow !== 'signup');
+    forgotPasswordContainer?.classList.toggle('hidden', formToShow !== 'forgot-password');
 
     if (formToShow === 'login') {
         signupForm?.reset();
@@ -1434,23 +1471,8 @@ const switchAuthForm = (formToShow: 'login' | 'signup' | 'forgot-password', isIn
         loginForm?.reset();
         signupForm?.reset();
     }
-
-    if (isInitial) {
-        setTimeout(() => {
-            containers.forEach(c => c.style.transition = '');
-        }, 50);
-    }
 };
 
-
-function We() {
-    var e, t;
-    f = null, localStorage.removeItem("fitgympro_last_user"), document.getElementById("ai-chat-fab")?.classList.add("hidden"), me.classList.add("opacity-0"), oe.classList.add("opacity-0"), setTimeout(() => {
-        me.classList.add("hidden"), oe.classList.add("hidden"), V.classList.remove("hidden"), setTimeout(() => {
-            V.classList.remove("opacity-0")
-        }, 50)
-    }, 300), switchAuthForm("login", true), (e = document.getElementById("login-form")) == null || e.reset(), (t = document.getElementById("signup-form")) == null || t.reset()
-}
 const renderSparkline = (e, t) => {
     if (!window.Chart) return;
     const s = document.getElementById(e) as HTMLCanvasElement;
@@ -1515,7 +1537,7 @@ const renderSparkline = (e, t) => {
         t = (document.getElementById("admin-user-search") as HTMLInputElement).value.toLowerCase(),
         s = ((a = document.querySelector("#user-filter-btn-group .user-filter-btn.active")) == null ? void 0 : a.getAttribute("data-filter")) || "all";
     if (!e) return;
-    let r = O().filter(n => n.username !== "admin");
+    let r = O().filter(n => n.role === 'user');
     if (s !== "all" && (r = r.filter(n => {
         const o = D(n.username);
         switch (s) {
@@ -1571,7 +1593,7 @@ const renderSparkline = (e, t) => {
         o = Math.round(n / 24);
     return r < 60 ? "همین الان" : a < 60 ? `${a} دقیقه پیش` : n < 24 ? `${n} ساعت پیش` : `${o} روز پیش`
 }, be = () => {
-    const e = O().filter(o => o.username !== "admin"),
+    const e = O().filter(o => o.role === 'user'),
         t = e.length;
     let s = 0,
         r = 0,
@@ -1601,15 +1623,17 @@ const renderSparkline = (e, t) => {
         `, n.appendChild(m)
     })
 };
+
 const openModal = e => {
     e.classList.remove("hidden");
     setTimeout(() => {
         e.classList.add("active", "opacity-100", "pointer-events-auto");
-        e.querySelector('.card')?.classList.remove('scale-95');
+        e.querySelector('.card, form')?.classList.remove('scale-95');
     }, 10)
 }, closeModal = e => {
+    if (!e) return;
     e.classList.remove("active", "opacity-100", "pointer-events-auto");
-    e.querySelector('.card')?.classList.add('scale-95');
+    e.querySelector('.card, form')?.classList.add('scale-95');
     setTimeout(() => {
         e.classList.add("hidden");
     }, 300);
@@ -1742,900 +1766,1157 @@ const clearValidationError = (inputEl: HTMLInputElement) => {
     if (errorEl) errorEl.textContent = '';
 };
 
-const switchAdminPanelTab = (tabName) => {
-    document.querySelectorAll('.admin-nav-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
-    });
-    document.querySelectorAll('.admin-tab-content').forEach(content => {
-        content.classList.toggle('hidden', content.id !== `admin-${tabName}-content`);
-    });
-
-    const titles = {
-        dashboard: 'داشبورد مدیریت',
-        clients: 'مدیریت شاگردان',
-        conversations: 'گفتگو با شاگردان',
-        templates: 'مدیریت الگوها'
-    };
-    (document.getElementById('admin-title-text') as HTMLElement).textContent = titles[tabName] || 'پنل مدیریت';
-
-    // Refresh content when tab is switched
-    if (tabName === 'dashboard') be();
-    if (tabName === 'clients') se();
-    if (tabName === 'conversations') renderAdminConversationsList();
-    if (tabName === 'templates') renderAdminTemplates();
+// --- CART MANAGEMENT ---
+const getCart = () => {
+    if (!f) return { items: [], discountCode: null };
+    try {
+        return JSON.parse(localStorage.getItem(`fitgympro_cart_${f}`) || '{"items":[], "discountCode": null}');
+    } catch {
+        return { items: [], discountCode: null };
+    }
 };
 
-const renderAdminTemplates = () => {
-    const container = document.getElementById('admin-template-list')!;
-    const templates = ht();
-    const templateNames = Object.keys(templates);
-    container.innerHTML = '';
+const saveCart = (cart) => {
+    if (!f) return;
+    try {
+        localStorage.setItem(`fitgympro_cart_${f}`, JSON.stringify(cart));
+    } catch (e) {
+        console.error("Failed to save cart to localStorage:", e);
+        w("خطا در ذخیره‌سازی سبد خرید", "error");
+    }
+    updateCartIcon();
+    renderCartModal();
+};
 
-    if (templateNames.length === 0) {
-        container.innerHTML = `<p class="text-secondary text-center p-4">هیچ الگوی ذخیره شده‌ای وجود ندارد.</p>`;
+interface Discount {
+    type: string;
+    value: number;
+}
+
+const getDiscounts = (): Record<string, Discount> => JSON.parse(localStorage.getItem('fitgympro_discounts') || '{}');
+
+const calculateTotals = (cart) => {
+    const subtotal = cart.items.reduce((acc, item) => acc + item.price, 0);
+    let discountAmount = 0;
+    const DISCOUNTS = getDiscounts();
+    if (cart.discountCode && DISCOUNTS[cart.discountCode]) {
+        const discount = DISCOUNTS[cart.discountCode];
+        if (discount.type === 'percentage') {
+            discountAmount = subtotal * discount.value;
+        } else { // Fixed amount
+            discountAmount = Math.min(subtotal, discount.value);
+        }
+    }
+    const total = Math.max(0, subtotal - discountAmount);
+    return { subtotal, discountAmount, total };
+}
+
+const addToCart = (planDetails) => {
+    if (!f) return;
+    const cart = getCart();
+    const userData = D(f);
+    if (userData.subscriptions?.some(s => s.fulfilled === false)) {
+        w("شما یک پلن در انتظار آماده‌سازی دارید. لطفا منتظر بمانید.", "error");
         return;
     }
-
-    templateNames.forEach(name => {
-        const div = document.createElement('div');
-        div.className = 'flex justify-between items-center bg-tertiary/50 p-3 rounded-lg';
-        div.innerHTML = `
-            <span class="font-semibold">${A(name)}</span>
-            <button class="delete-template-btn text-red-500 hover:bg-red-500/10 p-2 rounded-md" data-name="${A(name)}" title="حذف الگو">
-                <i data-lucide="trash-2" class="w-5 h-5"></i>
-            </button>
-        `;
-        container.appendChild(div);
-    });
-    window.lucide?.createIcons();
+    if (cart.items.some(item => item.planId === planDetails.planId)) {
+        w("این پلن قبلاً به سبد خرید اضافه شده است.", "error");
+        openCartModal();
+        return;
+    }
+    cart.items.push(planDetails);
+    saveCart(cart);
+    w(`«${planDetails.planName}» به سبد خرید اضافه شد.`, "success");
+    openCartModal();
 };
 
-const renderAdminConversationsList = () => {
-    const container = document.getElementById('admin-conversations-user-list')!;
-    const usersWithChat = O()
-        .filter(u => u.username !== 'admin')
-        .map(u => ({ username: u.username, data: D(u.username) }))
-        .filter(u => u.data.chatHistory && u.data.chatHistory.length > 0)
-        .sort((a, b) => {
-             // Prioritize users with new messages
-            if (a.data.hasNewMessageForCoach && !b.data.hasNewMessageForCoach) return -1;
-            if (!a.data.hasNewMessageForCoach && b.data.hasNewMessageForCoach) return 1;
-            // Then sort by most recent message
-            const lastMsgA = a.data.chatHistory.slice(-1)[0];
-            const lastMsgB = b.data.chatHistory.slice(-1)[0];
-            return new Date(lastMsgB.date).getTime() - new Date(lastMsgA.date).getTime();
+const removeFromCart = (planId) => {
+    let cart = getCart();
+    cart.items = cart.items.filter(item => item.planId !== planId);
+    saveCart(cart);
+};
+
+const applyDiscount = (code) => {
+    let cart = getCart();
+    const DISCOUNTS = getDiscounts();
+    if (DISCOUNTS[code]) {
+        cart.discountCode = code;
+        w("کد تخفیف با موفقیت اعمال شد.", "success");
+    } else {
+        cart.discountCode = null;
+        w("کد تخفیف نامعتبر است.", "error");
+    }
+    saveCart(cart);
+}
+
+const updateCartIcon = () => {
+    const cart = getCart();
+    const count = cart.items.length;
+    const countEl = document.getElementById('cart-item-count') as HTMLSpanElement;
+    if (countEl) {
+        if (count > 0) {
+            countEl.textContent = String(count);
+            countEl.classList.remove('hidden');
+        } else {
+            countEl.classList.add('hidden');
+        }
+    }
+};
+
+const formatPrice = (price) => {
+    return `${price.toLocaleString('fa-IR')} تومان`;
+}
+
+const renderCartModal = () => {
+    const cart = getCart();
+    const container = document.getElementById('cart-items-container');
+    const checkoutBtn = document.getElementById('checkout-btn') as HTMLButtonElement;
+    if (!container || !checkoutBtn) return;
+
+    if (cart.items.length === 0) {
+        container.innerHTML = `<div class="text-center text-secondary p-8 flex flex-col items-center justify-center h-full">
+            <i data-lucide="shopping-cart" class="w-16 h-16 mb-4"></i>
+            <p class="font-bold">سبد خرید شما خالی است.</p>
+        </div>`;
+        window.lucide?.createIcons();
+    } else {
+        container.innerHTML = cart.items.map(item => `
+            <div class="flex items-center gap-4 py-3 border-b border-border-primary">
+                <div class="flex-1">
+                    <p class="font-bold">${A(item.planName)}</p>
+                    <p class="text-secondary text-sm">${formatPrice(item.price)}</p>
+                </div>
+                <button class="remove-from-cart-btn text-red-accent hover:bg-red-500/10 p-2 rounded-lg" data-plan-id="${A(item.planId)}" title="حذف">
+                    <i data-lucide="trash-2" class="w-5 h-5 pointer-events-none"></i>
+                </button>
+            </div>
+        `).join('');
+        window.lucide?.createIcons();
+    }
+
+    const { subtotal, discountAmount, total } = calculateTotals(cart);
+    (document.getElementById('cart-subtotal') as HTMLElement).textContent = formatPrice(subtotal);
+    (document.getElementById('cart-discount') as HTMLElement).textContent = `- ${formatPrice(discountAmount)}`;
+    (document.getElementById('cart-total') as HTMLElement).textContent = formatPrice(total);
+    (document.getElementById('discount-code-input') as HTMLInputElement).value = cart.discountCode || '';
+    checkoutBtn.disabled = cart.items.length === 0;
+};
+
+const openCartModal = () => {
+    renderCartModal();
+    openModal(document.getElementById('shopping-cart-modal'));
+};
+const closeCartModal = () => closeModal(document.getElementById('shopping-cart-modal'));
+
+const handleCheckout = async () => {
+    if (!f) return;
+    const cart = getCart();
+    if (cart.items.length === 0) return;
+
+    const checkoutBtn = document.getElementById('checkout-btn') as HTMLButtonElement;
+    checkoutBtn.classList.add('is-loading');
+    checkoutBtn.disabled = true;
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const userData = D(f);
+    userData.subscriptions = userData.subscriptions || [];
+
+    const { total } = calculateTotals(cart);
+
+    cart.items.forEach(item => {
+        userData.subscriptions.push({
+            purchaseDate: new Date().toISOString(),
+            planType: item.planType,
+            planName: item.planName,
+            price: total, // Log the final price paid
+            fulfilled: false
+        });
+        ae(`${f} پلن «${item.planName}» را خریداری کرد.`);
+    });
+    
+    W(f, userData);
+    saveCart({ items: [], discountCode: null }); // Clear cart
+
+    checkoutBtn.classList.remove('is-loading');
+
+    closeCartModal();
+    w(`خرید شما با موفقیت انجام شد. مربی به زودی پلن شما را آماده خواهد کرد.`, "success");
+    de(f, D(f)); // Re-render dashboard to show status
+};
+
+const seedInitialUsers = () => {
+    if (O().length === 0) {
+        console.log("No users found. Seeding initial coach, and user.");
+        const initialUsers = [
+            {
+                username: "coach",
+                email: "coach@fitgympro.com",
+                password: "password123",
+                role: "coach",
+                status: "active",
+                coachStatus: "verified",
+                joinDate: new Date().toISOString()
+            },
+            {
+                username: "user",
+                email: "user@fitgympro.com",
+                password: "password123",
+                role: "user",
+                status: "active",
+                coachStatus: null,
+                joinDate: new Date().toISOString()
+            }
+        ];
+        
+        Ge(initialUsers);
+
+        W("coach", {
+            step1: { coachName: "Coach Default" },
         });
 
-    container.innerHTML = '';
-    if (usersWithChat.length === 0) {
-        container.innerHTML = `<p class="text-secondary text-center p-4">هیچ گفتگویی یافت نشد.</p>`;
-        return;
+        W("user", {
+            step1: { clientName: "User Default", clientEmail: "user@fitgympro.com" },
+            joinDate: new Date().toISOString()
+        });
+        
+        ae("Initial users (coach, user) were created automatically.");
+        
+        setTimeout(() => {
+            w("کاربران پیش‌فرض (coach, user) با رمز عبور 'password123' ساخته شدند.", "success");
+        }, 1500);
     }
-
-    usersWithChat.forEach(({ username, data }) => {
-        const lastMessage = data.chatHistory.slice(-1)[0];
-        const div = document.createElement('div');
-        div.className = 'conversation-item p-4 border-b border-border-primary cursor-pointer hover:bg-tertiary';
-        div.dataset.username = username;
-        div.innerHTML = `
-            <div class="flex justify-between items-center">
-                <span class="font-bold">${A(username)}</span>
-                ${data.hasNewMessageForCoach ? '<span class="w-3 h-3 bg-accent rounded-full"></span>' : ''}
-            </div>
-            <p class="text-sm text-secondary truncate">${A(lastMessage.message)}</p>
-        `;
-        container.appendChild(div);
-    });
 };
 
-const renderAdminConversation = (username) => {
-    const container = document.getElementById('admin-conversation-details')!;
-    const userData = D(username);
-    
-    // Clear new message flag
-    if (userData.hasNewMessageForCoach) {
-        delete userData.hasNewMessageForCoach;
-        W(username, userData);
-        renderAdminConversationsList(); // Refresh list to remove dot
-    }
+const renderApp = () => {
+    const appContainer = document.getElementById('app-root');
+    if (!appContainer) return;
 
-    container.innerHTML = `
-        <header class="p-4 border-b border-border-primary flex-shrink-0">
-            <h3 class="font-bold text-lg">${A(username)}</h3>
-        </header>
-        <div id="admin-chat-history" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col">
-            <!-- Messages will be injected here -->
-        </div>
-        <form id="admin-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2 flex-shrink-0">
-            <input id="admin-chat-input" type="text" class="input-field flex-1" placeholder="پاسخ به ${A(username)}..." required>
-            <button type="submit" class="primary-button !rounded-full !p-3"><i data-lucide="send"></i></button>
-        </form>
-    `;
-    
-    const messagesContainer = document.getElementById('admin-chat-history')!;
-    const chatHistory = userData.chatHistory || [];
-    
-    chatHistory.forEach(msg => {
-        const messageEl = document.createElement('div');
-        messageEl.className = `message ${msg.sender === 'user' ? 'user-message' : 'coach-message'}`;
-        messageEl.textContent = msg.message;
-        messagesContainer.appendChild(messageEl);
-    });
+    // Check for logged-in user from localStorage
+    const lastUser = localStorage.getItem("fitgympro_last_user");
+    f = lastUser || null;
 
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-    document.getElementById('admin-chat-form')?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const input = document.getElementById('admin-chat-input') as HTMLInputElement;
-        const message = input.value.trim();
-        if (!message) return;
-
-        const allUserData = D(username);
-        if (!allUserData.chatHistory) allUserData.chatHistory = [];
-        
-        allUserData.chatHistory.push({ sender: 'coach', message, date: new Date().toISOString() });
-        allUserData.newMessageFromCoach = true; // Flag for user notification
-        
-        W(username, allUserData);
-        input.value = '';
-        renderAdminConversation(username); // Re-render the chat view
-    });
-};
-
-document.addEventListener("DOMContentLoaded", () => {
-    const S = document.documentElement.getAttribute("data-theme"),
-        T = document.getElementById("theme-toggle-btn-dashboard");
-    localStorage.getItem("fitgympro_theme") === "dark" || !("fitgympro_theme" in localStorage) && S === "dark" ? (document.documentElement.setAttribute("data-theme", "dark"), T && (T.innerHTML = '<i data-lucide="sun"></i>')) : (document.documentElement.setAttribute("data-theme", "light"), T && (T.innerHTML = '<i data-lucide="moon"></i>'));
-    window.lucide?.createIcons();
-    const Y = e => {
-        const t = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-        document.documentElement.setAttribute("data-theme", t), localStorage.setItem("fitgympro_theme", t);
-        const s = e.currentTarget as HTMLButtonElement;
-        s.innerHTML = t === "dark" ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>', window.lucide?.createIcons();
-        const r = D(f);
-        t && f !== "admin" && (Xe(r.weightHistory, "weight-progress-chart", "no-chart-data"))
-    };
-    T?.addEventListener("click", Y);
-    const Z = localStorage.getItem("fitgympro_last_user");
-    Z ? Z === "admin" ? Oe() : fe(Z) : switchAuthForm("login", !0);
-    const te = document.getElementById("login-form") as HTMLFormElement,
-        p = document.getElementById("signup-form") as HTMLFormElement,
-        H = document.getElementById("login-coach-btn");
-    
-    te.addEventListener("submit", e => {
-        e.preventDefault();
-        const form = e.target as HTMLFormElement,
-            card = form.closest(".card") as HTMLElement | null,
-            submitBtn = document.getElementById("login-client-btn") as HTMLButtonElement,
-            username = (document.getElementById("login-username") as HTMLInputElement).value.trim(),
-            password = (document.getElementById("login-password") as HTMLInputElement).value;
-            
-        card?.classList.remove("shake-animation");
-
-        if (!username || !password) {
-            w("نام کاربری و رمز عبور الزامی است.", "error");
-            void card?.offsetWidth;
-            card?.classList.add("shake-animation");
+    if (!f) {
+        // No user logged in, show landing page
+        appContainer.innerHTML = getLandingPageHTML() + getAuthModalHTML();
+        initLandingPageListeners();
+        document.body.classList.remove('dashboard-bg'); // Ensure correct background
+    } else {
+        const users = O();
+        const currentUser = users.find(u => u.username === f);
+        if (!currentUser) {
+            // User not found, clear login state and show landing
+            handleLogout();
             return;
         }
 
-        submitBtn.disabled = true;
-        submitBtn.classList.add("is-loading");
-        submitBtn.textContent = "در حال ورود...";
+        const userData = D(f);
+        document.body.classList.add('dashboard-bg'); // Ensure correct background for logged-in state
 
-        setTimeout(() => {
-            try {
-                const user = O().find(u => u.username === username && u.password === password);
-                if (user) {
-                    fe(username);
-                } else {
-                    w("نام کاربری یا رمز عبور نامعتبر است.", "error");
-                    void card?.offsetWidth;
-                    card?.classList.add("shake-animation");
-                    submitBtn.disabled = false;
-                    submitBtn.classList.remove("is-loading");
-                    submitBtn.textContent = "ورود به پنل شاگرد";
-                }
-            } catch (err) {
-                console.error("Login error:", err);
-                w("خطایی در هنگام ورود رخ داد.", "error");
-                submitBtn.disabled = false;
-                submitBtn.classList.remove("is-loading");
-                submitBtn.textContent = "ورود به پنل شاگرد";
-            }
-        }, 500);
-    });
+        switch (currentUser.role) {
+            case 'coach':
+                appContainer.innerHTML = getCoachHTML();
+                initCoachDashboard(f);
+                break;
+            case 'user':
+                appContainer.innerHTML = getUserHTML();
+                initUserDashboard(f, userData);
+                break;
+            default:
+                // Fallback to landing page if role is unknown
+                handleLogout();
+                return;
+        }
+    }
+
+    // Common tasks for all views after render
+    window.lucide?.createIcons();
     
-    p.addEventListener("submit", async e => {
-        e.preventDefault();
-        const form = e.target as HTMLFormElement,
-            card = form.closest(".card") as HTMLElement | null;
-        card?.classList.remove("shake-animation");
+    // Animate in the new view
+    setTimeout(() => {
+        const mainContainer = document.getElementById('main-app-container') || document.getElementById('user-dashboard-container') || document.querySelector('.landing-page-container');
+        if (mainContainer) {
+            mainContainer.classList.add('opacity-100');
+        }
+    }, 50);
+};
 
-        const usernameInput = document.getElementById("signup-username") as HTMLInputElement,
-            emailInput = document.getElementById("signup-email") as HTMLInputElement,
-            passwordInput = document.getElementById("signup-password") as HTMLInputElement;
+// --- APP ROUTING & RENDERING ---
+const handleLoginSuccess = (username) => {
+    f = username;
+    localStorage.setItem("fitgympro_last_user", username);
+    renderApp();
+};
+
+const handleLogout = () => {
+    f = null;
+    localStorage.removeItem("fitgympro_last_user");
+    renderApp();
+};
+
+
+const initCommonListeners = () => {
+    document.body.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+
+        // Password toggle
+        const passToggle = target.closest('.password-toggle');
+        if (passToggle) {
+            const targetId = passToggle.getAttribute('data-target');
+            if (targetId) {
+                const passInput = document.getElementById(targetId) as HTMLInputElement;
+                const icon = passToggle.querySelector('i');
+                if (passInput.type === 'password') {
+                    passInput.type = 'text';
+                    icon?.setAttribute('data-lucide', 'eye-off');
+                } else {
+                    passInput.type = 'password';
+                    icon?.setAttribute('data-lucide', 'eye');
+                }
+                window.lucide?.createIcons();
+            }
+        }
+    });
+};
+
+const aboutUsContent = `
+    <h3>ماموریت ما</h3>
+    <p>در فیت‌جیم‌پرو، ماموریت ما توانمندسازی مربیان برای ارائه بهترین خدمات ممکن و کمک به ورزشکاران برای رسیدن به اهدافشان با برنامه‌های علمی و شخصی‌سازی شده است. ما معتقدیم که تکنولوژی می‌تواند پلی قدرتمند بین دانش مربی و انگیزه ورزشکار باشد.</p>
+    
+    <h3>چرا فیت‌جیم‌پرو؟</h3>
+    <ul>
+        <li><i data-lucide="target" class="w-5 h-5"></i><div><strong>برنامه‌ریزی دقیق و هوشمند:</strong> با ابزارهای پیشرفته و پیشنهادهای هوش مصنوعی، برنامه‌هایی بی‌نقص طراحی کنید که دقیقاً متناسب با نیازهای هر شاگرد باشد.</div></li>
+        <li><i data-lucide="line-chart" class="w-5 h-5"></i><div><strong>پیگیری پیشرفت بی‌دردسر:</strong> تمام داده‌های مهم شاگردان، از وزن و شاخص‌های بدنی گرفته تا تاریخچه تمرینات، در یک داشبورد جامع و بصری در دسترس شماست.</div></li>
+        <li><i data-lucide="message-square" class="w-5 h-5"></i><div><strong>ارتباط موثر با شاگردان:</strong> با سیستم گفتگوی داخلی، به راحتی با شاگردان خود در ارتباط باشید، به سوالاتشان پاسخ دهید و انگیزه‌شان را حفظ کنید.</div></li>
+    </ul>
+    
+    <div class="mt-8 pt-6 border-t border-border-primary">
+        <h3>تماس با ما</h3>
+        <p>برای هرگونه سوال، پیشنهاد یا همکاری، می‌توانید از طریق ایمیل زیر با ما در ارتباط باشید:</p>
+        <div class="mt-2 font-bold text-accent text-lg tracking-wider">
+             <a href="mailto:fitgympro2025@gmail.com" class="hover:underline">fitgympro2025@gmail.com</a>
+        </div>
+    </div>
+`;
+
+const coachesContent = `
+    <p>تیم مربیان ما متشکل از متخصصان برجسته و با تجربه‌ای است که اشتیاق خود را برای کمک به شما در مسیر تندرستی به کار می‌گیرند. هر یک از مربیان ما دارای گواهینامه‌های معتبر بین‌المللی هستند و در زمینه‌های مختلفی از جمله بدنسازی، تغذیه ورزشی، و تمرینات فانکشنال تخصص دارند.</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <div class="flex items-center gap-4 bg-tertiary/50 p-4 rounded-xl">
+            <img src="https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?q=80&w=200&auto=format&fit=crop&ixlib=rb-4.0.3" class="w-20 h-20 rounded-full object-cover">
+            <div>
+                <h4 class="font-bold">آرش آریایی</h4>
+                <p class="text-sm text-secondary">متخصص هایپرتروفی و افزایش قدرت</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4 bg-tertiary/50 p-4 rounded-xl">
+            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop&ixlib=rb-4.0.3" class="w-20 h-20 rounded-full object-cover">
+            <div>
+                <h4 class="font-bold">سارا مرادی</h4>
+                <p class="text-sm text-secondary">متخصص فیتنس و کاهش وزن بانوان</p>
+            </div>
+        </div>
+    </div>
+`;
+
+const plansContent = `
+    <p>ما می‌دانیم که هر بدنی منحصر به فرد است و یک برنامه برای همه مناسب نیست. به همین دلیل، تمام برنامه‌های ما به صورت اختصاصی برای شما و بر اساس اهداف، سطح آمادگی، و سبک زندگی‌تان طراحی می‌شوند.</p>
+    
+    <h3>ویژگی‌های برنامه‌های ما</h3>
+     <ul>
+        <li><i data-lucide="user-check" class="w-5 h-5"></i><div><strong>کاملا شخصی‌سازی شده:</strong> برنامه‌ها بر اساس اطلاعاتی که در پروفایل خود وارد می‌کنید (سن، وزن، قد، سطح فعالیت، هدف و...) توسط مربی شما طراحی می‌شود.</div></li>
+        <li><i data-lucide="refresh-cw" class="w-5 h-5"></i><div><strong>قابلیت تطبیق و پیشرفت:</strong> برنامه‌ها به گونه‌ای طراحی شده‌اند که با پیشرفت شما، چالش‌برانگیز باقی بمانند و شما را به طور مداوم به سمت جلو هدایت کنند.</div></li>
+        <li><i data-lucide="book-open" class="w-5 h-5"></i><div><strong>توضیحات کامل و جامع:</strong> هر برنامه شامل جزئیات دقیق در مورد حرکات، تعداد ست و تکرار، زمان استراحت، و نکات کلیدی برای اجرای صحیح است.</div></li>
+    </ul>
+`;
+
+
+const initLandingPageListeners = () => {
+    const authModal = document.getElementById('auth-modal');
+    if (!authModal) return;
+
+    const openAuthModal = (form: 'login' | 'signup') => {
+        openModal(authModal);
+        switchAuthForm(form);
+    };
+
+    document.getElementById('header-login-btn')?.addEventListener('click', () => openAuthModal('login'));
+    document.getElementById('header-signup-btn')?.addEventListener('click', () => openAuthModal('signup'));
+    document.getElementById('hero-cta-btn')?.addEventListener('click', () => openAuthModal('signup'));
+
+    document.getElementById('close-auth-modal-btn')?.addEventListener('click', () => closeModal(authModal));
+    authModal.addEventListener('click', e => {
+        if ((e.target as HTMLElement).id === 'auth-modal') {
+            closeModal(authModal);
+        }
+    });
+
+    const infoModal = document.getElementById('info-modal');
+    const infoModalTitle = document.getElementById('info-modal-title');
+    const infoModalContent = document.getElementById('info-modal-content');
+
+    const openInfoModal = (title: string, content: string) => {
+        if (infoModal && infoModalTitle && infoModalContent) {
+            infoModalTitle.textContent = title;
+            infoModalContent.innerHTML = content;
+            window.lucide?.createIcons();
+            openModal(infoModal);
+        }
+    }
+
+    document.getElementById('open-about-modal-btn')?.addEventListener('click', () => openInfoModal('درباره فیت‌جیم‌پرو', aboutUsContent));
+    document.getElementById('open-coaches-modal-btn')?.addEventListener('click', () => openInfoModal('مربیان متخصص ما', coachesContent));
+    document.getElementById('open-plans-modal-btn')?.addEventListener('click', () => openInfoModal('برنامه‌های تمرینی', plansContent));
+
+    document.getElementById('close-info-modal-btn')?.addEventListener('click', () => closeModal(infoModal));
+    infoModal?.addEventListener('click', e => {
+        if ((e.target as HTMLElement).id === 'info-modal') {
+            closeModal(infoModal);
+        }
+    });
+
+    initAuthScreen();
+};
+
+const initAuthScreen = () => {
+    switchAuthForm('login');
+
+    document.getElementById('switch-to-signup-btn')?.addEventListener('click', () => switchAuthForm('signup'));
+    document.getElementById('switch-to-login-btn')?.addEventListener('click', () => switchAuthForm('login'));
+    document.getElementById('switch-to-forgot-btn')?.addEventListener('click', () => switchAuthForm('forgot-password'));
+    document.getElementById('switch-back-to-login-btn')?.addEventListener('click', () => switchAuthForm('login'));
+    
+    const loginForm = document.getElementById("login-form") as HTMLFormElement;
+    loginForm.addEventListener("submit", e => {
+        e.preventDefault();
+        const usernameInput = document.getElementById("login-username") as HTMLInputElement;
+        const passwordInput = document.getElementById("login-password") as HTMLInputElement;
+        const t = usernameInput.value.trim();
+        const s = passwordInput.value;
+        if (!t || !s) {
+            w("نام کاربری و رمز عبور الزامی است.", "error");
+            loginForm.closest('.card')?.classList.add('shake-animation');
+            setTimeout(() => loginForm.closest('.card')?.classList.remove('shake-animation'), 500);
+            return;
+        }
+        const user = O().find(a => a.username === t);
+        if (user && user.password === s) {
+            if (user.status === 'suspended') {
+                w("حساب کاربری شما مسدود شده است.", "error");
+                return;
+            }
+             if (user.role === 'coach' && user.coachStatus !== 'verified') {
+                 w("حساب مربیگری شما در انتظار تایید مدیر است.", "error");
+                 return;
+             }
+            handleLoginSuccess(t);
+        } else {
+            w("نام کاربری یا رمز عبور اشتباه است.", "error");
+            loginForm.closest('.card')?.classList.add('shake-animation');
+            setTimeout(() => loginForm.closest('.card')?.classList.remove('shake-animation'), 500);
+        }
+    });
+
+    const signupForm = document.getElementById("signup-form") as HTMLFormElement;
+    signupForm.addEventListener("submit", e => {
+        e.preventDefault();
+        const usernameInput = document.getElementById("signup-username") as HTMLInputElement;
+        const emailInput = document.getElementById("signup-email") as HTMLInputElement;
+        const passwordInput = document.getElementById("signup-password") as HTMLInputElement;
         
-        form.querySelectorAll("input").forEach(clearValidationError);
+        clearValidationError(usernameInput);
+        clearValidationError(emailInput);
+        clearValidationError(passwordInput);
+
+        const t = usernameInput.value.trim();
+        const s = emailInput.value.trim();
+        const r = passwordInput.value;
 
         let hasError = false;
-        const username = usernameInput.value.trim();
-        const email = emailInput.value.trim();
-        const password = passwordInput.value;
-
-        if (username.length < 3) {
-            showValidationError(usernameInput, "نام کاربری باید حداقل ۳ کاراکتر باشد.");
+        if (t.length < 3) {
+            showValidationError(usernameInput, 'نام کاربری باید حداقل ۳ کاراکتر باشد.');
+            hasError = true;
+        }
+        if (O().some(n => n.username === t)) {
+            showValidationError(usernameInput, 'این نام کاربری قبلا استفاده شده است.');
+            hasError = true;
+        }
+        if (!/^\S+@\S+\.\S+$/.test(s)) {
+            showValidationError(emailInput, 'لطفا یک ایمیل معتبر وارد کنید.');
+            hasError = true;
+        }
+        if (r.length < 6) {
+            showValidationError(passwordInput, 'رمز عبور باید حداقل ۶ کاراکتر باشد.');
             hasError = true;
         }
 
-        const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
-        if (!emailRegex.test(email)) {
-            showValidationError(emailInput, "لطفاً یک ایمیل معتبر وارد کنید.");
-            hasError = true;
-        }
-
-        if (password.length < 6) {
-            showValidationError(passwordInput, "رمز عبور باید حداقل ۶ کاراکتر باشد.");
-            hasError = true;
-        }
-
-        // Check for duplicates before showing loading state
-        const users = O();
-        if (users.some(u => u.username === username)) {
-            showValidationError(usernameInput, "این نام کاربری قبلا استفاده شده است.");
-            hasError = true;
-        }
-        if (users.some(u => u.email === email)) {
-            showValidationError(emailInput, "این ایمیل قبلا ثبت نام کرده است.");
-            hasError = true;
-        }
+        if (hasError) return;
         
-        if (hasError) {
-            void card?.offsetWidth;
-            card?.classList.add("shake-animation");
-            return;
+        const a = O();
+        a.push({
+            username: t,
+            email: s,
+            password: r,
+            role: 'user', // Default role
+            status: 'active',
+            coachStatus: null,
+            joinDate: new Date().toISOString()
+        });
+        Ge(a);
+        W(t, {
+            step1: { clientName: t, clientEmail: s },
+            joinDate: new Date().toISOString()
+        });
+        w("ثبت نام با موفقیت انجام شد! حالا می‌توانید وارد شوید.", "success");
+        ae(`${t} ثبت نام کرد.`);
+        switchAuthForm("login");
+        (document.getElementById("login-username") as HTMLInputElement).value = t;
+    });
+};
+
+const initCoachDashboard = (coachUsername) => {
+    document.getElementById("logout-btn")?.addEventListener("click", handleLogout);
+
+    // Coach panel specific listeners
+    const form = document.getElementById("program-builder-form")!;
+    form.addEventListener("click", e => {
+        const target = e.target as HTMLElement;
+        if (target.closest(".add-day-btn")) re();
+        if (target.closest(".add-exercise-btn")) ge(target.closest(".day-card")!.querySelector(".exercise-list")!);
+        if (target.closest(".remove-day-btn")) target.closest(".day-card")?.remove();
+        if (target.closest(".remove-exercise-btn")) target.closest(".exercise-row")?.remove();
+        if (target.closest(".superset-btn")) {
+            const btn = target.closest(".superset-btn")!;
+            btn.classList.toggle('active');
+            btn.closest('.exercise-row')?.classList.toggle('is-superset');
         }
-
-        const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.classList.add("is-loading");
-            submitBtn.innerHTML = "در حال بررسی...";
+    });
+    form.addEventListener("input", e => {
+        const target = e.target as HTMLInputElement;
+        if (target.classList.contains("range-slider")) updateSliderValueDisplay(target);
+        if (target.classList.contains("muscle-group-select")) {
+            pe(target.value, target.closest(".exercise-row")!.querySelector(".exercise-select") as HTMLSelectElement);
         }
-
-        setTimeout(() => {
-            try {
-                const currentUsers = O();
-                // Re-check for duplicates inside timeout to be extra safe
-                if (currentUsers.some(u => u.username === username)) {
-                    showValidationError(usernameInput, "این نام کاربری قبلا استفاده شده است.");
-                    throw new Error("Duplicate username");
-                }
-                if (currentUsers.some(u => u.email === email)) {
-                    showValidationError(emailInput, "این ایمیل قبلا ثبت نام کرده است.");
-                    throw new Error("Duplicate email");
-                }
-
-                const newUser = { username, email, password };
-                currentUsers.push(newUser);
-                Ge(currentUsers); // Save users
-                W(newUser.username, { // Save user data
-                    joinDate: new Date().toISOString(),
-                    step1: { clientName: newUser.username, clientEmail: newUser.email }
-                });
-                fe(newUser.username); // Log in
-            } catch (err) {
-                console.error("Signup failed:", err);
-                 if (String(err).indexOf("Duplicate") === -1) {
-                    w("ثبت نام ناموفق بود. لطفاً دوباره تلاش کنید.", "error");
-                }
-                void card?.offsetWidth;
-                card?.classList.add("shake-animation");
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.classList.remove("is-loading");
-                    submitBtn.innerHTML = "ثبت نام";
-                }
+        if(target.closest('#section-1')){
+             if (target.name?.startsWith('gender') || ['age-slider', 'height-slider', 'weight-slider', 'neck-input', 'waist-input', 'hip-input'].some(cls => target.classList.contains(cls))) {
+                const section1 = document.getElementById('section-1')!;
+                if(target.name?.startsWith('gender')) xe(section1);
+                he(section1);
             }
-        }, 500);
-    });
-
-    H?.addEventListener("click", () => {
-        const e = (document.getElementById("login-username") as HTMLInputElement).value.trim(),
-            t = (document.getElementById("login-password") as HTMLInputElement).value;
-        e === "admin66" && t === "adminpass" ? Oe() : w("نام کاربری یا رمز عبور مربی نامعتبر است.", "error")
-    });
-    document.getElementById("switch-to-signup-btn")?.addEventListener("click", () => switchAuthForm("signup"));
-    document.getElementById("switch-to-login-btn")?.addEventListener("click", () => switchAuthForm("login"));
-    document.getElementById("switch-to-forgot-btn")?.addEventListener("click", () => switchAuthForm("forgot-password"));
-    document.getElementById("switch-back-to-login-btn")?.addEventListener("click", () => switchAuthForm("login"));
-    document.getElementById("forgot-password-form")?.addEventListener("submit", e => {
-        e.preventDefault();
-        const t = (document.getElementById("forgot-email") as HTMLInputElement).value.trim();
-        t ? (w("لینک بازیابی به ایمیل شما ارسال شد (شبیه‌سازی).", "success"), switchAuthForm("login")) : w("لطفا ایمیل خود را وارد کنید.", "error")
-    });
-    document.querySelectorAll(".password-toggle").forEach(e => {
-        e.addEventListener("click", () => {
-            const t = document.getElementById(e.getAttribute("data-target")) as HTMLInputElement,
-                s = e.querySelector("i");
-            t.type === "password" ? (t.type = "text", s.setAttribute("data-lucide", "eye-off")) : (t.type = "password", s.setAttribute("data-lucide", "eye")), window.lucide?.createIcons()
-        })
-    });
-    document.getElementById("logout-btn")?.addEventListener("click", We);
-    document.getElementById("logout-btn-dashboard")?.addEventListener("click", We);
-    st();
-    document.getElementById("add-day-btn")?.addEventListener("click", () => re());
-    document.getElementById("program-builder-form")?.addEventListener("click", e => {
-        const t = e.target as HTMLElement;
-        if (t.closest(".add-exercise-btn")) {
-            const r = t.closest(".day-card")?.querySelector(".exercise-list");
-            r && ge(r as HTMLDivElement)
-        }
-        if (t.closest(".remove-exercise-btn")) t.closest(".exercise-row")?.remove();
-        if (t.closest(".remove-day-btn")) t.closest(".day-card")?.remove();
-        if (t.closest(".superset-btn")) {
-            const r = t.closest(".exercise-row");
-            r?.classList.toggle("is-superset"), t.closest(".superset-btn")?.classList.toggle("active")
         }
     });
-    document.getElementById("program-builder-form")?.addEventListener("change", e => {
-        const t = e.target as HTMLElement;
-        if (t.classList.contains("muscle-group-select")) {
-            const s = t.closest(".exercise-row")?.querySelector(".exercise-select");
-            s && pe((t as HTMLSelectElement).value, s as HTMLSelectElement)
+    form.addEventListener("change", e => {
+        const target = e.target as HTMLInputElement;
+        if (target.classList.contains("profile-pic-input") && target.files && target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                (target.closest('label')?.querySelector('.profile-pic-preview') as HTMLImageElement).src = reader.result as string;
+            };
+            reader.readAsDataURL(target.files[0]);
         }
-        if (t.closest('input[type="radio"]')) {
-            updateRadioCardSelection(t.closest("form")!);
-        }
-    });
-    document.getElementById("program-builder-form")?.addEventListener("input", e => {
-        const t = e.target as HTMLInputElement;
-        if (t.classList.contains("range-slider")) {
-            updateSliderValueDisplay(t);
-        }
-        if (["age-slider", "height-slider", "weight-slider", "neck-input", "waist-input", "hip-input"].some(s => t.classList.contains(s))) {
-            const s = t.closest("#section-1");
-            s && he(s as HTMLElement)
+        if (target.type === 'radio') {
+            updateRadioCardSelection(form);
         }
     });
-    document.getElementById("program-builder-form")?.addEventListener("change", e => {
-        const t = e.target as HTMLInputElement;
-        if (["gender", "activity-level"].some(s => t.classList.contains(s))) {
-            const s = t.closest("#section-1");
-            s && he(s as HTMLElement)
-        }
-        if (t.classList.contains("gender")) {
-            const s = t.closest("#section-1");
-            s && xe(s as HTMLElement)
-        }
-        if (t.closest('input[type="radio"]')) {
-            updateRadioCardSelection(t.closest("form")!);
-        }
-    });
-    document.getElementById("next-btn")?.addEventListener("click", () => ne(Re(F, 1)));
-    document.getElementById("prev-btn")?.addEventListener("click", () => ne(Re(F, -1)));
-    document.querySelectorAll(".stepper-item").forEach(e => {
-        e.addEventListener("click", () => {
-            const t = parseInt(e.getAttribute("data-step") || "1");
-            ne(t)
-        })
-    });
+    
+    document.getElementById("prev-btn")?.addEventListener("click", () => ne(F-1));
+    document.getElementById("next-btn")?.addEventListener("click", () => ne(F+1));
+    document.querySelectorAll(".stepper-item").forEach(el => el.addEventListener("click", () => ne(+(el.getAttribute('data-step')!))));
+    
     document.getElementById("save-pdf-btn")?.addEventListener("click", Fe);
     document.getElementById("save-image-btn")?.addEventListener("click", saveAsImage);
     document.getElementById("send-program-btn")?.addEventListener("click", rt);
     document.getElementById("save-changes-btn")?.addEventListener("click", at);
     document.getElementById("send-nutrition-btn")?.addEventListener("click", dt);
-    document.getElementById("profile-pic-upload")?.addEventListener("change", e => {
-        const t = (e.target as HTMLInputElement).files?.[0];
-        if (t) {
-            const s = new FileReader;
-            s.onload = r => {
-                const a = document.querySelector("#section-1 .profile-pic-preview") as HTMLImageElement;
-                a && (a.src = r.target?.result as string)
-            }, s.readAsDataURL(t)
-        }
+
+    // Load initial data for coach
+    document.getElementById("current-user-name")!.textContent = coachUsername;
+    Je({
+        step1: { coachName: coachUsername },
+        step2: { days: [] },
+        step3: { supplements: [] },
+        step4: {},
+        step5: {}
     });
-    document.getElementById("generate-ai-plan-btn")?.addEventListener("click", async () => {
-        const e = document.getElementById("generate-ai-plan-btn") as HTMLButtonElement;
-        if (e.classList.contains("is-loading")) return;
-        e.classList.add("is-loading", "secondary");
-        const t = ye().step1,
-            s = `بر اساس اطلاعات زیر یک برنامه تمرینی شخصی‌سازی شده ایجاد کن:
-- هدف: ${t.trainingGoal || "تناسب اندام عمومی"}
-- جنسیت: ${t.gender || "نامشخص"}
-- سن: ${t.age || "نامشخص"}
-- قد: ${t.height || "نامشخص"} سانتی‌متر
-- وزن: ${t.weight || "نامشخص"} کیلوگرم
-- تعداد روزهای تمرین در هفته: ${t.trainingDays || 4}
-- سطح فعالیت: ${t.activityLevel ? { "1.2": "بی‌تحرک", "1.375": "فعالیت کم", "1.55": "فعالیت متوسط", "1.725": "فعالیت زیاد" }[t.activityLevel] : "فعالیت متوسط"}
+    st(); // Populate supplements
+};
 
-خروجی باید یک شیء JSON با یک کلید اصلی "days" باشد. مقدار "days" باید یک آرایه از اشیاء باشد که هر شیء نمایانگر یک روز تمرینی است. هر شیء روز باید شامل موارد زیر باشد:
-1. "title": یک رشته برای عنوان روز (مثال: "روز اول: تمرین سینه و پشت بازو").
-2. "notes": یک رشته با یادداشت‌های کوتاه برای آن روز.
-3. "exercises": یک آرایه از اشیاء تمرین. هر شیء تمرین باید شامل موارد زیر باشد:
-   - "muscle": گروه عضلانی از لیست زیر: [${Object.keys(window.exerciseDB).join(", ")}].
-   - "exercise": نام حرکت خاص از گروه عضلانی انتخاب شده.
-   - "sets": یک عدد بین 1 تا 10.
-   - "reps": یک عدد بین 1 تا 50.
-   - "rest": یک عدد برای زمان استراحت به ثانیه (مثال: 60, 90).
-   - "isSuperset": یک مقدار بولی که همیشه false باشد.
+const initUserDashboardListeners = (username: string) => {
+    const dashboardContainer = document.getElementById('user-dashboard-container');
+    if (!dashboardContainer) return;
 
-تعداد اشیاء روز در آرایه "days" باید دقیقا برابر با ${t.trainingDays || 4} باشد.
-پاسخ را فقط به صورت یک شیء JSON معتبر، بدون هیچ‌گونه قالب‌بندی Markdown یا متن اضافی ارائه بده.`;
-        if (!X) {
-            X = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Use event delegation for dynamically added elements
+    dashboardContainer.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+
+        if (target.closest('#start-workout-btn')) openWorkoutLogModal();
+        if (target.closest('#save-workout-log-btn')) saveWorkoutLog();
+        if (target.closest('#close-workout-log-btn')) closeModal(document.getElementById('workout-log-modal'));
+        if (target.closest('#cart-icon-btn')) openCartModal();
+        if (target.closest('#close-cart-btn')) closeCartModal();
+        if (target.closest('#checkout-btn')) handleCheckout();
+        if (target.closest('#open-ai-chat-btn')) openChat();
+        if (target.closest('#close-ai-chat-btn')) closeChat();
+
+        const addToCartBtn = target.closest('.add-to-cart-btn');
+        if (addToCartBtn) {
+            const planId = addToCartBtn.getAttribute('data-plan-id');
+            const planDetails = STORE_PLANS.find(p => p.planId === planId);
+            if (planDetails) addToCart(planDetails);
         }
-        try {
-            const result = await X.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: s,
-                 config: {
-                    responseMimeType: "application/json",
-                 }
-            });
-            
-            const jsonText = result.text.trim().replace(/```json/g, "").replace(/```/g, "");
-            const generatedPlan = JSON.parse(jsonText);
 
-            if (!generatedPlan || !generatedPlan.days) {
-                throw new Error("Invalid response format from AI.");
-            }
+        const removeFromCartBtn = target.closest('.remove-from-cart-btn');
+        if (removeFromCartBtn) {
+            const planId = removeFromCartBtn.getAttribute('data-plan-id');
+            if (planId) removeFromCart(planId);
+        }
 
-            const workoutContainer = document.getElementById("workout-days-container")!;
-            workoutContainer.innerHTML = ''; 
-
-            generatedPlan.days.forEach((dayData) => {
-                re(workoutContainer.children.length === 0);
-                const dayCard = workoutContainer.lastElementChild!;
-                
-                (dayCard.querySelector(".day-title-input") as HTMLInputElement).value = dayData.title;
-                (dayCard.querySelector(".day-notes-input") as HTMLTextAreaElement).value = dayData.notes;
-                
-                const exerciseList = dayCard.querySelector(".exercise-list")!;
-                exerciseList.innerHTML = '';
-
-                dayData.exercises.forEach((ex) => {
-                    ge(exerciseList as HTMLDivElement);
-                    const exerciseRow = exerciseList.lastElementChild as HTMLElement;
-                    
-                    const muscleSelect = exerciseRow.querySelector(".muscle-group-select") as HTMLSelectElement;
-                    const exerciseSelect = exerciseRow.querySelector(".exercise-select") as HTMLSelectElement;
-                    const setSlider = exerciseRow.querySelector(".set-slider") as HTMLInputElement;
-                    const repSlider = exerciseRow.querySelector(".rep-slider") as HTMLInputElement;
-                    const restSlider = exerciseRow.querySelector(".rest-slider") as HTMLInputElement;
-                    
-                    const muscleExists = Object.keys(we).includes(ex.muscle);
-                    const muscle = muscleExists ? ex.muscle : Object.keys(we)[0];
-                    muscleSelect.value = muscle;
-                    pe(muscle, exerciseSelect);
-
-                    const exerciseExists = (we[muscle] || []).includes(ex.exercise);
-                    exerciseSelect.value = exerciseExists ? ex.exercise : (we[muscle] || [])[0];
-                    
-                    setSlider.value = String(ex.sets);
-                    repSlider.value = String(ex.reps);
-                    restSlider.value = String(ex.rest);
-                    
-                    [setSlider, repSlider, restSlider].forEach(slider => {
-                        const event = new Event('input', { bubbles: true });
-                        slider.dispatchEvent(event);
-                    });
-                });
-            });
-            window.lucide?.createIcons();
-            w("برنامه تمرینی با موفقیت توسط هوش مصنوعی تولید شد.", "success");
-        } catch (error) {
-            console.error("AI Plan Generation Error:", error);
-            w("خطا در تولید برنامه با هوش مصنوعی. لطفاً دوباره تلاش کنید.", "error");
-        } finally {
-            e.classList.remove("is-loading", "secondary");
+        if (target.closest('#confirm-info-btn')) {
+            const btn = target.closest('#confirm-info-btn') as HTMLButtonElement;
+            if (btn.disabled) return;
+            const currentUserData = D(username);
+            currentUserData.infoConfirmed = true;
+            W(username, currentUserData);
+            ae(`${username} اطلاعات پروفایل خود را تایید کرد.`);
+            w('اطلاعات شما با موفقیت تایید شد.', 'success');
+            renderProfileTab(username, currentUserData);
         }
     });
 
-    document.getElementById("generate-ai-nutrition-btn")?.addEventListener("click", async () => {
-        const e = document.getElementById("generate-ai-nutrition-btn") as HTMLButtonElement;
-        const resultContainer = document.getElementById("ai-nutrition-result") as HTMLElement;
-        if (e.classList.contains("is-loading")) return;
-
-        e.classList.add("is-loading");
-        resultContainer.classList.remove("hidden");
-        resultContainer.innerHTML = '<div class="flex items-center gap-2 text-secondary"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-secondary"></div><span>در حال تولید برنامه غذایی...</span></div>';
-
-        const t = ye().step1;
-        const s = `بر اساس اطلاعات کاربر زیر، یک برنامه غذایی نمونه و عمومی برای ${t.trainingGoal || "تناسب اندام عمومی"} ایجاد کن.
-- جنسیت: ${t.gender || "نامشخص"}
-- سن: ${t.age || "نامشخص"}
-- قد: ${t.height || "نامشخص"} cm
-- وزن: ${t.weight || "نامشخص"} kg
-- TDEE (کالری مورد نیاز روزانه): ${t.tdee || 2500} kcal
-
-برنامه باید شامل 5 وعده غذایی (صبحانه، ناهار، شام، و دو میان‌وعده) باشد. برای هر وعده، چند گزینه غذایی سالم و ساده با مقادیر تقریبی پیشنهاد بده. کالری کل روزانه باید نزدیک به TDEE کاربر باشد.
-پاسخ باید به زبان فارسی و در قالب HTML با استفاده از تگ‌های h4 برای عناوین وعده‌ها، ul و li برای لیست غذاها باشد. از کلاس‌های Tailwind CSS استفاده نکن.`;
-
-        if (!X) {
-            X = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        }
-
-        try {
-            const result = await X.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: s,
-            });
-            resultContainer.innerHTML = result.text.replace(/\n/g, "<br>");
-        } catch (error) {
-            console.error("AI Nutrition Generation Error:", error);
-            w("خطا در تولید برنامه غذایی.", "error");
-            resultContainer.innerHTML = "<p>خطایی رخ داد. لطفاً دوباره تلاش کنید.</p>";
-        } finally {
-            e.classList.remove("is-loading");
-        }
-    });
-    
-    document.getElementById("get-ai-suggestion-btn")?.addEventListener("click", async () => {
-        const input = document.getElementById("ai-question-input") as HTMLInputElement;
-        const query = input.value.trim();
-        const btn = document.getElementById("get-ai-suggestion-btn") as HTMLButtonElement;
-        const contentDiv = document.getElementById("ai-assistant-content")!;
-
-        if (!query || btn.classList.contains("is-loading")) return;
-
-        btn.classList.add("is-loading");
-        contentDiv.innerHTML = '<div class="flex items-center gap-2 text-secondary"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-secondary"></div><span>در حال پردازش...</span></div>';
-
-        if (!X) {
-            X = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        }
-        
-        try {
-            const fullPrompt = `You are a fitness coach assistant. Answer the following question in Persian concisely: "${query}"`;
-            const result = await X.models.generateContent({ model: "gemini-2.5-flash", contents: fullPrompt });
-            contentDiv.innerHTML = result.text.replace(/\n/g, "<br>");
-        } catch (error) {
-            console.error("AI Suggestion Error:", error);
-            w("خطا در دریافت پاسخ از هوش مصنوعی.", "error");
-            contentDiv.innerHTML = "<p>خطایی رخ داد. دوباره تلاش کنید.</p>";
-        } finally {
-            btn.classList.remove("is-loading");
-        }
-    });
-
-    document.querySelectorAll(".user-dashboard-tab").forEach(e => {
-        e.addEventListener("click", () => {
-            const t = e.getAttribute("data-tab");
-            t && switchUserDashboardTab(t)
-        })
-    });
-    
-    document.getElementById("start-workout-btn")?.addEventListener("click", openWorkoutLogModal);
-    document.getElementById("close-workout-log-btn")?.addEventListener("click", () => closeModal(document.getElementById("workout-log-modal")!));
-    document.getElementById("finish-workout-btn")?.addEventListener("click", saveWorkoutLog);
-    
-    document.getElementById("ai-chat-fab")?.addEventListener("click", openChat);
-    document.getElementById("close-ai-chat-btn")?.addEventListener("click", closeChat);
-    document.getElementById("ai-chat-form")?.addEventListener("submit", handleAIChatSubmit);
-    
-    document.getElementById("add-weight-form")?.addEventListener("submit", (e) => {
+    dashboardContainer.addEventListener('submit', e => {
         e.preventDefault();
-        const input = document.getElementById("new-weight-input") as HTMLInputElement;
-        const weight = parseFloat(input.value);
-        if (!f || isNaN(weight) || weight <= 0) {
-            w("لطفاً یک وزن معتبر وارد کنید.", "error");
-            return;
+        const form = e.target as HTMLFormElement;
+
+        if (form.id === 'add-weight-form') {
+            const input = form.querySelector('#new-weight-input') as HTMLInputElement;
+            const weight = parseFloat(input.value);
+            if (!isNaN(weight) && weight > 0) {
+                const currentUserData = D(username);
+                if (!currentUserData.weightHistory) currentUserData.weightHistory = [];
+                currentUserData.weightHistory.push({ date: new Date().toISOString(), weight: weight });
+                W(username, currentUserData);
+                input.value = '';
+                w('وزن با موفقیت ثبت شد.', 'success');
+                Xe(currentUserData.weightHistory, 'weight-progress-chart', 'no-chart-data');
+            } else {
+                w('لطفا وزن معتبری وارد کنید.', 'error');
+            }
         }
 
-        const userData = D(f);
-        userData.weightHistory = userData.weightHistory || [];
-        userData.weightHistory.push({ date: new Date().toISOString(), weight: weight });
+        if (form.id === 'coach-chat-form') {
+            const input = form.querySelector('#coach-chat-input') as HTMLInputElement;
+            const message = input.value.trim();
+            if (message) {
+                const currentUserData = D(username);
+                if (!currentUserData.chatHistory) currentUserData.chatHistory = [];
+                currentUserData.chatHistory.push({ sender: 'user', message, date: new Date().toISOString() });
+                currentUserData.hasNewMessageForCoach = true;
+                W(username, currentUserData);
+                input.value = '';
+                renderChatTab(username, currentUserData);
+                ae(`پیام جدید از ${username}`);
+            }
+        }
         
-        // Also update profile weight
-        userData.step1 = userData.step1 || {};
-        userData.step1.weight = weight.toString();
-        
-        W(f, userData);
-        w("وزن با موفقیت ثبت شد!", "success");
-        input.value = "";
-        
-        // Re-render dashboard and profile to reflect changes
-        de(f, userData);
-        switchUserDashboardTab('dashboard'); // Switch to show updated chart
+        if (form.id === 'ai-chat-form') {
+            handleAIChatSubmit(e);
+        }
+
+        if (form.id === 'discount-form') {
+            const input = form.querySelector('#discount-code-input') as HTMLInputElement;
+            const code = input.value.trim();
+            if (code) applyDiscount(code);
+        }
     });
-    
-    // User dashboard profile form logic
-    const userProfilePanel = document.getElementById("dashboard-profile-panel");
-    if (userProfilePanel) {
-        userProfilePanel.addEventListener("input", (e) => {
+
+    const profilePanel = document.getElementById('dashboard-profile-panel');
+    if (profilePanel) {
+        const handleProfileChange = () => {
+             const currentUserData = D(username);
+             if (currentUserData.infoConfirmed) return;
+             
+             const step1Data = {
+                 clientEmail: (profilePanel.querySelector(".client-email-input") as HTMLInputElement).value,
+                 profilePic: (profilePanel.querySelector(".profile-pic-preview") as HTMLImageElement).src,
+                 height: (profilePanel.querySelector(".height-slider") as HTMLInputElement).value,
+                 weight: (profilePanel.querySelector(".weight-slider") as HTMLInputElement).value,
+                 age: (profilePanel.querySelector(".age-slider") as HTMLInputElement).value,
+                 neck: (profilePanel.querySelector(".neck-input") as HTMLInputElement).value,
+                 waist: (profilePanel.querySelector(".waist-input") as HTMLInputElement).value,
+                 hip: (profilePanel.querySelector(".hip-input") as HTMLInputElement).value,
+                 gender: (profilePanel.querySelector('input[name="gender_user"]:checked') as HTMLInputElement)?.value,
+                 trainingGoal: (profilePanel.querySelector('input[name="training_goal_user"]:checked') as HTMLInputElement)?.value,
+                 activityLevel: (profilePanel.querySelector('input[name="activity_level_user"]:checked') as HTMLInputElement)?.value,
+                 trainingDays: (profilePanel.querySelector('input[name="training_days_user"]:checked') as HTMLInputElement)?.value,
+             };
+             currentUserData.step1 = { ...(currentUserData.step1 || {}), ...step1Data };
+             W(username, currentUserData);
+             he(profilePanel);
+        };
+        
+        let debounceTimer;
+        profilePanel.addEventListener('input', (e) => {
             const target = e.target as HTMLInputElement;
-            if (target.classList.contains("range-slider")) {
-                updateSliderValueDisplay(target);
-            }
-             if (["height-slider", "weight-slider", "age-slider", "neck-input", "waist-input", "hip-input"].some(cls => target.classList.contains(cls))) {
-                he(userProfilePanel as HTMLElement);
-            }
+            if (D(username).infoConfirmed) return;
+            if (target.classList.contains("range-slider")) updateSliderValueDisplay(target);
+            if(target.name?.startsWith('gender_user')) xe(profilePanel);
+            he(profilePanel);
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(handleProfileChange, 1000);
         });
-        
-        userProfilePanel.addEventListener("change", (e) => {
+
+        profilePanel.addEventListener('change', e => {
              const target = e.target as HTMLInputElement;
-             if (target.closest('input[type="radio"]')) {
-                 updateRadioCardSelection(userProfilePanel);
-             }
-             if (target.name.startsWith("gender_user")) {
-                 xe(userProfilePanel);
-             }
-             if (target.name.startsWith("activity_level_user")) {
-                he(userProfilePanel);
+             if (D(username).infoConfirmed) return;
+             if (target.classList.contains("profile-pic-input") && target.files && target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    (target.closest('label')?.querySelector('.profile-pic-preview') as HTMLImageElement).src = reader.result as string;
+                    handleProfileChange();
+                };
+                reader.readAsDataURL(target.files[0]);
+             } else if (target.type === 'radio') {
+                 updateRadioCardSelection(profilePanel);
+                 handleProfileChange();
              }
         });
-        
-        userProfilePanel.querySelector(".profile-pic-input")?.addEventListener("change", e => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (file && f) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const newSrc = event.target?.result as string;
-                    (userProfilePanel.querySelector(".profile-pic-preview") as HTMLImageElement).src = newSrc;
-                    
-                    const userData = D(f);
-                    userData.step1 = userData.step1 || {};
-                    userData.step1.profilePic = newSrc;
-                    W(f, userData);
-                    w("عکس پروفایل به‌روزرسانی شد.", "success");
-                };
-                reader.readAsDataURL(file);
+    }
+    
+    document.getElementById('user-dashboard-tabs')?.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+        const tabBtn = target.closest('.user-dashboard-tab');
+        if (tabBtn) {
+            const tabName = tabBtn.getAttribute('data-tab');
+            if (tabName) switchUserDashboardTab(tabName);
+        }
+    });
+};
+
+const initUserDashboard = (username, userData) => {
+    document.getElementById("logout-btn-dashboard")?.addEventListener("click", handleLogout);
+    de(username, userData);
+    initUserDashboardListeners(username);
+};
+
+const getLandingPageHTML = () => `
+<div class="landing-page-container">
+    <div class="landing-bg"></div>
+    <header id="landing-header" class="fixed top-0 left-0 right-0 z-50 p-4 animate-fade-in-down">
+        <div class="container mx-auto flex justify-between items-center p-3 rounded-2xl glass-nav">
+            <div class="flex items-center gap-3">
+                <i data-lucide="dumbbell" class="w-8 h-8 text-accent"></i>
+                <h1 class="text-xl font-bold">فیت‌جیم‌پرو</h1>
+            </div>
+            <nav class="hidden md:flex items-center gap-6 text-sm font-semibold">
+                <a href="#" class="landing-nav-link">خانه</a>
+                <button id="open-about-modal-btn" type="button" class="landing-nav-link">درباره ما</button>
+                <button id="open-coaches-modal-btn" type="button" class="landing-nav-link">مربیان</button>
+                <button id="open-plans-modal-btn" type="button" class="landing-nav-link">برنامه‌های تمرینی</button>
+            </nav>
+            <div class="flex items-center gap-2">
+                <button id="header-login-btn" class="secondary-button !py-2 !px-5 !text-sm !bg-transparent !border-0 !text-text-primary hover:!bg-white/10">ورود</button>
+                <button id="header-signup-btn" class="primary-button !py-2 !px-5 !text-sm">ثبت نام</button>
+            </div>
+        </div>
+    </header>
+    <main class="relative h-screen flex items-center justify-center text-center p-4">
+        <div class="z-10">
+            <div class="animate-fade-in-up">
+                <h1 class="text-5xl md:text-7xl font-black tracking-tighter">
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-green-400">آینده</span>
+                    مربیگری، امروز.
+                </h1>
+                <p class="max-w-2xl mx-auto mt-6 text-lg text-secondary animate-fade-in-up animation-delay-200">
+                    با پلتفرم هوشمند فیت‌جیم‌پرو، برنامه‌های تمرینی و غذایی شخصی‌سازی شده برای شاگردان خود طراحی کنید، پیشرفتشان را دنبال کنید و کسب‌وکار مربیگری خود را متحول سازید.
+                </p>
+                <button id="hero-cta-btn" class="primary-button !py-3.5 !px-8 !text-lg mt-8 hero-cta-btn animate-fade-in-up animation-delay-400">
+                    <span class="glow-circle"></span>
+                    همین حالا شروع کنید
+                </button>
+            </div>
+            <div class="motivational-card animate-fade-in-up animation-delay-600">
+                <div class="stat">
+                    <i data-lucide="trending-up" class="w-8 h-8"></i>
+                    <div class="stat-text text-right">
+                        <p>مسیر شما</p>
+                        <p>به سوی تناسب اندام</p>
+                    </div>
+                </div>
+                <div class="w-px h-10 bg-border-primary/50"></div>
+                <div class="stat">
+                     <i data-lucide="users" class="w-8 h-8"></i>
+                    <div class="stat-text text-right">
+                        <p>+5k</p>
+                        <p>عضو راضی</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <div id="info-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-3xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
+            <header class="p-4 border-b border-border-primary flex justify-between items-center flex-shrink-0">
+                <h2 id="info-modal-title" class="text-xl font-bold text-accent"></h2>
+                <button id="close-info-modal-btn" type="button" class="secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
+            </header>
+            <div id="info-modal-content" class="p-6 overflow-y-auto">
+                <!-- Content will be injected here -->
+            </div>
+        </div>
+    </div>
+</div>
+`;
+
+const getAuthModalHTML = () => `
+<div id="auth-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+    <div class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative">
+         <button id="close-auth-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
+        <div class="p-8 pt-12 min-h-[420px] overflow-hidden">
+            <!-- Login Form -->
+            <div id="login-form-container" class="form-container">
+                <h2 class="font-bold text-2xl text-center mb-6">خوش آمدید!</h2>
+                <form id="login-form" class="space-y-4" novalidate>
+                    <div class="input-group">
+                        <input id="login-username" type="text" class="input-field w-full" placeholder=" " required>
+                        <label for="login-username" class="input-label">نام کاربری</label>
+                    </div>
+                    <div class="input-group relative">
+                        <input id="login-password" type="password" class="input-field w-full" placeholder=" " required>
+                        <label for="login-password" class="input-label">رمز عبور</label>
+                        <button type="button" class="password-toggle" data-target="login-password"><i data-lucide="eye" class="w-5 h-5"></i></button>
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit" class="primary-button w-full !py-3 !text-base">ورود</button>
+                    </div>
+                </form>
+                <div class="text-center mt-6">
+                    <p class="text-sm text-secondary">
+                        حساب کاربری ندارید؟
+                        <button id="switch-to-signup-btn" type="button" class="font-bold text-accent hover:underline">ثبت نام کنید</button>
+                    </p>
+                    <p class="text-sm text-secondary mt-2">
+                         <button id="switch-to-forgot-btn" type="button" class="hover:underline">فراموشی رمز عبور؟</button>
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Signup Form -->
+            <div id="signup-form-container" class="form-container hidden">
+                <h2 class="font-bold text-2xl text-center mb-6">ایجاد حساب کاربری</h2>
+                <form id="signup-form" class="space-y-2" novalidate>
+                    <div class="input-group">
+                        <input id="signup-username" type="text" class="input-field w-full" placeholder=" " required minlength="3">
+                        <label for="signup-username" class="input-label">نام کاربری</label>
+                        <div class="validation-message"></div>
+                    </div>
+                    <div class="input-group">
+                        <input id="signup-email" type="email" class="input-field w-full" placeholder=" " required>
+                        <label for="signup-email" class="input-label">ایمیل</label>
+                        <div class="validation-message"></div>
+                    </div>
+                    <div class="input-group relative">
+                        <input id="signup-password" type="password" class="input-field w-full" placeholder=" " required minlength="6">
+                        <label for="signup-password" class="input-label">رمز عبور</label>
+                        <button type="button" class="password-toggle" data-target="signup-password"><i data-lucide="eye" class="w-5 h-5"></i></button>
+                        <div class="validation-message"></div>
+                    </div>
+                    <button type="submit" class="primary-button w-full !py-3 !text-base mt-2">ثبت نام</button>
+                </form>
+                <p class="text-center text-sm text-secondary mt-6">
+                    قبلا ثبت نام کرده‌اید؟
+                    <button id="switch-to-login-btn" type="button" class="font-bold text-accent hover:underline">وارد شوید</button>
+                </p>
+            </div>
+
+            <!-- Forgot Password Form -->
+            <div id="forgot-password-form-container" class="form-container hidden">
+                <h2 class="font-bold text-2xl text-center mb-6">بازیابی رمز عبور</h2>
+                <p class="text-center text-sm text-secondary mb-6">ایمیل خود را وارد کنید تا لینک بازیابی رمز عبور برایتان ارسال شود.</p>
+                <form id="forgot-password-form" class="space-y-4" novalidate>
+                    <div class="input-group">
+                        <input id="forgot-email" type="email" class="input-field w-full" placeholder=" " required>
+                        <label for="forgot-email" class="input-label">ایمیل</label>
+                    </div>
+                    <button type="submit" class="primary-button w-full !py-3 !text-base">ارسال لینک بازیابی</button>
+                </form>
+                <p class="text-center text-sm text-secondary mt-6">
+                    <button id="switch-back-to-login-btn" type="button" class="font-bold text-accent hover:underline">بازگشت به صفحه ورود</button>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+`;
+
+const getCoachHTML = () => `
+<div id="main-app-container" class="opacity-0 transition-opacity duration-500 animate-fade-in">
+    <header class="bg-secondary sticky top-0 z-40 border-b border-border-primary">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i data-lucide="dumbbell" class="w-8 h-8 text-accent"></i>
+                <h1 class="text-xl font-bold">FitGym Pro <span class="text-sm font-normal text-secondary">(پنل مربی)</span></h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <div id="current-user-display" class="flex items-center gap-2">
+                     <i data-lucide="shield-check" class="text-green-accent"></i>
+                     <span id="current-user-name" class="font-bold"></span>
+                </div>
+                <button id="logout-btn" class="secondary-button !px-3 !py-2" title="خروج"><i data-lucide="log-out"></i></button>
+            </div>
+        </div>
+    </header>
+    
+    <main class="container mx-auto p-4 lg:p-6">
+        <form id="program-builder-form" class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div class="lg:col-span-2 space-y-6">
+                <div class="card p-4">
+                    <div class="flex justify-between items-center">
+                        <div class="stepper-item active" data-step="1"><div class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold">1</div><span class="hidden md:inline">اطلاعات</span></div>
+                        <div class="flex-1 h-0.5 bg-border-primary mx-4"></div>
+                        <div class="stepper-item" data-step="2"><div class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold">2</div><span class="hidden md:inline">تمرین</span></div>
+                         <div class="flex-1 h-0.5 bg-border-primary mx-4"></div>
+                        <div class="stepper-item" data-step="3"><div class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold">3</div><span class="hidden md:inline">مکمل‌ها</span></div>
+                        <div class="flex-1 h-0.5 bg-border-primary mx-4"></div>
+                        <div class="stepper-item" data-step="4"><div class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold">4</div><span class="hidden md:inline">بازبینی</span></div>
+                        <div class="flex-1 h-0.5 bg-border-primary mx-4"></div>
+                        <div class="stepper-item" data-step="5"><div class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold">5</div><span class="hidden md:inline">تغذیه</span></div>
+                    </div>
+                </div>
+                
+                <div id="section-1" class="form-section active card p-6">
+                    <h2 class="text-2xl font-bold mb-6 border-b border-border-primary pb-4">گام اول: اطلاعات شاگرد</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                            <label for="profile-pic-upload" class="flex flex-col items-center gap-2 cursor-pointer"><img class="profile-pic-preview w-24 h-24 rounded-full object-cover border-4 border-border-primary" src="https://placehold.co/100x100/374151/E5E7EB?text=عکس" alt="Profile"><span class="text-xs font-semibold text-secondary">تغییر عکس</span><input type="file" id="profile-pic-upload" class="profile-pic-input hidden" accept="image/*"></label>
+                            <div class="sm:col-span-2 space-y-4">
+                                <input type="text" id="client-name-input" class="client-name-input input-field w-full text-lg" placeholder="نام و نام خانوادگی شاگرد">
+                                <input type="email" class="client-email-input input-field w-full" placeholder="ایمیل شاگرد (اختیاری)">
+                                <input type="text" id="coach-name-input" class="coach-name-input input-field w-full" placeholder="نام مربی">
+                            </div>
+                        </div>
+                        <div class="space-y-4"><label class="font-semibold">سن: <span class="age-value font-bold text-accent">25</span></label><input type="range" min="15" max="80" value="25" class="range-slider age-slider"></div>
+                        <div class="space-y-4"><label class="font-semibold">قد (cm): <span class="height-value font-bold text-accent">180</span></label><input type="range" min="140" max="220" value="180" class="range-slider height-slider"></div>
+                         <div class="space-y-4"><label class="font-semibold">وزن (kg): <span class="weight-value font-bold text-accent">80</span></label><input type="range" min="40" max="150" value="80" step="0.5" class="range-slider weight-slider"></div>
+                        <div class="space-y-2"><h3 class="font-bold text-lg">جنسیت</h3><div class="grid grid-cols-2 gap-3 text-base"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all card-gender-male"><input type="radio" name="gender" value="مرد" class="gender sr-only" checked>مرد</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all card-gender-female"><input type="radio" name="gender" value="زن" class="gender sr-only">زن</label></div></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:col-span-2"><input type="number" class="neck-input input-field" placeholder="دور گردن (cm)"><input type="number" class="waist-input input-field" placeholder="دور کمر (cm)"><div class="hip-input-container hidden"><input type="number" class="hip-input input-field w-full" placeholder="دور باسن (cm)"></div></div>
+                        <div class="md:col-span-2 space-y-3"><h3 class="font-bold text-lg">سطح فعالیت روزانه</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-base"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.2">بدون فعالیت</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.375">کم (۱-۳ روز)</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.55" checked>متوسط (۳-۵ روز)</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="activity_level" class="activity-level sr-only" value="1.725">زیاد (۶-۷ روز)</label></div></div>
+                        <div class="md:col-span-2 space-y-3"><h3 class="font-bold text-lg">هدف تمرینی</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-base"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_goal" class="training-goal sr-only" value="افزایش حجم">افزایش حجم</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_goal" class="training-goal sr-only" value="کاهش وزن">کاهش وزن</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_goal" class="training-goal sr-only" value="فیتنس">فیتنس</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_goal" class="training-goal sr-only" value="قدرت">قدرت</label></div></div>
+                        <div class="md:col-span-2 space-y-3"><h3 class="font-bold text-lg">تعداد روزهای تمرین در هفته</h3><div class="grid grid-cols-3 md:grid-cols-6 gap-3 text-base"><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="1">۱</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="2">۲</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="3">۳</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="4" checked>۴</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="5">۵</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_days" class="training-days sr-only" value="6">۶</label></div></div>
+                    </div>
+                </div>
+                
+                <div id="section-2" class="form-section hidden card p-6">
+                    <div class="flex flex-wrap gap-4 justify-between items-center mb-6 border-b border-border-primary pb-4"><h2 class="text-2xl font-bold">گام دوم: برنامه تمرینی</h2><button id="generate-ai-plan-btn" type="button" class="primary-button flex items-center gap-2"><i data-lucide="sparkles"></i>تولید برنامه با AI</button></div>
+                    <div id="workout-days-container" class="space-y-6"></div>
+                    <button id="add-day-btn" type="button" class="mt-6 w-full text-lg secondary-button font-bold flex items-center justify-center gap-2"><i data-lucide="plus-circle"></i> افزودن روز تمرینی</button>
+                </div>
+                <div id="section-3" class="form-section hidden card p-6">
+                    <h2 class="text-2xl font-bold mb-2">گام سوم: برنامه مکمل‌ها</h2><p class="text-secondary mb-6">مکمل‌های پیشنهادی را برای شاگرد انتخاب کنید.</p>
+                    <input type="search" id="supplement-search" placeholder="جستجوی مکمل..." class="input-field w-full mb-6">
+                    <div id="supplements-container" class="space-y-6"></div>
+                </div>
+                <div id="section-4" class="form-section hidden card p-6">
+                    <h2 class="text-2xl font-bold mb-6">گام چهارم: بازبینی و توصیه‌های نهایی</h2>
+                    <div><label for="general-notes-input" class="font-bold mb-2 block">توصیه‌های کلی مربی</label><textarea id="general-notes-input" rows="6" class="input-field w-full" placeholder="مثال: حتما قبل از تمرین بدن خود را گرم کنید..."></textarea></div>
+                    <div class="mt-8"><h3 class="text-xl font-bold mb-4">پیش‌نمایش برنامه</h3><div id="program-sheet-container" class="bg-primary p-2 rounded-2xl"></div></div>
+                </div>
+                <div id="section-5" class="form-section hidden card p-6">
+                    <h2 class="text-2xl font-bold mb-6">گام پنجم: برنامه تغذیه (با هوش مصنوعی)</h2>
+                    <div class="bg-tertiary p-4 rounded-xl"><p class="text-secondary text-sm">با استفاده از هوش مصنوعی یک برنامه غذایی نمونه بر اساس اطلاعات شاگرد (مانند TDEE محاسبه شده) تولید کنید. می‌توانید این برنامه را ویرایش و شخصی‌سازی کنید.</p><button id="generate-ai-nutrition-btn" type="button" class="primary-button mt-4 w-full md:w-auto flex items-center gap-2 justify-center"><i data-lucide="sparkles"></i> تولید برنامه غذایی نمونه</button></div>
+                    <div id="ai-nutrition-result" class="mt-6 prose prose-sm max-w-none prose-p:my-2 prose-h4:my-3 prose-table:my-2 hidden" contenteditable="true"></div>
+                    <div class="mt-8"><h3 class="text-xl font-bold mb-4">پیش‌نمایش نهایی برنامه (با تغذیه)</h3><div id="program-sheet-container-step5" class="bg-primary p-2 rounded-2xl"></div></div>
+                </div>
+            </div>
+            
+            <div class="lg:col-span-1 space-y-6 sticky top-24">
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="zap" class="text-accent"></i>عملیات</h3>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-3 gap-2"><button id="save-pdf-btn" type="button" class="secondary-button w-full !text-sm !px-2">ذخیره PDF</button><button id="save-image-btn" type="button" class="secondary-button w-full !text-sm !px-2">ذخیره عکس</button><button id="save-changes-btn" type="button" class="secondary-button w-full !text-sm !px-2">ذخیره تغییرات</button></div>
+                        <button id="send-program-btn" type="button" class="primary-button w-full">ارسال برنامه به شاگرد</button>
+                        <button id="send-nutrition-btn" type="button" class="green-button w-full hidden">ارسال تغذیه به شاگرد</button>
+                    </div>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="bar-chart-3" class="text-accent"></i>شاخص‌های کلیدی</h3>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between items-center"><span>شاخص توده بدنی (BMI)</span><input readonly class="bmi-input input-field !p-1 !text-center w-20 font-mono"></div>
+                        <div class="flex justify-between items-center"><span>متابولیسم پایه (BMR)</span><input readonly class="bmr-input input-field !p-1 !text-center w-20 font-mono"></div>
+                        <div class="flex justify-between items-center"><span>کالری مصرفی روزانه (TDEE)</span><input readonly class="tdee-input input-field !p-1 !text-center w-20 font-mono"></div>
+                        <div class="flex justify-between items-center"><span>درصد چربی بدن</span><input readonly class="bodyfat-input input-field !p-1 !text-center w-20 font-mono"></div>
+                        <div class="flex justify-between items-center"><span>توده بدون چربی (LBM)</span><input readonly class="lbm-input input-field !p-1 !text-center w-20 font-mono"></div>
+                        <div class="flex justify-between items-center"><span>وزن ایده‌آل</span><input readonly class="ideal-weight-input input-field !p-1 !text-center w-32 font-mono"></div>
+                    </div>
+                </div>
+                 <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="save" class="text-accent"></i>الگوها</h3>
+                    <div class="grid grid-cols-2 gap-3"><button id="save-template-btn" type="button" class="secondary-button w-full">ذخیره الگو</button><button id="load-template-btn" type="button" class="secondary-button w-full">بارگذاری الگو</button></div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 flex justify-between items-center mt-6">
+                <button id="prev-btn" type="button" class="secondary-button" disabled>قبلی</button>
+                <button id="next-btn" type="button" class="primary-button">بعدی</button>
+            </div>
+        </form>
+    </main>
+</div>
+`;
+
+const getUserHTML = () => `
+<div id="user-dashboard-container" class="opacity-0 transition-opacity duration-500 animate-fade-in">
+    <header class="bg-secondary sticky top-0 z-40 border-b border-border-primary">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3"><i data-lucide="dumbbell" class="w-8 h-8 text-accent"></i><h1 class="text-xl font-bold">FitGym Pro</h1></div>
+            <div class="flex items-center gap-2 relative">
+                <button id="cart-icon-btn" class="secondary-button !px-3 !py-2 relative" title="سبد خرید"><i data-lucide="shopping-cart"></i><span id="cart-item-count" class="absolute -top-1 -right-1 flex items-center justify-center h-5 w-5 text-xs rounded-full bg-red-500 text-white hidden">0</span></button>
+                <div id="notification-bell-container"></div>
+                <button id="theme-toggle-btn-dashboard" class="secondary-button !px-3 !py-2" title="تغییر تم"><i data-lucide="moon"></i></button>
+                <button id="logout-btn-dashboard" class="secondary-button !px-3 !py-2" title="خروج"><i data-lucide="log-out"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 lg:p-6">
+        <h1 id="dashboard-welcome-message" class="text-3xl font-bold mb-6">خوش آمدی!</h1>
+        <div class="mb-6">
+            <nav id="user-dashboard-tabs" class="relative flex items-center gap-2 sm:gap-4 text-sm sm:text-base overflow-x-auto p-1 bg-secondary rounded-xl">
+                <div id="tab-indicator" class="absolute h-[calc(100%-0.5rem)] top-1"></div>
+                <button data-tab="dashboard" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="layout-dashboard"></i>داشبورد</button>
+                <button data-tab="workout" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="dumbbell"></i>تمرین</button>
+                <button data-tab="nutrition" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="utensils-crossed"></i>تغذیه</button>
+                <button data-tab="chat" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="message-square"></i>گفتگو</button>
+                <button data-tab="store" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="shopping-bag"></i>فروشگاه</button>
+                <button data-tab="profile" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="user-circle"></i>پروفایل</button>
+            </nav>
+        </div>
+
+        <div class="transition-opacity duration-300">
+            <div id="dashboard-tab-content" class="user-dashboard-tab-content space-y-6">
+                <div id="dashboard-stats-grid"></div>
+                <div id="coach-message-card" class="card p-5 hidden"><h3 class="font-bold text-lg mb-3 flex items-center gap-2 text-yellow-accent"><i data-lucide="message-square"></i>آخرین پیام از مربی</h3><div id="coach-message-content" class="text-sm space-y-2"></div></div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 space-y-6">
+                        <div id="today-focus-card" class="card p-5"></div>
+                        <div class="card p-5"><h3 class="font-bold text-lg mb-4 text-accent">نمودار کامل پیشرفت وزن</h3><div class="h-80 relative"><canvas id="weight-progress-chart"></canvas><div id="no-chart-data" class="absolute inset-0 flex items-center justify-center text-secondary hidden"><p>برای نمایش نمودار حداقل ۲ بار وزن خود را ثبت کنید.</p></div></div></div>
+                    </div>
+                    <div class="lg:col-span-1 space-y-6">
+                        <div class="card p-5"><h3 class="font-bold text-lg mb-4 text-accent">ثبت وزن امروز</h3><form id="add-weight-form" class="flex gap-2"><input type="number" step="0.1" id="new-weight-input" class="input-field flex-1" placeholder="وزن امروز (kg)" required><button type="submit" class="primary-button !px-4"><i data-lucide="plus"></i></button></form></div>
+                        <div class="card p-5"><h3 class="font-bold text-lg mb-4 text-accent">تاریخچه تمرینات</h3><div id="workout-history-container" class="space-y-3 max-h-80 overflow-y-auto"></div></div>
+                        <div class="card p-5"><h3 class="font-bold text-lg mb-4 text-accent">تاریخچه خریدها</h3><div id="subscription-history-container" class="space-y-3 max-h-80 overflow-y-auto"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div id="workout-tab-content" class="user-dashboard-tab-content hidden space-y-6">
+                <div class="card p-6">
+                    <div class="flex flex-wrap gap-4 justify-between items-center mb-6"><h2 class="text-2xl font-bold text-accent">برنامه تمرینی هفتگی شما</h2><button id="dashboard-save-pdf-btn" type="button" class="secondary-button !text-sm !py-2 !px-4 flex items-center gap-1.5"><i data-lucide="download" class="w-4 h-4"></i>ذخیره PDF</button></div>
+                    <div id="program-weekly-view" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+                </div>
+                <div class="card p-6"><h3 class="font-bold text-lg mb-4 text-accent">جزئیات کامل برنامه</h3><div id="dashboard-program-view" class="bg-primary p-2 rounded-2xl"></div><div class="mt-4 text-center"><button id="dashboard-save-image-btn" type="button" class="secondary-button !text-sm !py-2 !px-6 inline-flex items-center gap-1.5"><i data-lucide="image" class="w-4 h-4"></i>ذخیره به عنوان عکس</button></div></div>
+            </div>
+            <div id="nutrition-tab-content" class="user-dashboard-tab-content hidden card p-6"><h2 class="text-2xl font-bold text-accent mb-6">برنامه تغذیه شما</h2><div id="dashboard-nutrition-view" class="prose prose-sm max-w-none"></div></div>
+            <div id="chat-tab-content" class="user-dashboard-tab-content hidden"><div class="card w-full max-w-4xl mx-auto h-[70vh] flex flex-col"><header class="flex justify-between items-center p-4 border-b border-border-primary"><h2 class="text-xl font-bold flex items-center gap-3 text-accent"><i data-lucide="user-round-search"></i>گفتگو با مربی</h2></header><div id="coach-chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><form id="coach-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2"><input id="coach-chat-input" type="text" class="input-field flex-1" placeholder="پیام خود را بنویسید..." required><button type="submit" class="primary-button !rounded-full !p-3"><i data-lucide="send"></i></button></form></div></div>
+            <div id="store-tab-content" class="user-dashboard-tab-content hidden space-y-6"><div id="waiting-for-plan-notice-container-store"></div><div><h2 class="text-2xl font-bold mb-4 text-accent">یک پلن انتخاب کنید</h2><div id="store-plans-container" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div></div></div>
+            <div id="profile-tab-content" class="user-dashboard-tab-content hidden space-y-6">
+                <div id="waiting-for-plan-notice-container"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <form id="dashboard-profile-panel" class="lg:col-span-2 card p-6"><h2 class="text-2xl font-bold mb-6 border-b border-border-primary pb-4 text-accent">پروفایل کاربری شما</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center"><label class="flex flex-col items-center gap-2 cursor-pointer group"><div class="relative"><img class="profile-pic-preview w-24 h-24 rounded-full object-cover border-4 border-border-primary group-hover:border-accent transition-colors"><div class="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="camera" class="w-8 h-8 text-white"></i></div></div><span class="text-xs font-semibold text-secondary">تغییر عکس</span><input type="file" class="profile-pic-input hidden" accept="image/*"></label><div class="sm:col-span-2 space-y-4"><input type="text" class="client-name-input input-field w-full text-lg" readonly><input type="email" class="client-email-input input-field w-full" placeholder="ایمیل شما"></div></div><div class="space-y-4"><label class="font-semibold text-sm">سن: <span class="font-bold text-accent">25</span></label><input type="range" min="15" max="80" value="25" class="range-slider age-slider"></div><div class="space-y-4"><label class="font-semibold text-sm">قد (cm): <span class="font-bold text-accent">180</span></label><input type="range" min="140" max="220" value="180" class="range-slider height-slider"></div><div class="space-y-4"><label class="font-semibold text-sm">وزن (kg): <span class="font-bold text-accent">80</span></label><input type="range" min="40" max="150" value="80" step="0.5" class="range-slider weight-slider"></div><div class="space-y-2"><h3 class="font-semibold text-sm">جنسیت</h3><div class="grid grid-cols-2 gap-3"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="gender_user" value="مرد" class="sr-only" checked>مرد</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="gender_user" value="زن" class="sr-only">زن</label></div></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:col-span-2"><input type="number" class="neck-input input-field" placeholder="دور گردن (cm)"><input type="number" class="waist-input input-field" placeholder="دور کمر (cm)"><div class="hip-input-container hidden"><input type="number" class="hip-input input-field w-full" placeholder="دور باسن (cm)"></div></div><div class="md:col-span-2 space-y-3"><h3 class="font-semibold text-sm">سطح فعالیت روزانه</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-3"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="activity_level_user" class="sr-only" value="1.2">بدون فعالیت</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="activity_level_user" class="sr-only" value="1.375">کم</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="activity_level_user" class="sr-only" value="1.55" checked>متوسط</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="activity_level_user" class="sr-only" value="1.725">زیاد</label></div></div><div class="md:col-span-2 space-y-3"><h3 class="font-semibold text-sm">هدف تمرینی</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-3"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_goal_user" class="sr-only" value="افزایش حجم">افزایش حجم</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_goal_user" class="sr-only" value="کاهش وزن">کاهش وزن</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_goal_user" class="sr-only" value="فیتنس">فیتنس</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_goal_user" class="sr-only" value="قدرت">قدرت</label></div></div><div class="md:col-span-2 space-y-3"><h3 class="font-semibold text-sm">تعداد روزهای تمرین در هفته</h3><div class="grid grid-cols-3 md:grid-cols-6 gap-3"><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="1">۱</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="2">۲</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="3">۳</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="4" checked>۴</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="5">۵</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="6">۶</label></div></div></div></form>
+                    <div class="lg:col-span-1 space-y-6">
+                        <div id="profile-completion-notice" class="card p-4 bg-yellow-500/10 text-yellow-accent"><i data-lucide="alert-triangle" class="w-6 h-6 mb-2"></i><p class="font-bold">پروفایل شما تکمیل نیست!</p><p class="text-sm">لطفا اطلاعات خود را بررسی و سپس دکمه تایید را بزنید تا مربی بتواند برنامه شما را طراحی کند.</p></div>
+                        <div class="card p-6">
+                             <div id="dashboard-status-container" class="space-y-3"></div>
+                             <button id="confirm-info-btn" type="button" class="mt-4 w-full text-sm !border-blue-500/30 !bg-blue-500/10 !text-accent hover:!bg-blue-500/20 secondary-button font-bold flex items-center justify-center gap-2">تایید و قفل کردن اطلاعات</button>
+                        </div>
+                        <div class="card p-6"><h3 class="text-xl font-bold mb-4 text-accent">شاخص‌های کلیدی</h3><div class="space-y-3 text-sm">
+                            <div class="flex justify-between items-center"><span>شاخص توده بدنی (BMI)</span><input readonly class="bmi-input input-field !p-1 !text-center w-20 font-mono"></div>
+                            <div class="flex justify-between items-center"><span>متابولیسم پایه (BMR)</span><input readonly class="bmr-input input-field !p-1 !text-center w-20 font-mono"></div>
+                            <div class="flex justify-between items-center"><span>کالری مصرفی روزانه (TDEE)</span><input readonly class="tdee-input input-field !p-1 !text-center w-20 font-mono"></div>
+                            <div class="flex justify-between items-center"><span>درصد چربی بدن</span><input readonly class="bodyfat-input input-field !p-1 !text-center w-20 font-mono"></div>
+                            <div class="flex justify-between items-center"><span>توده بدون چربی (LBM)</span><input readonly class="lbm-input input-field !p-1 !text-center w-20 font-mono"></div>
+                            <div class="flex justify-between items-center"><span>وزن ایده‌آل</span><input readonly class="ideal-weight-input input-field !p-1 !text-center w-32 font-mono"></div>
+                        </div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <button id="open-ai-chat-btn" class="fixed bottom-6 left-6 primary-button !rounded-full !p-4 shadow-lg z-50 animate-bounce" title="دستیار هوشمند فیتنس"><i data-lucide="bot"></i></button>
+
+    <div id="workout-log-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-2xl max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
+            <header class="p-4 border-b border-border-primary flex justify-between items-center"><h2 class="text-xl font-bold text-accent flex items-center gap-2"><i data-lucide="clipboard-list"></i>ثبت جزئیات تمرین</h2><button id="close-workout-log-btn" type="button" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button></header>
+            <div class="p-6 overflow-y-auto"><h3 id="workout-log-title" class="text-lg font-bold mb-4"></h3><div id="workout-log-exercises-container" class="space-y-4"></div></div>
+            <footer class="p-4 border-t border-border-primary mt-auto"><button id="save-workout-log-btn" class="primary-button w-full">ذخیره تمرین</button></footer>
+        </div>
+    </div>
+
+    <div id="shopping-cart-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-lg max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
+            <header class="p-4 border-b border-border-primary flex justify-between items-center"><h2 class="text-xl font-bold text-accent flex items-center gap-2"><i data-lucide="shopping-cart"></i>سبد خرید</h2><button id="close-cart-btn" type="button" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button></header>
+            <div id="cart-items-container" class="p-6 flex-1 overflow-y-auto"></div>
+            <div class="p-6 border-t border-border-primary">
+                <form id="discount-form" class="flex gap-2 mb-4"><input type="text" id="discount-code-input" class="input-field flex-1" placeholder="کد تخفیف"><button type="submit" class="secondary-button !px-6">اعمال</button></form>
+                <div class="space-y-2 text-sm"><div class="flex justify-between"><span>جمع کل</span><span id="cart-subtotal">0 تومان</span></div><div class="flex justify-between text-red-accent"><span>تخفیف</span><span id="cart-discount">- 0 تومان</span></div><hr class="border-border-primary my-2"><div class="flex justify-between font-bold text-lg"><span>مبلغ قابل پرداخت</span><span id="cart-total">0 تومان</span></div></div>
+                <button id="checkout-btn" class="primary-button w-full mt-4 !py-3">پرداخت و تکمیل خرید</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="ai-chat-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-lg h-[70vh] flex flex-col transform scale-95 transition-transform duration-300">
+            <header class="p-4 border-b border-border-primary flex justify-between items-center"><h2 class="text-xl font-bold text-accent flex items-center gap-2"><i data-lucide="bot"></i>FitBot - دستیار هوشمند</h2><button id="close-ai-chat-btn" type="button" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button></header>
+            <div id="ai-chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div>
+            <form id="ai-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2"><input id="ai-chat-input" type="text" class="input-field flex-1" placeholder="سوال خود را بپرسید..." required><button type="submit" class="primary-button !rounded-full !p-3"><i data-lucide="send"></i></button></form>
+        </div>
+    </div>
+
+    <template id="exercise-log-template"><div class="exercise-log-item bg-tertiary/50 p-3 rounded-xl"><h4 class="font-bold mb-3"></h4><div class="sets-log-container space-y-2"></div></div></template>
+    <template id="set-log-row-template"><div class="set-log-row grid grid-cols-12 gap-2 items-center text-sm"><span class="col-span-2 font-semibold"></span><input type="number" class="weight-log-input input-field col-span-4" placeholder="وزنه (kg)"><input type="number" class="reps-log-input input-field col-span-4" placeholder="تکرار"><div class="col-span-2 flex justify-end"><button class="add-set-btn secondary-button !p-2"><i data-lucide="plus" class="w-4 h-4"></i></button></div></div></template>
+</div>
+`;
+const initApp = () => {
+    // Theme setup
+    const applyTheme = (theme) => {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('fitgympro_theme', theme);
+        const icon = theme === 'dark' ? 'sun' : 'moon';
+        document.querySelectorAll('#theme-toggle-btn-dashboard, #theme-toggle-btn').forEach(btn => {
+            const i = btn.querySelector('i');
+            if (i) {
+                i.setAttribute('data-lucide', icon);
             }
+        });
+        window.lucide?.createIcons();
+    };
+    
+    const toggleTheme = () => {
+        const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        applyTheme(newTheme);
+    };
+
+    document.body.addEventListener('click', e => {
+        if ((e.target as HTMLElement).closest('#theme-toggle-btn-dashboard') || (e.target as HTMLElement).closest('#theme-toggle-btn')) {
+            toggleTheme();
+        }
+    });
+
+    const currentTheme = localStorage.getItem('fitgympro_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    applyTheme(currentTheme);
+
+    // PWA Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => console.log('ServiceWorker registration successful with scope: ', registration.scope))
+                .catch(err => console.log('ServiceWorker registration failed: ', err));
         });
     }
 
-    document.getElementById("confirm-info-btn")?.addEventListener("click", () => {
-        if (!f) return;
-        const userData = D(f);
-        if (userData.infoConfirmed) {
-            w("اطلاعات شما قبلا تایید شده است.", "error");
-            return;
-        }
-        
-        // Collect data from the user profile form
-        const panel = document.getElementById("dashboard-profile-panel")!;
-        userData.step1 = {
-            ...userData.step1,
-            clientName: (panel.querySelector(".client-name-input") as HTMLInputElement).value,
-            clientEmail: (panel.querySelector(".client-email-input") as HTMLInputElement).value,
-            profilePic: (panel.querySelector(".profile-pic-preview") as HTMLImageElement).src,
-            height: (panel.querySelector(".height-slider") as HTMLInputElement).value,
-            weight: (panel.querySelector(".weight-slider") as HTMLInputElement).value,
-            age: (panel.querySelector(".age-slider") as HTMLInputElement).value,
-            neck: (panel.querySelector(".neck-input") as HTMLInputElement).value,
-            waist: (panel.querySelector(".waist-input") as HTMLInputElement).value,
-            hip: (panel.querySelector(".hip-input") as HTMLInputElement).value,
-            gender: (panel.querySelector('input[name="gender_user"]:checked') as HTMLInputElement)?.value,
-            trainingGoal: (panel.querySelector('input[name="training_goal_user"]:checked') as HTMLInputElement)?.value,
-            activityLevel: (panel.querySelector('input[name="activity_level_user"]:checked') as HTMLInputElement)?.value,
-            trainingDays: (panel.querySelector('input[name="training_days_user"]:checked') as HTMLInputElement)?.value,
-        };
-        
-        userData.infoConfirmed = true;
-        W(f, userData);
-        
-        ae(`${f} اطلاعات پروفایل خود را تایید کرد.`);
-        w("اطلاعات شما با موفقیت تایید و برای مربی ارسال شد.", "success");
-        de(f, userData); // Re-render to lock the button
-    });
-    
-     document.getElementById("coach-chat-form")?.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const input = document.getElementById("coach-chat-input") as HTMLInputElement;
-        const message = input.value.trim();
-        if (!message || !f) return;
+    initCommonListeners();
+    seedInitialUsers();
+    renderApp();
+};
 
-        const userData = D(f);
-        if (!userData.chatHistory) userData.chatHistory = [];
-        
-        userData.chatHistory.push({ sender: 'user', message, date: new Date().toISOString() });
-        userData.hasNewMessageForCoach = true; // Flag for admin notification
-        
-        W(f, userData);
-        input.value = '';
-        renderChatTab(f, userData);
-    });
-
-    // Admin Panel Logic
-    je.addEventListener("click", () => {
-        switchAdminPanelTab('dashboard');
-        openModal(U);
-    });
-    document.getElementById("close-admin-panel-btn")?.addEventListener("click", () => closeModal(U));
-
-    document.querySelectorAll(".admin-nav-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            switchAdminPanelTab(btn.getAttribute("data-tab")!);
-        });
-    });
-
-    document.getElementById("admin-user-search")?.addEventListener("input", se);
-    document.querySelectorAll(".user-filter-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            document.querySelectorAll(".user-filter-btn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            se();
-        });
-    });
-
-    document.getElementById("admin-user-list")?.addEventListener("click", (e) => {
-        const target = e.target as HTMLElement;
-        const loadBtn = target.closest(".load-user-btn");
-        const removeBtn = target.closest(".remove-user-btn");
-        
-        if (loadBtn) {
-            const username = loadBtn.getAttribute("data-username");
-            if (username) {
-                const userData = D(username);
-                Je(userData);
-                closeModal(U);
-            }
-        } else if (removeBtn) {
-            const username = removeBtn.getAttribute("data-username");
-            if (username && confirm(`آیا از حذف کاربر «${username}» مطمئن هستید؟ این عمل غیرقابل بازگشت است.`)) {
-                let users = O();
-                users = users.filter(u => u.username !== username);
-                Ge(users);
-                localStorage.removeItem(`fitgympro_data_${username}`);
-                se();
-                be();
-                w(`کاربر «${username}» با موفقیت حذف شد.`);
-            }
-        }
-    });
-    
-    document.getElementById("create-user-btn")?.addEventListener("click", () => {
-        const usernameInput = document.getElementById("new-username-input") as HTMLInputElement;
-        const emailInput = document.getElementById("new-user-email-input") as HTMLInputElement;
-        const passwordInput = document.getElementById("new-user-password-input") as HTMLInputElement;
-        const errorEl = document.getElementById("create-user-error") as HTMLElement;
-
-        const username = usernameInput.value.trim();
-        const email = emailInput.value.trim();
-        const password = passwordInput.value.trim();
-        
-        errorEl.textContent = "";
-
-        if (!username || !email || !password) {
-            errorEl.textContent = "تمام فیلدها الزامی هستند.";
-            return;
-        }
-
-        const users = O();
-        if (users.some(u => u.username === username)) {
-            errorEl.textContent = "این نام کاربری قبلا استفاده شده است.";
-            return;
-        }
-
-        const newUser = { username, email, password };
-        users.push(newUser);
-        Ge(users);
-        W(username, {
-            joinDate: new Date().toISOString(),
-            step1: { clientName: username, clientEmail: email }
-        });
-
-        w(`کاربر «${username}» با موفقیت ایجاد شد.`, "success");
-        usernameInput.value = "";
-        emailInput.value = "";
-        passwordInput.value = "";
-        se();
-        be();
-    });
-
-    // Template save/load logic
-    const saveTemplateModal = document.getElementById("save-template-modal")!;
-    const loadTemplateModal = document.getElementById("load-template-modal")!;
-    
-    document.getElementById("save-template-btn")?.addEventListener("click", () => openModal(saveTemplateModal));
-    document.getElementById("cancel-save-template-btn")?.addEventListener("click", () => closeModal(saveTemplateModal));
-    document.getElementById("confirm-save-template-btn")?.addEventListener("click", () => {
-        const nameInput = document.getElementById("template-name-input") as HTMLInputElement;
-        const name = nameInput.value.trim();
-        if (!name) {
-            w("لطفاً یک نام برای الگو وارد کنید.", "error");
-            return;
-        }
-        const data = ye();
-        yt(name, data);
-        w(`الگوی «${name}» با موفقیت ذخیره شد.`, "success");
-        nameInput.value = "";
-        closeModal(saveTemplateModal);
-    });
-
-    document.getElementById("load-template-btn")?.addEventListener("click", () => {
-        const templates = ht();
-        const container = document.getElementById("template-list-container")!;
-        container.innerHTML = "";
-        const names = Object.keys(templates);
-        if (names.length === 0) {
-            container.innerHTML = `<p class="text-secondary">هیچ الگوی ذخیره شده‌ای وجود ندارد.</p>`;
-        } else {
-            names.forEach(name => {
-                const btn = document.createElement("button");
-                btn.className = "w-full text-right p-3 hover:bg-tertiary rounded-lg";
-                btn.textContent = name;
-                btn.onclick = () => {
-                    if (confirm(`آیا می‌خواهید الگوی «${name}» را بارگذاری کنید؟ تغییرات فعلی از بین خواهند رفت.`)) {
-                        Je(templates[name]);
-                        closeModal(loadTemplateModal);
-                        w(`الگوی «${name}» با موفقیت بارگذاری شد.`, "success");
-                    }
-                };
-                container.appendChild(btn);
-            });
-        }
-        openModal(loadTemplateModal);
-    });
-    document.getElementById("cancel-load-template-btn")?.addEventListener("click", () => closeModal(loadTemplateModal));
-    
-    document.getElementById("admin-template-list")?.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        const deleteBtn = target.closest('.delete-template-btn');
-        if (deleteBtn) {
-            const name = deleteBtn.getAttribute('data-name');
-            if (name && confirm(`آیا از حذف الگوی «${name}» مطمئن هستید؟`)) {
-                pt(name);
-                w(`الگوی «${name}» حذف شد.`);
-                renderAdminTemplates();
-            }
-        }
-    });
-    
-    document.getElementById('admin-conversations-user-list')?.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        const conversationItem = target.closest('.conversation-item');
-        if (conversationItem) {
-            const username = (conversationItem as HTMLElement).dataset.username;
-            if (username) {
-                 // Add active state to selected item
-                document.querySelectorAll('.conversation-item').forEach(item => item.classList.remove('bg-tertiary'));
-                conversationItem.classList.add('bg-tertiary');
-                renderAdminConversation(username);
-            }
-        }
-    });
-
-    document.getElementById("contact-form")?.addEventListener("submit", (e) => {
-        e.preventDefault();
-        w("پیام شما با موفقیت ارسال شد (شبیه‌سازی).", "success");
-        (document.getElementById("contact-form") as HTMLFormElement).reset();
-        // Refill readonly fields
-        if(f) renderContactTab(f, D(f));
-    });
-
-    document.querySelectorAll(".select-plan-btn").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            if (!f) return;
-            const target = e.currentTarget as HTMLButtonElement;
-            const planType = target.dataset.planType!;
-            const planName = target.dataset.planName!;
-            const price = parseInt(target.dataset.price!, 10);
-            
-            const userData = D(f);
-            userData.subscriptions = userData.subscriptions || [];
-            
-            // Prevent buying new plan if one is pending
-            const hasUnfulfilled = userData.subscriptions.some(s => s.fulfilled === false);
-            if (hasUnfulfilled) {
-                w("شما یک پلن در انتظار آماده‌سازی دارید. لطفا منتظر بمانید.", "error");
-                return;
-            }
-
-            userData.subscriptions.push({
-                purchaseDate: new Date().toISOString(),
-                planType: planType,
-                planName: planName,
-                price: price,
-                fulfilled: false
-            });
-            W(f, userData);
-            
-            ae(`${f} پلن «${planName}» را خریداری کرد.`);
-            w(`پلن «${planName}» با موفقیت به سبد خرید اضافه شد.`, "success");
-            de(f, userData); // Re-render to show status
-        });
-    });
-
-});
+document.addEventListener('DOMContentLoaded', initApp);
