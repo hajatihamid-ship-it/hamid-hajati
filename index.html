@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FitGym Pro | داشبورد مدیریت مربی</title>
+    <title>FitGym Pro | Advanced Fitness Planner</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,10 +11,13 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Font Awesome (for Admin Dashboard) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     
     <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -168,24 +171,33 @@
             -webkit-backdrop-filter: blur(10px); 
             border: 1px solid rgba(45, 55, 72, 0.5);
             border-radius: var(--radius-card);
-            padding: 1rem;
+            padding: 1.25rem;
             display: flex;
-            gap: 1.5rem;
+            gap: 2rem;
             align-items: center;
-            max-width: 380px;
-            margin: 2rem auto 0;
+            max-width: 420px;
+            margin: 3rem auto 0;
             transition: transform 0.3s ease;
         }
         .motivational-card:hover { transform: translateY(-5px); }
-        .motivational-card .stat { display: flex; align-items: center; gap: 0.75rem; }
+        .motivational-card .stat { display: flex; align-items: center; gap: 1rem; }
         .motivational-card .stat i { color: var(--accent); }
-        .motivational-card .stat-text p:first-child { font-weight: 700; color: var(--text-primary); }
-        .motivational-card .stat-text p:last-child { font-size: 0.8rem; color: var(--text-secondary); }
+        .motivational-card .stat-text p:first-child { font-weight: 700; }
+        .motivational-card .stat-text p:last-child { color: var(--text-secondary); }
 
         .landing-nav-link { background: none; border: none; color: var(--text-primary); cursor: pointer; position: relative; padding-bottom: 4px; transition: color 0.3s; }
         .landing-nav-link::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background-color: var(--accent); transform: scaleX(0); transition: transform 0.3s ease; }
         .landing-nav-link:hover { color: var(--accent); }
         .landing-nav-link:hover::after { transform: scaleX(1); }
+        
+        .social-icon-link {
+            color: var(--text-secondary);
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+        .social-icon-link:hover {
+            color: var(--accent);
+            transform: translateY(-3px);
+        }
 
         .form-container { transition: opacity 0.4s ease, transform 0.4s ease; }
         .form-container.hidden { opacity: 0; pointer-events: none; transform: scale(0.95); position: absolute; top: 4.5rem; left: 2rem; right: 2rem; }
@@ -201,8 +213,8 @@
         /* Modal Transitions */
         .modal { transition: opacity 0.3s ease; }
         .modal.active { opacity: 1; pointer-events: auto; }
-        .modal > .card, .modal > form { transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); transform: scale(0.95); }
-        .modal.active > .card, .modal.active > form { transform: scale(1); }
+        .modal > .card, .modal > .modal-content, .modal > form { transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); transform: scale(0.95); }
+        .modal.active > .card, .modal.active > .modal-content, .modal.active > form { transform: scale(1); }
 
         #info-modal-content h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; margin-top: 1.5rem; color: var(--text-primary); }
         #info-modal-content h3:first-child { margin-top: 0; }
@@ -210,11 +222,62 @@
         #info-modal-content ul { list-style-type: none; padding: 0; }
         #info-modal-content li { display: flex; align-items: start; gap: 0.75rem; margin-bottom: 0.75rem; }
         #info-modal-content li .lucide { color: var(--accent); margin-top: 4px; flex-shrink: 0; }
+        
+        /* Admin Dashboard Styles */
+        html[data-theme='light'] .admin-dashboard-container { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --text-primary: #1e293b; --text-secondary: #64748b; --border-primary: #e2e8f0;}
+        html[data-theme='dark'] .admin-dashboard-container { --bg-primary: #0f172a; --bg-secondary: #1e293b; --text-primary: #e2e8f0; --text-secondary: #94a3b8; --border-primary: #334155; }
+        
+        .admin-dashboard-container #sidebar { background-color: var(--bg-secondary); border-left: 1px solid var(--border-primary); color: var(--text-primary); }
+        .admin-dashboard-container .active-link { background-color: #10b981; color: white; }
+        .admin-dashboard-container .inactive-link { color: var(--text-secondary); }
+        .admin-dashboard-container .inactive-link:hover { background-color: var(--bg-tertiary); color: var(--text-primary); }
+        .admin-dashboard-container .card { background-color: var(--bg-secondary); color: var(--text-primary); border-radius: 0.75rem; padding: 1.5rem; box-shadow: var(--shadow-card); }
+        .admin-dashboard-container .page.hidden { display: none; }
+        
+        html[data-theme='dark'] .admin-dashboard-container table thead { background-color: #334155; }
+        html[data-theme='light'] .admin-dashboard-container table thead { background-color: #f1f5f9; }
+        .admin-dashboard-container table tbody tr { border-bottom: 1px solid var(--border-primary); }
+        
+        .modal-overlay { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease; }
     </style>
 </head>
 <body>
     <div id="app-root"></div>
     <div id="toast-container"></div>
+
+    <template id="exercise-template">
+        <div class="exercise-row bg-tertiary/50 p-2 rounded-xl">
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Selects -->
+                <div class="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-2 min-w-[200px]">
+                    <select class="muscle-group-select input-field !text-sm !p-2 w-full"></select>
+                    <select class="exercise-select input-field !text-sm !p-2 w-full"></select>
+                </div>
+                <!-- Sliders -->
+                <div class="flex-grow grid grid-cols-3 gap-x-3 items-center text-xs min-w-[240px]">
+                    <div class="space-y-1 text-center">
+                        <label class="font-semibold whitespace-nowrap">ست: <span>3</span></label>
+                        <input type="range" min="1" max="10" value="3" class="range-slider set-slider w-full">
+                    </div>
+                    <div class="space-y-1 text-center">
+                        <label class="font-semibold whitespace-nowrap">تکرار: <span>12</span></label>
+                        <input type="range" min="1" max="50" value="12" class="range-slider rep-slider w-full">
+                    </div>
+                    <div class="space-y-1 text-center">
+                        <label class="font-semibold whitespace-nowrap">استراحت: <span>60</span>s</label>
+                        <input type="range" min="0" max="180" value="60" step="15" class="range-slider rest-slider w-full">
+                    </div>
+                </div>
+                <!-- Buttons -->
+                <div class="flex gap-1">
+                    <button type="button" class="superset-btn secondary-button !p-2" title="سوپرست"><i data-lucide="zap" class="w-4 h-4 pointer-events-none"></i></button>
+                    <button type="button" class="remove-exercise-btn secondary-button !p-2 text-red-accent hover:!bg-red-500/10" title="حذف حرکت"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                </div>
+            </div>
+        </div>
+    </template>
+    
     <script>
         const theme = localStorage.getItem('fitgympro_theme') || 'dark';
         document.documentElement.setAttribute('data-theme', theme);

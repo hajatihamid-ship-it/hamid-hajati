@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, Type as R, Chat, GenerateContentResponse } from "https://esm.run/@google/genai";
 
 // Type declarations for window properties and external libraries
@@ -195,7 +193,6 @@ let F = 1;
 const ue = 5;
 let f: string | null = null,
     X: GoogleGenAI, ve: any = null,
-    adminChartInstance: any = null,
     currentChatSession: Chat | null = null;
 
 const A = e => {
@@ -367,7 +364,10 @@ const pe = (e, t) => {
 const ge = e => {
     const t = (document.getElementById("exercise-template") as HTMLTemplateElement).content.cloneNode(!0) as DocumentFragment,
         s = t.querySelector(".muscle-group-select") as HTMLSelectElement;
-    tt(s), pe(s.value, t.querySelector(".exercise-select") as HTMLSelectElement), e.appendChild(t), e.querySelectorAll(".range-slider").forEach(r => ie(r as HTMLInputElement)), window.lucide?.createIcons()
+    tt(s), pe(s.value, t.querySelector(".exercise-select") as HTMLSelectElement), e.appendChild(t), e.querySelectorAll(".range-slider").forEach(r => {
+        updateSliderValueDisplay(r as HTMLInputElement);
+        ie(r as HTMLInputElement);
+    }), window.lucide?.createIcons()
 };
 const re = (e = !1) => {
     const t = document.getElementById("workout-days-container")!.children.length + 1,
@@ -829,17 +829,8 @@ const updateRadioCardSelection = (e) => {
 const updateSliderValueDisplay = (slider: HTMLInputElement) => {
     const span = slider.previousElementSibling?.querySelector("span");
     if (!span) return;
-    
-    let unit = "";
-    if (slider.classList.contains("height-slider")) {
-        unit = " cm";
-    } else if (slider.classList.contains("weight-slider")) {
-        unit = " kg";
-    } else if (slider.classList.contains("rest-slider")) {
-        unit = "s";
-    }
-    
-    span.textContent = slider.value + unit;
+
+    span.textContent = slider.value;
     ie(slider); // Update slider track background
 };
 
@@ -946,10 +937,7 @@ const ot = (e = []) => {
         o = document.getElementById(t);
     if (!o) return;
     n && (!e || e.length < 2) ? (n.classList.remove("hidden"), o.classList.add("hidden")) : (n && n.classList.add("hidden"), o.classList.remove("hidden"), (() => {
-        let m = null;
-        if (t === "weight-progress-chart") m = ve;
-        if (t.startsWith("admin")) m = adminChartInstance;
-        m && m.destroy();
+        if (ve) ve.destroy();
         const c = [...e].sort((E, q) => new Date(E.date).getTime() - new Date(q.date).getTime()),
             g = c.map(E => new Date(E.date).toLocaleDateString("fa-IR", {
                 month: "short",
@@ -1010,8 +998,7 @@ const ot = (e = []) => {
                     }
                 }
             });
-        if (t === "weight-progress-chart") ve = L;
-        if (t.startsWith("admin")) adminChartInstance = L
+        ve = L
     })())
 };
 
@@ -1533,8 +1520,8 @@ const renderSparkline = (e, t) => {
     }
 }, se = () => {
     var a;
-    const e = document.getElementById("admin-user-list")!,
-        t = (document.getElementById("admin-user-search") as HTMLInputElement).value.toLowerCase(),
+    const e = document.getElementById("admin-user-list")!;
+    const t = (document.getElementById("admin-user-search") as HTMLInputElement).value.toLowerCase(),
         s = ((a = document.querySelector("#user-filter-btn-group .user-filter-btn.active")) == null ? void 0 : a.getAttribute("data-filter")) || "all";
     if (!e) return;
     let r = O().filter(n => n.role === 'user');
@@ -1625,15 +1612,16 @@ const renderSparkline = (e, t) => {
 };
 
 const openModal = e => {
+    if (!e) return;
     e.classList.remove("hidden");
     setTimeout(() => {
         e.classList.add("active", "opacity-100", "pointer-events-auto");
-        e.querySelector('.card, form')?.classList.remove('scale-95');
+        e.querySelector('.card, form, .modal-content')?.classList.remove('scale-95');
     }, 10)
 }, closeModal = e => {
     if (!e) return;
     e.classList.remove("active", "opacity-100", "pointer-events-auto");
-    e.querySelector('.card, form')?.classList.add('scale-95');
+    e.querySelector('.card, form, .modal-content')?.classList.add('scale-95');
     setTimeout(() => {
         e.classList.add("hidden");
     }, 300);
@@ -1795,6 +1783,16 @@ interface Discount {
 
 const getDiscounts = (): Record<string, Discount> => JSON.parse(localStorage.getItem('fitgympro_discounts') || '{}');
 
+const saveDiscounts = (discounts) => {
+    try {
+        localStorage.setItem('fitgympro_discounts', JSON.stringify(discounts));
+    } catch (e) {
+        console.error("Failed to save discounts to localStorage:", e);
+        w("خطا در ذخیره‌سازی تخفیف‌ها", "error");
+    }
+};
+
+
 const calculateTotals = (cart) => {
     const subtotal = cart.items.reduce((acc, item) => acc + item.price, 0);
     let discountAmount = 0;
@@ -1802,7 +1800,7 @@ const calculateTotals = (cart) => {
     if (cart.discountCode && DISCOUNTS[cart.discountCode]) {
         const discount = DISCOUNTS[cart.discountCode];
         if (discount.type === 'percentage') {
-            discountAmount = subtotal * discount.value;
+            discountAmount = subtotal * (discount.value / 100);
         } else { // Fixed amount
             discountAmount = Math.min(subtotal, discount.value);
         }
@@ -1947,46 +1945,242 @@ const handleCheckout = async () => {
 
 const seedInitialUsers = () => {
     if (O().length === 0) {
-        console.log("No users found. Seeding initial coach, and user.");
+        console.log("No users found. Seeding initial admin, coach, and user.");
         const initialUsers = [
+             {
+                username: "admin",
+                email: "admin@fitgympro.com",
+                password: "password123",
+                role: "admin",
+                status: "active",
+                coachStatus: null,
+                joinDate: new Date().toISOString()
+            },
             {
-                username: "coach",
+                username: "coach_verified",
                 email: "coach@fitgympro.com",
                 password: "password123",
                 role: "coach",
                 status: "active",
                 coachStatus: "verified",
-                joinDate: new Date().toISOString()
+                joinDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() // 10 days ago
             },
             {
-                username: "user",
+                username: "coach_pending",
+                email: "newcoach@fitgympro.com",
+                password: "password123",
+                role: "coach",
+                status: "active",
+                coachStatus: "pending",
+                joinDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() // 1 day ago
+            },
+            {
+                username: "user_active",
                 email: "user@fitgympro.com",
                 password: "password123",
                 role: "user",
                 status: "active",
                 coachStatus: null,
                 joinDate: new Date().toISOString()
+            },
+             {
+                username: "user_suspended",
+                email: "suspended@fitgympro.com",
+                password: "password123",
+                role: "user",
+                status: "suspended",
+                coachStatus: null,
+                joinDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
             }
         ];
         
         Ge(initialUsers);
 
-        W("coach", {
-            step1: { coachName: "Coach Default" },
+        W("coach_verified", {
+            step1: { coachName: "Coach Verified" },
         });
 
-        W("user", {
-            step1: { clientName: "User Default", clientEmail: "user@fitgympro.com" },
+        W("user_active", {
+            step1: { clientName: "User Active", clientEmail: "user@fitgympro.com", coachName: "coach_verified" },
             joinDate: new Date().toISOString()
         });
         
-        ae("Initial users (coach, user) were created automatically.");
+        ae("Initial users (admin, coaches, users) were created automatically.");
         
+        saveDiscounts({
+            'WELCOME10': { type: 'percentage', value: 10 },
+            'SAVE50K': { type: 'fixed', value: 50000 }
+        });
+        ae("Initial discount codes created.");
+
         setTimeout(() => {
-            w("کاربران پیش‌فرض (coach, user) با رمز عبور 'password123' ساخته شدند.", "success");
+            w("کاربران پیش‌فرض (admin, coaches, users) با رمز عبور 'password123' ساخته شدند.", "success");
         }, 1500);
     }
 };
+
+const getAdminHTML = () => `
+<div class="admin-dashboard-container flex h-screen bg-secondary text-text-primary opacity-0 transition-opacity duration-500">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-primary flex flex-col p-4 border-l border-border-secondary">
+        <div class="flex items-center gap-3 mb-8">
+            <i data-lucide="shield-ellipsis" class="w-8 h-8 text-accent"></i>
+            <h1 class="text-xl font-bold">پنل مدیریت</h1>
+        </div>
+        <nav class="flex flex-col space-y-2">
+            <a href="#dashboard" class="nav-link active-link flex items-center gap-3 px-4 py-2.5 rounded-lg">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>داشبورد</span>
+            </a>
+            <a href="#users" class="nav-link inactive-link flex items-center gap-3 px-4 py-2.5 rounded-lg">
+                <i class="fas fa-users"></i>
+                <span>کاربران</span>
+            </a>
+            <a href="#coaches" class="nav-link inactive-link flex items-center gap-3 px-4 py-2.5 rounded-lg">
+                <i class="fas fa-user-tie"></i>
+                <span>مربیان</span>
+            </a>
+            <a href="#discounts" class="nav-link inactive-link flex items-center gap-3 px-4 py-2.5 rounded-lg">
+                <i class="fas fa-tags"></i>
+                <span>کدهای تخفیف</span>
+            </a>
+        </nav>
+        <div class="mt-auto">
+            <button id="admin-logout-btn" class="secondary-button w-full flex items-center justify-center gap-2">
+                <i data-lucide="log-out"></i>
+                <span>خروج</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col overflow-y-auto">
+        <header class="bg-primary/50 sticky top-0 z-10 px-8 py-4 border-b border-border-primary">
+            <h2 id="page-title" class="text-2xl font-bold">داشبورد</h2>
+        </header>
+
+        <div class="p-8">
+            <!-- Dashboard Page -->
+            <div id="dashboard-page" class="page">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="card p-5">
+                        <h4 class="text-secondary font-semibold mb-2">کاربران جدید (هفته)</h4>
+                        <p id="admin-kpi-new-users" class="text-4xl font-bold">0</p>
+                    </div>
+                    <div class="card p-5">
+                        <h4 class="text-secondary font-semibold mb-2">مربیان فعال</h4>
+                        <p id="admin-kpi-active-coaches" class="text-4xl font-bold">0</p>
+                    </div>
+                     <div class="card p-5">
+                        <h4 class="text-secondary font-semibold mb-2">پلن‌های فروش رفته</h4>
+                        <p id="admin-kpi-plans-sold" class="text-4xl font-bold">175</p>
+                    </div>
+                     <div class="card p-5">
+                        <h4 class="text-secondary font-semibold mb-2">درآمد کل</h4>
+                        <p id="admin-kpi-total-revenue" class="text-4xl font-bold">۳۲M</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="card p-5"><h3 class="font-bold mb-4">نمودار درآمد</h3><canvas id="revenueChart" class="h-64"></canvas></div>
+                    <div class="card p-5"><h3 class="font-bold mb-4">فروش پلن‌ها</h3><canvas id="plansChart" class="h-64"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Users Page -->
+            <div id="users-page" class="page hidden">
+                <div class="card overflow-x-auto">
+                    <table class="w-full text-sm text-right">
+                        <thead class="text-xs text-secondary uppercase bg-tertiary">
+                            <tr>
+                                <th scope="col" class="px-6 py-3">نام کاربری</th>
+                                <th scope="col" class="px-6 py-3">ایمیل</th>
+                                <th scope="col" class="px-6 py-3">تاریخ عضویت</th>
+                                <th scope="col" class="px-6 py-3">وضعیت</th>
+                                <th scope="col" class="px-6 py-3">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-table-body">
+                           <!-- Rows will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Coaches Page -->
+            <div id="coaches-page" class="page hidden">
+                 <div class="card overflow-x-auto">
+                    <table class="w-full text-sm text-right">
+                        <thead class="text-xs text-secondary uppercase bg-tertiary">
+                            <tr>
+                                <th scope="col" class="px-6 py-3">نام مربی</th>
+                                <th scope="col" class="px-6 py-3">تعداد شاگردان</th>
+                                <th scope="col" class="px-6 py-3">تاریخ عضویت</th>
+                                <th scope="col" class="px-6 py-3">وضعیت همکاری</th>
+                                <th scope="col" class="px-6 py-3">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="coach-table-body">
+                           <!-- Rows will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Discounts Page -->
+            <div id="discounts-page" class="page hidden">
+                <div class="flex justify-end mb-4">
+                    <button id="add-discount-btn" class="primary-button flex items-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        <span>ایجاد کد تخفیف</span>
+                    </button>
+                </div>
+                <div class="card overflow-x-auto">
+                    <table class="w-full text-sm text-right">
+                        <thead class="text-xs text-secondary uppercase bg-tertiary">
+                            <tr>
+                                <th scope="col" class="px-6 py-3">کد</th>
+                                <th scope="col" class="px-6 py-3">نوع</th>
+                                <th scope="col" class="px-6 py-3">مقدار</th>
+                                <th scope="col" class="px-6 py-3">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="discount-table-body">
+                           <!-- Rows will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Discount Modal -->
+    <div id="add-discount-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <form id="add-discount-form" class="card w-full max-w-lg p-6 space-y-4 transform scale-95 transition-transform duration-300 relative">
+            <h3 class="text-xl font-bold">افزودن کد تخفیف جدید</h3>
+            <div class="input-group">
+                <input id="discount-code" type="text" class="input-field w-full" placeholder=" " required>
+                <label for="discount-code" class="input-label">کد تخفیف (مثلا: WELCOME10)</label>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="input-group">
+                    <select id="discount-type" class="input-field w-full">
+                        <option value="percentage">درصدی</option>
+                        <option value="fixed">مبلغ ثابت</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <input id="discount-value" type="number" class="input-field w-full" placeholder=" " required>
+                    <label for="discount-value" class="input-label">مقدار</label>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-4">
+                <button type="button" class="secondary-button close-modal">لغو</button>
+                <button type="submit" class="primary-button">ذخیره</button>
+            </div>
+        </form>
+    </div>
+</div>
+`;
 
 const renderApp = () => {
     const appContainer = document.getElementById('app-root');
@@ -2014,6 +2208,10 @@ const renderApp = () => {
         document.body.classList.add('dashboard-bg'); // Ensure correct background for logged-in state
 
         switch (currentUser.role) {
+            case 'admin':
+                appContainer.innerHTML = getAdminHTML();
+                initAdminDashboard(f);
+                break;
             case 'coach':
                 appContainer.innerHTML = getCoachHTML();
                 initCoachDashboard(f);
@@ -2034,7 +2232,7 @@ const renderApp = () => {
     
     // Animate in the new view
     setTimeout(() => {
-        const mainContainer = document.getElementById('main-app-container') || document.getElementById('user-dashboard-container') || document.querySelector('.landing-page-container');
+        const mainContainer = document.getElementById('main-app-container') || document.getElementById('user-dashboard-container') || document.querySelector('.landing-page-container') || document.querySelector('.admin-dashboard-container');
         if (mainContainer) {
             mainContainer.classList.add('opacity-100');
         }
@@ -2114,6 +2312,13 @@ const coachesContent = `
             <div>
                 <h4 class="font-bold">سارا مرادی</h4>
                 <p class="text-sm text-secondary">متخصص فیتنس و کاهش وزن بانوان</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4 bg-tertiary/50 p-4 rounded-xl">
+            <img src="https://img.freepik.com/free-photo/a-man-with-a-beard-and-a-beard-is-holding-a-dumbbell_1340-39434.jpg?w=200" class="w-20 h-20 rounded-full object-cover">
+            <div>
+                <h4 class="font-bold">حمید حاجتی</h4>
+                <p class="text-sm text-secondary">متخصص بدنسازی کلاسیک و تغذیه</p>
             </div>
         </div>
     </div>
@@ -2498,6 +2703,223 @@ const initUserDashboard = (username, userData) => {
     initUserDashboardListeners(username);
 };
 
+const initAdminDashboard = (adminUsername) => {
+    document.getElementById('admin-logout-btn')?.addEventListener('click', handleLogout);
+
+    const navLinks = document.querySelectorAll('.nav-link');
+    const pages = document.querySelectorAll('.page');
+    const pageTitle = document.getElementById('page-title');
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('href').substring(1) + '-page';
+            navLinks.forEach(nav => {
+                nav.classList.remove('active-link');
+                nav.classList.add('inactive-link');
+            });
+            link.classList.add('active-link');
+            link.classList.remove('inactive-link');
+            pages.forEach(page => page.classList.toggle('hidden', page.id !== targetId));
+            if(pageTitle && link.textContent) pageTitle.textContent = link.textContent.trim();
+        });
+    });
+
+    // --- Data Rendering ---
+    const renderAdminDashboardData = () => {
+        const users = O();
+        const newUserCount = users.filter(u => new Date(u.joinDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length;
+        const activeCoachesCount = users.filter(u => u.role === 'coach' && u.coachStatus === 'verified').length;
+        
+        document.getElementById('admin-kpi-new-users').textContent = String(newUserCount);
+        document.getElementById('admin-kpi-active-coaches').textContent = String(activeCoachesCount);
+
+        const revenueCtx = document.getElementById('revenueChart') as HTMLCanvasElement;
+        if (revenueCtx) {
+            new window.Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'],
+                    datasets: [{
+                        label: 'درآمد',
+                        data: [12, 19, 3, 5, 2, 3].map(v => v * 100000),
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { callback: (value) => `${Number(value) / 1000000}M` } } }, plugins: { legend: { display: false } } }
+            });
+        }
+
+        const plansCtx = document.getElementById('plansChart') as HTMLCanvasElement;
+        if (plansCtx) {
+            new window.Chart(plansCtx, {
+                type: 'bar',
+                data: {
+                    labels: STORE_PLANS.map(p => p.planName.split(' ')[2]),
+                    datasets: [{
+                        label: 'فروش پلن‌ها',
+                        data: [55, 30, 80, 45],
+                        backgroundColor: ['#0ea5e9', '#f97316', '#ec4899', '#8b5cf6'],
+                        borderRadius: 4,
+                    }]
+                },
+                options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } }
+            });
+        }
+    };
+
+    const renderAdminUserTable = () => {
+        const userTableBody = document.getElementById('user-table-body');
+        if (!userTableBody) return;
+        const users = O().filter(u => u.role === 'user');
+        userTableBody.innerHTML = users.map(user => `
+            <tr class="border-b">
+                <td class="px-6 py-4">${A(user.username)}</td>
+                <td class="px-6 py-4">${A(user.email)}</td>
+                <td class="px-6 py-4">${new Date(user.joinDate).toLocaleDateString('fa-IR')}</td>
+                <td class="px-6 py-4">
+                    <span class="text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                        ${user.status === 'active' ? 'فعال' : 'مسدود'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 space-x-2 space-x-reverse">
+                    <button class="text-gray-400 hover:text-sky-500" title="مشاهده"><i class="far fa-eye"></i></button>
+                    <button class="text-gray-400 hover:text-red-500" title="مسدود کردن"><i class="fas fa-ban"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    };
+    
+    const renderAdminCoachTable = () => {
+        const coachTableBody = document.getElementById('coach-table-body');
+        if (!coachTableBody) return;
+        const coaches = O().filter(u => u.role === 'coach');
+        coachTableBody.innerHTML = coaches.map(coach => {
+            let statusBadge = '';
+            let actions = '';
+            switch(coach.coachStatus) {
+                case 'verified':
+                    statusBadge = `<span class="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">تایید شده</span>`;
+                    actions = `<button class="cancel-collaboration-btn text-gray-400 hover:text-red-500" title="لغو همکاری" data-username="${coach.username}"><i class="fas fa-user-slash"></i></button>`;
+                    break;
+                case 'pending':
+                    statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">در انتظار تایید</span>`;
+                    actions = `<button class="approve-coach-btn text-gray-400 hover:text-green-500" title="تایید کردن" data-username="${coach.username}"><i class="far fa-check-circle"></i></button>
+                               <button class="reject-coach-btn text-gray-400 hover:text-red-500" title="رد کردن" data-username="${coach.username}"><i class="far fa-times-circle"></i></button>`;
+                    break;
+                case 'cancelled':
+                     statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">همکاری لغو شد</span>`;
+                     actions = `<button class="reapprove-coach-btn text-gray-400 hover:text-emerald-500" title="تایید مجدد" data-username="${coach.username}"><i class="fas fa-user-check"></i></button>`;
+                    break;
+                default:
+                     statusBadge = `<span class="bg-gray-100 text-gray-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">نامشخص</span>`;
+            }
+            const studentCount = O().filter(u => u.role === 'user' && D(u.username)?.step1?.coachName === coach.username).length;
+            return `<tr>
+                        <td class="px-6 py-4">${A(coach.username)}</td>
+                        <td class="px-6 py-4">${studentCount}</td>
+                        <td class="px-6 py-4">${new Date(coach.joinDate).toLocaleDateString('fa-IR')}</td>
+                        <td class="px-6 py-4 status-cell">${statusBadge}</td>
+                        <td class="px-6 py-4 space-x-2 space-x-reverse action-cell">${actions}</td>
+                    </tr>`;
+        }).join('');
+    };
+
+    const renderDiscountTable = () => {
+        const tableBody = document.getElementById('discount-table-body');
+        if (!tableBody) return;
+        const discounts = getDiscounts();
+        tableBody.innerHTML = Object.entries(discounts).map(([code, details]) => `
+             <tr>
+                <td class="px-6 py-4 font-mono">${A(code)}</td>
+                <td class="px-6 py-4">${details.type === 'percentage' ? 'درصدی' : 'مبلغ ثابت'}</td>
+                <td class="px-6 py-4">${details.type === 'percentage' ? `${details.value}%` : formatPrice(details.value)}</td>
+                <td class="px-6 py-4">
+                    <button class="delete-discount-btn text-gray-400 hover:text-red-500" title="حذف کد" data-code="${A(code)}"><i class="far fa-trash-alt"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    };
+
+    // --- Event Listeners ---
+    const updateCoachStatus = (coachUsername, newStatus) => {
+        const users = O();
+        const userIndex = users.findIndex(u => u.username === coachUsername);
+        if (userIndex !== -1) {
+            users[userIndex].coachStatus = newStatus;
+            Ge(users);
+            ae(`Admin updated coach ${coachUsername} status to ${newStatus}`);
+            renderAdminCoachTable();
+        }
+    };
+    
+    document.getElementById('coaches-page')?.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+        const button = target.closest('button');
+        if (!button) return;
+        const coachUsername = button.dataset.username;
+        if (!coachUsername) return;
+
+        if (button.matches('.approve-coach-btn, .reapprove-coach-btn')) {
+            updateCoachStatus(coachUsername, 'verified');
+        } else if (button.matches('.cancel-collaboration-btn')) {
+            updateCoachStatus(coachUsername, 'cancelled');
+        } else if (button.matches('.reject-coach-btn')) {
+             let users = O().filter(u => u.username !== coachUsername);
+             Ge(users);
+             ae(`Admin rejected and removed coach ${coachUsername}`);
+             renderAdminCoachTable();
+        }
+    });
+
+    const discountModal = document.getElementById('add-discount-modal');
+    document.getElementById('add-discount-btn')?.addEventListener('click', () => openModal(discountModal));
+    discountModal?.querySelector('.close-modal')?.addEventListener('click', () => closeModal(discountModal));
+    
+    document.getElementById('add-discount-form')?.addEventListener('submit', e => {
+        e.preventDefault();
+        const code = (document.getElementById('discount-code') as HTMLInputElement).value.toUpperCase();
+        const type = (document.getElementById('discount-type') as HTMLSelectElement).value;
+        const value = parseFloat((document.getElementById('discount-value') as HTMLInputElement).value);
+
+        if (code && !isNaN(value)) {
+            const discounts = getDiscounts();
+            discounts[code] = { type, value };
+            saveDiscounts(discounts);
+            ae(`Admin created discount code: ${code}`);
+            renderDiscountTable();
+            (e.target as HTMLFormElement).reset();
+            closeModal(discountModal);
+        }
+    });
+    
+    document.getElementById('discounts-page')?.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+        const deleteBtn = target.closest('.delete-discount-btn');
+        if (deleteBtn) {
+            const code = deleteBtn.getAttribute('data-code');
+            if (code) {
+                const discounts = getDiscounts();
+                delete discounts[code];
+                saveDiscounts(discounts);
+                ae(`Admin deleted discount code: ${code}`);
+                renderDiscountTable();
+            }
+        }
+    });
+
+    // Initial Render
+    renderAdminDashboardData();
+    renderAdminUserTable();
+    renderAdminCoachTable();
+    renderDiscountTable();
+};
+
+
 const getLandingPageHTML = () => `
 <div class="landing-page-container">
     <div class="landing-bg"></div>
@@ -2533,21 +2955,26 @@ const getLandingPageHTML = () => `
                     <span class="glow-circle"></span>
                     همین حالا شروع کنید
                 </button>
+                <div class="mt-8 flex justify-center gap-6 animate-fade-in-up animation-delay-800">
+                    <a href="#" class="social-icon-link" title="Instagram"><i data-lucide="instagram" class="w-6 h-6"></i></a>
+                    <a href="#" class="social-icon-link" title="Telegram"><i data-lucide="send" class="w-6 h-6"></i></a>
+                    <a href="#" class="social-icon-link" title="Website"><i data-lucide="globe" class="w-6 h-6"></i></a>
+                </div>
             </div>
             <div class="motivational-card animate-fade-in-up animation-delay-600">
                 <div class="stat">
-                    <i data-lucide="trending-up" class="w-8 h-8"></i>
+                    <i data-lucide="trending-up" class="w-10 h-10"></i>
                     <div class="stat-text text-right">
-                        <p>مسیر شما</p>
-                        <p>به سوی تناسب اندام</p>
+                        <p class="text-accent text-lg">مسیر شما</p>
+                        <p class="text-base">به سوی تناسب اندام</p>
                     </div>
                 </div>
-                <div class="w-px h-10 bg-border-primary/50"></div>
+                <div class="w-px h-12 bg-border-primary/50"></div>
                 <div class="stat">
-                     <i data-lucide="users" class="w-8 h-8"></i>
+                     <i data-lucide="users" class="w-10 h-10"></i>
                     <div class="stat-text text-right">
-                        <p>+5k</p>
-                        <p>عضو راضی</p>
+                        <p class="text-accent text-lg">+5k</p>
+                        <p class="text-base">عضو راضی</p>
                     </div>
                 </div>
             </div>
@@ -2780,143 +3207,194 @@ const getUserHTML = () => `
     <main class="container mx-auto p-4 lg:p-6">
         <h1 id="dashboard-welcome-message" class="text-3xl font-bold mb-6">خوش آمدی!</h1>
         <div class="mb-6">
-            <nav id="user-dashboard-tabs" class="relative flex items-center gap-2 sm:gap-4 text-sm sm:text-base overflow-x-auto p-1 bg-secondary rounded-xl">
-                <div id="tab-indicator" class="absolute h-[calc(100%-0.5rem)] top-1"></div>
-                <button data-tab="dashboard" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="layout-dashboard"></i>داشبورد</button>
-                <button data-tab="workout" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="dumbbell"></i>تمرین</button>
-                <button data-tab="nutrition" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="utensils-crossed"></i>تغذیه</button>
-                <button data-tab="chat" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="message-square"></i>گفتگو</button>
-                <button data-tab="store" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="shopping-bag"></i>فروشگاه</button>
-                <button data-tab="profile" class="user-dashboard-tab flex-1 flex items-center justify-center gap-2 flex-shrink-0"><i data-lucide="user-circle"></i>پروفایل</button>
+            <nav id="user-dashboard-tabs" class="relative flex items-center gap-2 sm:gap-4 text-sm font-semibold border-b-2 border-border-secondary">
+                 <div id="tab-indicator" class="absolute bottom-[-2px] h-0.5 bg-accent transition-all duration-300 ease-out"></div>
+                 <button class="user-dashboard-tab" data-tab="dashboard">
+                    <i data-lucide="layout-grid"></i><span>داشبورد</span>
+                 </button>
+                 <button class="user-dashboard-tab" data-tab="workout">
+                    <i data-lucide="clipboard-list"></i><span>برنامه من</span>
+                 </button>
+                 <button class="user-dashboard-tab" data-tab="nutrition">
+                    <i data-lucide="utensils-crossed"></i><span>تغذیه</span>
+                 </button>
+                 <button class="user-dashboard-tab" data-tab="chat">
+                    <i data-lucide="messages-square"></i><span>گفتگو با مربی</span>
+                 </button>
+                 <button class="user-dashboard-tab" data-tab="profile">
+                    <i data-lucide="user-circle"></i><span>پروفایل</span>
+                 </button>
+                  <button class="user-dashboard-tab" data-tab="store">
+                    <i data-lucide="store"></i><span>فروشگاه</span>
+                 </button>
             </nav>
         </div>
 
-        <div class="transition-opacity duration-300">
-            <div id="dashboard-tab-content" class="user-dashboard-tab-content space-y-6">
-                <div id="dashboard-stats-grid"></div>
-                <div id="coach-message-card" class="card p-5 hidden"><h3 class="font-bold text-lg mb-3 flex items-center gap-2 text-yellow-accent"><i data-lucide="message-square"></i>آخرین پیام از مربی</h3><div id="coach-message-content" class="text-sm space-y-2"></div></div>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 space-y-6">
-                        <div id="today-focus-card" class="card p-5"></div>
-                        <div class="card p-5"><h3 class="font-bold text-lg mb-4 text-accent">نمودار کامل پیشرفت وزن</h3><div class="h-80 relative"><canvas id="weight-progress-chart"></canvas><div id="no-chart-data" class="absolute inset-0 flex items-center justify-center text-secondary hidden"><p>برای نمایش نمودار حداقل ۲ بار وزن خود را ثبت کنید.</p></div></div></div>
+        <!-- Dashboard Tab -->
+        <div id="dashboard-tab-content" class="user-dashboard-tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 space-y-6">
+                    <div id="dashboard-stats-grid"></div>
+                    <div id="coach-message-card" class="card p-5 hidden">
+                         <h3 class="font-bold text-lg flex items-center gap-2 mb-3"><i data-lucide="message-circle" class="text-accent"></i>آخرین پیام مربی</h3>
+                         <div id="coach-message-content"></div>
                     </div>
-                    <div class="lg:col-span-1 space-y-6">
-                        <div class="card p-5"><h3 class="font-bold text-lg mb-4 text-accent">ثبت وزن امروز</h3><form id="add-weight-form" class="flex gap-2"><input type="number" step="0.1" id="new-weight-input" class="input-field flex-1" placeholder="وزن امروز (kg)" required><button type="submit" class="primary-button !px-4"><i data-lucide="plus"></i></button></form></div>
-                        <div class="card p-5"><h3 class="font-bold text-lg mb-4 text-accent">تاریخچه تمرینات</h3><div id="workout-history-container" class="space-y-3 max-h-80 overflow-y-auto"></div></div>
-                        <div class="card p-5"><h3 class="font-bold text-lg mb-4 text-accent">تاریخچه خریدها</h3><div id="subscription-history-container" class="space-y-3 max-h-80 overflow-y-auto"></div></div>
+                    <div id="today-focus-card" class="card p-5"></div>
+                </div>
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="card p-5">
+                        <h3 class="font-bold text-lg flex items-center gap-2 mb-3"><i data-lucide="weight" class="text-accent"></i>پیگیری وزن</h3>
+                        <div class="h-48 relative"><canvas id="weight-progress-chart"></canvas><p id="no-chart-data" class="absolute inset-0 flex items-center justify-center text-secondary text-sm hidden">داده کافی برای نمایش نمودار وجود ندارد.</p></div>
+                        <form id="add-weight-form" class="flex gap-2 mt-4"><input id="new-weight-input" type="number" step="0.1" class="input-field flex-1" placeholder="وزن امروز (kg)"><button type="submit" class="primary-button">ثبت</button></form>
+                    </div>
+                    <div class="card p-5">
+                         <h3 class="font-bold text-lg flex items-center gap-2 mb-3"><i data-lucide="history" class="text-accent"></i>تاریخچه تمرینات</h3>
+                         <div id="workout-history-container" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+                    </div>
+                     <div class="card p-5">
+                         <h3 class="font-bold text-lg flex items-center gap-2 mb-3"><i data-lucide="receipt" class="text-accent"></i>تاریخچه خرید پلن</h3>
+                         <div id="subscription-history-container" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
                     </div>
                 </div>
             </div>
-            <div id="workout-tab-content" class="user-dashboard-tab-content hidden space-y-6">
-                <div class="card p-6">
-                    <div class="flex flex-wrap gap-4 justify-between items-center mb-6"><h2 class="text-2xl font-bold text-accent">برنامه تمرینی هفتگی شما</h2><button id="dashboard-save-pdf-btn" type="button" class="secondary-button !text-sm !py-2 !px-4 flex items-center gap-1.5"><i data-lucide="download" class="w-4 h-4"></i>ذخیره PDF</button></div>
-                    <div id="program-weekly-view" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
-                </div>
-                <div class="card p-6"><h3 class="font-bold text-lg mb-4 text-accent">جزئیات کامل برنامه</h3><div id="dashboard-program-view" class="bg-primary p-2 rounded-2xl"></div><div class="mt-4 text-center"><button id="dashboard-save-image-btn" type="button" class="secondary-button !text-sm !py-2 !px-6 inline-flex items-center gap-1.5"><i data-lucide="image" class="w-4 h-4"></i>ذخیره به عنوان عکس</button></div></div>
+        </div>
+        
+        <!-- Workout Tab -->
+        <div id="workout-tab-content" class="user-dashboard-tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                 <div class="lg:col-span-1 space-y-6">
+                     <div class="card p-5">
+                         <h3 class="font-bold text-lg flex items-center gap-2 mb-3"><i data-lucide="calendar-days" class="text-accent"></i>برنامه هفتگی</h3>
+                         <div id="program-weekly-view" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-3"></div>
+                     </div>
+                     <div class="card p-5 flex flex-col items-center justify-center gap-4 text-center">
+                         <h3 class="font-bold text-lg">صادرات برنامه</h3>
+                         <p class="text-sm text-secondary">برنامه تمرینی خود را به صورت فایل PDF یا عکس ذخیره کنید.</p>
+                         <div class="flex gap-3">
+                            <button id="dashboard-save-pdf-btn" class="secondary-button flex items-center gap-2"><i data-lucide="file-down"></i>PDF</button>
+                            <button id="dashboard-save-image-btn" class="secondary-button flex items-center gap-2"><i data-lucide="image"></i>عکس</button>
+                         </div>
+                     </div>
+                 </div>
+                 <div class="lg:col-span-2">
+                    <div id="dashboard-program-view" class="bg-white text-gray-800 p-2 rounded-2xl"></div>
+                 </div>
             </div>
-            <div id="nutrition-tab-content" class="user-dashboard-tab-content hidden card p-6"><h2 class="text-2xl font-bold text-accent mb-6">برنامه تغذیه شما</h2><div id="dashboard-nutrition-view" class="prose prose-sm max-w-none"></div></div>
-            <div id="chat-tab-content" class="user-dashboard-tab-content hidden"><div class="card w-full max-w-4xl mx-auto h-[70vh] flex flex-col"><header class="flex justify-between items-center p-4 border-b border-border-primary"><h2 class="text-xl font-bold flex items-center gap-3 text-accent"><i data-lucide="user-round-search"></i>گفتگو با مربی</h2></header><div id="coach-chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><form id="coach-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2"><input id="coach-chat-input" type="text" class="input-field flex-1" placeholder="پیام خود را بنویسید..." required><button type="submit" class="primary-button !rounded-full !p-3"><i data-lucide="send"></i></button></form></div></div>
-            <div id="store-tab-content" class="user-dashboard-tab-content hidden space-y-6"><div id="waiting-for-plan-notice-container-store"></div><div><h2 class="text-2xl font-bold mb-4 text-accent">یک پلن انتخاب کنید</h2><div id="store-plans-container" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div></div></div>
-            <div id="profile-tab-content" class="user-dashboard-tab-content hidden space-y-6">
-                <div id="waiting-for-plan-notice-container"></div>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <form id="dashboard-profile-panel" class="lg:col-span-2 card p-6"><h2 class="text-2xl font-bold mb-6 border-b border-border-primary pb-4 text-accent">پروفایل کاربری شما</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center"><label class="flex flex-col items-center gap-2 cursor-pointer group"><div class="relative"><img class="profile-pic-preview w-24 h-24 rounded-full object-cover border-4 border-border-primary group-hover:border-accent transition-colors"><div class="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="camera" class="w-8 h-8 text-white"></i></div></div><span class="text-xs font-semibold text-secondary">تغییر عکس</span><input type="file" class="profile-pic-input hidden" accept="image/*"></label><div class="sm:col-span-2 space-y-4"><input type="text" class="client-name-input input-field w-full text-lg" readonly><input type="email" class="client-email-input input-field w-full" placeholder="ایمیل شما"></div></div><div class="space-y-4"><label class="font-semibold text-sm">سن: <span class="font-bold text-accent">25</span></label><input type="range" min="15" max="80" value="25" class="range-slider age-slider"></div><div class="space-y-4"><label class="font-semibold text-sm">قد (cm): <span class="font-bold text-accent">180</span></label><input type="range" min="140" max="220" value="180" class="range-slider height-slider"></div><div class="space-y-4"><label class="font-semibold text-sm">وزن (kg): <span class="font-bold text-accent">80</span></label><input type="range" min="40" max="150" value="80" step="0.5" class="range-slider weight-slider"></div><div class="space-y-2"><h3 class="font-semibold text-sm">جنسیت</h3><div class="grid grid-cols-2 gap-3"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="gender_user" value="مرد" class="sr-only" checked>مرد</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="gender_user" value="زن" class="sr-only">زن</label></div></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:col-span-2"><input type="number" class="neck-input input-field" placeholder="دور گردن (cm)"><input type="number" class="waist-input input-field" placeholder="دور کمر (cm)"><div class="hip-input-container hidden"><input type="number" class="hip-input input-field w-full" placeholder="دور باسن (cm)"></div></div><div class="md:col-span-2 space-y-3"><h3 class="font-semibold text-sm">سطح فعالیت روزانه</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-3"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="activity_level_user" class="sr-only" value="1.2">بدون فعالیت</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="activity_level_user" class="sr-only" value="1.375">کم</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="activity_level_user" class="sr-only" value="1.55" checked>متوسط</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="activity_level_user" class="sr-only" value="1.725">زیاد</label></div></div><div class="md:col-span-2 space-y-3"><h3 class="font-semibold text-sm">هدف تمرینی</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-3"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_goal_user" class="sr-only" value="افزایش حجم">افزایش حجم</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_goal_user" class="sr-only" value="کاهش وزن">کاهش وزن</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_goal_user" class="sr-only" value="فیتنس">فیتنس</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_goal_user" class="sr-only" value="قدرت">قدرت</label></div></div><div class="md:col-span-2 space-y-3"><h3 class="font-semibold text-sm">تعداد روزهای تمرین در هفته</h3><div class="grid grid-cols-3 md:grid-cols-6 gap-3"><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="1">۱</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="2">۲</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="3">۳</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="4" checked>۴</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="5">۵</label><label class="card text-center py-2 px-3 rounded-xl cursor-pointer transition-all text-sm"><input type="radio" name="training_days_user" class="sr-only" value="6">۶</label></div></div></div></form>
-                    <div class="lg:col-span-1 space-y-6">
-                        <div id="profile-completion-notice" class="card p-4 bg-yellow-500/10 text-yellow-accent"><i data-lucide="alert-triangle" class="w-6 h-6 mb-2"></i><p class="font-bold">پروفایل شما تکمیل نیست!</p><p class="text-sm">لطفا اطلاعات خود را بررسی و سپس دکمه تایید را بزنید تا مربی بتواند برنامه شما را طراحی کند.</p></div>
-                        <div class="card p-6">
-                             <div id="dashboard-status-container" class="space-y-3"></div>
-                             <button id="confirm-info-btn" type="button" class="mt-4 w-full text-sm !border-blue-500/30 !bg-blue-500/10 !text-accent hover:!bg-blue-500/20 secondary-button font-bold flex items-center justify-center gap-2">تایید و قفل کردن اطلاعات</button>
+        </div>
+
+        <!-- Nutrition Tab -->
+        <div id="nutrition-tab-content" class="user-dashboard-tab-content hidden">
+             <div id="dashboard-nutrition-view" class="prose prose-sm max-w-none prose-p:my-2 prose-h4:my-3 prose-table:my-2 bg-white text-gray-800 p-6 rounded-2xl"></div>
+        </div>
+
+        <!-- Chat Tab -->
+        <div id="chat-tab-content" class="user-dashboard-tab-content hidden">
+             <div class="card max-w-3xl mx-auto flex flex-col h-[70vh]">
+                 <div id="coach-chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto"></div>
+                 <form id="coach-chat-form" class="p-4 border-t border-border-primary flex items-center gap-3">
+                    <input id="coach-chat-input" class="input-field flex-1" placeholder="پیام خود را بنویسید...">
+                    <button type="submit" class="primary-button !py-2.5 !px-5"><i data-lucide="send"></i></button>
+                 </form>
+             </div>
+        </div>
+        
+        <!-- Profile Tab -->
+        <div id="profile-tab-content" class="user-dashboard-tab-content hidden">
+            <div id="profile-completion-notice" class="mb-6 p-4 rounded-xl bg-yellow-500/10 text-yellow-accent flex items-start gap-3">
+                 <i data-lucide="alert-triangle" class="w-8 h-8 flex-shrink-0"></i>
+                 <div>
+                    <h3 class="font-bold">پروفایل شما نیاز به تکمیل و تایید دارد!</h3>
+                    <p class="text-sm">لطفا اطلاعات زیر را با دقت بررسی کرده و در صورت نیاز ویرایش کنید. پس از اطمینان از صحت اطلاعات، دکمه "تایید" را بزنید. تا زمانی که اطلاعات خود را تایید نکنید، مربی قادر به طراحی برنامه برای شما نخواهد بود.</p>
+                 </div>
+            </div>
+             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                 <div class="lg:col-span-2 card p-6" id="dashboard-profile-panel">
+                     <h2 class="text-2xl font-bold mb-6">اطلاعات شما</h2>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                            <label class="relative group cursor-pointer"><img class="profile-pic-preview w-24 h-24 rounded-full object-cover border-4 border-border-primary"><div class="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="camera" class="w-8 h-8 text-white"></i></div><input type="file" class="profile-pic-input hidden" accept="image/*"></label>
+                            <div class="sm:col-span-2 space-y-4">
+                                <input type="text" readonly class="client-name-input input-field w-full text-lg !bg-tertiary cursor-not-allowed" placeholder="نام و نام خانوادگی">
+                                <input type="email" class="client-email-input input-field w-full" placeholder="ایمیل شما">
+                            </div>
                         </div>
-                        <div class="card p-6"><h3 class="text-xl font-bold mb-4 text-accent">شاخص‌های کلیدی</h3><div class="space-y-3 text-sm">
-                            <div class="flex justify-between items-center"><span>شاخص توده بدنی (BMI)</span><input readonly class="bmi-input input-field !p-1 !text-center w-20 font-mono"></div>
-                            <div class="flex justify-between items-center"><span>متابولیسم پایه (BMR)</span><input readonly class="bmr-input input-field !p-1 !text-center w-20 font-mono"></div>
-                            <div class="flex justify-between items-center"><span>کالری مصرفی روزانه (TDEE)</span><input readonly class="tdee-input input-field !p-1 !text-center w-20 font-mono"></div>
-                            <div class="flex justify-between items-center"><span>درصد چربی بدن</span><input readonly class="bodyfat-input input-field !p-1 !text-center w-20 font-mono"></div>
-                            <div class="flex justify-between items-center"><span>توده بدون چربی (LBM)</span><input readonly class="lbm-input input-field !p-1 !text-center w-20 font-mono"></div>
-                            <div class="flex justify-between items-center"><span>وزن ایده‌آل</span><input readonly class="ideal-weight-input input-field !p-1 !text-center w-32 font-mono"></div>
-                        </div></div>
+                        <div class="space-y-4"><label class="font-semibold">قد (cm): <span>180</span></label><input type="range" min="140" max="220" value="180" class="range-slider height-slider"></div>
+                        <div class="space-y-4"><label class="font-semibold">وزن (kg): <span>80</span></label><input type="range" min="40" max="150" value="80" step="0.5" class="range-slider weight-slider"></div>
+                         <div class="space-y-4"><label class="font-semibold">سن: <span>25</span></label><input type="range" min="15" max="80" value="25" class="range-slider age-slider"></div>
+                        <div class="space-y-2"><h3 class="font-bold text-lg">جنسیت</h3><div class="grid grid-cols-2 gap-3 text-base"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="gender_user" value="مرد" class="gender sr-only">مرد</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="gender_user" value="زن" class="gender sr-only">زن</label></div></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:col-span-2"><input type="number" class="neck-input input-field" placeholder="دور گردن (cm)"><input type="number" class="waist-input input-field" placeholder="دور کمر (cm)"><div class="hip-input-container"><input type="number" class="hip-input input-field" placeholder="دور باسن (cm)"></div></div>
+                        <div class="md:col-span-2 space-y-3"><h3 class="font-bold text-lg">هدف تمرینی</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-base"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="افزایش حجم">افزایش حجم</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="کاهش وزن">کاهش وزن</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="فیتنس">فیتنس</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_goal_user" class="training-goal sr-only" value="قدرت">قدرت</label></div></div>
+                        <div class="md:col-span-2 space-y-3"><h3 class="font-bold text-lg">سطح فعالیت روزانه</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-base"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.2">بدون فعالیت</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.375">کم</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.55">متوسط</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="activity_level_user" class="activity-level sr-only" value="1.725">زیاد</label></div></div>
+                        <div class="md:col-span-2 space-y-3"><h3 class="font-bold text-lg">تعداد روزهای تمرین</h3><div class="grid grid-cols-3 md:grid-cols-6 gap-3 text-base"><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="2">۲</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="3">۳</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="4">۴</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="5">۵</label><label class="card text-center p-3 rounded-xl cursor-pointer transition-all"><input type="radio" name="training_days_user" class="training-days sr-only" value="6">۶</label></div></div>
+                        <div class="md:col-span-2"><button id="confirm-info-btn" type="button" class="w-full mt-4 font-bold text-lg flex items-center justify-center gap-2 border-2 !border-blue-500/30 !bg-blue-500/10 !text-accent hover:!bg-blue-500/20 transition-colors py-3 rounded-xl">تایید و قفل کردن اطلاعات</button></div>
+                     </div>
+                 </div>
+                 <div class="lg:col-span-1 space-y-6">
+                    <div class="card p-6">
+                        <h3 class="text-xl font-bold mb-4">وضعیت شما</h3>
+                        <div id="dashboard-status-container" class="space-y-3"></div>
                     </div>
+                     <div class="card p-6">
+                        <h3 class="text-xl font-bold mb-4">شاخص‌های بدنی</h3>
+                         <div class="space-y-3 text-sm">
+                            <div class="flex justify-between items-center"><span>BMI</span><input readonly class="bmi-input input-field !p-1 !text-center w-20 font-mono"></div>
+                            <div class="flex justify-between items-center"><span>BMR</span><input readonly class="bmr-input input-field !p-1 !text-center w-20 font-mono"></div>
+                            <div class="flex justify-between items-center"><span>TDEE</span><input readonly class="tdee-input input-field !p-1 !text-center w-20 font-mono"></div>
+                            <div class="flex justify-between items-center"><span>Body Fat %</span><input readonly class="bodyfat-input input-field !p-1 !text-center w-20 font-mono"></div>
+                            <div class="flex justify-between items-center"><span>وزن ایده‌آل</span><input readonly class="ideal-weight-input input-field !p-1 !text-center w-32 font-mono"></div>
+                        </div>
+                     </div>
+                 </div>
+            </div>
+        </div>
+
+         <!-- Store Tab -->
+        <div id="store-tab-content" class="user-dashboard-tab-content hidden">
+            <div id="waiting-for-plan-notice-container-store"></div>
+            <div class="space-y-6">
+                <h2 class="text-3xl font-bold">پلن‌های تمرینی و غذایی</h2>
+                <p class="text-secondary max-w-2xl">با انتخاب یکی از پلن‌های زیر، اولین قدم را برای رسیدن به اهداف خود بردارید. مربیان ما بر اساس اطلاعات پروفایل شما، بهترین برنامه را طراحی خواهند کرد.</p>
+                <div id="store-plans-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Plans will be rendered here -->
                 </div>
             </div>
         </div>
     </main>
 
-    <button id="open-ai-chat-btn" class="fixed bottom-6 left-6 primary-button !rounded-full !p-4 shadow-lg z-50 animate-bounce" title="دستیار هوشمند فیتنس"><i data-lucide="bot"></i></button>
-
-    <div id="workout-log-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-2xl max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
-            <header class="p-4 border-b border-border-primary flex justify-between items-center"><h2 class="text-xl font-bold text-accent flex items-center gap-2"><i data-lucide="clipboard-list"></i>ثبت جزئیات تمرین</h2><button id="close-workout-log-btn" type="button" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button></header>
-            <div class="p-6 overflow-y-auto"><h3 id="workout-log-title" class="text-lg font-bold mb-4"></h3><div id="workout-log-exercises-container" class="space-y-4"></div></div>
-            <footer class="p-4 border-t border-border-primary mt-auto"><button id="save-workout-log-btn" class="primary-button w-full">ذخیره تمرین</button></footer>
-        </div>
-    </div>
-
-    <div id="shopping-cart-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-lg max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
-            <header class="p-4 border-b border-border-primary flex justify-between items-center"><h2 class="text-xl font-bold text-accent flex items-center gap-2"><i data-lucide="shopping-cart"></i>سبد خرید</h2><button id="close-cart-btn" type="button" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button></header>
-            <div id="cart-items-container" class="p-6 flex-1 overflow-y-auto"></div>
-            <div class="p-6 border-t border-border-primary">
-                <form id="discount-form" class="flex gap-2 mb-4"><input type="text" id="discount-code-input" class="input-field flex-1" placeholder="کد تخفیف"><button type="submit" class="secondary-button !px-6">اعمال</button></form>
-                <div class="space-y-2 text-sm"><div class="flex justify-between"><span>جمع کل</span><span id="cart-subtotal">0 تومان</span></div><div class="flex justify-between text-red-accent"><span>تخفیف</span><span id="cart-discount">- 0 تومان</span></div><hr class="border-border-primary my-2"><div class="flex justify-between font-bold text-lg"><span>مبلغ قابل پرداخت</span><span id="cart-total">0 تومان</span></div></div>
-                <button id="checkout-btn" class="primary-button w-full mt-4 !py-3">پرداخت و تکمیل خرید</button>
-            </div>
-        </div>
-    </div>
-    
-    <div id="ai-chat-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-lg h-[70vh] flex flex-col transform scale-95 transition-transform duration-300">
-            <header class="p-4 border-b border-border-primary flex justify-between items-center"><h2 class="text-xl font-bold text-accent flex items-center gap-2"><i data-lucide="bot"></i>FitBot - دستیار هوشمند</h2><button id="close-ai-chat-btn" type="button" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button></header>
-            <div id="ai-chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div>
-            <form id="ai-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2"><input id="ai-chat-input" type="text" class="input-field flex-1" placeholder="سوال خود را بپرسید..." required><button type="submit" class="primary-button !rounded-full !p-3"><i data-lucide="send"></i></button></form>
-        </div>
-    </div>
-
-    <template id="exercise-log-template"><div class="exercise-log-item bg-tertiary/50 p-3 rounded-xl"><h4 class="font-bold mb-3"></h4><div class="sets-log-container space-y-2"></div></div></template>
-    <template id="set-log-row-template"><div class="set-log-row grid grid-cols-12 gap-2 items-center text-sm"><span class="col-span-2 font-semibold"></span><input type="number" class="weight-log-input input-field col-span-4" placeholder="وزنه (kg)"><input type="number" class="reps-log-input input-field col-span-4" placeholder="تکرار"><div class="col-span-2 flex justify-end"><button class="add-set-btn secondary-button !p-2"><i data-lucide="plus" class="w-4 h-4"></i></button></div></div></template>
+     <!-- Floating Action Button for AI Chat -->
+    <button id="open-ai-chat-btn" class="fixed bottom-6 left-6 primary-button !rounded-full !p-4 shadow-lg animate-bounce" title="دستیار هوشمند فیت‌بات">
+        <i data-lucide="bot" class="w-8 h-8"></i>
+    </button>
 </div>
 `;
-const initApp = () => {
-    // Theme setup
-    const applyTheme = (theme) => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('fitgympro_theme', theme);
-        const icon = theme === 'dark' ? 'sun' : 'moon';
-        document.querySelectorAll('#theme-toggle-btn-dashboard, #theme-toggle-btn').forEach(btn => {
-            const i = btn.querySelector('i');
-            if (i) {
-                i.setAttribute('data-lucide', icon);
-            }
-        });
-        window.lucide?.createIcons();
-    };
-    
-    const toggleTheme = () => {
-        const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        applyTheme(newTheme);
-    };
 
-    document.body.addEventListener('click', e => {
-        if ((e.target as HTMLElement).closest('#theme-toggle-btn-dashboard') || (e.target as HTMLElement).closest('#theme-toggle-btn')) {
-            toggleTheme();
-        }
-    });
-
-    const currentTheme = localStorage.getItem('fitgympro_theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', currentTheme);
-    applyTheme(currentTheme);
-
-    // PWA Service Worker
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
-                .then(registration => console.log('ServiceWorker registration successful with scope: ', registration.scope))
-                .catch(err => console.log('ServiceWorker registration failed: ', err));
-        });
-    }
-
-    initCommonListeners();
+document.addEventListener("DOMContentLoaded", () => {
     seedInitialUsers();
     renderApp();
-};
+    initCommonListeners();
 
-document.addEventListener('DOMContentLoaded', initApp);
+    // Theme toggling logic
+    const themeToggleBtnDashboard = document.getElementById('theme-toggle-btn-dashboard');
+    const updateThemeIcon = (theme) => {
+        const icon = themeToggleBtnDashboard?.querySelector('i');
+        if (icon) {
+            icon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon');
+            window.lucide?.createIcons();
+        }
+    };
+
+    if (themeToggleBtnDashboard) {
+        updateThemeIcon(localStorage.getItem('fitgympro_theme') || 'dark');
+        themeToggleBtnDashboard.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('fitgympro_theme', newTheme);
+            updateThemeIcon(newTheme);
+            // Re-render chart if visible
+            if (f && D(f).weightHistory && document.getElementById('dashboard-tab-content')?.offsetParent) {
+                 Xe(D(f).weightHistory, "weight-progress-chart", "no-chart-data");
+            }
+        });
+    }
+});
