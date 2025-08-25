@@ -151,9 +151,33 @@
         input[type=range].range-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: white; border: 3px solid var(--accent); cursor: pointer; transition: transform 0.2s; }
         input[type=range].range-slider:hover::-webkit-slider-thumb { transform: scale(1.1); }
         
-        #tab-indicator { background-color: var(--accent); border-radius: var(--radius-btn); transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .user-dashboard-tab { z-index: 1; position: relative; padding: 0.6rem 1rem; color: var(--text-secondary); font-weight: 600; transition: color 0.3s; }
-        .user-dashboard-tab.active-spring-tab { color: var(--bg-secondary); }
+        #tab-indicator {
+            position: absolute;
+            height: calc(100% - 0.5rem);
+            top: 0.25rem;
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-btn);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        html[data-theme='dark'] #tab-indicator { box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .user-dashboard-tab {
+            z-index: 1;
+            position: relative;
+            padding: 0.6rem 0.5rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            transition: color 0.3s;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            border-radius: var(--radius-btn);
+        }
+        .user-dashboard-tab.active-spring-tab {
+            color: var(--text-primary);
+        }
 
         /* Landing Page & Auth Modal */
         .landing-page-container { min-height: 100vh; overflow: hidden; position: relative; }
@@ -257,31 +281,38 @@
                 <!-- Sliders -->
                 <div class="flex-grow grid grid-cols-3 gap-x-3 items-center text-xs min-w-[240px]">
                     <div class="space-y-1 text-center">
-                        <label class="font-semibold whitespace-nowrap">ست: <span>3</span></label>
-                        <input type="range" min="1" max="10" value="3" class="range-slider set-slider w-full">
+                        <label class="font-semibold whitespace-nowrap">ست: <span>4</span></label>
+                        <input type="range" min="1" max="10" value="4" class="range-slider set-slider">
                     </div>
                     <div class="space-y-1 text-center">
                         <label class="font-semibold whitespace-nowrap">تکرار: <span>12</span></label>
-                        <input type="range" min="1" max="50" value="12" class="range-slider rep-slider w-full">
+                        <input type="range" min="1" max="50" value="12" class="range-slider rep-slider">
                     </div>
                     <div class="space-y-1 text-center">
                         <label class="font-semibold whitespace-nowrap">استراحت: <span>60</span>s</label>
-                        <input type="range" min="0" max="180" value="60" step="15" class="range-slider rest-slider w-full">
+                        <input type="range" min="15" max="180" value="60" step="15" class="range-slider rest-slider">
                     </div>
                 </div>
                 <!-- Buttons -->
-                <div class="flex gap-1">
-                    <button type="button" class="superset-btn secondary-button !p-2" title="سوپرست"><i data-lucide="zap" class="w-4 h-4 pointer-events-none"></i></button>
+                <div class="flex items-center gap-1">
+                    <button type="button" class="superset-btn secondary-button !p-2" title="سوپرست"><i data-lucide="link-2" class="w-4 h-4 pointer-events-none"></i></button>
                     <button type="button" class="remove-exercise-btn secondary-button !p-2 text-red-accent hover:!bg-red-500/10" title="حذف حرکت"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
                 </div>
             </div>
         </div>
     </template>
-    
-    <script>
-        const theme = localStorage.getItem('fitgympro_theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
-    </script>
+
+    <template id="set-log-row-template">
+        <div class="set-log-row flex items-center gap-2 py-1">
+            <span class="font-semibold text-sm w-12 text-secondary"></span>
+            <input type="number" class="weight-log-input input-field !p-2 text-sm flex-1" placeholder="وزن (kg)">
+            <input type="number" class="reps-log-input input-field !p-2 text-sm flex-1" placeholder="تکرار">
+            <div class="w-10">
+                 <button type="button" class="add-set-btn secondary-button !p-2"><i data-lucide="plus" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+    </template>
+
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>
