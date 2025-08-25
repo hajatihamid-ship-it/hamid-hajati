@@ -1,0 +1,118 @@
+import { GoogleGenAI, Type } from "https://esm.run/@google/genai";
+import { getGenAI } from '../state';
+import { showToast } from "../utils/dom";
+import { exerciseDB } from "../config";
+
+export const generateNutritionPlan = async (userData: any): Promise<string> => {
+    const ai = getGenAI();
+    const tdee = userData.step1?.tdee || 2500;
+    const goal = userData.step1?.trainingGoal || "حفظ وزن";
+    const name = userData.step1?.clientName || "ورزشکار";
+
+    let calorieTarget = tdee;
+    if (goal === "کاهش وزن") {
+        calorieTarget = tdee * 0.8;
+    } else if (goal === "افزایش حجم") {
+        calorieTarget = tdee * 1.15;
+    }
+
+    const prompt = `
+        برای یک ورزشکار به نام "${name}" با هدف "${goal}" و کالری هدف روزانه حدود ${Math.round(calorieTarget)} کیلوکالری، یک برنامه غذایی نمونه برای یک روز طراحی کن.
+        
+        برنامه باید شامل 5 وعده (صبحانه، ناهار، شام، و دو میان‌وعده) باشد.
+        برای هر وعده، چند گزینه غذایی سالم و متنوع پیشنهاد بده.
+        مقدار تقریبی هر ماده غذایی را مشخص کن (مثلا: ۱۰۰ گرم سینه مرغ، یک لیوان شیر).
+        یک بخش "نکات مهم" با توصیه‌های کلی در مورد نوشیدن آب، اهمیت پروتئین و کربوهیدرات‌های پیچیده اضافه کن.
+        
+        پاسخ را در قالب HTML با کلاس‌های TailwindCSS برای استایل‌دهی زیبا و خوانا ارائه بده. از تگ‌های h4 برای نام وعده‌ها، ul و li برای لیست غذاها و مقادیر، و یک div با کلاس "preview-notes-pro" برای نکات مهم استفاده کن. خروجی باید کاملا به زبان فارسی باشد.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        return response.text;
+    } catch (error) {
+        console.error("AI Nutrition Plan Error:", error);
+        showToast("خطا در تولید برنامه غذایی", "error");
+        return "<p>متاسفانه در تولید برنامه غذایی مشکلی پیش آمد. لطفا دوباره تلاش کنید.</p>";
+    }
+};
+
+
+export const generateWorkoutPlan = async (studentData: any): Promise<any | null> => {
+    const ai = getGenAI();
+    
+    const { age, gender, trainingGoal, trainingDays } = studentData;
+    if (!age || !gender || !trainingGoal || !trainingDays) {
+        showToast("اطلاعات شاگرد برای تولید برنامه کافی نیست.", "error");
+        return null;
+    }
+
+    // Create a flat list of available exercises to guide the AI
+    const availableExercises = Object.values(exerciseDB).flat().join(', ');
+
+    const prompt = `
+        You are an expert fitness coach. Create a personalized ${trainingDays}-day workout plan for a client with the following details:
+        - Age: ${age}
+        - Gender: ${gender}
+        - Primary Goal: ${trainingGoal}
+
+        Instructions:
+        1. Design a weekly split appropriate for the number of training days. For example, for 4 days, you might use an Upper/Lower split or a Body Part split.
+        2. For each training day, provide a clear name in Persian (e.g., "شنبه: سینه و پشت بازو").
+        3. For each exercise, provide a reasonable number of sets, reps, and rest period in seconds, tailored to the client's goal.
+        4. ONLY use exercises from this list: ${availableExercises}.
+        5. Provide a final "notes" field in Persian with general advice like warming up and hydration.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        days: {
+                            type: Type.ARRAY,
+                            description: "An array of daily workout objects, one for each training day.",
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    name: { type: Type.STRING, description: "The name of the workout day (e.g., 'شنبه: سینه و پشت بازو')." },
+                                    exercises: {
+                                        type: Type.ARRAY,
+                                        description: "A list of exercises for this day.",
+                                        items: {
+                                            type: Type.OBJECT,
+                                            properties: {
+                                                name: { type: Type.STRING, description: "The name of the exercise." },
+                                                sets: { type: Type.INTEGER, description: "Number of sets." },
+                                                reps: { type: Type.INTEGER, description: "Number of repetitions per set." },
+                                                rest: { type: Type.INTEGER, description: "Rest time in seconds between sets." }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        notes: {
+                            type: Type.STRING,
+                            description: "General notes and advice for the client."
+                        }
+                    }
+                }
+            }
+        });
+        
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText);
+    } catch (error) {
+        console.error("AI Workout Plan Error:", error);
+        showToast("خطا در تولید برنامه تمرینی با AI", "error");
+        return null;
+    }
+};
