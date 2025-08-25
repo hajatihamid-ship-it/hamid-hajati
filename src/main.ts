@@ -173,7 +173,7 @@ export const renderApp = () => {
     if (!currentUser) {
         appContainer.innerHTML = renderLandingPage() + renderAuthModal();
         initLandingPageListeners();
-        initAuthListeners();
+        initAuthListeners(handleLoginSuccess);
     } else {
         const users = getUsers();
         const currentUserData = users.find((u: any) => u.username === currentUser);

@@ -1,4 +1,3 @@
-import { handleLoginSuccess } from '../main';
 import { showToast, closeModal } from '../utils/dom';
 import { getUsers, saveUsers, saveUserData, addActivityLog } from '../services/storage';
 
@@ -28,7 +27,7 @@ const clearValidationError = (inputEl: HTMLInputElement) => {
     if (errorEl) errorEl.textContent = '';
 };
 
-export function initAuthListeners() {
+export function initAuthListeners(handleLoginSuccess: (username: string) => void) {
     const authModal = document.getElementById('auth-modal');
     if (!authModal) return;
 

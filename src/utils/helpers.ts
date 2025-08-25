@@ -25,3 +25,16 @@ export const getLatestPurchase = (userData: any) => {
     const unfulfilled = sortedSubs.find(sub => sub.fulfilled === false);
     return unfulfilled || sortedSubs[0];
 };
+
+export const getLastActivity = (userData: any): string => {
+    const workoutDates = (userData.workoutHistory || []).map((h: any) => new Date(h.date).getTime());
+    const weightDates = (userData.weightHistory || []).map((h: any) => new Date(h.date).getTime());
+
+    const allDates = [...workoutDates, ...weightDates];
+    if (allDates.length === 0) {
+        return "بدون فعالیت";
+    }
+
+    const lastTimestamp = Math.max(...allDates);
+    return timeAgo(new Date(lastTimestamp).toISOString());
+};

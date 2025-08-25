@@ -1,8 +1,9 @@
 import { exerciseDB, supplementsDB } from '../config';
 import { getTemplates, saveTemplate, deleteTemplate, getUsers, getUserData, saveUserData, getNotifications, setNotification, clearNotification } from '../services/storage';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement } from '../utils/dom';
-import { getLatestPurchase, timeAgo } from '../utils/helpers';
+import { getLatestPurchase, timeAgo, getLastActivity } from '../utils/helpers';
 import { generateWorkoutPlan } from '../services/gemini';
+import { calculateWorkoutStreak } from '../utils/calculations';
 
 let currentStep = 1;
 const totalSteps = 4;
@@ -10,6 +11,79 @@ let activeStudentUsername: string | null = null;
 let studentModalChartInstance: any = null;
 let currentSelectionTarget: HTMLElement | null = null;
 let exerciseToMuscleGroupMap: Record<string, string> = {};
+
+const getWeightChange = (userData: any) => {
+    if (!userData.weightHistory || userData.weightHistory.length < 2) {
+        return { change: 0, trend: 'neutral' };
+    }
+    const firstWeight = userData.weightHistory[0].weight;
+    const lastWeight = userData.weightHistory[userData.weightHistory.length - 1].weight;
+    const change = lastWeight - firstWeight;
+    let trend = 'neutral';
+    if (change > 0) trend = 'up';
+    if (change < 0) trend = 'down';
+
+    return { change: parseFloat(change.toFixed(1)), trend };
+};
+
+const renderProgressTimeline = (userData: any) => {
+    const events: any[] = [];
+    (userData.workoutHistory || []).forEach((log: any) => events.push({ date: new Date(log.date), type: 'workout', data: log }));
+    (userData.weightHistory || []).forEach((log: any) => events.push({ date: new Date(log.date), type: 'weight', data: log }));
+    (userData.subscriptions || []).forEach((sub: any) => events.push({ date: new Date(sub.purchaseDate), type: 'purchase', data: sub }));
+    (userData.programHistory || []).forEach((prog: any) => events.push({ date: new Date(prog.date), type: 'program', data: prog }));
+
+    if (events.length === 0) {
+        return '<p class="text-text-secondary text-center p-8">هنوز فعالیتی برای نمایش وجود ندارد.</p>';
+    }
+
+    events.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    const iconMap = {
+        workout: { icon: 'dumbbell', color: 'bg-blue-500' },
+        weight: { icon: 'bar-chart-2', color: 'bg-green-500' },
+        purchase: { icon: 'shopping-cart', color: 'bg-pink-500' },
+        program: { icon: 'clipboard-list', color: 'bg-orange-500' },
+    };
+
+    let timelineHtml = '<div class="timeline-container pr-4">';
+    events.forEach(event => {
+        const { icon, color } = iconMap[event.type as keyof typeof iconMap];
+        let title = '';
+        let description = '';
+
+        switch (event.type) {
+            case 'workout':
+                title = 'تمرین ثبت شد';
+                description = `${event.data.exercises.length} حرکت انجام شد.`;
+                break;
+            case 'weight':
+                title = 'وزن ثبت شد';
+                description = `وزن جدید: ${event.data.weight} کیلوگرم`;
+                break;
+            case 'purchase':
+                title = 'خرید پلن';
+                description = `پلن "${event.data.planName}" خریداری شد.`;
+                break;
+            case 'program':
+                title = 'برنامه جدید ارسال شد';
+                description = `شامل ${event.data.step2.days.length} روز تمرینی`;
+                break;
+        }
+
+        timelineHtml += `
+            <div class="timeline-item relative pb-8">
+                <div class="timeline-dot absolute w-4 h-4 rounded-full ${color} border-4 border-bg-secondary"></div>
+                <div class="mr-6">
+                    <p class="font-semibold text-sm">${title} - <span class="text-text-secondary font-normal">${timeAgo(event.date.toISOString())}</span></p>
+                    <p class="text-xs text-text-secondary">${description}</p>
+                </div>
+            </div>
+        `;
+    });
+    timelineHtml += '</div>';
+    return timelineHtml;
+};
 
 export const updateCoachNotifications = (currentUser: string) => {
     const notifications = getNotifications(currentUser);
@@ -77,15 +151,33 @@ const calculateAndDisplayVolume = () => {
             <h5 class="font-bold text-md">کل تکرارها: ${totalVolume}</h5>
         </div>
         ${Object.entries(volumeByGroup).sort((a,b) => b[1] - a[1]).map(([group, volume]) => `
-            <div class="flex justify-between items-center text-sm">
-                <span class="font-semibold">${group}</span>
-                <span class="text-text-secondary">${volume}</span>
-            </div>
-            <div class="w-full bg-bg-tertiary rounded-full h-1.5 mt-1 mb-2">
-                <div class="bg-accent h-1.5 rounded-full" style="width: ${Math.min(100, (volume / maxVolume) * 100)}%"></div>
+            <div class="volume-analysis-item cursor-pointer p-1 rounded-md transition-colors hover:bg-bg-tertiary" data-muscle-group="${group}">
+                <div class="flex justify-between items-center text-sm pointer-events-none">
+                    <span class="font-semibold">${group}</span>
+                    <span class="text-text-secondary">${volume}</span>
+                </div>
+                <div class="w-full bg-bg-tertiary rounded-full h-1.5 mt-1 pointer-events-none">
+                    <div class="bg-accent h-1.5 rounded-full" style="width: ${Math.min(100, (volume / maxVolume) * 100)}%"></div>
+                </div>
             </div>
         `).join('')}
         `;
+
+        container.querySelectorAll('.volume-analysis-item').forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                const group = (item as HTMLElement).dataset.muscleGroup;
+                document.querySelectorAll('#step-content-2 .exercise-row').forEach(row => {
+                    if ((row as HTMLElement).dataset.exerciseMuscleGroup === group) {
+                        row.classList.add('highlight-exercise');
+                    }
+                });
+            });
+            item.addEventListener('mouseleave', () => {
+                 document.querySelectorAll('#step-content-2 .exercise-row.highlight-exercise').forEach(row => {
+                    row.classList.remove('highlight-exercise');
+                });
+            });
+        });
     }
 };
 
@@ -133,6 +225,7 @@ const addExerciseRow = (dayId: string, exerciseData: any | null = null) => {
     if (exerciseData) {
         const muscleGroup = Object.keys(exerciseDB).find(group => exerciseDB[group].includes(exerciseData.name));
         if (muscleGroup) {
+            newRow.dataset.exerciseMuscleGroup = muscleGroup;
             const muscleGroupBtn = newRow.querySelector('.muscle-group-select') as HTMLButtonElement;
             muscleGroupBtn.dataset.value = muscleGroup;
             muscleGroupBtn.querySelector('span')!.textContent = muscleGroup;
@@ -323,7 +416,25 @@ const openStudentProfileModal = (username: string) => {
         programWrapper.innerHTML = `<p class="text-text-secondary text-center p-4">هنوز برنامه‌ای برای این شاگرد ثبت نشده است.</p>`;
     }
     
-    initStudentWeightChartInModal(userData);
+    const progressContent = modal.querySelector('#student-progress-content');
+    if (progressContent) {
+        progressContent.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-bold mb-3">نمودار وزن</h4>
+                    <div class="h-64"><canvas id="student-modal-weight-chart"></canvas></div>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-3">تایم‌لاین فعالیت‌ها</h4>
+                    <div class="h-64 overflow-y-auto pr-2">
+                        ${renderProgressTimeline(userData)}
+                    </div>
+                </div>
+            </div>
+        `;
+        initStudentWeightChartInModal(userData);
+    }
+
 
     const modalTabs = modal.querySelectorAll('.student-modal-tab');
     const modalContents = modal.querySelectorAll('.student-modal-content');
@@ -715,17 +826,69 @@ const openStudentSelectionModal = (target: HTMLElement) => {
     const titleEl = modal.querySelector('.selection-modal-title') as HTMLElement;
     const optionsContainer = modal.querySelector('.selection-modal-options') as HTMLElement;
     const searchInput = modal.querySelector('.selection-modal-search') as HTMLInputElement;
+    const filterChipsContainer = modal.querySelector('#student-filter-chips');
+    const sortSelect = modal.querySelector('#student-sort-select') as HTMLSelectElement;
 
     titleEl.textContent = "انتخاب شاگرد";
     searchInput.value = '';
-    
-    const students = getUsers().filter((u: any) => u.role === 'user');
 
-    const renderOptions = (filter = '') => {
-        const filteredStudents = students.filter((s: any) => {
-            const studentData = getUserData(s.username);
-            const name = studentData.step1?.clientName || s.username;
-            return name.toLowerCase().includes(filter.toLowerCase());
+    // Reset filters and sort
+    filterChipsContainer?.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    (filterChipsContainer?.querySelector('.filter-chip[data-filter="all"]') as HTMLElement)?.classList.add('active');
+    sortSelect.value = 'name';
+
+    const allStudents = getUsers().filter((u: any) => u.role === 'user');
+
+    const renderOptions = () => {
+        const filter = (filterChipsContainer?.querySelector('.filter-chip.active') as HTMLElement)?.dataset.filter || 'all';
+        const sortBy = sortSelect.value;
+        const searchTerm = searchInput.value.toLowerCase();
+
+        const studentDataWithDetails = allStudents.map((s: any) => {
+            const userData = getUserData(s.username);
+            const lastActivityDate = (userData.workoutHistory && userData.workoutHistory.length > 0) 
+                ? userData.workoutHistory[userData.workoutHistory.length - 1].date 
+                : (userData.weightHistory && userData.weightHistory.length > 0)
+                ? userData.weightHistory[userData.weightHistory.length - 1].date
+                : s.joinDate;
+
+            return {
+                ...s,
+                details: userData,
+                name: userData.step1?.clientName || s.username,
+                lastActivityTimestamp: new Date(lastActivityDate).getTime()
+            };
+        });
+
+        // 1. Filtering
+        let filteredStudents = studentDataWithDetails.filter(s => {
+            if (searchTerm && !s.name.toLowerCase().includes(searchTerm)) {
+                return false;
+            }
+
+            if (filter === 'needs_plan') {
+                const latestPurchase = getLatestPurchase(s.details);
+                return latestPurchase && !latestPurchase.fulfilled;
+            }
+
+            if (filter === 'inactive') {
+                const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+                return s.lastActivityTimestamp < oneWeekAgo;
+            }
+            
+            return true; // 'all' filter
+        });
+
+        // 2. Sorting
+        filteredStudents.sort((a, b) => {
+            if (sortBy === 'activity') {
+                return b.lastActivityTimestamp - a.lastActivityTimestamp;
+            }
+            if (sortBy === 'join_date') {
+                return new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime();
+            }
+            // Default: by name
+            return a.name.localeCompare(b.name, 'fa');
         });
 
         const optionTemplate = document.getElementById('student-selection-option-template') as HTMLTemplateElement;
@@ -734,36 +897,53 @@ const openStudentSelectionModal = (target: HTMLElement) => {
             return;
         }
         
+        if(filteredStudents.length === 0) {
+            optionsContainer.innerHTML = '<p class="text-text-secondary text-center col-span-full py-8">موردی برای نمایش یافت نشد.</p>';
+            return;
+        }
+
         optionsContainer.innerHTML = filteredStudents.map((s: any) => {
-            const studentData = getUserData(s.username);
-            const name = studentData.step1?.clientName || s.username;
+            const studentData = s.details;
+            const name = s.name;
             const goal = studentData.step1?.trainingGoal || 'بدون هدف';
-            const trainingDays = studentData.step1?.trainingDays ? `${studentData.step1.trainingDays} روز در هفته` : '';
             const latestPurchase = getLatestPurchase(studentData);
             
             const optionNode = optionTemplate.content.cloneNode(true) as DocumentFragment;
             const button = optionNode.querySelector('.student-option-btn') as HTMLButtonElement;
             button.dataset.username = s.username;
-            (button.querySelector('.student-name') as HTMLElement).textContent = name;
             
-            const goalText = [goal, trainingDays].filter(Boolean).join(' - ');
-            (button.querySelector('.student-goal') as HTMLElement).textContent = goalText;
-
-            const planNameEl = button.querySelector('.student-plan') as HTMLElement;
+            const avatar = button.querySelector('.student-avatar') as HTMLElement;
+            avatar.textContent = name.substring(0, 1).toUpperCase();
+            
+            (button.querySelector('.student-name') as HTMLElement).textContent = name;
             const planStatusEl = button.querySelector('.student-plan-status') as HTMLElement;
-
-            if (latestPurchase) {
-                planNameEl.textContent = latestPurchase.planName;
-                if (latestPurchase.fulfilled === false) {
+             if (latestPurchase) {
+                 if (latestPurchase.fulfilled === false) {
                     planStatusEl.innerHTML = `<span class="status-badge pending !text-xs !py-0.5 !px-2">در انتظار برنامه</span>`;
+                    button.classList.add('needs-attention-highlight');
                 } else {
-                    planStatusEl.innerHTML = `<span class="status-badge verified !text-xs !py-0.5 !px-2">برنامه ارسال شده</span>`;
+                    planStatusEl.innerHTML = `<span class="status-badge verified !text-xs !py-0.5 !px-2">برنامه دارد</span>`;
                 }
-            } else {
-                planNameEl.textContent = 'بدون خرید فعال';
-                planStatusEl.innerHTML = '';
             }
             
+            (button.querySelector('.student-goal') as HTMLElement).textContent = goal;
+
+            const lastActivity = getLastActivity(studentData);
+            (button.querySelector('.student-last-activity span') as HTMLElement).textContent = lastActivity;
+
+            const weightChange = getWeightChange(studentData);
+            const weightTrendEl = button.querySelector('.student-weight-trend') as HTMLElement;
+            if (weightChange.change !== 0) {
+                 const trendIcon = weightChange.trend === 'up' ? 'trending-up' : 'trending-down';
+                 const trendColor = weightChange.trend === 'up' ? 'text-green-500' : 'text-red-500';
+                 weightTrendEl.innerHTML = `<i data-lucide="${trendIcon}" class="w-3 h-3 ${trendColor}"></i><span class="${trendColor}">${weightChange.change > 0 ? '+' : ''}${weightChange.change} kg</span>`;
+            } else {
+                weightTrendEl.innerHTML = `<i data-lucide="minus" class="w-3 h-3"></i><span>بدون تغییر</span>`;
+            }
+
+            const progress = Math.abs(weightChange.change) * 20;
+            (button.querySelector('.student-progress-bar-inner') as HTMLElement).style.width = `${Math.min(100, progress)}%`;
+
             const tempDiv = document.createElement('div');
             tempDiv.appendChild(optionNode);
             return tempDiv.innerHTML;
@@ -771,12 +951,36 @@ const openStudentSelectionModal = (target: HTMLElement) => {
         window.lucide.createIcons();
     };
     
+    // Clear old listeners by cloning the node, then attach new ones
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode?.replaceChild(newSearchInput, searchInput);
+    (newSearchInput as HTMLInputElement).addEventListener('input', renderOptions);
+    
+    const newSortSelect = sortSelect.cloneNode(true);
+    sortSelect.parentNode?.replaceChild(newSortSelect, sortSelect);
+    (newSortSelect as HTMLSelectElement).addEventListener('change', renderOptions);
+    
+    const newFilterChipsContainer = filterChipsContainer?.cloneNode(true) as HTMLElement | undefined;
+    if (filterChipsContainer && newFilterChipsContainer) {
+        filterChipsContainer.parentNode?.replaceChild(newFilterChipsContainer, filterChipsContainer);
+
+        newFilterChipsContainer.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            const chip = target.closest('.filter-chip');
+            if (chip) {
+                newFilterChipsContainer.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                renderOptions();
+            }
+        });
+    }
+
     renderOptions();
-    searchInput.oninput = () => renderOptions(searchInput.value);
-    optionsContainer.className = "selection-modal-options p-4 pt-2 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-3";
+    optionsContainer.className = "selection-modal-options p-4 pt-2 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-3 content-start";
 
     openModal(modal);
 };
+
 
 const openSelectionModal = (options: string[], title: string, target: HTMLElement) => {
     currentSelectionTarget = target;
@@ -861,9 +1065,9 @@ const renderStudentCards = (students: any[], containerId: string) => {
 
     if (students.length === 0) {
         if (containerId === 'needs-attention-grid') {
-             container.innerHTML = `<p class="text-text-secondary text-center col-span-full">هیچ شاگردی در حال حاضر منتظر برنامه نیست.</p>`;
+             container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">هیچ شاگردی در حال حاضر منتظر برنامه نیست.</p>`;
         } else {
-             container.innerHTML = `<p class="text-text-secondary text-center col-span-full">موردی برای نمایش وجود ندارد.</p>`;
+             container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">موردی برای نمایش وجود ندارد.</p>`;
         }
         return;
     }
@@ -874,21 +1078,46 @@ const renderStudentCards = (students: any[], containerId: string) => {
         const goal = studentData.step1?.trainingGoal || 'بدون هدف';
         const latestPurchase = getLatestPurchase(studentData);
         
+        const streak = calculateWorkoutStreak(studentData.workoutHistory);
+        const lastActivity = getLastActivity(studentData);
+        const weightChange = getWeightChange(studentData);
+        
         let statusHtml = '<span class="status-badge active !text-xs !py-0.5 !px-2">فعال</span>';
         if (latestPurchase && latestPurchase.fulfilled === false) {
-            statusHtml = `<span class="status-badge pending !text-xs !py-0.5 !px-2">در انتظار برنامه</span>`;
+            statusHtml = `<span class="status-badge pending animate-pulse-accent !text-xs !py-0.5 !px-2">در انتظار برنامه</span>`;
         }
 
+        const trendIcon = weightChange.trend === 'up' ? 'trending-up' : 'trending-down';
+        const trendColor = weightChange.trend === 'up' ? 'text-green-500' : 'text-red-500';
+
         return `
-            <div class="card p-4 flex flex-col gap-3 animate-fade-in h-full" style="aspect-ratio: 1/1;">
+            <div class="student-card card p-4 flex flex-col gap-3 animate-fade-in transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                 <div class="flex justify-between items-start">
-                    <h3 class="font-bold">${name}</h3>
+                    <h3 class="font-bold text-lg">${name}</h3>
                     ${statusHtml}
                 </div>
                 <p class="text-sm text-text-secondary flex-grow">${goal}</p>
-                <div class="mt-auto pt-3 border-t border-border-primary flex items-center gap-2">
-                    <button data-action="create-program" data-username="${student.username}" class="primary-button !py-2.5 !px-3 !text-sm flex-grow">ایجاد برنامه</button>
-                    <button data-action="view-student" data-username="${student.username}" class="secondary-button !py-2.5 !px-3 !text-sm">مشاهده پروفایل</button>
+                
+                <div class="mt-auto pt-3 border-t border-border-primary space-y-2 text-sm">
+                    <div class="flex justify-between items-center text-text-secondary">
+                        <span class="flex items-center gap-1.5"><i data-lucide="flame" class="w-4 h-4 text-orange-400"></i> زنجیره</span>
+                        <span class="font-bold text-text-primary">${streak} روز</span>
+                    </div>
+                    <div class="flex justify-between items-center text-text-secondary">
+                        <span class="flex items-center gap-1.5"><i data-lucide="calendar-clock" class="w-4 h-4 text-blue-400"></i> آخرین فعالیت</span>
+                        <span class="font-bold text-text-primary">${lastActivity}</span>
+                    </div>
+                    ${weightChange.change !== 0 ? `
+                    <div class="flex justify-between items-center text-text-secondary">
+                        <span class="flex items-center gap-1.5"><i data-lucide="${trendIcon}" class="w-4 h-4 ${trendColor}"></i> تغییر وزن</span>
+                        <span class="font-bold ${trendColor}">${weightChange.change > 0 ? '+' : ''}${weightChange.change} kg</span>
+                    </div>
+                    ` : ''}
+                </div>
+
+                <div class="mt-3 flex items-center gap-2">
+                    <button data-action="create-program" data-username="${student.username}" class="primary-button !py-2 !px-3 !text-sm flex-grow">ایجاد برنامه</button>
+                    <button data-action="view-student" data-username="${student.username}" class="secondary-button !py-2 !px-3 !text-sm"><i data-lucide="user" class="w-4 h-4 pointer-events-none"></i></button>
                 </div>
             </div>
         `;
@@ -1222,6 +1451,11 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                          (nameButton.querySelector('span') as HTMLElement).textContent = "مکمل را انتخاب کنید";
                      }
                 } else if (type === 'exercise') {
+                    const row = currentSelectionTarget.closest('.exercise-row') as HTMLElement;
+                    const muscleGroup = (row.querySelector('.muscle-group-select') as HTMLElement).dataset.value;
+                    if(row && muscleGroup) {
+                        row.dataset.exerciseMuscleGroup = muscleGroup;
+                    }
                     calculateAndDisplayVolume();
                 }
             }
@@ -1295,10 +1529,12 @@ export function renderCoachDashboard() {
         </div>
 
         <div id="students-content" class="coach-tab-content animate-fade-in-up">
-            <div id="needs-attention-container" class="mb-6">
+            <div id="needs-attention-container" class="mb-8">
                 <h2 class="text-xl font-bold mb-4">نیازمند توجه</h2>
-                <div id="needs-attention-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    <!-- Cards for students needing a plan will be injected here -->
+                <div class="p-4 rounded-xl bg-accent/10">
+                    <div id="needs-attention-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <!-- Cards for students needing a plan will be injected here -->
+                    </div>
                 </div>
             </div>
             <div class="card p-4 sm:p-6">
@@ -1309,7 +1545,7 @@ export function renderCoachDashboard() {
                        <input type="text" id="student-search-input" class="input-field w-full !pr-10 !text-sm" placeholder="جستجوی شاگرد...">
                    </div>
                </div>
-               <div id="all-students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" style="grid-auto-rows: 1fr;">
+               <div id="all-students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     <!-- Student cards injected here -->
                </div>
             </div>
@@ -1424,7 +1660,7 @@ export function renderCoachDashboard() {
                 <div class="flex-grow p-4 overflow-y-auto">
                     <div class="flex items-center gap-1 bg-bg-tertiary p-1 rounded-lg mb-4"><button class="student-modal-tab admin-tab-button flex-1" data-target="student-program-content">برنامه تمرینی</button><button class="student-modal-tab admin-tab-button flex-1" data-target="student-progress-content">روند پیشرفت</button><button class="student-modal-tab admin-tab-button flex-1" data-target="student-chat-content">گفتگو</button></div>
                     <div id="student-program-content" class="student-modal-content"><div id="student-program-content-wrapper"></div></div>
-                    <div id="student-progress-content" class="student-modal-content hidden"><div class="h-64"><canvas id="student-modal-weight-chart"></canvas></div></div>
+                    <div id="student-progress-content" class="student-modal-content hidden"></div>
                     <div id="student-chat-content" class="student-modal-content hidden">
                         <div class="flex flex-col h-96">
                             <div id="coach-chat-messages-container" class="flex-grow p-1 space-y-4 overflow-y-auto flex flex-col">
@@ -1443,15 +1679,28 @@ export function renderCoachDashboard() {
     
     <!-- Selection Modal -->
     <div id="selection-modal" class="modal fixed inset-0 bg-black/60 z-[101] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-lg h-[70vh] transform scale-95 transition-transform duration-300 relative flex flex-col">
-            <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
-                <h2 class="selection-modal-title font-bold text-xl"></h2>
-                <button class="selection-modal-close-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
-            </div>
-            <div class="p-4 flex-shrink-0 border-b border-border-primary">
+        <div class="card w-full max-w-2xl h-[80vh] transform scale-95 transition-transform duration-300 relative flex flex-col">
+            <div class="selection-modal-header p-4 border-b border-border-primary flex-shrink-0">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="selection-modal-title font-bold text-xl"></h2>
+                    <button class="selection-modal-close-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+                </div>
                 <input type="search" class="selection-modal-search input-field w-full" placeholder="جستجو...">
+                <div class="flex flex-wrap items-center gap-2 mt-3">
+                    <div id="student-filter-chips" class="flex items-center gap-2">
+                        <button class="filter-chip active" data-filter="all">همه</button>
+                        <button class="filter-chip" data-filter="needs_plan">در انتظار برنامه</button>
+                        <button class="filter-chip" data-filter="inactive">غیرفعال</button>
+                    </div>
+                    <div class="flex-grow"></div>
+                    <select id="student-sort-select" class="input-field !text-sm !py-1 !px-2">
+                        <option value="name">مرتب‌سازی بر اساس نام</option>
+                        <option value="activity">مرتب‌سازی بر اساس آخرین فعالیت</option>
+                        <option value="join_date">مرتب‌سازی بر اساس تاریخ عضویت</option>
+                    </select>
+                </div>
             </div>
-            <div class="selection-modal-options p-4 pt-2 overflow-y-auto flex-grow grid grid-cols-2 sm:grid-cols-3 gap-2 content-start">
+            <div class="selection-modal-options p-4 pt-2 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-3 content-start">
                 <!-- Options injected here -->
             </div>
         </div>

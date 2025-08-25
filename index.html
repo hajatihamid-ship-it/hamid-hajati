@@ -148,7 +148,7 @@
             70% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 0%, transparent); }
             100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); }
         }
-        .animate-pulse-accent { animation: pulse-accent 1s; }
+        .animate-pulse-accent { animation: pulse-accent 1.5s infinite; }
         
         .card { 
             background-color: var(--bg-secondary); 
@@ -494,6 +494,94 @@
         .coach-dashboard-tab[data-target="templates-content"].active { border-bottom-color: #64748b; color: #64748b; }
         .coach-dashboard-tab[data-target="profile-content"].active { border-bottom-color: #14b8a6; color: #14b8a6; }
 
+        /* Coach Dashboard Enhancements */
+        .status-badge.pending.animate-pulse-accent {
+            animation: pulse-accent 1.5s infinite;
+        }
+        .timeline-container {
+            position: relative;
+            border-right: 2px solid var(--border-primary);
+        }
+        .timeline-item .timeline-dot {
+            position: absolute;
+            right: -9px;
+            top: 4px;
+        }
+        .exercise-row.highlight-exercise {
+            outline: 2px solid var(--accent);
+            background-color: color-mix(in srgb, var(--accent) 15%, transparent) !important;
+            box-shadow: 0 0 15px color-mix(in srgb, var(--accent) 20%, transparent);
+        }
+        
+        /* Student Selection Modal Enhancements */
+        .selection-modal-header {
+            position: sticky;
+            top: 0;
+            background-color: var(--bg-secondary);
+            z-index: 10;
+        }
+        .filter-chip {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background-color: var(--bg-tertiary);
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        .filter-chip:hover {
+            background-color: var(--border-primary);
+        }
+        .filter-chip.active {
+            color: var(--accent);
+            background-color: color-mix(in srgb, var(--accent) 15%, transparent);
+            font-weight: 700;
+        }
+        .student-option-card {
+            border: 2px solid var(--border-primary);
+            transition: all 0.2s;
+        }
+        .student-option-card:hover {
+            border-color: var(--border-secondary);
+            transform: translateY(-2px);
+        }
+        .student-option-card.needs-attention-highlight {
+            background-color: color-mix(in srgb, var(--accent) 8%, transparent);
+            border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+        }
+        .student-option-card.selected {
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+        }
+        .student-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--bg-secondary);
+        }
+        .student-kpi {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .student-progress-bar {
+            height: 4px;
+            background-color: var(--bg-tertiary);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .student-progress-bar-inner {
+            height: 100%;
+            background-color: var(--accent);
+            transition: width 0.5s ease;
+        }
+
     </style>
 </head>
 <body>
@@ -501,7 +589,7 @@
     <div id="toast-container"></div>
 
     <template id="exercise-template">
-        <div class="exercise-row bg-tertiary/50 p-2 rounded-xl">
+        <div class="exercise-row bg-tertiary/50 p-2 rounded-xl transition-all duration-300">
             <div class="flex flex-wrap items-center gap-2">
                 <!-- Selects -->
                 <div class="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-2 min-w-[200px]">
@@ -581,14 +669,32 @@
     </template>
 
     <template id="student-selection-option-template">
-        <button class="student-option-btn card text-right w-full p-4 rounded-xl hover:border-accent hover:bg-accent/5 focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all duration-200">
-            <div class="flex justify-between items-center w-full">
-                <p class="font-bold student-name"></p>
-                <div class="student-plan-status"></div>
+        <button class="student-option-btn student-option-card text-right w-full p-3 rounded-xl outline-none">
+            <div class="flex items-center gap-3">
+                <div class="student-avatar bg-accent flex-shrink-0">
+                    <!-- Initials will be inserted here -->
+                </div>
+                <div class="flex-grow overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <p class="font-bold student-name truncate"></p>
+                        <div class="student-plan-status text-xs flex-shrink-0 ml-1"></div>
+                    </div>
+                    <p class="text-sm text-text-secondary student-goal truncate"></p>
+                </div>
             </div>
-            <div class="flex justify-between items-center w-full text-sm text-text-secondary mt-2">
-                <span class="student-goal"></span>
-                <span class="student-plan font-semibold"></span>
+            <div class="grid grid-cols-2 gap-x-3 gap-y-1 mt-3">
+                <div class="student-kpi student-last-activity">
+                    <i data-lucide="calendar-clock" class="w-3 h-3"></i>
+                    <span class="truncate"></span>
+                </div>
+                <div class="student-kpi student-weight-trend">
+                    <!-- Trend icon and text here -->
+                </div>
+            </div>
+            <div class="mt-2">
+                <div class="student-progress-bar">
+                    <div class="student-progress-bar-inner"></div>
+                </div>
             </div>
         </button>
     </template>
