@@ -331,13 +331,16 @@ const getCoachesShowcaseHTML = () => `
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             ${[
-                { name: 'حمید حاجتی', specialty: 'متخصص حرکات اصلاحی و فانکشنال', img: 'https://i.pravatar.cc/200?u=hamid' },
-                { name: 'سارا احمدی', specialty: 'متخصص فیتنس و کاهش وزن بانوان', img: 'https://i.pravatar.cc/200?u=sara' },
-                { name: 'علی رضایی', specialty: 'متخصص آمادگی جسمانی و حرکات اصلاحی', img: 'https://i.pravatar.cc/200?u=ali' }
+                { name: 'حمید حاجتی', specialty: 'متخصص حرکات اصلاحی و فانکشنال' },
+                { name: 'سارا احمدی', specialty: 'متخصص فیتنس و کاهش وزن بانوان' },
+                { name: 'علی رضایی', specialty: 'متخصص آمادگی جسمانی و حرکات اصلاحی' }
             ].map(coach => `
-                <div class="coach-card text-center">
+                <div class="coach-card text-center group relative">
+                    <button class="admin-edit-btn absolute top-4 right-4 bg-bg-secondary/50 hover:bg-bg-secondary p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="ویرایش توسط ادمین">✏️</button>
                     <div class="relative inline-block">
-                        <img src="${coach.img}" alt="${coach.name}" class="w-32 h-32 rounded-full mx-auto border-4 border-bg-secondary shadow-lg">
+                        <div class="w-32 h-32 rounded-full mx-auto border-4 border-bg-secondary shadow-lg bg-bg-tertiary flex items-center justify-center">
+                            <span class="text-5xl font-bold text-text-secondary">${coach.name.charAt(0)}</span>
+                        </div>
                         <span class="absolute bottom-2 -right-1 bg-green-500 text-white p-1 rounded-full border-2 border-bg-secondary"><i data-lucide="check" class="w-4 h-4"></i></span>
                     </div>
                     <h4 class="font-bold text-lg mt-4 text-yellow-400">${coach.name}</h4>
@@ -382,6 +385,13 @@ export function initLandingPageListeners() {
         const calculatorCtaBtn = target.closest('#calculator-cta-btn');
         const infoLink = target.closest('.landing-nav-link[data-section]');
         const coachSignupBtn = target.closest('#coach-signup-cta');
+        const adminEditBtn = target.closest('.admin-edit-btn');
+
+        if (adminEditBtn) {
+            const authModal = document.getElementById('auth-modal');
+            openModal(authModal);
+            return;
+        }
 
         if (authModalBtn || calculatorCtaBtn) {
             if (calculatorCtaBtn) {

@@ -1,4 +1,5 @@
 import { showToast } from "../utils/dom";
+import { exerciseDB as initialExerciseDB, supplementsDB as initialSupplementsDB } from '../config';
 
 // --- Users ---
 export const getUsers = () => {
@@ -179,4 +180,53 @@ export const clearNotification = (username: string, key: string) => {
 export const clearAllNotifications = (username: string) => {
     if (!username) return;
     localStorage.removeItem(`fitgympro_notifications_${username}`);
+};
+
+
+// --- CMS Data (Exercises & Supplements) ---
+export const getExercisesDB = (): Record<string, string[]> => {
+    try {
+        return JSON.parse(localStorage.getItem("fitgympro_exercises") || "{}");
+    } catch (e) {
+        console.error("Error parsing exercises from localStorage:", e);
+        return {};
+    }
+};
+
+export const saveExercisesDB = (db: Record<string, string[]>) => {
+    try {
+        localStorage.setItem("fitgympro_exercises", JSON.stringify(db));
+    } catch (t) {
+        console.error("Error saving exercises to localStorage:", t);
+        showToast("خطا در ذخیره‌سازی تمرینات", "error");
+    }
+};
+
+export const getSupplementsDB = (): Record<string, any[]> => {
+    try {
+        return JSON.parse(localStorage.getItem("fitgympro_supplements") || "{}");
+    } catch (e) {
+        console.error("Error parsing supplements from localStorage:", e);
+        return {};
+    }
+};
+
+export const saveSupplementsDB = (db: Record<string, any[]>) => {
+    try {
+        localStorage.setItem("fitgympro_supplements", JSON.stringify(db));
+    } catch (t) {
+        console.error("Error saving supplements to localStorage:", t);
+        showToast("خطا در ذخیره‌سازی مکمل‌ها", "error");
+    }
+};
+
+export const seedCMSData = () => {
+    if (!localStorage.getItem("fitgympro_exercises")) {
+        saveExercisesDB(initialExerciseDB);
+        addActivityLog("Initial exercise database was seeded.");
+    }
+    if (!localStorage.getItem("fitgympro_supplements")) {
+        saveSupplementsDB(initialSupplementsDB);
+        addActivityLog("Initial supplement database was seeded.");
+    }
 };

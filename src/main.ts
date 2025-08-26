@@ -3,7 +3,7 @@ import { renderAuthModal, initAuthListeners } from './ui/authModal';
 import { renderCoachDashboard, initCoachDashboard, updateCoachNotifications } from './ui/coachDashboard';
 import { renderUserDashboard, initUserDashboard, updateUserNotifications } from './ui/userDashboard';
 import { renderAdminDashboard, initAdminDashboard } from './ui/adminDashboard';
-import { getUsers, getUserData, saveUsers, saveUserData, addActivityLog, saveDiscounts, getStorePlans, saveStorePlans } from './services/storage';
+import { getUsers, getUserData, saveUsers, saveUserData, addActivityLog, saveDiscounts, getStorePlans, saveStorePlans, seedCMSData } from './services/storage';
 import { setCurrentUser, getCurrentUser } from './state';
 import { sanitizeHTML } from './utils/dom';
 import { STORE_PLANS } from './config';
@@ -111,9 +111,28 @@ const seedInitialUsers = () => {
                 }],
                 notes: "قبل از هر تمرین ۵ دقیقه گرم کنید. بعد از تمرین حرکات کششی فراموش نشود. به میزان کافی آب بنوشید و روی کیفیت خواب تمرکز کنید."
             },
+            chatHistory: [
+                { sender: 'coach', message: 'سلام! برنامه جدیدت رو ارسال کردم. حتما بررسی کن.', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
+                { sender: 'user', message: 'ممنون مربی، عالیه!', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() }
+            ],
             workoutHistory: [
-                { date: dayBeforeYesterday.toISOString() },
-                { date: yesterday.toISOString() }
+                {
+                    date: dayBeforeYesterday.toISOString(),
+                    dayIndex: 1,
+                    exercises: [
+                        { name: 'ددلیفت', sets: [{weight: 100, reps: 6}, {weight: 100, reps: 6}, {weight: 105, reps: 5}, {weight: 105, reps: 5}] },
+                        { name: 'بارفیکس دست باز', sets: [{reps: 10}, {reps: 9}, {reps: 8}, {reps: 8}] },
+                        { name: 'جلو بازو هالتر', sets: [{weight: 30, reps: 12}, {weight: 30, reps: 11}, {weight: 30, reps: 10}] }
+                    ]
+                },
+                {
+                    date: yesterday.toISOString(),
+                    dayIndex: 2,
+                    exercises: [
+                        { name: 'اسکوات با هالتر', sets: [{weight: 80, reps: 8}, {weight: 80, reps: 8}, {weight: 85, reps: 7}, {weight: 85, reps: 7}, {weight: 85, reps: 6}] },
+                        { name: 'پرس پا', sets: [{weight: 150, reps: 12}, {weight: 150, reps: 12}, {weight: 160, reps: 10}, {weight: 160, reps: 10}] }
+                    ]
+                }
             ],
             weightHistory: [
                 { date: '2024-05-01', weight: 78 }, 
@@ -332,6 +351,7 @@ const initCommonListeners = () => {
 
 export const initApp = () => {
     seedInitialUsers();
+    seedCMSData();
     renderApp();
     initCommonListeners();
     initTheme();

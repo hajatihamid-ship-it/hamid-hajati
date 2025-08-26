@@ -1,7 +1,10 @@
-import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans } from '../services/storage';
+import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans, getExercisesDB, saveExercisesDB, getSupplementsDB, saveSupplementsDB } from '../services/storage';
 import { formatPrice, timeAgo } from '../utils/helpers';
 import { openModal, closeModal, showToast } from '../utils/dom';
 import { getCurrentUser } from '../state';
+import { sanitizeHTML } from '../utils/dom';
+
+let activityModalChartInstance: any = null;
 
 const initCharts = () => {
     const revenueCtx = document.getElementById('revenueChart') as HTMLCanvasElement;
@@ -69,6 +72,7 @@ const renderUserRowsHtml = () => {
             <td class="p-4">${new Date(user.joinDate).toLocaleDateString('fa-IR')}</td>
             <td class="p-4">${getStatusBadge(user.status, user.role, user.coachStatus)}</td>
             <td class="p-4 flex items-center gap-2">
+                <button data-action="view-activity" data-username="${user.username}" title="مشاهده فعالیت" class="secondary-button !p-2"><i data-lucide="eye" class="w-4 h-4 pointer-events-none"></i></button>
                 <button data-action="impersonate" data-username="${user.username}" title="ورود به حساب" class="secondary-button !p-2"><i data-lucide="log-in" class="w-4 h-4 pointer-events-none"></i></button>
                 ${user.role !== 'admin' ? `
                     <button data-action="${user.status === 'active' ? 'suspend' : 'activate'}" data-username="${user.username}" title="${user.status === 'active' ? 'مسدود کردن' : 'فعال کردن'}" class="secondary-button !p-2">
@@ -84,6 +88,7 @@ const renderUserRowsHtml = () => {
             <td class="p-4">${new Date(coach.joinDate).toLocaleDateString('fa-IR')}</td>
             <td class="p-4">${getStatusBadge(coach.status, coach.role, coach.coachStatus)}</td>
             <td class="p-4 flex items-center gap-2">
+                 <button data-action="view-activity" data-username="${coach.username}" title="مشاهده فعالیت" class="secondary-button !p-2"><i data-lucide="eye" class="w-4 h-4 pointer-events-none"></i></button>
                 <button data-action="impersonate" data-username="${coach.username}" title="ورود به حساب" class="secondary-button !p-2"><i data-lucide="log-in" class="w-4 h-4 pointer-events-none"></i></button>
                 ${coach.coachStatus === 'pending' ? `
                     <button data-action="approve" data-username="${coach.username}" class="primary-button !py-1 !px-2 !text-xs">تایید</button>
@@ -130,6 +135,88 @@ const renderPlansAdminHtml = () => {
             `).join('')}
         </div>
     `;
+};
+
+const openUserActivityModal = (username: string) => {
+    const modal = document.getElementById('view-activity-modal');
+    const body = document.getElementById('view-activity-modal-body');
+    const title = document.getElementById('view-activity-modal-title');
+    if (!modal || !body || !title) return;
+
+    const userData = getUserData(username);
+
+    title.textContent = `نمای کلی فعالیت: ${username}`;
+
+    const latestProgram = (userData.programHistory && userData.programHistory.length > 0) 
+        ? userData.programHistory[0] 
+        : { step2: userData.step2 };
+        
+    const chatHistory = (userData.chatHistory || []).slice(-5);
+
+    body.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="md:col-span-1 space-y-4">
+                <div class="card p-4">
+                    <h4 class="font-bold mb-2">متریک‌های کلیدی</h4>
+                    <div class="text-sm space-y-1">
+                        <p><strong>هدف:</strong> ${userData.step1?.trainingGoal || 'N/A'}</p>
+                        <p><strong>وزن:</strong> ${userData.step1?.weight || 'N/A'} kg</p>
+                        <p><strong>قد:</strong> ${userData.step1?.height || 'N/A'} cm</p>
+                        <p><strong>TDEE:</strong> ${Math.round(userData.step1?.tdee) || 'N/A'} kcal</p>
+                    </div>
+                </div>
+                 <div class="card p-4">
+                    <h4 class="font-bold mb-2">تاریخچه وزن</h4>
+                    <div class="h-48"><canvas id="activity-modal-weight-chart"></canvas></div>
+                </div>
+            </div>
+            <div class="md:col-span-2 space-y-4">
+                <div class="card p-4">
+                    <h4 class="font-bold mb-2">آخرین برنامه تمرینی</h4>
+                    ${!latestProgram.step2 ? '<p class="text-text-secondary text-sm">برنامه‌ای یافت نشد.</p>' : 
+                        latestProgram.step2.days.slice(0, 2).map((day: any) => `
+                        <div class="mb-2">
+                            <p class="font-semibold text-sm">${day.name}</p>
+                            <p class="text-xs text-text-secondary">${day.exercises.map((e:any) => e.name).join(' - ')}</p>
+                        </div>
+                        `).join('')
+                    }
+                </div>
+                 <div class="card p-4">
+                    <h4 class="font-bold mb-2">آخرین گفتگوها</h4>
+                    <div class="space-y-2 text-sm">
+                        ${chatHistory.length === 0 ? '<p class="text-text-secondary text-sm">گفتگویی یافت نشد.</p>' :
+                            chatHistory.map((msg: any) => `
+                            <div class="p-2 rounded-lg ${msg.sender === 'user' ? 'bg-bg-tertiary' : 'bg-green-500/10'}">
+                                <p><strong>${msg.sender === 'user' ? username : 'مربی'}:</strong> ${sanitizeHTML(msg.message)}</p>
+                            </div>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    openModal(modal);
+
+    const ctx = document.getElementById('activity-modal-weight-chart') as HTMLCanvasElement;
+    if (activityModalChartInstance) activityModalChartInstance.destroy();
+    if (ctx && window.Chart) {
+        activityModalChartInstance = new window.Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: (userData.weightHistory || []).map((e: any) => new Date(e.date).toLocaleDateString('fa-IR')),
+                datasets: [{
+                    data: (userData.weightHistory || []).map((e: any) => e.weight),
+                    borderColor: 'var(--accent)',
+                    tension: 0.2,
+                    pointRadius: 2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
 };
 
 export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess: (username: string) => void) {
@@ -184,6 +271,9 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
 
     const financePage = document.getElementById('admin-finance-page');
     if (financePage) initTabs(financePage as HTMLElement);
+
+    const contentPage = document.getElementById('admin-content-page');
+    if(contentPage) initTabs(contentPage);
     
     const addUserBtn = document.getElementById('add-user-btn');
     const addUserModal = document.getElementById('add-user-modal');
@@ -254,13 +344,16 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         
         const users = getUsers();
         const userIndex = users.findIndex((u: any) => u.username === username);
-        if (userIndex === -1 && !action.includes('plan')) return;
+        if (userIndex === -1 && !action.includes('plan') && action !== 'view-activity') return;
         const user = users[userIndex];
 
         let message = "";
         let logMessage = "";
 
         switch(action) {
+            case 'view-activity':
+                openUserActivityModal(username);
+                return;
             case 'impersonate':
                 logMessage = `ادمین وارد حساب کاربری ${username} شد.`;
                 addActivityLog(logMessage);
@@ -379,6 +472,11 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         closeModal(planModal);
     });
 
+    const activityModal = document.getElementById('view-activity-modal');
+    document.getElementById('close-view-activity-modal-btn')?.addEventListener('click', () => closeModal(activityModal));
+    activityModal?.addEventListener('click', e => {
+        if((e.target as HTMLElement).id === 'view-activity-modal') closeModal(activityModal);
+    });
 
     switchPage('admin-dashboard-page');
     initCharts();
@@ -426,6 +524,7 @@ export function renderAdminDashboard() {
     const coachActivationRate = coaches.length > 0 ? Math.round((verifiedCoaches / coaches.length) * 100) : 0;
     const circumference = 2 * Math.PI * 25;
     const dashoffset = circumference * (1 - coachActivationRate / 100);
+    const exerciseDB = getExercisesDB();
 
     const kpiCards = [
         { title: 'ثبت‌نام جدید (۳۰ روز)', value: '۴۲', change: '+15%', changeColor: 'text-green-500', icon: 'fa-user-plus', color: 'admin-accent-green' },
@@ -444,7 +543,8 @@ export function renderAdminDashboard() {
                 ${[
                     { target: 'admin-dashboard-page', icon: 'fa-tachometer-alt', label: 'داشبورد' },
                     { target: 'admin-users-page', icon: 'fa-users-cog', label: 'کاربران و مربیان' },
-                    { target: 'admin-programs-page', icon: 'fa-dumbbell', label: 'برنامه‌ها' },
+                    { target: 'admin-analytics-page', icon: 'fa-chart-line', label: 'تحلیل عملکرد' },
+                    { target: 'admin-content-page', icon: 'fa-database', label: 'مدیریت محتوا' },
                     { target: 'admin-finance-page', icon: 'fa-chart-pie', label: 'مالی و بازاریابی' },
                     { target: 'admin-audit-log-page', icon: 'fa-clipboard-list', label: 'گزارش فعالیت‌ها' },
                 ].map(item => `
@@ -553,10 +653,29 @@ export function renderAdminDashboard() {
                  </div>
             </div>
 
-            <!-- Programs Page -->
-            <div id="admin-programs-page" class="page hidden">
-                <h2 class="text-3xl font-extrabold mb-6">بررسی برنامه‌ها و گفتگوها</h2>
-                <p class="text-text-secondary">این بخش برای مشاهده برنامه‌های ارسالی مربیان و بازبینی گفتگوها در حال توسعه است.</p>
+            <!-- Analytics Page -->
+            <div id="admin-analytics-page" class="page hidden">
+                <h2 class="text-3xl font-extrabold mb-6">تحلیل عملکرد مربیان</h2>
+                <p class="text-text-secondary">این بخش برای نمایش آمارهای دقیق عملکرد مربیان (نرخ حفظ شاگرد، رضایت و ...) در حال توسعه است.</p>
+            </div>
+
+            <!-- Content Management Page -->
+            <div id="admin-content-page" class="page hidden">
+                 <h2 class="text-3xl font-extrabold mb-6">مدیریت محتوای پلتفرم</h2>
+                 <div class="bg-bg-tertiary p-1 rounded-lg flex items-center gap-1 mb-4">
+                     <button class="admin-tab-button active-tab" data-target="exercises-content-admin">تمرینات</button>
+                     <button class="admin-tab-button" data-target="supplements-content-admin">مکمل‌ها</button>
+                 </div>
+                 <div id="exercises-content-admin" class="admin-tab-content">
+                    <div class="card p-4">
+                        <p>بخش مدیریت تمرینات در حال توسعه است.</p>
+                    </div>
+                 </div>
+                 <div id="supplements-content-admin" class="admin-tab-content hidden">
+                     <div class="card p-4">
+                        <p>بخش مدیریت مکمل‌ها در حال توسعه است.</p>
+                    </div>
+                 </div>
             </div>
             
             <!-- Finance Page -->
@@ -630,7 +749,7 @@ export function renderAdminDashboard() {
         </main>
     </div>
     
-    <!-- Add User Modal -->
+    <!-- Modals -->
     <div id="add-user-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
         <div class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative">
              <button id="close-add-user-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
@@ -664,7 +783,6 @@ export function renderAdminDashboard() {
         </div>
     </div>
 
-    <!-- Add/Edit Plan Modal -->
     <div id="add-edit-plan-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
              <button id="close-plan-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
@@ -692,6 +810,18 @@ export function renderAdminDashboard() {
                         <button type="submit" class="primary-button w-full !py-3 !text-base">ذخیره پلن</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+    
+    <div id="view-activity-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-4xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
+                <h2 id="view-activity-modal-title" class="font-bold text-xl"></h2>
+                <button id="close-view-activity-modal-btn" class="secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
+            </div>
+            <div id="view-activity-modal-body" class="p-6 overflow-y-auto">
+                <!-- Content injected by JS -->
             </div>
         </div>
     </div>

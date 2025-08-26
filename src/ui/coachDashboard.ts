@@ -1,8 +1,7 @@
-import { exerciseDB, supplementsDB } from '../config';
-import { getTemplates, saveTemplate, deleteTemplate, getUsers, getUserData, saveUserData, getNotifications, setNotification, clearNotification } from '../services/storage';
+import { getTemplates, saveTemplate, deleteTemplate, getUsers, getUserData, saveUserData, getNotifications, setNotification, clearNotification, getExercisesDB, getSupplementsDB } from '../services/storage';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement } from '../utils/dom';
 import { getLatestPurchase, timeAgo, getLastActivity } from '../utils/helpers';
-import { generateWorkoutPlan } from '../services/gemini';
+import { generateWorkoutPlan, generateSupplementPlan } from '../services/gemini';
 import { calculateWorkoutStreak } from '../utils/calculations';
 
 let currentStep = 1;
@@ -70,7 +69,7 @@ const renderProgressTimeline = (userData: any) => {
         switch (event.type) {
             case 'workout':
                 title = 'تمرین ثبت شد';
-                description = `${event.data.exercises.length} حرکت انجام شد.`;
+                description = `${event.data.exercises?.length || 0} حرکت انجام شد.`;
                 break;
             case 'weight':
                 title = 'وزن ثبت شد';
@@ -82,7 +81,7 @@ const renderProgressTimeline = (userData: any) => {
                 break;
             case 'program':
                 title = 'برنامه جدید ارسال شد';
-                description = `شامل ${event.data.step2.days.length} روز تمرینی`;
+                description = `شامل ${event.data.step2?.days?.length || 0} روز تمرینی`;
                 break;
         }
 
@@ -105,7 +104,7 @@ export const updateCoachNotifications = (currentUser: string) => {
     const mainContainer = document.getElementById('coach-dashboard-container');
     if (!mainContainer) return;
 
-    mainContainer.querySelectorAll('.coach-dashboard-tab').forEach(tab => {
+    mainContainer.querySelectorAll('.coach-nav-link').forEach(tab => {
         const targetId = tab.getAttribute('data-target');
         const badge = tab.querySelector('.notification-badge') as HTMLElement;
         if (!targetId || !badge) return;
@@ -123,6 +122,7 @@ export const updateCoachNotifications = (currentUser: string) => {
 };
 
 const buildExerciseMap = () => {
+    const exerciseDB = getExercisesDB();
     for (const group in exerciseDB) {
         for (const exercise of exerciseDB[group]) {
             exerciseToMuscleGroupMap[exercise] = group;
@@ -227,11 +227,20 @@ const changeStep = (step: number) => {
     currentStep = step;
     updateStepper();
     updateStepContent();
+
+    const prevBtn = document.getElementById('prev-step-btn');
+    const nextBtn = document.getElementById('next-step-btn');
+    const finishBtn = document.getElementById('finish-program-btn');
+
+    if (prevBtn) (prevBtn as HTMLElement).style.display = currentStep > 1 ? 'inline-flex' : 'none';
+    if (nextBtn) (nextBtn as HTMLElement).style.display = currentStep < totalSteps ? 'inline-flex' : 'none';
+    if (finishBtn) (finishBtn as HTMLElement).style.display = currentStep === totalSteps ? 'inline-flex' : 'none';
 };
 
 const addExerciseRow = (dayId: string, exerciseData: any | null = null) => {
     const dayContainer = document.getElementById(dayId);
     const template = document.getElementById('exercise-template') as HTMLTemplateElement;
+    const exerciseDB = getExercisesDB();
     if (!dayContainer || !template) return;
     
     const clone = template.content.cloneNode(true) as DocumentFragment;
@@ -325,7 +334,7 @@ const _renderStudentProgram = (programData: any) => {
             ${hasExercises ? `
             <div class="p-3 border-t border-border-primary">
                 <div class="space-y-2">
-                    ${day.exercises.map((ex: any) => `
+                    ${(day.exercises || []).map((ex: any) => `
                         <div class="p-2 rounded-lg ${ex.is_superset ? 'is-superset' : 'bg-bg-tertiary/50'}">
                             <p class="font-semibold">${ex.name}</p>
                             <div class="flex items-center gap-4 text-sm text-text-secondary mt-1">
@@ -1075,6 +1084,7 @@ const openSelectionModal = (options: string[], title: string, target: HTMLElemen
 
 const populateBuilderWithAI = (planData: any) => {
     const daysOfWeek = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
+    const exerciseDB = getExercisesDB();
     
     // Clear existing exercises
     document.querySelectorAll('.exercises-container').forEach(c => c.innerHTML = '');
@@ -1089,7 +1099,7 @@ const populateBuilderWithAI = (planData: any) => {
             (dayCard.querySelector('summary span') as HTMLElement).textContent = day.name || dayOfWeek;
             
             // Add exercises
-            day.exercises.forEach((ex: any) => {
+            (day.exercises || []).forEach((ex: any) => {
                 const muscleGroup = Object.keys(exerciseDB).find(group => exerciseDB[group].includes(ex.name));
                 if (muscleGroup) {
                     addExerciseRow(dayCard.id, ex);
@@ -1216,12 +1226,46 @@ const getLastActivityDate = (userData: any): string => {
 
 
 export function initCoachDashboard(currentUser: string, handleLogout: () => void) {
-    document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
-
     const mainContainer = document.getElementById('coach-dashboard-container');
     if (!mainContainer) return;
-    
+
     buildExerciseMap();
+
+    // --- Tab Switching Logic ---
+    const pageTitles: Record<string, {title: string, subtitle: string}> = {
+        'students-content': { title: 'شاگردان', subtitle: 'نمای کلی شاگردان و نیازمندی‌ها.' },
+        'builder-content': { title: 'ساخت برنامه جدید', subtitle: 'برنامه تمرینی و مکمل را برای شاگردان طراحی کنید.' },
+        'templates-content': { title: 'الگوها', subtitle: 'الگوهای برنامه خود را برای استفاده مجدد مدیریت کنید.' },
+        'profile-content': { title: 'پروفایل مربی', subtitle: 'اطلاعات حرفه‌ای خود را ویرایش کنید.' }
+    };
+
+    const switchTab = (activeTab: Element) => {
+        const targetId = activeTab.getAttribute('data-target');
+        if (!targetId) return;
+
+        mainContainer.querySelectorAll('.coach-nav-link').forEach(t => t.classList.remove('active-nav-link'));
+        activeTab.classList.add('active-nav-link');
+        mainContainer.querySelectorAll('.coach-tab-content').forEach(content => content.classList.toggle('hidden', content.id !== targetId));
+        
+        const targetData = pageTitles[targetId];
+        const titleEl = document.getElementById('coach-page-title');
+        const subtitleEl = document.getElementById('coach-page-subtitle');
+        if (titleEl && subtitleEl && targetData) {
+            titleEl.textContent = targetData.title;
+            subtitleEl.textContent = targetData.subtitle;
+        }
+
+        clearNotification(currentUser, targetId);
+        updateCoachNotifications(currentUser);
+
+        if (targetId === 'templates-content') renderTemplatesTab();
+        if (targetId === 'students-content') {
+            const allStudents = getUsers().filter((u: any) => u.role === 'user');
+            const studentsNeedingAttention = getStudentsNeedingAttention(allStudents);
+            renderStudentCards(studentsNeedingAttention, 'needs-attention-grid');
+            renderStudentCards(allStudents, 'all-students-grid');
+        }
+    };
 
     // --- Student Tab Initial Render ---
     const allStudents = getUsers().filter((u: any) => u.role === 'user');
@@ -1241,28 +1285,27 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         renderStudentCards(filteredStudents, 'all-students-grid');
     });
 
-    // --- Tab Switching Logic ---
-    const tabs = mainContainer.querySelectorAll('.coach-dashboard-tab');
-    const tabContents = mainContainer.querySelectorAll('.coach-tab-content');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const targetId = tab.getAttribute('data-target');
-            if (!targetId) return;
+    // --- Initial Tab Setup ---
+    (document.querySelector('.coach-nav-link[data-target="students-content"]') as HTMLElement)?.classList.add('active-nav-link');
+    (document.getElementById('students-content') as HTMLElement)?.classList.remove('hidden');
 
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            tabContents.forEach(content => content.classList.toggle('hidden', content.id !== targetId));
-            
-            clearNotification(currentUser, targetId);
-            updateCoachNotifications(currentUser);
-
-            if (targetId === 'templates-content') renderTemplatesTab();
-        });
-    });
-
+    // --- Main Event Delegation for the entire dashboard ---
     mainContainer.addEventListener('click', async e => {
         if (!(e.target instanceof HTMLElement)) return;
         const target = e.target;
+
+        // --- Handle Sidebar Navigation, Logout, and Theme Toggle ---
+        const navLink = target.closest('.coach-nav-link');
+        if (navLink) {
+            switchTab(navLink);
+            return;
+        }
+        if (target.closest('#logout-btn')) {
+            handleLogout();
+            return;
+        }
+
+        // --- Universal Button Logic ---
         const button = target.closest('button');
         if (!button) return;
         
@@ -1274,7 +1317,8 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         }
 
         if (action === "create-program" && username) {
-            (document.querySelector('.coach-dashboard-tab[data-target="builder-content"]') as HTMLElement).click();
+            const builderTab = document.querySelector('.coach-nav-link[data-target="builder-content"]');
+            if (builderTab) switchTab(builderTab);
             resetProgramBuilder();
             renderStudentInfoForBuilder(username);
         }
@@ -1296,6 +1340,79 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 changeStep(2);
                 populateBuilderWithAI(aiPlan);
             }
+            button.classList.remove('is-loading');
+            button.disabled = false;
+        }
+
+        if (button.id === 'ai-suggest-supplements-btn') {
+            if (!activeStudentUsername) {
+                showToast("لطفا ابتدا یک شاگرد را انتخاب کنید.", "error");
+                return;
+            }
+            const studentData = getUserData(activeStudentUsername);
+            if (!studentData.step1) {
+                showToast("اطلاعات پروفایل این شاگرد کامل نیست.", "error");
+                return;
+            }
+            const goal = (document.getElementById('ai-supplement-goal') as HTMLSelectElement).value;
+    
+            button.classList.add('is-loading');
+            button.disabled = true;
+    
+            const suggestions = await generateSupplementPlan(studentData.step1, goal);
+    
+            if (suggestions) {
+                const container = document.getElementById('added-supplements-container');
+                if (container) {
+                     const placeholder = container.querySelector('p');
+                     if(placeholder) placeholder.remove();
+                }
+    
+                suggestions.forEach(sup => {
+                    const supplementsDB = getSupplementsDB();
+                    let category = '';
+                    let fullSupData: any = null;
+    
+                    for (const cat in supplementsDB) {
+                        const found = supplementsDB[cat].find(s => s.name === sup.name);
+                        if (found) {
+                            category = cat;
+                            fullSupData = found;
+                            break;
+                        }
+                    }
+                    if (!fullSupData) {
+                        console.warn(`AI suggested supplement "${sup.name}" not found in DB.`);
+                        return;
+                    }
+    
+                    const iconMap: Record<string, string> = { "عضله‌ساز و ریکاوری": "dumbbell", "افزایش‌دهنده عملکرد و انرژی": "zap", "مدیریت وزن و چربی‌سوزی": "flame", "سلامت عمومی و مفاصل": "heart-pulse" };
+                    const iconName = iconMap[category] || 'package';
+    
+                    const template = document.getElementById('supplement-row-template') as HTMLTemplateElement;
+                    const clone = template.content.cloneNode(true) as DocumentFragment;
+                    (clone.querySelector('.supplement-name') as HTMLElement).textContent = fullSupData.name;
+                    (clone.querySelector('.supplement-note') as HTMLElement).textContent = fullSupData.note;
+                    (clone.querySelector('.supplement-icon-container i') as HTMLElement).setAttribute('data-lucide', iconName);
+    
+                    const dosageSelect = clone.querySelector('.dosage-select') as HTMLSelectElement;
+                    fullSupData.dosageOptions.forEach((d: string) => dosageSelect.add(new Option(d, d)));
+                    if (fullSupData.dosageOptions.includes(sup.dosage)) {
+                        dosageSelect.value = sup.dosage;
+                    }
+    
+                    const timingSelect = clone.querySelector('.timing-select') as HTMLSelectElement;
+                    fullSupData.timingOptions.forEach((t: string) => timingSelect.add(new Option(t, t)));
+                    if (fullSupData.timingOptions.includes(sup.timing)) {
+                        timingSelect.value = sup.timing;
+                    }
+    
+                    container?.appendChild(clone);
+                });
+                window.lucide?.createIcons();
+                showToast('مکمل‌های پیشنهادی اضافه شدند.', 'success');
+            }
+    
             button.classList.remove('is-loading');
             button.disabled = false;
         }
@@ -1348,12 +1465,8 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 button.classList.remove('is-loading');
                 showToast(`برنامه با موفقیت برای ${activeStudentUsername} ارسال شد.`, 'success');
                 resetProgramBuilder();
-                (document.querySelector('.coach-dashboard-tab[data-target="students-content"]') as HTMLElement)?.click();
-                 // Refresh student lists
-                const allStudents = getUsers().filter((u: any) => u.role === 'user');
-                const studentsNeedingAttention = getStudentsNeedingAttention(allStudents);
-                renderStudentCards(studentsNeedingAttention, 'needs-attention-grid');
-                renderStudentCards(allStudents, 'all-students-grid');
+                const studentTab = document.querySelector('.coach-nav-link[data-target="students-content"]')
+                if (studentTab) switchTab(studentTab);
             }, 1000);
         }
     });
@@ -1380,6 +1493,8 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             if (!(e.target instanceof HTMLElement)) return;
             const target = e.target;
             const button = target.closest('button');
+            const exerciseDB = getExercisesDB();
+            const supplementsDB = getSupplementsDB();
             if (!button) return;
             
             if (button.id === 'student-select-btn') {
@@ -1394,7 +1509,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                         break;
                     case 'exercise':
                         const muscleGroup = (button.closest('.exercise-row')?.querySelector('.muscle-group-select') as HTMLElement).dataset.value;
-                        if (muscleGroup) {
+                        if (muscleGroup && exerciseDB[muscleGroup]) {
                             openSelectionModal(exerciseDB[muscleGroup], "انتخاب حرکت", button);
                         } else {
                             showToast('ابتدا گروه عضلانی را انتخاب کنید', 'error');
@@ -1405,7 +1520,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                         break;
                     case 'supplement-name':
                         const category = (document.getElementById('supplement-category-select-btn') as HTMLElement).dataset.value;
-                         if (category) {
+                         if (category && supplementsDB[category]) {
                             const supNames = supplementsDB[category].map(s => s.name);
                             openSelectionModal(supNames, "انتخاب مکمل", button);
                         } else {
@@ -1585,6 +1700,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
     }
 
     renderTemplatesTab();
+    if(document.body) (document.body.querySelector('.coach-nav-link') as HTMLElement)?.click();
 }
 
 export function renderCoachDashboard() {
@@ -1625,164 +1741,198 @@ export function renderCoachDashboard() {
     </div>
     `;
 
+    const navItems = [
+        { target: 'students-content', icon: 'users', label: 'شاگردان' },
+        { target: 'builder-content', icon: 'plus-circle', label: 'ساخت برنامه' },
+        { target: 'templates-content', icon: 'layout-template', label: 'الگوها' },
+        { target: 'profile-content', icon: 'user-circle', label: 'پروفایل' }
+    ];
+
     return `
-    <div id="coach-dashboard-container" class="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto transition-opacity duration-500 opacity-0">
-        <div id="impersonation-banner-placeholder"></div>
-        <header class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
-            <div>
-                <h1 class="text-3xl font-bold">داشبورد مربی</h1>
-                <p class="text-text-secondary">ابزارهای خود را برای مدیریت شاگردان و ساخت برنامه‌ها مدیریت کنید.</p>
+    <div id="coach-dashboard-container" class="flex h-screen bg-bg-primary transition-opacity duration-500 opacity-0">
+        <aside class="w-64 bg-bg-secondary p-4 flex flex-col flex-shrink-0 border-l border-border-primary">
+            <div class="flex items-center gap-3 p-2 mb-6">
+                <i data-lucide="dumbbell" class="w-8 h-8 text-accent"></i>
+                <h1 class="text-xl font-bold">FitGym Pro</h1>
             </div>
-            <div class="flex items-center gap-2">
-                 <button id="theme-toggle-btn-dashboard" class="secondary-button !p-2.5 rounded-full"><i data-lucide="sun"></i></button>
-                 <button id="logout-btn" class="secondary-button">خروج</button>
+            <nav class="space-y-2 flex-grow">
+                ${navItems.map(item => `
+                    <button class="coach-nav-link w-full flex items-center gap-3 px-4 py-3 rounded-lg text-md" data-target="${item.target}">
+                        <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+                        <span>${item.label}</span>
+                        <span class="notification-badge mr-auto"></span>
+                    </button>
+                `).join('')}
+            </nav>
+            <div class="space-y-2">
+                 <button id="theme-toggle-btn-dashboard" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="sun" class="w-5 h-5"></i><span>تغییر پوسته</span></button>
+                 <button id="logout-btn" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="log-out" class="w-5 h-5"></i><span>خروج</span></button>
             </div>
-        </header>
+        </aside>
 
-        <div class="flex items-center gap-2 border-b border-border-primary mb-6">
-            <button class="coach-dashboard-tab active" data-target="students-content"><i data-lucide="users" class="w-4 h-4"></i> شاگردان <span class="notification-badge"></span></button>
-            <button class="coach-dashboard-tab" data-target="builder-content"><i data-lucide="plus-circle" class="w-4 h-4"></i> ساخت برنامه جدید <span class="notification-badge"></span></button>
-            <button class="coach-dashboard-tab" data-target="templates-content"><i data-lucide="layout-template" class="w-4 h-4"></i> الگوها <span class="notification-badge"></span></button>
-            <button class="coach-dashboard-tab" data-target="profile-content"><i data-lucide="user-circle" class="w-4 h-4"></i> پروفایل <span class="notification-badge"></span></button>
-        </div>
-
-        <div id="students-content" class="coach-tab-content animate-fade-in-up">
-            ${coachKpisHtml}
-            <div id="needs-attention-container" class="mb-8">
-                <h2 class="text-xl font-bold mb-4">نیازمند توجه</h2>
-                <div class="p-4 rounded-xl bg-accent/10">
-                    <div id="needs-attention-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        <!-- Cards for students needing a plan will be injected here -->
-                    </div>
+        <main class="flex-1 p-6 lg:p-8 overflow-y-auto">
+            <div id="impersonation-banner-placeholder"></div>
+            <header class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+                <div id="coach-page-title-container">
+                    <h1 id="coach-page-title" class="text-3xl font-bold">شاگردان</h1>
+                    <p id="coach-page-subtitle" class="text-text-secondary">نمای کلی شاگردان و نیازمندی‌ها.</p>
                 </div>
-            </div>
-            <div class="card p-4 sm:p-6">
-                <div class="flex justify-between items-center mb-4">
-                   <h2 class="text-xl font-bold">لیست همه شاگردان</h2>
-                   <div class="relative w-48">
-                       <i data-lucide="search" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"></i>
-                       <input type="text" id="student-search-input" class="input-field w-full !pr-10 !text-sm" placeholder="جستجوی شاگرد...">
-                   </div>
-               </div>
-               <div id="all-students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    <!-- Student cards injected here -->
-               </div>
-            </div>
-        </div>
+            </header>
 
-        <div id="builder-content" class="coach-tab-content hidden">
-            <div id="builder-wrapper">
-                <div id="student-selection-prompt">
-                    <div class="card text-center p-8 md:p-12 animate-fade-in">
-                        <div class="w-20 h-20 bg-accent/10 text-accent rounded-full mx-auto flex items-center justify-center mb-6">
-                            <i data-lucide="user-plus" class="w-10 h-10"></i>
+            <div id="students-content" class="coach-tab-content hidden animate-fade-in-up">
+                ${coachKpisHtml}
+                <div id="needs-attention-container" class="mb-8">
+                    <h2 class="text-xl font-bold mb-4">نیازمند توجه</h2>
+                    <div class="p-4 rounded-xl bg-accent/10">
+                        <div id="needs-attention-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <!-- Cards for students needing a plan will be injected here -->
                         </div>
-                        <h2 class="text-2xl font-bold mb-2">ساخت برنامه جدید</h2>
-                        <p class="text-text-secondary max-w-md mx-auto mb-8">برای شروع، ابتدا یک شاگرد را از لیست انتخاب کنید تا بتوانید برنامه تمرینی و غذایی شخصی‌سازی شده برای او ایجاد کنید.</p>
-                        <button type="button" id="student-select-btn" class="primary-button !text-lg !px-8 !py-3">
-                            <i data-lucide="users" class="w-5 h-5 ml-2"></i>
-                            انتخاب از لیست شاگردان
-                        </button>
                     </div>
                 </div>
+                <div class="card p-4 sm:p-6">
+                    <div class="flex justify-between items-center mb-4">
+                       <h2 class="text-xl font-bold">لیست همه شاگردان</h2>
+                       <div class="relative w-48">
+                           <i data-lucide="search" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"></i>
+                           <input type="text" id="student-search-input" class="input-field w-full !pr-10 !text-sm" placeholder="جستجوی شاگرد...">
+                       </div>
+                   </div>
+                   <div id="all-students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <!-- Student cards injected here -->
+                   </div>
+                </div>
+            </div>
 
-                <div id="program-builder-main" class="hidden">
-                     <div class="card p-4 md:p-6 mb-6">
-                         <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                            <div id="builder-context-header" class="p-2 bg-bg-tertiary rounded-lg text-sm font-semibold flex items-center gap-2">
-                                <i data-lucide="user-check" class="w-4 h-4 text-accent"></i>
-                                <span>در حال ساخت برنامه برای: </span>
-                                <strong id="builder-student-name"></strong>
+            <div id="builder-content" class="coach-tab-content hidden">
+                <div id="builder-wrapper">
+                    <div id="student-selection-prompt">
+                        <div class="card text-center p-8 md:p-12 animate-fade-in">
+                            <div class="w-20 h-20 bg-accent/10 text-accent rounded-full mx-auto flex items-center justify-center mb-6">
+                                <i data-lucide="user-plus" class="w-10 h-10"></i>
                             </div>
-                             <button id="change-student-btn" class="secondary-button !text-sm"><i data-lucide="users" class="w-4 h-4 mr-2"></i> تغییر شاگرد</button>
-                         </div>
-                    </div>
-                    <div id="program-builder-steps-container" class="card p-4 md:p-6">
-                        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-6">
-                            <h3 class="text-lg font-bold">مراحل ساخت برنامه</h3>
-                            <button id="ai-draft-btn" class="primary-button flex items-center gap-2" disabled>
-                                <i data-lucide="sparkles" class="w-4 h-4"></i> ایجاد پیش‌نویس با AI
+                            <h2 class="text-2xl font-bold mb-2">ساخت برنامه جدید</h2>
+                            <p class="text-text-secondary max-w-md mx-auto mb-8">برای شروع، ابتدا یک شاگرد را از لیست انتخاب کنید تا بتوانید برنامه تمرینی و غذایی شخصی‌سازی شده برای او ایجاد کنید.</p>
+                            <button type="button" id="student-select-btn" class="primary-button !text-lg !px-8 !py-3">
+                                <i data-lucide="users" class="w-5 h-5 ml-2"></i>
+                                انتخاب از لیست شاگردان
                             </button>
                         </div>
+                    </div>
 
-                        <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
-                            ${[ "اطلاعات شاگرد", "برنامه تمرینی", "برنامه مکمل", "بازبینی و ارسال"].map((title, i) => `
-                                <div class="stepper-item" data-step="${i+1}">
-                                   <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm">${i+1}</div>
-                                   <span class="hidden md:inline">${title}</span>
+                    <div id="program-builder-main" class="hidden">
+                         <div class="card p-4 md:p-6 mb-6">
+                             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                                <div id="builder-context-header" class="p-2 bg-bg-tertiary rounded-lg text-sm font-semibold flex items-center gap-2">
+                                    <i data-lucide="user-check" class="w-4 h-4 text-accent"></i>
+                                    <span>در حال ساخت برنامه برای: </span>
+                                    <strong id="builder-student-name"></strong>
                                 </div>
-                                ${i < 3 ? `<div class="flex-grow h-0.5 bg-border-primary mx-2"></div>` : ''}
-                            `).join('')}
+                                 <button id="change-student-btn" class="secondary-button !text-sm"><i data-lucide="users" class="w-4 h-4 mr-2"></i> تغییر شاگرد</button>
+                             </div>
                         </div>
+                        <div id="program-builder-steps-container" class="card p-4 md:p-6">
+                            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-6">
+                                <h3 class="text-lg font-bold">مراحل ساخت برنامه</h3>
+                                <button id="ai-draft-btn" class="primary-button flex items-center gap-2" disabled>
+                                    <i data-lucide="sparkles" class="w-4 h-4"></i> ایجاد پیش‌نویس با AI
+                                </button>
+                            </div>
 
-                        <div id="step-content-1" class="step-content">
-                            <div id="student-info-display" class="hidden"></div>
-                        </div>
-                        <div id="step-content-2" class="step-content hidden">
-                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <div class="lg:col-span-2 space-y-4">
-                                    <h3 class="text-lg font-bold">۲. طراحی برنامه تمرینی</h3>
-                                    <div class="space-y-4">
-                                        ${daysOfWeek.map(day => `<details id="day-card-${day}" class="day-card card !shadow-none !border p-3"><summary class="font-bold cursor-pointer flex justify-between items-center"><span>${day}</span><i data-lucide="chevron-down" class="details-arrow"></i></summary><div class="exercises-container space-y-2 mt-4"></div><button class="add-exercise-btn secondary-button mt-4 !text-sm !py-2"><i data-lucide="plus" class="w-4 h-4"></i> افزودن حرکت</button></details>`).join('')}
+                            <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+                                ${[ "اطلاعات شاگرد", "برنامه تمرینی", "برنامه مکمل", "بازبینی و ارسال"].map((title, i) => `
+                                    <div class="stepper-item" data-step="${i+1}">
+                                       <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm">${i+1}</div>
+                                       <span class="hidden md:inline">${title}</span>
                                     </div>
-                                </div>
-                                <div class="lg:col-span-1">
-                                    <div id="volume-analysis-container" class="card !shadow-none !border p-4 sticky top-6">
-                                        <h4 class="font-bold mb-3">تحلیل حجم تمرین</h4>
-                                        <div id="volume-analysis-content" class="space-y-2 text-sm">
-                                            <p class="text-text-secondary">با افزودن حرکات، حجم تمرین هفتگی برای هر گروه عضلانی در اینجا نمایش داده می‌شود.</p>
+                                    ${i < 3 ? `<div class="flex-grow h-0.5 bg-border-primary mx-2"></div>` : ''}
+                                `).join('')}
+                            </div>
+
+                            <div id="step-content-1" class="step-content">
+                                <div id="student-info-display" class="hidden"></div>
+                            </div>
+                            <div id="step-content-2" class="step-content hidden">
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <div class="lg:col-span-2 space-y-4">
+                                        <h3 class="text-lg font-bold">۲. طراحی برنامه تمرینی</h3>
+                                        <div class="space-y-4">
+                                            ${daysOfWeek.map(day => `<details id="day-card-${day}" class="day-card card !shadow-none !border p-3"><summary class="font-bold cursor-pointer flex justify-between items-center"><span>${day}</span><i data-lucide="chevron-down" class="details-arrow"></i></summary><div class="exercises-container space-y-2 mt-4"></div><button class="add-exercise-btn secondary-button mt-4 !text-sm !py-2"><i data-lucide="plus" class="w-4 h-4"></i> افزودن حرکت</button></details>`).join('')}
+                                        </div>
+                                    </div>
+                                    <div class="lg:col-span-1">
+                                        <div id="volume-analysis-container" class="card !shadow-none !border p-4 sticky top-6">
+                                            <h4 class="font-bold mb-3">تحلیل حجم تمرین</h4>
+                                            <div id="volume-analysis-content" class="space-y-2 text-sm">
+                                                <p class="text-text-secondary">با افزودن حرکات، حجم تمرین هفتگی برای هر گروه عضلانی در اینجا نمایش داده می‌شود.</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div id="step-content-3" class="step-content hidden">
-                            <h3 class="text-lg font-bold mb-4">۳. طراحی برنامه مکمل</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div class="md:col-span-1 space-y-4">
-                                     <h4 class="font-semibold">افزودن مکمل</h4>
-                                     <button type="button" id="supplement-category-select-btn" class="selection-button input-field w-full text-right justify-start" data-type="supplement-category"><span class="truncate">دسته را انتخاب کنید</span></button>
-                                     <button type="button" id="supplement-name-select-btn" class="selection-button input-field w-full text-right justify-start" data-type="supplement-name" disabled><span class="truncate">مکمل را انتخاب کنید</span></button>
-                                     <button id="add-supplement-btn" class="primary-button w-full">افزودن</button>
-                                </div>
-                                <div id="added-supplements-container" class="md:col-span-2 space-y-2">
-                                    <p class="text-text-secondary text-center p-4">مکمل‌های انتخابی در اینجا نمایش داده می‌شوند.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="step-content-4" class="step-content hidden">
-                            <h3 class="text-lg font-bold mb-4">۴. بازبینی و ارسال</h3>
-                            <div class="space-y-4">
-                                <div>
-                                   <label for="coach-notes-final" class="font-semibold text-sm mb-2 block">یادداشت نهایی برای شاگرد</label>
-                                   <textarea id="coach-notes-final" class="input-field w-full min-h-[100px]" placeholder="مثلا: قبل از تمرین حتما گرم کنید..."></textarea>
-                                </div>
-                                <div id="program-preview-for-export" class="border border-border-primary rounded-lg"></div>
-                                <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mt-4 pt-4 border-t border-border-primary">
-                                    <div class="flex items-center gap-2">
-                                        <button id="export-program-img-btn" class="secondary-button !text-sm"><i data-lucide="image" class="w-4 h-4 ml-2"></i> ذخیره عکس</button>
-                                        <button id="export-program-pdf-btn" class="secondary-button !text-sm"><i data-lucide="file-down" class="w-4 h-4 ml-2"></i> ذخیره PDF</button>
+                            <div id="step-content-3" class="step-content hidden">
+                                <h3 class="text-lg font-bold mb-4">۳. طراحی برنامه مکمل</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div class="md:col-span-1 space-y-4">
+                                        <div class="flex items-center justify-between">
+                                            <h4 class="font-semibold">افزودن مکمل</h4>
+                                            <div class="flex items-center gap-2">
+                                                <select id="ai-supplement-goal" class="input-field !text-sm !py-1.5 !px-3 !bg-bg-tertiary">
+                                                    <option value="افزایش حجم">افزایش حجم</option>
+                                                    <option value="کاهش وزن">کاهش وزن</option>
+                                                    <option value="افزایش قدرت">افزایش قدرت</option>
+                                                    <option value="تناسب اندام عمومی">تناسب اندام عمومی</option>
+                                                </select>
+                                                <button id="ai-suggest-supplements-btn" class="secondary-button !py-1.5 !px-2.5 !text-sm flex items-center gap-1">
+                                                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="p-3 bg-bg-tertiary rounded-lg">
+                                            <p class="text-xs text-text-secondary mb-2">افزودن دستی:</p>
+                                            <div class="space-y-2">
+                                                <button type="button" id="supplement-category-select-btn" class="selection-button input-field !bg-bg-secondary w-full text-right justify-start" data-type="supplement-category"><span class="truncate">انتخاب دسته</span></button>
+                                                <button type="button" id="supplement-name-select-btn" class="selection-button input-field !bg-bg-secondary w-full text-right justify-start" data-type="supplement-name" disabled><span class="truncate">انتخاب مکمل</span></button>
+                                                <button id="add-supplement-btn" class="primary-button w-full">افزودن</button>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <button id="finish-program-btn" class="primary-button w-full sm:w-auto !py-3 !text-base">پایان و ارسال برنامه</button>
+                                    <div id="added-supplements-container" class="md:col-span-2 space-y-2">
+                                        <p class="text-text-secondary text-center p-4">مکمل‌های انتخابی در اینجا نمایش داده می‌شوند.</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="flex justify-between items-center mt-6 pt-4 border-t border-border-primary">
-                            <div><button id="save-as-template-btn" class="secondary-button"><i data-lucide="save" class="w-4 h-4 ml-2"></i> ذخیره به عنوان الگو</button></div>
-                            <div class="flex gap-2">
-                                <button id="prev-step-btn" class="secondary-button">قبلی</button>
-                                <button id="next-step-btn" class="primary-button">بعدی</button>
+                            <div id="step-content-4" class="step-content hidden">
+                                <h3 class="text-lg font-bold mb-4">۴. بازبینی و ارسال</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                       <label for="coach-notes-final" class="font-semibold text-sm mb-2 block">یادداشت نهایی برای شاگرد</label>
+                                       <textarea id="coach-notes-final" class="input-field w-full min-h-[100px]" placeholder="مثلا: قبل از تمرین حتما گرم کنید..."></textarea>
+                                    </div>
+                                    <div id="program-preview-for-export" class="border border-border-primary rounded-lg"></div>
+                                    <div class="flex justify-start items-center gap-3 mt-4 pt-4 border-t border-border-primary">
+                                        <button id="export-program-img-btn" class="png-button"><i data-lucide="image" class="w-4 h-4 mr-2"></i> ذخیره عکس</button>
+                                        <button id="export-program-pdf-btn" class="pdf-button"><i data-lucide="file-down" class="w-4 h-4 mr-2"></i> ذخیره PDF</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-between items-center mt-6 pt-4 border-t border-border-primary">
+                                <div><button id="save-as-template-btn" class="secondary-button"><i data-lucide="save" class="w-4 h-4 ml-2"></i> ذخیره به عنوان الگو</button></div>
+                                <div class="flex gap-2">
+                                    <button id="prev-step-btn" class="secondary-button">قبلی</button>
+                                    <button id="next-step-btn" class="primary-button">بعدی</button>
+                                    <button id="finish-program-btn" class="primary-button hidden">پایان و ارسال برنامه</button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div id="templates-content" class="coach-tab-content hidden"><div class="card p-6"><h2 class="text-xl font-bold mb-4">الگوهای برنامه</h2><div id="templates-list-container" class="space-y-2"></div></div></div>
-        <div id="profile-content" class="coach-tab-content hidden"><div class="card p-6 max-w-2xl mx-auto"><h2 class="text-xl font-bold mb-4">پروفایل مربی</h2><form class="space-y-4"><div class="input-group"><input id="coach-name" type="text" value="مربی تایید شده" class="input-field w-full" placeholder=" "><label for="coach-name" class="input-label">نام نمایشی</label></div><div class="input-group"><textarea id="coach-bio" class="input-field w-full min-h-[100px]" placeholder=" ">مربی رسمی فدراسیون با ۵ سال سابقه در زمینه طراحی برنامه...</textarea><label for="coach-bio" class="input-label">بیوگرافی کوتاه</label></div><div class="input-group"><input id="coach-specialization" type="text" value="فیتنس، افزایش حجم" class="input-field w-full" placeholder=" "><label for="coach-specialization" class="input-label">تخصص‌ها (با کاما جدا کنید)</label></div><div class="input-group"><input id="coach-instagram" type="text" class="input-field w-full" placeholder=" "><label for="coach-instagram" class="input-label">آیدی اینستاگرام</label></div><button type="submit" class="primary-button w-full">ذخیره تغییرات</button></form></div></div>
+            <div id="templates-content" class="coach-tab-content hidden"><div class="card p-6"><h2 class="text-xl font-bold mb-4">الگوهای برنامه</h2><div id="templates-list-container" class="space-y-2"></div></div></div>
+            <div id="profile-content" class="coach-tab-content hidden"><div class="card p-6 max-w-2xl mx-auto"><h2 class="text-xl font-bold mb-4">پروفایل مربی</h2><form class="space-y-4"><div class="input-group"><input id="coach-name" type="text" value="مربی تایید شده" class="input-field w-full" placeholder=" "><label for="coach-name" class="input-label">نام نمایشی</label></div><div class="input-group"><textarea id="coach-bio" class="input-field w-full min-h-[100px]" placeholder=" ">مربی رسمی فدراسیون با ۵ سال سابقه در زمینه طراحی برنامه...</textarea><label for="coach-bio" class="input-label">بیوگرافی کوتاه</label></div><div class="input-group"><input id="coach-specialization" type="text" value="فیتنس، افزایش حجم" class="input-field w-full" placeholder=" "><label for="coach-specialization" class="input-label">تخصص‌ها (با کاما جدا کنید)</label></div><div class="input-group"><input id="coach-instagram" type="text" class="input-field w-full" placeholder=" "><label for="coach-instagram" class="input-label">آیدی اینستاگرام</label></div><button type="submit" class="primary-button w-full">ذخیره تغییرات</button></form></div></div>
+        </main>
     </div>
     
     <div id="student-profile-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">

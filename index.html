@@ -298,26 +298,44 @@
             color: var(--text-primary);
         }
 
-        /* Coach Dashboard */
-        .coach-dashboard-tab {
+        /* Coach Dashboard Sidebar */
+        .coach-nav-link {
             position: relative;
-            padding: 0.75rem 1rem;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -1px;
             color: var(--text-secondary);
-            font-weight: 600;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            transition: all 0.2s ease;
+            text-align: right;
+            justify-content: flex-start;
         }
-        .coach-dashboard-tab:hover {
-            color: var(--text-primary);
+        .coach-nav-link .notification-badge {
+            right: auto;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%) scale(0);
+            border-color: var(--bg-secondary);
         }
-        .coach-dashboard-tab.active {
-            color: var(--accent);
-            border-bottom-color: var(--accent);
+        .coach-nav-link.active-nav-link .notification-badge, .coach-nav-link:hover .notification-badge {
+            border-color: var(--accent);
         }
+        .coach-nav-link .notification-badge.visible {
+            transform: translateY(-50%) scale(1);
+        }
+        .coach-nav-link.active-nav-link, .coach-nav-link:hover {
+            background-color: var(--accent);
+            color: var(--bg-secondary);
+        }
+        html[data-theme='lemon'] .coach-nav-link.active-nav-link, html[data-theme='lemon'] .coach-nav-link:hover {
+            color: #1c1917;
+        }
+
+        /* User Dashboard Tab Colors */
+        .user-dashboard-tab[data-target="profile-content"] { --tab-color: #3b82f6; } /* blue */
+        .user-dashboard-tab[data-target="dashboard-content"] { --tab-color: #a3e635; } /* lime green */
+        .user-dashboard-tab[data-target="program-content"] { --tab-color: #f97316; } /* orange */
+        .user-dashboard-tab[data-target="nutrition-content"] { --tab-color: #14b8a6; } /* teal */
+        .user-dashboard-tab[data-target="store-content"] { --tab-color: #a855f7; } /* purple */
+        .user-dashboard-tab[data-target="chat-content"] { --tab-color: #ec4899; } /* pink */
+        
+        .user-dashboard-tab.active-spring-tab { color: var(--tab-color); }
 
         /* Landing Page & Auth Modal */
         .landing-page-container { min-height: 100vh; overflow: hidden; position: relative; }
@@ -523,12 +541,6 @@
         .user-dashboard-tab[data-target="chat-content"] { --tab-color: #ec4899; } /* pink */
         
         .user-dashboard-tab.active-spring-tab { color: var(--tab-color); }
-
-        /* Coach Dashboard Tab Colors */
-        .coach-dashboard-tab[data-target="students-content"].active { border-bottom-color: #3b82f6; color: #3b82f6; }
-        .coach-dashboard-tab[data-target="builder-content"].active { border-bottom-color: #f97316; color: #f97316; }
-        .coach-dashboard-tab[data-target="templates-content"].active { border-bottom-color: #64748b; color: #64748b; }
-        .coach-dashboard-tab[data-target="profile-content"].active { border-bottom-color: #14b8a6; color: #14b8a6; }
 
         /* Coach Dashboard Enhancements */
         .status-badge.pending.animate-pulse-accent {

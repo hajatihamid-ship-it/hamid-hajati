@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "https://esm.run/@google/genai";
 import { getGenAI } from '../state';
 import { showToast } from "../utils/dom";
-import { exerciseDB } from "../config";
+import { getExercisesDB, getSupplementsDB } from "./storage";
 
 export const generateNutritionPlan = async (userData: any): Promise<string> => {
     const ai = getGenAI();
@@ -51,6 +51,7 @@ export const generateWorkoutPlan = async (studentData: any): Promise<any | null>
     }
 
     // Create a flat list of available exercises to guide the AI
+    const exerciseDB = getExercisesDB();
     const availableExercises = Object.values(exerciseDB).flat().join(', ');
 
     const prompt = `
@@ -113,6 +114,59 @@ export const generateWorkoutPlan = async (studentData: any): Promise<any | null>
     } catch (error) {
         console.error("AI Workout Plan Error:", error);
         showToast("خطا در تولید برنامه تمرینی با AI", "error");
+        return null;
+    }
+};
+
+export const generateSupplementPlan = async (studentData: any, goal: string): Promise<any[] | null> => {
+    const ai = getGenAI();
+    const supplementsDB = getSupplementsDB();
+    const availableSupplements: string[] = [];
+    Object.values(supplementsDB).forEach(category => {
+        category.forEach(sup => {
+            availableSupplements.push(sup.name);
+        });
+    });
+
+    const prompt = `
+        Based on the client's primary goal of "${goal}" and their details (Age: ${studentData.age}, Gender: ${studentData.gender}), suggest a stack of 2 to 4 essential supplements.
+        For each supplement, provide the most common "dosage" and "timing" based on its properties, selecting from the available options for each supplement.
+        ONLY use supplements from this list: ${availableSupplements.join(', ')}.
+        Do not suggest anything not on the list.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        supplements: {
+                            type: Type.ARRAY,
+                            description: "An array of suggested supplement objects.",
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    name: { type: Type.STRING, description: "Name of the supplement." },
+                                    dosage: { type: Type.STRING, description: "Suggested dosage." },
+                                    timing: { type: Type.STRING, description: "Suggested timing for consumption." }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const jsonText = response.text.trim();
+        const result = JSON.parse(jsonText);
+        return result.supplements || null;
+    } catch (error) {
+        console.error("AI Supplement Plan Error:", error);
+        showToast("خطا در پیشنهاد مکمل با AI", "error");
         return null;
     }
 };

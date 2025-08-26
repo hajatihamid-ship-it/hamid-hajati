@@ -117,13 +117,22 @@ const renderUnifiedProgramView = (userData: any) => {
     const container = document.getElementById('program-content');
     if (!container) return;
 
-    if (!userData.step2 || !userData.step2.days || userData.step2.days.length === 0) {
+    // Find the latest program from history, fallback to top-level step2 for old data structure.
+    const latestProgram = (userData.programHistory && userData.programHistory.length > 0)
+        ? userData.programHistory[0]
+        : (userData.step2 ? { step2: userData.step2, supplements: userData.supplements || [] } : null);
+
+    // Check if a valid program with at least one exercise exists
+    const hasProgram = latestProgram && latestProgram.step2 && latestProgram.step2.days && latestProgram.step2.days.some((d: any) => d.exercises && d.exercises.length > 0);
+
+    if (!hasProgram) {
         container.innerHTML = `<div class="card p-8 text-center text-text-secondary"><i data-lucide="folder-x" class="w-12 h-12 mx-auto mb-4"></i><p>هنوز برنامه‌ای برای شما ثبت نشده است. مربی شما به زودی برنامه را ارسال خواهد کرد.</p></div>`;
         window.lucide?.createIcons();
         return;
     }
 
-    const { step1: student, step2: workout, supplements } = userData;
+    const { step1: student } = userData;
+    const { step2: workout, supplements } = latestProgram;
     const metrics = calculateUserMetrics(student);
 
     container.innerHTML = `
@@ -131,7 +140,7 @@ const renderUnifiedProgramView = (userData: any) => {
              <div class="p-4 md:p-8">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold">برنامه اختصاصی FitGym Pro</h2>
-                    <p class="font-semibold">${new Date().toLocaleDateString('fa-IR')}</p>
+                    <p class="font-semibold">${new Date(latestProgram.date || Date.now()).toLocaleDateString('fa-IR')}</p>
                 </div>
 
                 <h3 class="preview-section-header"><i data-lucide="user-check"></i> اطلاعات شما</h3>
@@ -195,7 +204,7 @@ const openWorkoutLogModal = (dayData: any, dayIndex: number, currentUser: string
     titleEl.textContent = `ثبت تمرین: ${dayData.name}`;
 
     let bodyHtml = `<form id="workout-log-form" data-day-index="${dayIndex}" class="space-y-4">`;
-    dayData.exercises.forEach((ex: any, exIndex: number) => {
+    (dayData.exercises || []).forEach((ex: any, exIndex: number) => {
         const exerciseTemplate = document.getElementById('exercise-log-template') as HTMLTemplateElement;
         const exNode = exerciseTemplate.content.cloneNode(true) as DocumentFragment;
         (exNode.querySelector('h4') as HTMLElement).textContent = ex.name;
@@ -553,6 +562,12 @@ const populateProfileForm = (userData: any) => {
     const trainingGoalRadio = form.querySelector(`input[name="training_goal_user"][value="${trainingGoal}"]`) as HTMLInputElement;
     if (trainingGoalRadio) trainingGoalRadio.checked = true;
 
+    const athleteType = data.athleteType;
+    if (athleteType) {
+        const athleteTypeRadio = form.querySelector(`input[name="athlete_type_user"][value="${athleteType}"]`) as HTMLInputElement;
+        if (athleteTypeRadio) athleteTypeRadio.checked = true;
+    }
+
     const trainingDays = (data.trainingDays || 4).toString();
     const trainingDaysRadio = form.querySelector(`input[name="training_days_user"][value="${trainingDays}"]`) as HTMLInputElement;
     if (trainingDaysRadio) trainingDaysRadio.checked = true;
@@ -795,7 +810,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         }
     };
     
-    const initialTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="dashboard-content"]');
+    const initialTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="profile-content"]');
     if(initialTab) {
         setTimeout(() => switchTab(initialTab), 50);
     }
@@ -916,6 +931,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             freshUserData.step1.mobile = formData.get('mobile_user') as string;
             freshUserData.step1.trainingGoal = formData.get('training_goal_user') as string;
             freshUserData.step1.trainingDays = parseInt(formData.get('training_days_user') as string, 10);
+            freshUserData.step1.athleteType = formData.get('athlete_type_user') as string;
             freshUserData.step1.profileLocked = true;
 
 
@@ -991,8 +1007,12 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 setRows.forEach(setRow => {
                     const weight = (setRow.querySelector('.weight-log-input') as HTMLInputElement).value;
                     const reps = (setRow.querySelector('.reps-log-input') as HTMLInputElement).value;
-                    if(weight && reps) {
-                        setsData.push({ weight: parseFloat(weight), reps: parseInt(reps) });
+                    if (reps) {
+                        const setData: { reps: number; weight?: number } = { reps: parseInt(reps, 10) };
+                        if (weight) {
+                            setData.weight = parseFloat(weight);
+                        }
+                        setsData.push(setData);
                     }
                 });
                 if (setsData.length > 0) {
@@ -1251,6 +1271,40 @@ export function renderUserDashboard(currentUser: string, userData: any) {
                                                     </div>
                                                 </label>
                                             `).join('')}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><i data-lucide="award" class="w-5 h-5 text-accent"></i>طراحی برنامه بدنسازی برای اهداف</h3>
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <label class="option-card-label">
+                                                <input type="radio" name="athlete_type_user" value="قدرتی" class="option-card-input">
+                                                <div class="option-card-content flex flex-col items-center justify-center gap-2 h-full p-3">
+                                                    <i data-lucide="barbell" class="w-6 h-6 text-text-secondary"></i>
+                                                    <span class="font-semibold text-xs text-center">ورزشکاران قدرتی</span>
+                                                </div>
+                                            </label>
+                                            <label class="option-card-label">
+                                                <input type="radio" name="athlete_type_user" value="استقامتی" class="option-card-input">
+                                                <div class="option-card-content flex flex-col items-center justify-center gap-2 h-full p-3">
+                                                    <i data-lucide="timer" class="w-6 h-6 text-text-secondary"></i>
+                                                    <span class="font-semibold text-xs text-center">ورزشکاران استقامتی</span>
+                                                </div>
+                                            </label>
+                                            <label class="option-card-label">
+                                                <input type="radio" name="athlete_type_user" value="تیمی" class="option-card-input">
+                                                <div class="option-card-content flex flex-col items-center justify-center gap-2 h-full p-3">
+                                                    <i data-lucide="users" class="w-6 h-6 text-text-secondary"></i>
+                                                    <span class="font-semibold text-xs text-center">ورزشکاران تیمی</span>
+                                                </div>
+                                            </label>
+                                            <label class="option-card-label">
+                                                <input type="radio" name="athlete_type_user" value="زیبایی" class="option-card-input">
+                                                <div class="option-card-content flex flex-col items-center justify-center gap-2 h-full p-3">
+                                                    <i data-lucide="person-standing" class="w-6 h-6 text-text-secondary"></i>
+                                                    <span class="font-semibold text-xs text-center">ورزشکاران زیبایی</span>
+                                                </div>
+                                            </label>
                                         </div>
                                     </div>
                                     

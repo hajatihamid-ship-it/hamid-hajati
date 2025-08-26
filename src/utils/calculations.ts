@@ -134,20 +134,27 @@ export const calculateWorkoutStreak = (history: any[] = []) => {
 };
 
 export const getTodayWorkoutData = (userData: any) => {
-    if (!userData.step2 || !userData.step2.days || userData.step2.days.length === 0) return null;
-    const today = new Date().getDay();
-    const trainingDaysCount = userData.step2.days.length;
-    const dayMapping: { [key: number]: number[] } = {
-        1: [3], 2: [2, 5], 3: [1, 3, 5], 4: [1, 2, 4, 5],
-        5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6], 7: [0, 1, 2, 3, 4, 5, 6]
-    };
-    const schedule = dayMapping[trainingDaysCount] || dayMapping[4];
-    const todayIndexInSchedule = schedule.indexOf(today);
-    if (todayIndexInSchedule !== -1 && userData.step2.days[todayIndexInSchedule]) {
+    // Find the current program plan from history, with fallback to the top-level property
+    const latestProgram = (userData.programHistory && userData.programHistory.length > 0)
+        ? userData.programHistory[0]
+        : (userData.step2 ? { step2: userData.step2 } : null);
+
+    if (!latestProgram || !latestProgram.step2 || !latestProgram.step2.days || latestProgram.step2.days.length === 0) return null;
+
+    const workoutPlan = latestProgram.step2;
+    
+    // Match by day name, which is more robust.
+    const dayNames = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
+    const todayName = dayNames[new Date().getDay()];
+
+    const todayDayIndex = workoutPlan.days.findIndex((day: any) => day.name.startsWith(todayName));
+
+    if (todayDayIndex !== -1 && workoutPlan.days[todayDayIndex].exercises.length > 0) {
         return {
-            day: userData.step2.days[todayIndexInSchedule],
-            dayIndex: todayIndexInSchedule
+            day: workoutPlan.days[todayDayIndex],
+            dayIndex: todayDayIndex
         };
     }
+    
     return null;
 };
