@@ -209,6 +209,18 @@ export const renderApp = () => {
         }
 
         const userData = getUserData(currentUser);
+        const renderLandingPageAsLoggedIn = () => {
+            if (!appContainer) return;
+            appContainer.innerHTML = renderLandingPage() + renderAuthModal();
+            initLandingPageListeners(renderApp); // Pass renderApp as the callback
+            window.lucide?.createIcons();
+            setTimeout(() => {
+                const mainContainer = document.querySelector('.landing-page-container');
+                if (mainContainer) {
+                    mainContainer.classList.add('opacity-100');
+                }
+            }, 50);
+        };
 
         switch (currentUserData.role) {
             case 'admin':
@@ -221,7 +233,7 @@ export const renderApp = () => {
                 break;
             case 'user':
                 appContainer.innerHTML = renderUserDashboard(currentUser, userData);
-                initUserDashboard(currentUser, userData, handleLogout);
+                initUserDashboard(currentUser, userData, handleLogout, renderLandingPageAsLoggedIn);
                 break;
             default:
                 handleLogout();

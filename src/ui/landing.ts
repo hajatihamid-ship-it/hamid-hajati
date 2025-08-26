@@ -2,6 +2,7 @@ import { openModal, closeModal, updateSliderTrack } from '../utils/dom';
 import { getStorePlans } from '../services/storage';
 import { formatPrice } from '../utils/helpers';
 import { calculateBodyMetrics } from '../utils/calculations';
+import { getCurrentUser } from '../state';
 
 const getFeaturesHTML = () => `
     <div class="space-y-6">
@@ -378,9 +379,16 @@ const openInfoModal = (section: string) => {
     openModal(modal);
 }
 
-export function initLandingPageListeners() {
+export function initLandingPageListeners(onGoToDashboard?: () => void) {
     document.body.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
+        
+        const goToDashboardBtn = target.closest('#go-to-dashboard-btn');
+        if (goToDashboardBtn && onGoToDashboard) {
+            onGoToDashboard();
+            return;
+        }
+
         const authModalBtn = target.closest('#open-auth-modal-btn');
         const calculatorCtaBtn = target.closest('#calculator-cta-btn');
         const infoLink = target.closest('.landing-nav-link[data-section]');
@@ -534,6 +542,21 @@ export function initLandingPageListeners() {
 }
 
 export function renderLandingPage() {
+    const currentUser = getCurrentUser();
+    const headerButtonHtml = currentUser
+        ? `<button id="go-to-dashboard-btn" class="primary-button">داشبورد</button>`
+        : `<button id="open-auth-modal-btn" class="primary-button">ورود / ثبت نام</button>`;
+    
+    const heroButtonHtml = currentUser
+        ? `<button id="go-to-dashboard-btn" class="hero-cta-btn primary-button !text-lg !px-10 !py-4">
+                <div class="glow-circle"></div>
+                بازگشت به داشبورد
+           </button>`
+        : `<button id="open-auth-modal-btn" class="hero-cta-btn primary-button !text-lg !px-10 !py-4">
+                <div class="glow-circle"></div>
+                شروع کنید
+           </button>`;
+
     return `
     <div class="landing-page-container bg-bg-primary text-text-primary flex flex-col transition-opacity duration-500 opacity-0">
         <div class="landing-bg"></div>
@@ -550,7 +573,7 @@ export function renderLandingPage() {
                         <button data-section="contact" class="landing-nav-link">تماس با ما</button>
                     </div>
                     <div>
-                        <button id="open-auth-modal-btn" class="primary-button">ورود / ثبت نام</button>
+                        ${headerButtonHtml}
                     </div>
                 </nav>
             </header>
@@ -564,10 +587,7 @@ export function renderLandingPage() {
                         برنامه‌های تمرینی و غذایی شخصی‌سازی شده با قدرت هوش مصنوعی. به اهداف خود سریع‌تر و هوشمندانه‌تر برسید.
                     </p>
                     <div class="mt-10 animate-fade-in-up animation-delay-400">
-                        <button id="open-auth-modal-btn" class="hero-cta-btn primary-button !text-lg !px-10 !py-4">
-                            <div class="glow-circle"></div>
-                            شروع کنید
-                        </button>
+                        ${heroButtonHtml}
                     </div>
                 </div>
             </main>

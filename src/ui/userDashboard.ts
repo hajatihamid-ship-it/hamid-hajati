@@ -717,7 +717,7 @@ const renderCartModalContent = (currentUser: string) => {
 };
 
 
-export function initUserDashboard(currentUser: string, userData: any, handleLogout: () => void) {
+export function initUserDashboard(currentUser: string, userData: any, handleLogout: () => void, handleGoToHome: () => void) {
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
 
     const dashboardContainer = document.getElementById('user-dashboard-container');
@@ -824,6 +824,11 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         const target = e.target;
         const button = target.closest('button');
         if (!button) return;
+
+        if (button.id === 'go-to-home-btn') {
+            handleGoToHome();
+            return;
+        }
 
         if (button.id === 'edit-profile-btn') {
             let freshUserData = getUserData(currentUser);
@@ -1141,6 +1146,7 @@ export function renderUserDashboard(currentUser: string, userData: any) {
                     <span id="cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
                  </button>
                  <button id="theme-toggle-btn-dashboard" class="secondary-button !p-2.5 rounded-full"><i data-lucide="sun"></i></button>
+                 <button id="go-to-home-btn" class="secondary-button">صفحه اصلی</button>
                  <button id="logout-btn" class="secondary-button">خروج</button>
             </div>
         </header>
@@ -1149,8 +1155,8 @@ export function renderUserDashboard(currentUser: string, userData: any) {
             <div id="tab-indicator"></div>
             ${[
                 { target: 'profile-content', icon: 'user', label: 'پروفایل' },
-                { target: 'dashboard-content', icon: 'layout-dashboard', label: 'داشبورد' },
                 { target: 'program-content', icon: 'clipboard-list', label: 'برنامه من' },
+                { target: 'dashboard-content', icon: 'layout-dashboard', label: 'داشبورد' },
                 { target: 'nutrition-content', icon: 'utensils', label: 'تغذیه' },
                 { target: 'store-content', icon: 'shopping-bag', label: 'فروشگاه' },
                 { target: 'chat-content', icon: 'message-square', label: 'گفتگو' }

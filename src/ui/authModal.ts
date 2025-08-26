@@ -85,6 +85,36 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
     document.getElementById('switch-to-forgot-btn')?.addEventListener('click', () => switchAuthForm('forgot-password'));
     document.getElementById('switch-back-to-login-btn')?.addEventListener('click', () => switchAuthForm('login'));
 
+    // --- Google Login ---
+    document.getElementById('google-login-btn')?.addEventListener('click', () => {
+        const googleUsername = 'user_google';
+        const googleEmail = 'user.google@fitgympro.com';
+        let allUsers = getUsers();
+        let googleUser = allUsers.find((u: any) => u.username === googleUsername);
+
+        if (!googleUser) {
+            googleUser = {
+                username: googleUsername,
+                email: googleEmail,
+                password: `gl_${Date.now()}`, // Dummy password
+                role: 'user',
+                status: 'active',
+                coachStatus: null,
+                joinDate: new Date().toISOString()
+            };
+            allUsers.push(googleUser);
+            saveUsers(allUsers);
+            saveUserData(googleUsername, {
+                step1: { clientName: 'کاربر گوگل', clientEmail: googleEmail },
+                joinDate: new Date().toISOString()
+            });
+            addActivityLog(`${googleUsername} signed up via Google.`);
+        }
+        
+        applyCalculatorData(googleUsername);
+        handleLoginSuccess(googleUsername);
+    });
+
     // --- Form Submissions ---
     const loginForm = document.getElementById("login-form") as HTMLFormElement;
     loginForm?.addEventListener("submit", e => {
@@ -202,6 +232,11 @@ export function renderAuthModal() {
                             <button type="submit" class="primary-button w-full !py-3 !text-base">ورود</button>
                         </div>
                     </form>
+                     <div class="form-divider text-xs">یا</div>
+                     <button type="button" id="google-login-btn" class="google-btn">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo">
+                        ورود با حساب گوگل
+                    </button>
                     <div class="text-center mt-6">
                         <p class="text-sm text-secondary">
                             حساب کاربری ندارید؟
