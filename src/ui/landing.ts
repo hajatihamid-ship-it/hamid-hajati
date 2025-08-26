@@ -530,9 +530,8 @@ export function renderLandingPage() {
         <div class="relative z-10 flex flex-col flex-grow">
             <header class="p-4">
                 <nav class="container mx-auto flex justify-between items-center glass-nav p-3 rounded-2xl">
-                    <div class="flex items-center gap-2">
-                        <img src="https://assets.website-files.com/63f5b734614a2ce081831035/63f5b734614a2c07a3831065_icon-256w.png" alt="FitGym Pro Logo" class="w-10 h-10">
-                        <span class="text-xl font-bold text-white">FitGym Pro</span>
+                    <div class="flex items-center">
+                        <span class="text-yellow-400 font-bold text-2xl tracking-wider">FITGYMPRO.IR</span>
                     </div>
                     <div class="hidden md:flex items-center gap-6">
                         <button data-section="features" class="landing-nav-link">ویژگی‌ها</button>
