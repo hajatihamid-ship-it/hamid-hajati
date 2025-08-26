@@ -1,5 +1,6 @@
 import { showToast, closeModal } from '../utils/dom';
-import { getUsers, saveUsers, saveUserData, addActivityLog } from '../services/storage';
+import { getUsers, saveUsers, saveUserData, addActivityLog, getUserData } from '../services/storage';
+import { performMetricCalculations } from '../utils/calculations';
 
 const switchAuthForm = (formToShow: 'login' | 'signup' | 'forgot-password') => {
     const loginContainer = document.getElementById("login-form-container");
@@ -26,6 +27,44 @@ const clearValidationError = (inputEl: HTMLInputElement) => {
     const errorEl = group.querySelector('.validation-message');
     if (errorEl) errorEl.textContent = '';
 };
+
+const applyCalculatorData = (username: string) => {
+    const calculatorDataRaw = sessionStorage.getItem('fitgympro_calculator_data');
+    if (!calculatorDataRaw) return;
+
+    try {
+        const calculatorData = JSON.parse(calculatorDataRaw);
+        const userData = getUserData(username);
+        if (!userData.step1) userData.step1 = {};
+
+        const step1Data: any = {
+            ...userData.step1,
+            gender: calculatorData.gender,
+            age: parseInt(calculatorData.age, 10),
+            height: parseInt(calculatorData.height, 10),
+            weight: parseFloat(calculatorData.weight),
+            trainingGoal: calculatorData.trainingGoal,
+            trainingDays: parseInt(calculatorData.trainingDays, 10),
+            activityLevel: parseFloat(calculatorData.activityLevel),
+        };
+
+        const metrics = performMetricCalculations(step1Data);
+        if (metrics && metrics.tdee) {
+            step1Data.tdee = metrics.tdee;
+        }
+        
+        userData.step1 = step1Data;
+
+        saveUserData(username, userData);
+        sessionStorage.removeItem('fitgympro_calculator_data');
+        setTimeout(() => showToast('اطلاعات شما از محاسبه‌گر با موفقیت در پروفایل اعمال شد.', 'success'), 500);
+
+    } catch (e) {
+        console.error("Failed to apply calculator data:", e);
+        sessionStorage.removeItem('fitgympro_calculator_data');
+    }
+}
+
 
 export function initAuthListeners(handleLoginSuccess: (username: string) => void) {
     const authModal = document.getElementById('auth-modal');
@@ -71,6 +110,7 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
                  showToast("حساب مربیگری شما در انتظار تایید مدیر است.", "error");
                  return;
              }
+            applyCalculatorData(username);
             handleLoginSuccess(username);
         } else {
             showToast("نام کاربری یا رمز عبور اشتباه است.", "error");
@@ -129,6 +169,9 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
             step1: { clientName: username, clientEmail: email },
             joinDate: new Date().toISOString()
         });
+        
+        applyCalculatorData(username);
+
         showToast("ثبت نام با موفقیت انجام شد! حالا می‌توانید وارد شوید.", "success");
         addActivityLog(`${username} ثبت نام کرد.`);
         switchAuthForm("login");

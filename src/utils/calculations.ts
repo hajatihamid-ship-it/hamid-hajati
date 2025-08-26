@@ -1,46 +1,23 @@
 // This file contains all business logic calculations for fitness metrics.
 
-export const calculateBodyMetrics = (container: HTMLElement) => {
-    const form = container.closest('form') ?? container;
-    const s = parseFloat((container.querySelector(".age-slider") as HTMLInputElement).value),
-        r = parseFloat((container.querySelector(".height-slider") as HTMLInputElement).value),
-        a = parseFloat((container.querySelector(".weight-slider") as HTMLInputElement).value),
-        n = container.querySelector('input[name^="gender"]:checked, input[name^="gender_user"]:checked') as HTMLInputElement;
+export const performMetricCalculations = (data: { age: number, height: number, weight: number, gender: string, activityLevel: number, neck?: number, waist?: number, hip?: number }) => {
+    const { age, height, weight, gender, activityLevel, neck, waist, hip } = data;
+    if (!age || !height || !weight || !gender) return null;
 
-    if (!n) return null;
-
-    const o = n.value === "مرد",
-        m = container.querySelector('input[name="activity_level"]:checked, input[name="activity_level_user"]:checked') as HTMLInputElement,
-        d = m ? parseFloat(m.value) : 1.2;
-    
-    const neckInput = container.querySelector(".neck-input") as HTMLInputElement | null;
-    const waistInput = container.querySelector(".waist-input") as HTMLInputElement | null;
-    const hipInput = container.querySelector(".hip-input") as HTMLInputElement | null;
-    const c = neckInput ? parseFloat(neckInput.value) : NaN;
-    const g = waistInput ? parseFloat(waistInput.value) : NaN;
-    const x = hipInput ? parseFloat(hipInput.value) : NaN;
-
-    const clearMetrics = () => {
-        [".bmi-input", ".bmr-input", ".tdee-input", ".bodyfat-input", ".lbm-input", ".ideal-weight-input"].forEach(selector => {
-            const input = form.querySelector(selector) as HTMLInputElement;
-            if (input) input.value = "";
-        });
-    };
-
-    if (isNaN(r) || isNaN(a) || r <= 0 || a <= 0) {
-        clearMetrics();
-        return null;
-    }
+    const s = age, r = height, a = weight;
+    const o = gender === "مرد";
+    const d = activityLevel;
+    const c = neck, g = waist, x = hip;
 
     const heightInMeters = r / 100;
     const bmi = a / (heightInMeters * heightInMeters);
     const bmr = o ? 10 * a + 6.25 * r - 5 * s + 5 : 10 * a + 6.25 * r - 5 * s - 161;
 
     let bodyFat = 0;
-    if (!isNaN(c) && !isNaN(g) && c > 0 && g > 0) {
+    if (c && g && c > 0 && g > 0) {
         if (o) {
             bodyFat = 86.01 * Math.log10(g - c) - 70.041 * Math.log10(r) + 36.76;
-        } else if (!isNaN(x) && x > 0) {
+        } else if (x && x > 0) {
             bodyFat = 163.205 * Math.log10(g + x - c) - 97.684 * Math.log10(r) - 78.387;
         }
     }
@@ -63,20 +40,76 @@ export const calculateBodyMetrics = (container: HTMLElement) => {
         metrics.lbm = parseFloat((a * (1 - bodyFat / 100)).toFixed(1));
     }
 
-    // Update DOM input fields safely
-    const updateInputValue = (selector: string, value: string | number | null | undefined) => {
-        const input = form.querySelector(selector) as HTMLInputElement;
-        if (input) {
-            input.value = value?.toString() || '';
+    return metrics;
+};
+
+
+export const calculateBodyMetrics = (container: HTMLElement) => {
+    const form = container.closest('form') ?? container;
+    const s = parseFloat((container.querySelector(".age-slider") as HTMLInputElement).value);
+    const r = parseFloat((container.querySelector(".height-slider") as HTMLInputElement).value);
+    const a = parseFloat((container.querySelector(".weight-slider") as HTMLInputElement).value);
+    const n = container.querySelector('input[name^="gender"]:checked, input[name^="gender_user"]:checked') as HTMLInputElement;
+
+    if (!n) return null;
+
+    const o = n.value === "مرد";
+    const m = container.querySelector('input[name="activity_level"]:checked, input[name="activity_level_user"]:checked') as HTMLInputElement;
+    const d = m ? parseFloat(m.value) : 1.2;
+    
+    const neckInput = container.querySelector(".neck-input") as HTMLInputElement | null;
+    const waistInput = container.querySelector(".waist-input") as HTMLInputElement | null;
+    const hipInput = container.querySelector(".hip-input") as HTMLInputElement | null;
+    const c = neckInput ? parseFloat(neckInput.value) : NaN;
+    const g = waistInput ? parseFloat(waistInput.value) : NaN;
+    const x = hipInput ? parseFloat(hipInput.value) : NaN;
+
+    const clearMetrics = () => {
+        [".bmi-input", ".bmr-input", ".tdee-input", ".bodyfat-input", ".lbm-input", ".ideal-weight-input"].forEach(selector => {
+            const input = form.querySelector(selector) as HTMLElement;
+            if (input) {
+                if (input instanceof HTMLInputElement) {
+                    input.value = "";
+                } else {
+                    input.textContent = "–";
+                }
+            }
+        });
+    };
+
+    if (isNaN(r) || isNaN(a) || r <= 0 || a <= 0) {
+        clearMetrics();
+        return null;
+    }
+
+    const metrics = performMetricCalculations({
+        age: s, height: r, weight: a, gender: n.value, activityLevel: d,
+        neck: c, waist: g, hip: x
+    });
+    
+    if (!metrics) {
+        clearMetrics();
+        return null;
+    }
+
+    const updateMetricDisplay = (selector: string, value: string | number | null | undefined) => {
+        const element = form.querySelector(selector) as HTMLElement;
+        if (element) {
+            const displayValue = value?.toString();
+            if (element instanceof HTMLInputElement) {
+                element.value = displayValue || '';
+            } else {
+                element.textContent = displayValue || '–';
+            }
         }
     };
     
-    updateInputValue(".bmi-input", metrics.bmi);
-    updateInputValue(".bmr-input", metrics.bmr);
-    updateInputValue(".tdee-input", metrics.tdee);
-    updateInputValue(".ideal-weight-input", metrics.idealWeight);
-    updateInputValue(".bodyfat-input", metrics.bodyFat);
-    updateInputValue(".lbm-input", metrics.lbm);
+    updateMetricDisplay(".bmi-input", metrics.bmi);
+    updateMetricDisplay(".bmr-input", metrics.bmr);
+    updateMetricDisplay(".tdee-input", metrics.tdee);
+    updateMetricDisplay(".ideal-weight-input", metrics.idealWeight);
+    updateMetricDisplay(".bodyfat-input", metrics.bodyFat);
+    updateMetricDisplay(".lbm-input", metrics.lbm);
     
     return metrics;
 };

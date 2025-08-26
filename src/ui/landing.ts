@@ -272,7 +272,10 @@ const getCalculatorHTML = () => {
                      <div>
                         <div class="flex justify-between items-center mb-1 w-full">
                             <h3 class="font-semibold text-sm text-yellow-400">شاخص توده بدنی (BMI)</h3>
-                            <span class="font-bold text-lg bmi-output">24.5</span>
+                             <div class="flex items-center gap-2">
+                                <span class="font-bold text-lg text-white bmi-output">24.5</span>
+                                <span class="bmi-status hidden"></span>
+                            </div>
                         </div>
                         <div class="w-full bg-bg-tertiary rounded-full h-2.5 relative" title="آبی: کمبود وزن, سبز: نرمال, زرد: اضافه وزن, قرمز: چاقی">
                             <div class="absolute top-0 left-0 h-full rounded-l-full bg-blue-500" style="width: 14%;"></div>
@@ -294,26 +297,26 @@ const getCalculatorHTML = () => {
                         <div class="result-display bg-bg-secondary p-3 rounded-lg">
                             <p class="text-sm text-yellow-400">کالری روزانه (TDEE)</p>
                             <p class="font-black text-3xl text-white my-1"><span class="tdee-output">2450</span></p>
-                            <p class="text-xs text-text-secondary">کیلوکالری</p>
+                            <p class="text-xs text-white">کیلوکالری</p>
                         </div>
                          <div class="result-display bg-bg-secondary p-3 rounded-lg">
                             <p class="text-sm text-yellow-400">درصد چربی بدن</p>
                             <p class="font-black text-3xl text-white my-1"><span class="bodyfat-output">–</span></p>
-                            <p class="text-xs text-text-secondary">(تخمینی)</p>
+                            <p class="text-xs text-white">(تخمینی)</p>
                         </div>
                          <div class="result-display bg-bg-secondary p-3 rounded-lg">
                             <p class="text-sm text-yellow-400">توده بدون چربی (LBM)</p>
                             <p class="font-black text-3xl text-white my-1"><span class="lbm-output">–</span></p>
-                             <p class="text-xs text-text-secondary">کیلوگرم</p>
+                             <p class="text-xs text-white">کیلوگرم</p>
                         </div>
                          <div class="result-display bg-bg-secondary p-3 rounded-lg">
                             <p class="text-sm text-yellow-400">محدوده وزن ایده‌آل</p>
                             <p class="font-black text-xl text-white my-1"><span class="ideal-weight-output">...</span></p>
-                             <p class="text-xs text-text-secondary">کیلوگرم</p>
+                             <p class="text-xs text-white">کیلوگرم</p>
                         </div>
                     </div>
                     
-                    <button type="button" id="open-auth-modal-btn" class="primary-button w-full !py-3">دریافت برنامه شخصی‌سازی شده</button>
+                    <button type="button" id="calculator-cta-btn" class="primary-button w-full !py-3">دریافت برنامه شخصی‌سازی شده</button>
                 </div>
             </form>
         </div>
@@ -328,7 +331,7 @@ const getCoachesShowcaseHTML = () => `
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             ${[
-                { name: 'مربی تایید شده', specialty: 'متخصص افزایش حجم و قدرت', img: 'https://i.pravatar.cc/200?u=coach10186' },
+                { name: 'حمید حاجتی', specialty: 'متخصص حرکات اصلاحی و فانکشنال', img: 'https://i.pravatar.cc/200?u=hamid' },
                 { name: 'سارا احمدی', specialty: 'متخصص فیتنس و کاهش وزن بانوان', img: 'https://i.pravatar.cc/200?u=sara' },
                 { name: 'علی رضایی', specialty: 'متخصص آمادگی جسمانی و حرکات اصلاحی', img: 'https://i.pravatar.cc/200?u=ali' }
             ].map(coach => `
@@ -376,10 +379,27 @@ export function initLandingPageListeners() {
     document.body.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         const authModalBtn = target.closest('#open-auth-modal-btn');
+        const calculatorCtaBtn = target.closest('#calculator-cta-btn');
         const infoLink = target.closest('.landing-nav-link[data-section]');
         const coachSignupBtn = target.closest('#coach-signup-cta');
 
-        if (authModalBtn) {
+        if (authModalBtn || calculatorCtaBtn) {
+            if (calculatorCtaBtn) {
+                const calculator = document.getElementById('landing-page-calculator');
+                if (calculator) {
+                    const formData = new FormData(calculator as HTMLFormElement);
+                    const data = {
+                        gender: formData.get('gender'),
+                        age: formData.get('age'),
+                        height: formData.get('height'),
+                        weight: formData.get('weight'),
+                        trainingGoal: formData.get('training_goal_user'),
+                        trainingDays: formData.get('training_days_user'),
+                        activityLevel: formData.get('activity_level'),
+                    };
+                    sessionStorage.setItem('fitgympro_calculator_data', JSON.stringify(data));
+                }
+            }
             const authModal = document.getElementById('auth-modal');
             openModal(authModal);
         } else if (infoLink) {
@@ -417,6 +437,7 @@ export function initLandingPageListeners() {
             const lbmOutput = calculator.querySelector('.lbm-output');
             const idealWeightOutput = calculator.querySelector('.ideal-weight-output');
             const bmiIndicator = calculator.querySelector('#landing-bmi-indicator');
+            const bmiStatusEl = calculator.querySelector('.bmi-status');
 
             const clearOutputs = () => {
                 if(tdeeOutput) tdeeOutput.textContent = '–';
@@ -425,6 +446,7 @@ export function initLandingPageListeners() {
                 if(lbmOutput) lbmOutput.textContent = '–';
                 if(idealWeightOutput) idealWeightOutput.textContent = '–';
                 if(bmiIndicator) (bmiIndicator as HTMLElement).style.left = '-10px';
+                if(bmiStatusEl) bmiStatusEl.classList.add('hidden');
             };
 
             if (metrics) {
@@ -433,6 +455,30 @@ export function initLandingPageListeners() {
                 if (bodyfatOutput) bodyfatOutput.textContent = metrics.bodyFat ? `${metrics.bodyFat}%` : '–';
                 if (lbmOutput) lbmOutput.textContent = metrics.lbm ? `${metrics.lbm} kg` : '–';
                 if (idealWeightOutput) idealWeightOutput.textContent = metrics.idealWeight || '–';
+
+                if (bmiStatusEl && metrics.bmi) {
+                    const bmi = metrics.bmi;
+                    let statusText = '';
+                    let statusColorClass = '';
+                    if (bmi < 18.5) {
+                        statusText = 'کمبود وزن';
+                        statusColorClass = 'bg-blue-500 text-white';
+                    } else if (bmi < 25) {
+                        statusText = 'نرمال';
+                        statusColorClass = 'bg-green-500 text-white';
+                    } else if (bmi < 30) {
+                        statusText = 'اضافه وزن';
+                        statusColorClass = 'bg-yellow-500 text-black';
+                    } else {
+                        statusText = 'چاق';
+                        statusColorClass = 'bg-red-500 text-white';
+                    }
+                    (bmiStatusEl as HTMLElement).textContent = statusText;
+                    bmiStatusEl.className = `bmi-status text-xs font-semibold px-2 py-0.5 rounded-full ${statusColorClass}`;
+                    bmiStatusEl.classList.remove('hidden');
+                } else if (bmiStatusEl) {
+                    bmiStatusEl.classList.add('hidden');
+                }
 
                 if (bmiIndicator && metrics.bmi) {
                     const bmi = metrics.bmi;
