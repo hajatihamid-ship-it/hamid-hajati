@@ -47,6 +47,16 @@
             --radius-input: 0.75rem;
             --range-track-bg: #e2e8f0;
             --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            
+            /* Transparent Colors for html2canvas compatibility */
+            --accent-transparent-8: rgba(163, 230, 53, 0.08);
+            --accent-transparent-10: rgba(163, 230, 53, 0.10);
+            --accent-transparent-15: rgba(163, 230, 53, 0.15);
+            --accent-transparent-20: rgba(163, 230, 53, 0.20);
+            --accent-transparent-30: rgba(163, 230, 53, 0.30);
+            --accent-transparent-40: rgba(163, 230, 53, 0.40);
+            --text-primary-transparent-30: rgba(26, 32, 44, 0.3);
+            --admin-accent-green-transparent-15: rgba(16, 185, 129, 0.15);
 
             /* Admin & Status Colors */
             --admin-accent-green: #10b981;
@@ -73,6 +83,16 @@
             --border-secondary: #4a5568;
             --range-track-bg: #2d3748;
             --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+            /* Transparent Colors for html2canvas compatibility */
+            --accent-transparent-8: rgba(163, 230, 53, 0.08);
+            --accent-transparent-10: rgba(163, 230, 53, 0.10);
+            --accent-transparent-15: rgba(163, 230, 53, 0.15);
+            --accent-transparent-20: rgba(163, 230, 53, 0.20);
+            --accent-transparent-30: rgba(163, 230, 53, 0.30);
+            --accent-transparent-40: rgba(163, 230, 53, 0.40);
+            --text-primary-transparent-30: rgba(247, 250, 252, 0.3);
+            --admin-accent-green-transparent-15: rgba(16, 185, 129, 0.15);
 
              /* Admin & Status Colors */
             --admin-accent-green: #10b981;
@@ -107,6 +127,16 @@
             --radius-input: 0.75rem;
             --range-track-bg: #e7e5e4;
             --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+
+            /* Transparent Colors for html2canvas compatibility */
+            --accent-transparent-8: rgba(132, 204, 22, 0.08);
+            --accent-transparent-10: rgba(132, 204, 22, 0.10);
+            --accent-transparent-15: rgba(132, 204, 22, 0.15);
+            --accent-transparent-20: rgba(132, 204, 22, 0.20);
+            --accent-transparent-30: rgba(132, 204, 22, 0.30);
+            --accent-transparent-40: rgba(132, 204, 22, 0.40);
+            --text-primary-transparent-30: rgba(28, 25, 23, 0.3);
+            --admin-accent-green-transparent-15: rgba(34, 197, 94, 0.15);
 
              /* Admin & Status Colors */
             --admin-accent-green: #22c55e;
@@ -144,9 +174,9 @@
         .animation-delay-800 { animation-delay: 0.8s; }
         
         @keyframes pulse-accent {
-            0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent); }
-            70% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 0%, transparent); }
-            100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); }
+            0% { box-shadow: 0 0 0 0 var(--accent-transparent-30); }
+            70% { box-shadow: 0 0 0 10px transparent; }
+            100% { box-shadow: 0 0 0 0 transparent; }
         }
         .animate-pulse-accent { animation: pulse-accent 1.5s infinite; }
         
@@ -173,7 +203,7 @@
             padding: 1rem;
         }
         .input-field { background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: var(--radius-input); padding: 0.75rem 1rem; transition: all 0.2s; }
-        .input-field:focus { outline: none; border-color: var(--accent); background-color: var(--bg-secondary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+        .input-field:focus { outline: none; border-color: var(--accent); background-color: var(--bg-secondary); box-shadow: 0 0 0 3px var(--accent-transparent-20); }
         .input-error { border-color: var(--red-accent) !important; }
 
         .primary-button { background-color: var(--accent); color: #1a202c; font-weight: 700; padding: 0.8rem 1.5rem; border-radius: var(--radius-btn); transition: all 0.2s; }
@@ -186,11 +216,17 @@
         .green-button { background-color: var(--green-accent); color: white; font-weight: 600; padding: 0.8rem 1.5rem; border-radius: var(--radius-btn); transition: all 0.2s; }
         .green-button:hover:not(:disabled) { background-color: var(--green-accent-hover); transform: translateY(-2px); }
         
+        .pdf-button { background-color: var(--admin-accent-red); color: white; font-weight: 600; padding: 0.8rem 1.5rem; border-radius: var(--radius-btn); transition: all 0.2s; display: inline-flex; align-items: center; }
+        .pdf-button:hover:not(:disabled) { background-color: #c53030; transform: translateY(-2px); }
+        
+        .png-button { background-color: var(--admin-accent-blue); color: white; font-weight: 600; padding: 0.8rem 1.5rem; border-radius: var(--radius-btn); transition: all 0.2s; display: inline-flex; align-items: center; }
+        .png-button:hover:not(:disabled) { background-color: #2b6cb0; transform: translateY(-2px); }
+
         .is-loading { position: relative; color: transparent !important; pointer-events: none; }
         .is-loading::after { content: ''; display: block; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; border: 3px solid rgba(26, 32, 44, 0.3); border-top-color: #1a202c; animation: spin 1s linear infinite; }
         html[data-theme='dark'] .is-loading::after { border-color: rgba(255, 255, 255, 0.3); border-top-color: #fff; }
         html[data-theme='lemon'] .is-loading::after { border-color: rgba(28, 25, 23, 0.3); border-top-color: #1c1917; }
-        .secondary-button.is-loading::after { border-color: color-mix(in srgb, var(--text-primary) 30%, transparent); border-top-color: var(--text-primary); }
+        .secondary-button.is-loading::after { border-color: var(--text-primary-transparent-30); border-top-color: var(--text-primary); }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         #toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem; }
@@ -209,26 +245,26 @@
         .stepper-item.active .border-2 { border-color: var(--accent); background-color: var(--accent); color: var(--bg-secondary); }
         .stepper-item.completed .border-2 { border-color: var(--green-accent); background-color: var(--green-accent); color: white; }
         
-        .is-superset { background-color: color-mix(in srgb, var(--accent) 8%, transparent); border-left: 4px solid var(--accent); }
+        .is-superset { background-color: var(--accent-transparent-8); border-left: 4px solid var(--accent); }
         .superset-btn.active { background-color: var(--accent) !important; color: var(--bg-secondary); }
 
-        .program-page { background-color: #ffffff; color: #111827; padding: 2rem; max-width: 800px; margin: auto; font-size: 14px; direction: rtl; }
-        .preview-section-header { font-size: 1.25rem; font-weight: bold; color: var(--accent); margin-bottom: 1rem; border-bottom: 2px solid #E5E5EA; padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
-        .preview-vitals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; background-color: #F9FAFB; padding: 1rem; border-radius: 12px; }
-        .preview-vitals-grid > div { display: flex; justify-content: space-between; padding: 0.5rem; border-bottom: 1px solid #E5E5EA; }
-        .preview-vitals-grid span { color: #6B7280; }
+        .program-page { background-color: var(--bg-secondary); color: var(--text-primary); padding: 2rem; max-width: 800px; margin: auto; font-size: 14px; direction: rtl; }
+        .preview-section-header { font-size: 1.25rem; font-weight: bold; color: var(--accent); margin-bottom: 1rem; border-bottom: 2px solid var(--border-primary); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .preview-vitals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; background-color: var(--bg-tertiary); padding: 1rem; border-radius: 12px; }
+        .preview-vitals-grid > div { display: flex; justify-content: space-between; padding: 0.5rem; border-bottom: 1px solid var(--border-primary); }
+        .preview-vitals-grid span { color: var(--text-secondary); }
         .preview-table-pro { border-collapse: collapse; text-align: right; width: 100%; }
-        .preview-table-pro th, .preview-table-pro td { padding: 0.75rem 1rem; border-bottom: 1px solid #E5E5EA; }
-        .preview-table-pro thead { background-color: #F9FAFB; }
-        .superset-group-pro { background-color: color-mix(in srgb, #a3e635 8%, transparent); }
-        .preview-notes-pro { background-color: #F9FAFB; padding: 1rem; border-radius: 12px; border-left: 4px solid var(--accent); }
-        .page-footer { text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #E5E5EA; color: #6B7280; font-size: 0.9rem; }
+        .preview-table-pro th, .preview-table-pro td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-primary); }
+        .preview-table-pro thead { background-color: var(--bg-tertiary); }
+        .superset-group-pro { background-color: var(--accent-transparent-8); }
+        .preview-notes-pro { background-color: var(--bg-tertiary); padding: 1rem; border-radius: 12px; border-left: 4px solid var(--accent); }
+        .page-footer { text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-primary); color: var(--text-secondary); font-size: 0.9rem; }
         
         .message { padding: 0.75rem 1.25rem; border-radius: 1.25rem; max-width: 80%; line-height: 1.5; }
         .user-message { background-color: var(--accent); color: var(--bg-secondary); border-bottom-right-radius: 0.5rem; align-self: flex-end; }
         .coach-message, .ai-message { background-color: var(--bg-tertiary); border-bottom-left-radius: 0.5rem; align-self: flex-start; }
         
-        .selected-card { border-color: var(--accent) !important; background-color: color-mix(in srgb, var(--accent) 10%, transparent) !important; }
+        .selected-card { border-color: var(--accent) !important; background-color: var(--accent-transparent-10) !important; }
         
         input[type=range].range-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: var(--range-track-bg); border-radius: 5px; outline: none; padding: 0; margin: 0; }
         input[type=range].range-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: white; border: 3px solid var(--accent); cursor: pointer; transition: transform 0.2s; }
@@ -372,7 +408,7 @@
         .status-badge.suspended { background-color: var(--status-revoked-bg); color: var(--status-revoked-text); }
         .status-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background-color: currentColor; }
         .admin-tab-button { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; color: var(--text-secondary); transition: all 0.2s; border: 2px solid transparent; }
-        .admin-tab-button.active-tab { color: var(--admin-accent-green); background-color: color-mix(in srgb, var(--admin-accent-green) 15%, transparent); }
+        .admin-tab-button.active-tab { color: var(--admin-accent-green); background-color: var(--admin-accent-green-transparent-15); }
         .admin-tab-content.hidden { display: none; }
         
         /* Custom radio buttons for user profile */
@@ -392,7 +428,7 @@
             font-weight: 700;
             border-color: var(--accent);
             transform: translateY(-2px);
-            box-shadow: 0 4px 10px color-mix(in srgb, var(--accent) 30%, transparent);
+            box-shadow: 0 4px 10px var(--accent-transparent-30);
         }
         html[data-theme='lemon'] .option-card-input:checked + .option-card-content {
             color: #1c1917;
@@ -485,7 +521,6 @@
         .user-dashboard-tab[data-target="store-content"] { --tab-color: #a855f7; } /* purple */
         .user-dashboard-tab[data-target="chat-content"] { --tab-color: #ec4899; } /* pink */
         
-        .user-dashboard-tab { color: color-mix(in srgb, var(--tab-color) 70%, var(--text-secondary)); }
         .user-dashboard-tab.active-spring-tab { color: var(--tab-color); }
 
         /* Coach Dashboard Tab Colors */
@@ -509,8 +544,8 @@
         }
         .exercise-row.highlight-exercise {
             outline: 2px solid var(--accent);
-            background-color: color-mix(in srgb, var(--accent) 15%, transparent) !important;
-            box-shadow: 0 0 15px color-mix(in srgb, var(--accent) 20%, transparent);
+            background-color: var(--accent-transparent-15) !important;
+            box-shadow: 0 0 15px var(--accent-transparent-20);
         }
         
         /* Student Selection Modal Enhancements */
@@ -528,13 +563,14 @@
             background-color: var(--bg-tertiary);
             transition: all 0.2s;
             border: 2px solid transparent;
+            cursor: pointer;
         }
         .filter-chip:hover {
             background-color: var(--border-primary);
         }
         .filter-chip.active {
             color: var(--accent);
-            background-color: color-mix(in srgb, var(--accent) 15%, transparent);
+            background-color: var(--accent-transparent-15);
             font-weight: 700;
         }
         .student-option-card {
@@ -546,12 +582,12 @@
             transform: translateY(-2px);
         }
         .student-option-card.needs-attention-highlight {
-            background-color: color-mix(in srgb, var(--accent) 8%, transparent);
-            border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+            background-color: var(--accent-transparent-8);
+            border-color: var(--accent-transparent-40);
         }
         .student-option-card.selected {
             border-color: var(--accent) !important;
-            box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+            box-shadow: 0 0 0 3px var(--accent-transparent-20);
         }
         .student-avatar {
             width: 40px;

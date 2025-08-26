@@ -12,6 +12,21 @@ let studentModalChartInstance: any = null;
 let currentSelectionTarget: HTMLElement | null = null;
 let exerciseToMuscleGroupMap: Record<string, string> = {};
 
+const getColorForName = (name: string) => {
+    const colors = [
+        '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
+        '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
+        '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e'
+    ];
+    if (!name) return colors[0];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash % colors.length);
+    return colors[index];
+};
+
 const getWeightChange = (userData: any) => {
     if (!userData.weightHistory || userData.weightHistory.length < 2) {
         return { change: 0, trend: 'neutral' };
@@ -381,12 +396,63 @@ const openStudentProfileModal = (username: string) => {
     const user = getUsers().find((u:any) => u.username === username);
 
     (modal.querySelector('#student-modal-name') as HTMLElement).textContent = userData.step1?.clientName || username;
-    (modal.querySelector('#student-modal-email') as HTMLElement).textContent = user.email;
-    (modal.querySelector('#student-modal-goal') as HTMLElement).textContent = userData.step1?.trainingGoal || 'تعیین نشده';
-    (modal.querySelector('#student-modal-age') as HTMLElement).textContent = (userData.step1?.age || 'N/A').toString();
-    (modal.querySelector('#student-modal-height') as HTMLElement).textContent = (userData.step1?.height || 'N/A').toString();
-    (modal.querySelector('#student-modal-weight') as HTMLElement).textContent = (userData.weightHistory?.slice(-1)[0]?.weight || userData.step1?.weight || 'N/A').toString();
-    (modal.querySelector('#student-modal-tdee') as HTMLElement).textContent = (Math.round(userData.step1?.tdee) || 'N/A').toString();
+    
+    const infoSidebar = modal.querySelector('.w-full.md\\:w-1\\/3') as HTMLElement;
+    const lastWeight = (userData.weightHistory?.slice(-1)[0]?.weight || userData.step1?.weight || null);
+    const height = userData.step1?.height;
+    const bmi = (height && lastWeight > 0) ? (lastWeight / ((height / 100) ** 2)) : null;
+
+    if (infoSidebar) {
+        infoSidebar.innerHTML = `
+            <div class="p-4 h-full flex flex-col">
+                <h4 class="font-bold mb-3">اطلاعات کلی</h4>
+                <div class="space-y-2 text-sm flex-grow">
+                    <div class="flex justify-between"><span>هدف:</span> <strong class="font-semibold">${userData.step1?.trainingGoal || 'تعیین نشده'}</strong></div>
+                    <div class="flex justify-between"><span>ایمیل:</span> <strong>${user.email}</strong></div>
+                    <div class="flex justify-between"><span>سن:</span> <strong>${(userData.step1?.age || 'N/A')}</strong></div>
+                    <div class="flex justify-between"><span>قد (cm):</span> <strong>${(userData.step1?.height || 'N/A')}</strong></div>
+                    <div class="flex justify-between"><span>وزن (kg):</span> <strong>${(lastWeight ? lastWeight.toFixed(1) : 'N/A')}</strong></div>
+                    <div class="flex justify-between"><span>TDEE:</span> <strong>${(Math.round(userData.step1?.tdee) || 'N/A')}</strong></div>
+                    ${bmi ? `
+                        <div class="mt-4 pt-4 border-t border-border-primary">
+                            <div class="flex justify-between items-center mb-1">
+                                <h3 class="font-semibold text-sm">شاخص توده بدنی (BMI)</h3>
+                                <span class="font-bold text-sm">${bmi.toFixed(1)}</span>
+                            </div>
+                            <div class="w-full bg-bg-tertiary rounded-full h-2.5 relative" title="آبی: کمبود وزن, سبز: نرمال, زرد: اضافه وزن, قرمز: چاقی">
+                                <div class="absolute top-0 left-0 h-full rounded-l-full bg-blue-500" style="width: 14%;"></div>
+                                <div class="absolute top-0 h-full bg-green-500" style="left: 14%; width: 26%;"></div>
+                                <div class="absolute top-0 h-full bg-yellow-500" style="left: 40%; width: 20%;"></div>
+                                <div class="absolute top-0 h-full rounded-r-full bg-red-500" style="left: 60%; width: 40%;"></div>
+                                <div id="bmi-indicator-coach" class="absolute -top-1 w-4 h-4 rounded-full bg-white border-2 border-accent shadow-lg transition-all duration-500 ease-out" style="left: -8px;"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-text-secondary mt-1 px-1">
+                                <span>۱۸.۵</span>
+                                <span>۲۵</span>
+                                <span>۳۰</span>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+                <button class="primary-button w-full mt-4 !text-sm">ارسال برنامه جدید</button>
+            </div>
+        `;
+
+        if (bmi) {
+            const bmiIndicator = document.getElementById('bmi-indicator-coach');
+            if (bmiIndicator) {
+                const minBmi = 15;
+                const maxBmi = 40;
+                let percentage = (bmi - minBmi) / (maxBmi - minBmi) * 100;
+                percentage = Math.max(0, Math.min(100, percentage));
+                setTimeout(() => {
+                    const offset = bmiIndicator.offsetWidth / 2;
+                    bmiIndicator.style.left = `calc(${percentage}% - ${offset}px)`;
+                }, 100);
+            }
+        }
+    }
+
 
     const programWrapper = modal.querySelector('#student-program-content-wrapper') as HTMLElement;
     const history = userData.programHistory || [];
@@ -647,26 +713,25 @@ const calculateMetricsFromData = (data: any) => {
 };
 
 const renderStudentInfoForBuilder = (username: string) => {
+    const selectionPrompt = document.getElementById('student-selection-prompt');
+    const builderMain = document.getElementById('program-builder-main');
     const infoDisplay = document.getElementById('student-info-display');
-    const placeholder = document.getElementById('student-info-placeholder');
-    const contextHeader = document.getElementById('builder-context-header');
-    const studentSelectBtn = document.getElementById('student-select-btn') as HTMLButtonElement;
-    const changeStudentBtn = document.getElementById('change-student-btn') as HTMLElement;
+    const builderStudentName = document.getElementById('builder-student-name');
     const aiDraftBtn = document.getElementById('ai-draft-btn') as HTMLButtonElement;
 
-
-    if (!infoDisplay || !placeholder || !contextHeader || !studentSelectBtn || !changeStudentBtn) return;
+    if (!selectionPrompt || !builderMain || !infoDisplay || !builderStudentName || !aiDraftBtn) return;
 
     if (!username) {
-        infoDisplay.classList.add('hidden');
-        placeholder.classList.remove('hidden');
-        contextHeader.classList.add('hidden');
+        selectionPrompt.classList.remove('hidden');
+        builderMain.classList.add('hidden');
         activeStudentUsername = null;
-        studentSelectBtn.disabled = false;
-        changeStudentBtn.classList.add('hidden');
-        if(aiDraftBtn) aiDraftBtn.disabled = true;
+        aiDraftBtn.disabled = true;
         return;
     }
+    
+    selectionPrompt.classList.add('hidden');
+    builderMain.classList.remove('hidden');
+    builderMain.classList.add('animate-fade-in');
 
     activeStudentUsername = username;
     const studentData = getUserData(username);
@@ -675,8 +740,7 @@ const renderStudentInfoForBuilder = (username: string) => {
     if (!step1) {
         infoDisplay.innerHTML = `<p class="text-text-secondary text-center p-8">اطلاعات پروفایل این شاگرد کامل نیست.</p>`;
         infoDisplay.classList.remove('hidden');
-        placeholder.classList.add('hidden');
-        if(aiDraftBtn) aiDraftBtn.disabled = true;
+        aiDraftBtn.disabled = true;
         return;
     }
 
@@ -771,14 +835,10 @@ const renderStudentInfoForBuilder = (username: string) => {
         </div>`;
 
     infoDisplay.classList.remove('hidden');
-    placeholder.classList.add('hidden');
 
-    (contextHeader.querySelector('span') as HTMLElement).textContent = step1?.clientName || username;
-    contextHeader.classList.remove('hidden');
-
-    studentSelectBtn.disabled = true;
-    changeStudentBtn.classList.remove('hidden');
-    if(aiDraftBtn) aiDraftBtn.disabled = false;
+    if(builderStudentName) builderStudentName.textContent = step1?.clientName || username;
+    
+    aiDraftBtn.disabled = false;
     window.lucide?.createIcons();
 };
 
@@ -981,7 +1041,6 @@ const openStudentSelectionModal = (target: HTMLElement) => {
     openModal(modal);
 };
 
-
 const openSelectionModal = (options: string[], title: string, target: HTMLElement) => {
     currentSelectionTarget = target;
     const modal = document.getElementById('selection-modal');
@@ -1065,9 +1124,9 @@ const renderStudentCards = (students: any[], containerId: string) => {
 
     if (students.length === 0) {
         if (containerId === 'needs-attention-grid') {
-             container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">هیچ شاگردی در حال حاضر منتظر برنامه نیست.</p>`;
+            container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">هیچ شاگردی در حال حاضر منتظر برنامه نیست.</p>`;
         } else {
-             container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">موردی برای نمایش وجود ندارد.</p>`;
+            container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">موردی برای نمایش یافت نشد.</p>`;
         }
         return;
     }
@@ -1077,46 +1136,65 @@ const renderStudentCards = (students: any[], containerId: string) => {
         const name = studentData.step1?.clientName || student.username;
         const goal = studentData.step1?.trainingGoal || 'بدون هدف';
         const latestPurchase = getLatestPurchase(studentData);
-        
+
         const streak = calculateWorkoutStreak(studentData.workoutHistory);
-        const lastActivity = getLastActivity(studentData);
+        const lastActivityFull = getLastActivity(studentData);
+        const [lastActivityVal, ...lastActivityUnitParts] = lastActivityFull.split(' ');
+        const lastActivityUnit = lastActivityUnitParts.join(' ');
+
         const weightChange = getWeightChange(studentData);
-        
+
+        const needsPlan = latestPurchase && latestPurchase.fulfilled === false;
+
         let statusHtml = '<span class="status-badge active !text-xs !py-0.5 !px-2">فعال</span>';
-        if (latestPurchase && latestPurchase.fulfilled === false) {
+        if (needsPlan) {
             statusHtml = `<span class="status-badge pending animate-pulse-accent !text-xs !py-0.5 !px-2">در انتظار برنامه</span>`;
         }
 
         const trendIcon = weightChange.trend === 'up' ? 'trending-up' : 'trending-down';
         const trendColor = weightChange.trend === 'up' ? 'text-green-500' : 'text-red-500';
 
+        const cardClasses = `student-card card p-5 flex flex-col gap-4 animate-fade-in transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+            needsPlan ? 'bg-accent/5 border-accent/40' : 'bg-bg-secondary'
+        }`;
+
         return `
-            <div class="student-card card p-4 flex flex-col gap-3 animate-fade-in transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-                <div class="flex justify-between items-start">
-                    <h3 class="font-bold text-lg">${name}</h3>
-                    ${statusHtml}
+            <div class="${cardClasses}">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-white" style="background-color: ${getColorForName(name)};">
+                        ${name.substring(0, 1).toUpperCase()}
+                    </div>
+                    <div class="flex-grow overflow-hidden">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-lg truncate">${name}</h3>
+                            ${statusHtml}
+                        </div>
+                        <p class="text-sm text-text-secondary truncate">${goal}</p>
+                    </div>
                 </div>
-                <p class="text-sm text-text-secondary flex-grow">${goal}</p>
                 
-                <div class="mt-auto pt-3 border-t border-border-primary space-y-2 text-sm">
-                    <div class="flex justify-between items-center text-text-secondary">
-                        <span class="flex items-center gap-1.5"><i data-lucide="flame" class="w-4 h-4 text-orange-400"></i> زنجیره</span>
-                        <span class="font-bold text-text-primary">${streak} روز</span>
+                <div class="grid grid-cols-3 gap-3 text-center text-sm py-3 my-2 border-y border-border-primary">
+                    <div>
+                        <p class="font-bold text-xl flex items-center justify-center gap-1.5">${streak} <i data-lucide="flame" class="w-4 h-4 text-orange-400"></i></p>
+                        <p class="text-xs text-text-secondary">زنجیره</p>
                     </div>
-                    <div class="flex justify-between items-center text-text-secondary">
-                        <span class="flex items-center gap-1.5"><i data-lucide="calendar-clock" class="w-4 h-4 text-blue-400"></i> آخرین فعالیت</span>
-                        <span class="font-bold text-text-primary">${lastActivity}</span>
+                    <div>
+                        <p class="font-bold text-xl">${lastActivityVal}</p>
+                        <p class="text-xs text-text-secondary">${lastActivityUnit}</p>
                     </div>
-                    ${weightChange.change !== 0 ? `
-                    <div class="flex justify-between items-center text-text-secondary">
-                        <span class="flex items-center gap-1.5"><i data-lucide="${trendIcon}" class="w-4 h-4 ${trendColor}"></i> تغییر وزن</span>
-                        <span class="font-bold ${trendColor}">${weightChange.change > 0 ? '+' : ''}${weightChange.change} kg</span>
+                    <div>
+                        <p class="font-bold text-xl flex items-center justify-center gap-1.5 ${weightChange.change !== 0 ? trendColor : ''}">
+                            ${weightChange.change !== 0 ? `<i data-lucide="${trendIcon}" class="w-4 h-4"></i>` : ''}
+                            ${weightChange.change >= 0 ? '+' : ''}${weightChange.change}kg
+                        </p>
+                        <p class="text-xs text-text-secondary">تغییر وزن</p>
                     </div>
-                    ` : ''}
                 </div>
 
-                <div class="mt-3 flex items-center gap-2">
-                    <button data-action="create-program" data-username="${student.username}" class="primary-button !py-2 !px-3 !text-sm flex-grow">ایجاد برنامه</button>
+                <div class="mt-auto flex items-center gap-2">
+                    <button data-action="create-program" data-username="${student.username}" class="${needsPlan ? 'primary-button' : 'secondary-button'} !py-2 !px-3 !text-sm flex-grow">
+                        ${needsPlan ? 'شروع ساخت برنامه' : 'ویرایش برنامه'}
+                    </button>
                     <button data-action="view-student" data-username="${student.username}" class="secondary-button !py-2 !px-3 !text-sm"><i data-lucide="user" class="w-4 h-4 pointer-events-none"></i></button>
                 </div>
             </div>
@@ -1124,6 +1202,18 @@ const renderStudentCards = (students: any[], containerId: string) => {
     }).join('');
     window.lucide?.createIcons();
 };
+
+const getLastActivityDate = (userData: any): string => {
+    const workoutDates = (userData.workoutHistory || []).map((h: any) => new Date(h.date).getTime());
+    const weightDates = (userData.weightHistory || []).map((h: any) => new Date(h.date).getTime());
+    const allDates = [...workoutDates, ...weightDates];
+    if (allDates.length === 0) {
+        return userData.joinDate || new Date(0).toISOString();
+    }
+    const lastTimestamp = Math.max(...allDates);
+    return new Date(lastTimestamp).toISOString();
+};
+
 
 export function initCoachDashboard(currentUser: string, handleLogout: () => void) {
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
@@ -1186,10 +1276,6 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         if (action === "create-program" && username) {
             (document.querySelector('.coach-dashboard-tab[data-target="builder-content"]') as HTMLElement).click();
             resetProgramBuilder();
-            const studentSelectBtn = document.getElementById('student-select-btn') as HTMLButtonElement;
-            const studentData = getUserData(username);
-            studentSelectBtn.dataset.value = username;
-            (studentSelectBtn.querySelector('span') as HTMLElement).textContent = studentData.step1?.clientName || username;
             renderStudentInfoForBuilder(username);
         }
 
@@ -1464,12 +1550,9 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         }
 
         const studentOptionBtn = target.closest('.student-option-btn');
-        if (studentOptionBtn && currentSelectionTarget && currentSelectionTarget.id === 'student-select-btn') {
+        if (studentOptionBtn && currentSelectionTarget) {
             const username = (studentOptionBtn as HTMLElement).dataset.username;
-            const studentName = (studentOptionBtn.querySelector('.student-name') as HTMLElement).textContent;
-            if (username && studentName) {
-                currentSelectionTarget.dataset.value = username;
-                (currentSelectionTarget.querySelector('span') as HTMLElement).textContent = studentName;
+            if (username) {
                 renderStudentInfoForBuilder(username);
             }
             closeModal(selectionModal);
@@ -1506,7 +1589,42 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
 
 export function renderCoachDashboard() {
     const daysOfWeek = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
+    const allStudents = getUsers().filter((u: any) => u.role === 'user');
+    const studentsNeedingPlan = getStudentsNeedingAttention(allStudents).length;
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const activeStudents = allStudents.filter(s => {
+        const userData = getUserData(s.username);
+        const lastActivityTimestamp = new Date(getLastActivityDate(userData)).getTime();
+        return lastActivityTimestamp > oneWeekAgo;
+    }).length;
+    const activeRate = allStudents.length > 0 ? Math.round((activeStudents / allStudents.length) * 100) : 0;
     
+    const coachKpisHtml = `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="info-card flex items-center p-5 gap-4">
+            <div class="bg-blue-500/10 text-blue-500 p-3 rounded-full"><i data-lucide="users" class="w-7 h-7"></i></div>
+            <div>
+                <p class="text-3xl font-bold">${allStudents.length}</p>
+                <p class="text-text-secondary">کل شاگردان</p>
+            </div>
+        </div>
+        <div class="info-card flex items-center p-5 gap-4">
+            <div class="bg-orange-500/10 text-orange-500 p-3 rounded-full"><i data-lucide="alert-circle" class="w-7 h-7"></i></div>
+            <div>
+                <p class="text-3xl font-bold">${studentsNeedingPlan}</p>
+                <p class="text-text-secondary">در انتظار برنامه</p>
+            </div>
+        </div>
+        <div class="info-card flex items-center p-5 gap-4">
+            <div class="bg-green-500/10 text-green-500 p-3 rounded-full"><i data-lucide="activity" class="w-7 h-7"></i></div>
+            <div>
+                <p class="text-3xl font-bold">${activeRate}%</p>
+                <p class="text-text-secondary">نرخ فعالیت (۷ روز)</p>
+            </div>
+        </div>
+    </div>
+    `;
+
     return `
     <div id="coach-dashboard-container" class="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto transition-opacity duration-500 opacity-0">
         <div id="impersonation-banner-placeholder"></div>
@@ -1529,6 +1647,7 @@ export function renderCoachDashboard() {
         </div>
 
         <div id="students-content" class="coach-tab-content animate-fade-in-up">
+            ${coachKpisHtml}
             <div id="needs-attention-container" class="mb-8">
                 <h2 class="text-xl font-bold mb-4">نیازمند توجه</h2>
                 <div class="p-4 rounded-xl bg-accent/10">
@@ -1552,97 +1671,111 @@ export function renderCoachDashboard() {
         </div>
 
         <div id="builder-content" class="coach-tab-content hidden">
-            <div class="card p-4 md:p-6 mb-6">
-                <label for="student-select-btn" class="block font-bold mb-2">۱. انتخاب شاگرد</label>
-                <div class="flex items-center gap-2">
-                    <button type="button" id="student-select-btn" class="selection-button input-field flex-grow text-right justify-between">
-                        <span class="truncate">یک شاگرد را انتخاب کنید...</span>
-                        <i data-lucide="chevron-down" class="w-4 h-4 text-text-secondary"></i>
-                    </button>
-                    <button id="change-student-btn" class="secondary-button hidden"><i data-lucide="rotate-cw" class="w-4 h-4"></i></button>
-                </div>
-            </div>
-
-            <div id="program-builder-container" class="card p-4 md:p-6">
-                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-6">
-                    <div id="builder-context-header" class="hidden p-2 bg-bg-tertiary rounded-lg text-sm font-semibold">
-                        در حال ساخت برنامه برای: <span></span>
+            <div id="builder-wrapper">
+                <div id="student-selection-prompt">
+                    <div class="card text-center p-8 md:p-12 animate-fade-in">
+                        <div class="w-20 h-20 bg-accent/10 text-accent rounded-full mx-auto flex items-center justify-center mb-6">
+                            <i data-lucide="user-plus" class="w-10 h-10"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold mb-2">ساخت برنامه جدید</h2>
+                        <p class="text-text-secondary max-w-md mx-auto mb-8">برای شروع، ابتدا یک شاگرد را از لیست انتخاب کنید تا بتوانید برنامه تمرینی و غذایی شخصی‌سازی شده برای او ایجاد کنید.</p>
+                        <button type="button" id="student-select-btn" class="primary-button !text-lg !px-8 !py-3">
+                            <i data-lucide="users" class="w-5 h-5 ml-2"></i>
+                            انتخاب از لیست شاگردان
+                        </button>
                     </div>
-                    <button id="ai-draft-btn" class="primary-button flex items-center gap-2" disabled>
-                        <i data-lucide="sparkles" class="w-4 h-4"></i> ایجاد پیش‌نویس با AI
-                    </button>
                 </div>
 
-                <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
-                    ${[ "اطلاعات شاگرد", "برنامه تمرینی", "برنامه مکمل", "بازبینی و ارسال"].map((title, i) => `
-                        <div class="stepper-item" data-step="${i+1}">
-                           <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm">${i+1}</div>
-                           <span class="hidden md:inline">${title}</span>
-                        </div>
-                        ${i < 3 ? `<div class="flex-grow h-0.5 bg-border-primary mx-2"></div>` : ''}
-                    `).join('')}
-                </div>
-
-                <div id="step-content-1" class="step-content">
-                    <div id="student-info-display" class="hidden"></div>
-                    <div id="student-info-placeholder"><p class="text-text-secondary text-center p-8">برای مشاهده اطلاعات، یک شاگرد را از لیست بالا انتخاب کنید.</p></div>
-                </div>
-                <div id="step-content-2" class="step-content hidden">
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="lg:col-span-2 space-y-4">
-                            <h3 class="text-lg font-bold">۲. طراحی برنامه تمرینی</h3>
-                            <div class="space-y-4">
-                                ${daysOfWeek.map(day => `<details id="day-card-${day}" class="day-card card !shadow-none !border p-3"><summary class="font-bold cursor-pointer flex justify-between items-center"><span>${day}</span><i data-lucide="chevron-down" class="details-arrow"></i></summary><div class="exercises-container space-y-2 mt-4"></div><button class="add-exercise-btn secondary-button mt-4 !text-sm !py-2"><i data-lucide="plus" class="w-4 h-4"></i> افزودن حرکت</button></details>`).join('')}
+                <div id="program-builder-main" class="hidden">
+                     <div class="card p-4 md:p-6 mb-6">
+                         <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                            <div id="builder-context-header" class="p-2 bg-bg-tertiary rounded-lg text-sm font-semibold flex items-center gap-2">
+                                <i data-lucide="user-check" class="w-4 h-4 text-accent"></i>
+                                <span>در حال ساخت برنامه برای: </span>
+                                <strong id="builder-student-name"></strong>
                             </div>
+                             <button id="change-student-btn" class="secondary-button !text-sm"><i data-lucide="users" class="w-4 h-4 mr-2"></i> تغییر شاگرد</button>
+                         </div>
+                    </div>
+                    <div id="program-builder-steps-container" class="card p-4 md:p-6">
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-6">
+                            <h3 class="text-lg font-bold">مراحل ساخت برنامه</h3>
+                            <button id="ai-draft-btn" class="primary-button flex items-center gap-2" disabled>
+                                <i data-lucide="sparkles" class="w-4 h-4"></i> ایجاد پیش‌نویس با AI
+                            </button>
                         </div>
-                        <div class="lg:col-span-1">
-                            <div id="volume-analysis-container" class="card !shadow-none !border p-4 sticky top-6">
-                                <h4 class="font-bold mb-3">تحلیل حجم تمرین</h4>
-                                <div id="volume-analysis-content" class="space-y-2 text-sm">
-                                    <p class="text-text-secondary">با افزودن حرکات، حجم تمرین هفتگی برای هر گروه عضلانی در اینجا نمایش داده می‌شود.</p>
+
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+                            ${[ "اطلاعات شاگرد", "برنامه تمرینی", "برنامه مکمل", "بازبینی و ارسال"].map((title, i) => `
+                                <div class="stepper-item" data-step="${i+1}">
+                                   <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm">${i+1}</div>
+                                   <span class="hidden md:inline">${title}</span>
+                                </div>
+                                ${i < 3 ? `<div class="flex-grow h-0.5 bg-border-primary mx-2"></div>` : ''}
+                            `).join('')}
+                        </div>
+
+                        <div id="step-content-1" class="step-content">
+                            <div id="student-info-display" class="hidden"></div>
+                        </div>
+                        <div id="step-content-2" class="step-content hidden">
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div class="lg:col-span-2 space-y-4">
+                                    <h3 class="text-lg font-bold">۲. طراحی برنامه تمرینی</h3>
+                                    <div class="space-y-4">
+                                        ${daysOfWeek.map(day => `<details id="day-card-${day}" class="day-card card !shadow-none !border p-3"><summary class="font-bold cursor-pointer flex justify-between items-center"><span>${day}</span><i data-lucide="chevron-down" class="details-arrow"></i></summary><div class="exercises-container space-y-2 mt-4"></div><button class="add-exercise-btn secondary-button mt-4 !text-sm !py-2"><i data-lucide="plus" class="w-4 h-4"></i> افزودن حرکت</button></details>`).join('')}
+                                    </div>
+                                </div>
+                                <div class="lg:col-span-1">
+                                    <div id="volume-analysis-container" class="card !shadow-none !border p-4 sticky top-6">
+                                        <h4 class="font-bold mb-3">تحلیل حجم تمرین</h4>
+                                        <div id="volume-analysis-content" class="space-y-2 text-sm">
+                                            <p class="text-text-secondary">با افزودن حرکات، حجم تمرین هفتگی برای هر گروه عضلانی در اینجا نمایش داده می‌شود.</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div id="step-content-3" class="step-content hidden">
-                    <h3 class="text-lg font-bold mb-4">۳. طراحی برنامه مکمل</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="md:col-span-1 space-y-4">
-                             <h4 class="font-semibold">افزودن مکمل</h4>
-                             <button type="button" id="supplement-category-select-btn" class="selection-button input-field w-full text-right justify-start" data-type="supplement-category"><span class="truncate">دسته را انتخاب کنید</span></button>
-                             <button type="button" id="supplement-name-select-btn" class="selection-button input-field w-full text-right justify-start" data-type="supplement-name" disabled><span class="truncate">مکمل را انتخاب کنید</span></button>
-                             <button id="add-supplement-btn" class="primary-button w-full">افزودن</button>
-                        </div>
-                        <div id="added-supplements-container" class="md:col-span-2 space-y-2">
-                            <p class="text-text-secondary text-center p-4">مکمل‌های انتخابی در اینجا نمایش داده می‌شوند.</p>
-                        </div>
-                    </div>
-                </div>
-                <div id="step-content-4" class="step-content hidden">
-                    <h3 class="text-lg font-bold mb-4">۴. بازبینی و ارسال</h3>
-                    <div class="space-y-4">
-                        <div>
-                           <label for="coach-notes-final" class="font-semibold text-sm mb-2 block">یادداشت نهایی برای شاگرد</label>
-                           <textarea id="coach-notes-final" class="input-field w-full min-h-[100px]" placeholder="مثلا: قبل از تمرین حتما گرم کنید..."></textarea>
-                        </div>
-                        <div id="program-preview-for-export" class="border border-border-primary rounded-lg"></div>
-                        <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mt-4 pt-4 border-t border-border-primary">
-                            <div class="flex items-center gap-2">
-                                <button id="export-program-img-btn" class="secondary-button !text-sm"><i data-lucide="image" class="w-4 h-4 ml-2"></i> ذخیره عکس</button>
-                                <button id="export-program-pdf-btn" class="secondary-button !text-sm"><i data-lucide="file-down" class="w-4 h-4 ml-2"></i> ذخیره PDF</button>
+                        <div id="step-content-3" class="step-content hidden">
+                            <h3 class="text-lg font-bold mb-4">۳. طراحی برنامه مکمل</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="md:col-span-1 space-y-4">
+                                     <h4 class="font-semibold">افزودن مکمل</h4>
+                                     <button type="button" id="supplement-category-select-btn" class="selection-button input-field w-full text-right justify-start" data-type="supplement-category"><span class="truncate">دسته را انتخاب کنید</span></button>
+                                     <button type="button" id="supplement-name-select-btn" class="selection-button input-field w-full text-right justify-start" data-type="supplement-name" disabled><span class="truncate">مکمل را انتخاب کنید</span></button>
+                                     <button id="add-supplement-btn" class="primary-button w-full">افزودن</button>
+                                </div>
+                                <div id="added-supplements-container" class="md:col-span-2 space-y-2">
+                                    <p class="text-text-secondary text-center p-4">مکمل‌های انتخابی در اینجا نمایش داده می‌شوند.</p>
+                                </div>
                             </div>
-                            <button id="finish-program-btn" class="primary-button w-full sm:w-auto !py-3 !text-base">پایان و ارسال برنامه</button>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="flex justify-between items-center mt-6 pt-4 border-t border-border-primary">
-                    <div><button id="save-as-template-btn" class="secondary-button"><i data-lucide="save" class="w-4 h-4 ml-2"></i> ذخیره به عنوان الگو</button></div>
-                    <div class="flex gap-2">
-                        <button id="prev-step-btn" class="secondary-button">قبلی</button>
-                        <button id="next-step-btn" class="primary-button">بعدی</button>
+                        <div id="step-content-4" class="step-content hidden">
+                            <h3 class="text-lg font-bold mb-4">۴. بازبینی و ارسال</h3>
+                            <div class="space-y-4">
+                                <div>
+                                   <label for="coach-notes-final" class="font-semibold text-sm mb-2 block">یادداشت نهایی برای شاگرد</label>
+                                   <textarea id="coach-notes-final" class="input-field w-full min-h-[100px]" placeholder="مثلا: قبل از تمرین حتما گرم کنید..."></textarea>
+                                </div>
+                                <div id="program-preview-for-export" class="border border-border-primary rounded-lg"></div>
+                                <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mt-4 pt-4 border-t border-border-primary">
+                                    <div class="flex items-center gap-2">
+                                        <button id="export-program-img-btn" class="secondary-button !text-sm"><i data-lucide="image" class="w-4 h-4 ml-2"></i> ذخیره عکس</button>
+                                        <button id="export-program-pdf-btn" class="secondary-button !text-sm"><i data-lucide="file-down" class="w-4 h-4 ml-2"></i> ذخیره PDF</button>
+                                    </div>
+                                    <button id="finish-program-btn" class="primary-button w-full sm:w-auto !py-3 !text-base">پایان و ارسال برنامه</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center mt-6 pt-4 border-t border-border-primary">
+                            <div><button id="save-as-template-btn" class="secondary-button"><i data-lucide="save" class="w-4 h-4 ml-2"></i> ذخیره به عنوان الگو</button></div>
+                            <div class="flex gap-2">
+                                <button id="prev-step-btn" class="secondary-button">قبلی</button>
+                                <button id="next-step-btn" class="primary-button">بعدی</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1656,7 +1789,7 @@ export function renderCoachDashboard() {
         <div class="card w-full max-w-4xl transform scale-95 transition-transform duration-300 relative flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0"><h3 id="student-modal-name" class="font-bold text-xl"></h3><button id="close-student-modal-btn" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button></div>
             <div class="flex-grow flex flex-col md:flex-row overflow-hidden">
-                <div class="w-full md:w-1/3 p-4 border-b md:border-b-0 md:border-l border-border-primary flex-shrink-0"><h4 class="font-bold mb-3">اطلاعات کلی</h4><div class="space-y-2 text-sm"><div class="flex justify-between"><span>هدف:</span> <strong id="student-modal-goal" class="font-semibold"></strong></div><div class="flex justify-between"><span>ایمیل:</span> <strong id="student-modal-email"></strong></div><div class="flex justify-between"><span>سن:</span> <strong id="student-modal-age"></strong></div><div class="flex justify-between"><span>قد (cm):</span> <strong id="student-modal-height"></strong></div><div class="flex justify-between"><span>وزن (kg):</span> <strong id="student-modal-weight"></strong></div><div class="flex justify-between"><span>TDEE:</span> <strong id="student-modal-tdee"></strong></div></div><button class="primary-button w-full mt-4 !text-sm">ارسال برنامه جدید</button></div>
+                <div class="w-full md:w-1/3 border-b md:border-b-0 md:border-l border-border-primary flex-shrink-0"></div>
                 <div class="flex-grow p-4 overflow-y-auto">
                     <div class="flex items-center gap-1 bg-bg-tertiary p-1 rounded-lg mb-4"><button class="student-modal-tab admin-tab-button flex-1" data-target="student-program-content">برنامه تمرینی</button><button class="student-modal-tab admin-tab-button flex-1" data-target="student-progress-content">روند پیشرفت</button><button class="student-modal-tab admin-tab-button flex-1" data-target="student-chat-content">گفتگو</button></div>
                     <div id="student-program-content" class="student-modal-content"><div id="student-program-content-wrapper"></div></div>
@@ -1679,7 +1812,7 @@ export function renderCoachDashboard() {
     
     <!-- Selection Modal -->
     <div id="selection-modal" class="modal fixed inset-0 bg-black/60 z-[101] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-2xl h-[80vh] transform scale-95 transition-transform duration-300 relative flex flex-col">
+        <div class="card w-full max-w-4xl h-[80vh] transform scale-95 transition-transform duration-300 relative flex flex-col">
             <div class="selection-modal-header p-4 border-b border-border-primary flex-shrink-0">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="selection-modal-title font-bold text-xl"></h2>

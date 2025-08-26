@@ -1,11 +1,51 @@
-import { getUserData, saveUserData, addActivityLog, getCart, saveCart, getDiscounts, getNotifications, clearNotification, setNotification } from '../services/storage';
+import { getUserData, saveUserData, addActivityLog, getCart, saveCart, getDiscounts, getNotifications, clearNotification, setNotification, getStorePlans } from '../services/storage';
 import { getTodayWorkoutData, calculateBodyMetrics, calculateWorkoutStreak } from '../utils/calculations';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement } from '../utils/dom';
 import { setWeightChartInstance, getWeightChartInstance } from '../state';
 import { generateNutritionPlan } from '../services/gemini';
 import { sanitizeHTML } from '../utils/dom';
-import { STORE_PLANS } from '../config';
 import { formatPrice } from '../utils/helpers';
+
+let weightLogCountdownInterval: number | null = null;
+
+const startWeightCountdown = (currentUser: string) => {
+    if (weightLogCountdownInterval) clearInterval(weightLogCountdownInterval);
+    
+    const countdownContainer = document.getElementById('weight-log-countdown');
+    if (!countdownContainer) return;
+    
+    const nextLogTimestamp = parseInt(countdownContainer.dataset.nextLogTimestamp || '0', 10);
+    if (!nextLogTimestamp || nextLogTimestamp < Date.now()) {
+        const freshData = getUserData(currentUser);
+        renderBodyMetricsCard(freshData, 'body-metrics-container');
+        return;
+    };
+
+    const update = () => {
+        const remaining = nextLogTimestamp - Date.now();
+        const timerTextEl = document.getElementById('countdown-timer-text');
+        
+        if (remaining <= 0) {
+            clearInterval(weightLogCountdownInterval!);
+            weightLogCountdownInterval = null;
+            const freshData = getUserData(currentUser);
+            renderBodyMetricsCard(freshData, 'body-metrics-container');
+            return;
+        }
+
+        const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+        
+        if (timerTextEl) {
+             timerTextEl.textContent = `${days} روز و ${hours} ساعت و ${minutes} دقیقه و ${seconds} ثانیه`;
+        }
+    };
+    update();
+    weightLogCountdownInterval = window.setInterval(update, 1000);
+}
+
 
 export const updateUserNotifications = (currentUser: string) => {
     const notifications = getNotifications(currentUser);
@@ -29,90 +69,121 @@ export const updateUserNotifications = (currentUser: string) => {
     });
 };
 
-const renderFullProgram = (userData: any) => {
-    const container = document.getElementById('full-program-container');
-    const notesContainer = document.getElementById('program-notes');
-    const supplementsContainer = document.getElementById('program-supplements');
-    const actionsContainer = document.getElementById('program-actions');
+const calculateUserMetrics = (data: any) => {
+    if (!data || !data.age || !data.height || !data.weight || !data.gender) {
+        return {};
+    }
 
-    if (!container || !notesContainer || !actionsContainer || !supplementsContainer) return;
+    const s = parseFloat(String(data.age)),
+        r = parseFloat(String(data.height)),
+        a = parseFloat(String(data.weight)),
+        n = data.gender,
+        c = parseFloat(String(data.neck)),
+        g = parseFloat(String(data.waist)),
+        x = parseFloat(String(data.hip));
+
+    const isMale = n === "مرد";
+    const heightInMeters = r / 100;
+
+    let bmi = 0;
+    if (heightInMeters > 0) {
+        bmi = a / (heightInMeters * heightInMeters);
+    }
+    const bmr = isMale ? 10 * a + 6.25 * r - 5 * s + 5 : 10 * a + 6.25 * r - 5 * s - 161;
+    const tdee = bmr * (parseFloat(String(data.activityLevel)) || 1.55);
+
+    let bodyFat = 0;
+    if (!isNaN(c) && !isNaN(g) && c > 0 && g > 0 && r > 0) {
+        if (isMale) {
+            bodyFat = 86.01 * Math.log10(g - c) - 70.041 * Math.log10(r) + 36.76;
+        } else if (!isNaN(x) && x > 0) {
+            bodyFat = 163.205 * Math.log10(g + x - c) - 97.684 * Math.log10(r) - 78.387;
+        }
+    }
+
+    const lbm = bodyFat > 0 && bodyFat < 100 ? a * (1 - bodyFat / 100) : null;
+
+    return {
+        bmi: bmi ? bmi.toFixed(1) : 'N/A',
+        bmr: bmr ? Math.round(bmr) : 'N/A',
+        tdee: tdee ? String(Math.round(tdee)) : 'N/A',
+        bodyFat: (bodyFat > 0 && bodyFat < 100) ? bodyFat.toFixed(1) : 'N/A',
+        lbm: lbm ? lbm.toFixed(1) : 'N/A'
+    };
+};
+
+
+const renderUnifiedProgramView = (userData: any) => {
+    const container = document.getElementById('program-content');
+    if (!container) return;
 
     if (!userData.step2 || !userData.step2.days || userData.step2.days.length === 0) {
         container.innerHTML = `<div class="card p-8 text-center text-text-secondary"><i data-lucide="folder-x" class="w-12 h-12 mx-auto mb-4"></i><p>هنوز برنامه‌ای برای شما ثبت نشده است. مربی شما به زودی برنامه را ارسال خواهد کرد.</p></div>`;
-        notesContainer.innerHTML = '';
-        supplementsContainer.innerHTML = '';
-        actionsContainer.innerHTML = '';
         window.lucide?.createIcons();
         return;
     }
-    
-    actionsContainer.innerHTML = `
-        <button id="save-program-img-btn" class="secondary-button !text-sm"><i data-lucide="image" class="w-4 h-4 ml-2"></i> ذخیره عکس</button>
-        <button id="save-program-pdf-btn" class="secondary-button !text-sm"><i data-lucide="file-down" class="w-4 h-4 ml-2"></i> ذخیره PDF</button>
+
+    const { step1: student, step2: workout, supplements } = userData;
+    const metrics = calculateUserMetrics(student);
+
+    container.innerHTML = `
+        <div class="program-page mx-auto bg-bg-secondary rounded-xl shadow-lg" id="unified-program-view">
+             <div class="p-4 md:p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">برنامه اختصاصی FitGym Pro</h2>
+                    <p class="font-semibold">${new Date().toLocaleDateString('fa-IR')}</p>
+                </div>
+
+                <h3 class="preview-section-header"><i data-lucide="user-check"></i> اطلاعات شما</h3>
+                <div class="preview-vitals-grid">
+                    <div><span>نام:</span> <strong>${student.clientName || 'N/A'}</strong></div>
+                    <div><span>هدف:</span> <strong>${student.trainingGoal || 'N/A'}</strong></div>
+                    <div><span>سن:</span> <strong>${student.age || 'N/A'}</strong></div>
+                    <div><span>قد:</span> <strong>${student.height || 'N/A'} cm</strong></div>
+                    <div><span>وزن:</span> <strong>${student.weight || 'N/A'} kg</strong></div>
+                    <div><span>TDEE:</span> <strong>${metrics.tdee || 'N/A'} kcal</strong></div>
+                </div>
+
+                <h3 class="preview-section-header mt-6"><i data-lucide="clipboard-list"></i> برنامه تمرینی</h3>
+                <div class="space-y-4">
+                ${(workout.days || []).filter((d: any) => d.exercises && d.exercises.length > 0).map((day: any) => `
+                    <div>
+                        <h4 class="font-bold mb-2">${day.name}</h4>
+                        <table class="preview-table-pro">
+                            <thead><tr><th>حرکت</th><th>ست</th><th>تکرار</th><th>استراحت</th></tr></thead>
+                            <tbody>
+                            ${(day.exercises || []).map((ex: any) => `<tr class="${ex.is_superset ? 'superset-group-pro' : ''}"><td>${ex.name}</td><td>${ex.sets}</td><td>${ex.reps}</td><td>${ex.rest}s</td></tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `).join('')}
+                </div>
+                
+                ${supplements && supplements.length > 0 ? `
+                <h3 class="preview-section-header mt-6"><i data-lucide="pill"></i> برنامه مکمل</h3>
+                <table class="preview-table-pro">
+                    <thead><tr><th>مکمل</th><th>دوز</th><th>زمان</th><th>یادداشت</th></tr></thead>
+                    <tbody>
+                        ${supplements.map((sup: any) => `<tr><td>${sup.name}</td><td>${sup.dosage}</td><td>${sup.timing}</td><td>${sup.notes || '-'}</td></tr>`).join('')}
+                    </tbody>
+                </table>
+                ` : ''}
+
+                ${workout.notes ? `
+                <h3 class="preview-section-header mt-6"><i data-lucide="file-text"></i> یادداشت مربی</h3>
+                <div class="preview-notes-pro">${workout.notes.replace(/\n/g, '<br>')}</div>
+                ` : ''}
+                
+                <footer class="page-footer">ارائه شده توسط FitGym Pro - مربی شما: ${student.coachName || 'مربی'}</footer>
+            </div>
+        </div>
+        <div class="flex justify-center items-center gap-4 mt-6">
+            <button id="save-program-img-btn" class="png-button"><i data-lucide="image" class="w-4 h-4 ml-2"></i> ذخیره عکس</button>
+            <button id="save-program-pdf-btn" class="pdf-button"><i data-lucide="file-down" class="w-4 h-4 ml-2"></i> ذخیره PDF</button>
+        </div>
     `;
 
-    const todayWorkoutData = getTodayWorkoutData(userData);
-
-    container.innerHTML = userData.step2.days.map((day: any, index: number) => {
-        const isToday = todayWorkoutData && todayWorkoutData.dayIndex === index;
-        const hasExercises = day.exercises && day.exercises.length > 0;
-
-        return `
-        <details class="day-card card !shadow-none !border" ${isToday ? 'open' : ''}>
-            <summary class="font-bold cursor-pointer flex justify-between items-center p-3">
-                <div class="flex items-center gap-2">
-                    <span>${day.name}</span>
-                    ${isToday && hasExercises ? '<span class="text-xs bg-accent text-black font-bold px-2 py-0.5 rounded-full">امروز</span>' : ''}
-                    ${!hasExercises ? '<span class="text-xs bg-bg-tertiary text-text-secondary font-semibold px-2 py-0.5 rounded-full">استراحت</span>' : ''}
-                </div>
-                <i data-lucide="chevron-down" class="details-arrow"></i>
-            </summary>
-            ${hasExercises ? `
-            <div class="p-3 border-t border-border-primary">
-                <div class="space-y-2">
-                    ${day.exercises.map((ex: any) => `
-                        <div class="p-2 rounded-lg ${ex.is_superset ? 'is-superset' : 'bg-bg-tertiary/50'}">
-                            <p class="font-semibold">${ex.name}</p>
-                            <div class="flex items-center gap-4 text-sm text-text-secondary mt-1">
-                                <span><span class="font-semibold">${ex.sets}</span> ست</span>
-                                <span><span class="font-semibold">${ex.reps}</span> تکرار</span>
-                                <span><span class="font-semibold">${ex.rest}</span> ثانیه استراحت</span>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-                ${isToday ? `<button class="primary-button w-full mt-4" data-action="log-workout" data-day-index="${index}">ثبت تمرین امروز</button>` : ''}
-            </div>
-            ` : ''}
-        </details>
-        `;
-    }).join('');
-
-    if (userData.step2.notes) {
-        notesContainer.innerHTML = `<h4 class="font-bold mb-2">یادداشت مربی:</h4><p class="text-text-secondary">${userData.step2.notes}</p>`;
-    } else {
-        notesContainer.innerHTML = '';
-    }
-
-    if (userData.supplements && userData.supplements.length > 0) {
-        supplementsContainer.innerHTML = `
-            <h4 class="font-bold mb-2 mt-6 border-t border-border-primary pt-4">برنامه مکمل</h4>
-            <div class="space-y-2">
-            ${userData.supplements.map((sup: any) => `
-                <div class="p-2 bg-bg-tertiary/50 rounded-lg">
-                    <p class="font-bold text-sm">${sup.name}</p>
-                    <p class="text-xs text-text-secondary">${sup.dosage} - ${sup.timing}</p>
-                    ${sup.notes ? `<p class="text-xs italic text-text-secondary mt-1">یادداشت: ${sup.notes}</p>` : ''}
-                </div>
-            `).join('')}
-            </div>
-        `;
-    } else {
-        supplementsContainer.innerHTML = '';
-    }
-
-
-    window.lucide?.createIcons();
+    window.lucide.createIcons();
 };
 
 const openWorkoutLogModal = (dayData: any, dayIndex: number, currentUser: string) => {
@@ -154,58 +225,108 @@ const openWorkoutLogModal = (dayData: any, dayIndex: number, currentUser: string
     window.lucide?.createIcons();
 };
 
+const getWorkoutsThisWeek = (history: any[] = []): number => {
+    if (!history) return 0;
+    const now = new Date();
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1))); // Assuming Monday is the start of the week
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const workoutDatesThisWeek = history
+        .map(log => new Date(log.date))
+        .filter(date => date >= startOfWeek);
+        
+    const uniqueDays = new Set(workoutDatesThisWeek.map(date => date.toDateString()));
+    return uniqueDays.size;
+};
+
 const renderDashboardTab = (currentUser: string, userData: any) => {
-    const greetingEl = document.getElementById('user-greeting');
-    if (greetingEl) {
-        greetingEl.textContent = `سلام، ${userData.step1?.clientName || currentUser}!`;
-    }
+    const dashboardContentEl = document.getElementById('dashboard-content');
+    if (!dashboardContentEl) return;
 
-    const todayWorkoutContainer = document.getElementById('today-workout-card-container');
-    if (todayWorkoutContainer) {
-        const todayData = getTodayWorkoutData(userData);
-        if (todayData && todayData.day.exercises.length > 0) {
-            todayWorkoutContainer.innerHTML = `
-                <div class="card p-4">
-                    <h3 class="font-bold text-lg mb-3">تمرین امروز</h3>
-                    <div class="p-3 rounded-lg bg-bg-tertiary">
-                        <p class="font-semibold">${todayData.day.name}</p>
-                        <p class="text-sm text-text-secondary">${todayData.day.exercises.length} حرکت</p>
-                    </div>
-                    <button class="primary-button w-full mt-4" data-action="log-workout" data-day-index="${todayData.dayIndex}">شروع تمرین</button>
-                </div>
-            `;
-        } else {
-            todayWorkoutContainer.innerHTML = `
-                <div class="card p-4">
-                    <h3 class="font-bold text-lg mb-3 flex items-center gap-2"><i data-lucide="coffee" class="text-accent"></i> امروز روز استراحت است</h3>
-                    <p class="text-text-secondary">از ریکاوری لذت ببرید! بدن شما برای رشد به استراحت نیاز دارد.</p>
-                </div>
-            `;
-        }
-    }
-    
-    const kpiIDs = ['streak', 'total', 'weight', 'bmi'];
-    const kpiData = {
-        streak: calculateWorkoutStreak(userData.workoutHistory),
-        total: (userData.workoutHistory || []).length,
-        weight: '۰',
-        bmi: '۰'
-    };
-    
+    const name = userData.step1?.clientName || currentUser;
+    const streak = calculateWorkoutStreak(userData.workoutHistory);
+    const totalWorkouts = (userData.workoutHistory || []).length;
     const lastWeight = (userData.weightHistory && userData.weightHistory.length > 0) ? userData.weightHistory.slice(-1)[0].weight : (userData.step1?.weight || 0);
-    kpiData.weight = lastWeight;
-    const height = userData.step1?.height;
-    if (height && lastWeight > 0) {
-        kpiData.bmi = (lastWeight / ((height / 100) ** 2)).toFixed(1);
-    }
     
-    kpiIDs.forEach(id => {
-        const el = document.getElementById(`kpi-${id}-dash`);
-        if(el) el.textContent = kpiData[id as keyof typeof kpiData];
-    });
+    const workoutsThisWeek = getWorkoutsThisWeek(userData.workoutHistory);
+    const weeklyGoal = userData.step1?.trainingDays || 4;
+    const weeklyProgress = Math.min(100, (workoutsThisWeek / weeklyGoal) * 100);
 
+    const circumference = 2 * Math.PI * 55; // For the gauge
+    const dashoffset = circumference * (1 - weeklyProgress / 100);
+
+    const todayData = getTodayWorkoutData(userData);
+    let todayWorkoutHtml = `
+        <div class="info-card !bg-bg-secondary p-4 text-center h-full flex flex-col justify-center">
+            <div class="w-20 h-20 bg-bg-tertiary rounded-full mx-auto flex items-center justify-center mb-3">
+                 <i data-lucide="coffee" class="w-10 h-10 text-accent"></i>
+            </div>
+            <h4 class="font-bold">امروز روز استراحت است</h4>
+            <p class="text-sm text-text-secondary mt-1">از ریکاوری لذت ببرید!</p>
+        </div>
+    `;
+    if (todayData && todayData.day.exercises.length > 0) {
+        todayWorkoutHtml = `
+             <div class="card p-4 h-full flex flex-col">
+                <h3 class="font-bold text-lg mb-3">تمرین امروز: <span class="text-accent">${todayData.day.name.split(':')[1]?.trim() || ''}</span></h3>
+                <div class="p-3 rounded-lg bg-bg-tertiary flex-grow">
+                    <ul class="space-y-1 text-sm">
+                    ${todayData.day.exercises.slice(0, 3).map((ex: any) => `<li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-accent"></i> ${ex.name}</li>`).join('')}
+                    ${todayData.day.exercises.length > 3 ? `<li class="text-text-secondary">+ ${todayData.day.exercises.length - 3} حرکت دیگر</li>` : ''}
+                    </ul>
+                </div>
+                <button class="primary-button w-full mt-4" data-action="log-workout" data-day-index="${todayData.dayIndex}">شروع تمرین</button>
+            </div>
+        `;
+    }
+
+    dashboardContentEl.innerHTML = `
+        <div class="space-y-6 animate-fade-in-up">
+            <div class="card p-6">
+                <h2 class="text-2xl font-bold">سلام، ${name}!</h2>
+                <p class="text-text-secondary">خوش آمدید! بیایید روز خود را با قدرت شروع کنیم.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="card p-4 flex flex-col items-center justify-center text-center">
+                        <h3 class="font-bold text-lg mb-4">فعالیت این هفته</h3>
+                        <div class="gauge" style="width: 150px; height: 150px;">
+                            <svg class="gauge-svg" viewBox="0 0 120 120">
+                                <circle class="gauge-track" r="55" cx="60" cy="60" stroke-width="10"></circle>
+                                <circle class="gauge-value" r="55" cx="60" cy="60" stroke-width="10" style="stroke:var(--accent); stroke-dasharray: ${circumference}; stroke-dashoffset: ${dashoffset};"></circle>
+                            </svg>
+                            <div class="gauge-text">
+                                <span class="gauge-number text-4xl">${workoutsThisWeek}</span>
+                                <span class="gauge-label">از ${weeklyGoal} روز</span>
+                            </div>
+                        </div>
+                    </div>
+                    ${todayWorkoutHtml}
+                </div>
+
+                <div class="space-y-4">
+                    <div class="card p-4 text-center">
+                        <h4 class="font-bold text-2xl flex items-center justify-center gap-1.5" style="color: var(--admin-accent-pink);">
+                            ${streak} <i data-lucide="flame" class="w-6 h-6"></i>
+                        </h4>
+                        <p class="text-sm text-text-secondary">روز زنجیره تمرین</p>
+                    </div>
+                    <div class="card p-4 text-center">
+                        <h4 class="font-bold text-2xl" style="color: var(--admin-accent-blue);">${totalWorkouts}</h4>
+                        <p class="text-sm text-text-secondary">کل تمرینات ثبت شده</p>
+                    </div>
+                    <div class="card p-4 text-center">
+                        <h4 class="font-bold text-2xl" style="color: var(--admin-accent-orange);">${lastWeight} <span class="text-base">kg</span></h4>
+                        <p class="text-sm text-text-secondary">آخرین وزن ثبت شده</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
     window.lucide?.createIcons();
-}
+};
 
 const renderNutritionTab = (userData: any) => {
     const container = document.getElementById('nutrition-content-wrapper');
@@ -243,7 +364,6 @@ const initWeightChart = (userData: any, canvasId: string = 'weight-chart') => {
     const ctx = document.getElementById(canvasId) as HTMLCanvasElement;
     if (!ctx || !window.Chart) return;
 
-    // A simple way to avoid re-creating chart on the same canvas
     const existingChart = window.Chart.getChart(ctx);
     if(existingChart) {
         existingChart.destroy();
@@ -251,7 +371,6 @@ const initWeightChart = (userData: any, canvasId: string = 'weight-chart') => {
     if (canvasId === 'weight-chart' && getWeightChartInstance()) {
         getWeightChartInstance()?.destroy();
     }
-
 
     const weightHistory = userData.weightHistory || [];
     const labels = weightHistory.map((entry: any) => new Date(entry.date).toLocaleDateString('fa-IR'));
@@ -287,90 +406,103 @@ const initWeightChart = (userData: any, canvasId: string = 'weight-chart') => {
     return chartInstance;
 };
 
-const renderBmiGauge = (bmi: number | null) => {
-    const container = document.getElementById('bmi-gauge-container');
+const renderBodyMetricsCard = (userData: any, containerId: string) => {
+    const container = document.getElementById(containerId);
     if (!container) return;
 
-    if (bmi === null || isNaN(bmi) || bmi <= 0) {
-        container.innerHTML = `
-            <h2 class="text-xl font-bold mb-2">شاخص توده بدنی (BMI)</h2>
-            <p class="text-text-secondary">برای محاسبه BMI، لطفاً قد و وزن خود را در فرم بالا وارد کنید.</p>
-        `;
-        return;
-    }
-
-    const value = parseFloat(bmi.toFixed(1));
-    let statusText = 'نرمال';
-    let color = 'var(--green-accent)';
+    const lastWeight = (userData.weightHistory && userData.weightHistory.length > 0) 
+        ? userData.weightHistory.slice(-1)[0].weight 
+        : (userData.step1?.weight || null);
     
-    const minBmi = 15;
-    const maxBmi = 40;
-    let percentage = (value - minBmi) / (maxBmi - minBmi);
-    
-    if (value < 18.5) {
-        statusText = 'کمبود وزن';
-        color = '#3b82f6';
-    } else if (value >= 25 && value < 30) {
-        statusText = 'اضافه وزن';
-        color = '#f59e0b';
-    } else if (value >= 30) {
-        statusText = 'چاقی';
-        color = '#ef4444';
-    }
-    
-    percentage = Math.max(0, Math.min(1, percentage));
+    const firstWeight = (userData.weightHistory && userData.weightHistory.length > 0)
+        ? userData.weightHistory[0].weight
+        : (userData.step1?.weight || null);
 
-    const radius = 90;
-    const strokeWidth = 18;
-    const innerRadius = radius - strokeWidth / 2;
-    const circumference = 2 * Math.PI * innerRadius;
-    const arcLength = circumference / 2;
-
-    const dashoffset = arcLength * (1 - percentage);
-
-    container.innerHTML = `
-        <h2 class="text-xl font-bold mb-4">شاخص توده بدنی (BMI)</h2>
-        <div class="gauge" style="width: 250px; height: 125px; margin: 0 auto;">
-            <svg viewBox="0 0 ${radius*2} ${radius}" style="width: 100%; height: 100%; overflow: visible;">
-                <path d="M ${strokeWidth/2},${radius} A ${innerRadius},${innerRadius} 0 0 1 ${radius*2 - strokeWidth/2},${radius}" 
-                      class="gauge-track" stroke-width="${strokeWidth}" stroke-linecap="round"></path>
-                <path d="M ${strokeWidth/2},${radius} A ${innerRadius},${innerRadius} 0 0 1 ${radius*2 - strokeWidth/2},${radius}" 
-                      class="gauge-value" stroke-width="${strokeWidth}"
-                      style="stroke: ${color}; stroke-dasharray: ${arcLength}; stroke-dashoffset: ${arcLength};"></path>
-            </svg>
-            <div class="gauge-text" style="position: absolute; bottom: 5px; left: 0; right: 0; text-align: center;">
-                <span class="gauge-number text-5xl" style="color: ${color};">${value.toFixed(1)}</span>
-                <p class="font-bold text-lg" style="color: ${color}; margin-top: -10px;">${statusText}</p>
-            </div>
-        </div>
-    `;
-    
-    setTimeout(() => {
-        const valuePath = container.querySelector('.gauge-value') as SVGPathElement;
-        if (valuePath) {
-            valuePath.style.strokeDashoffset = dashoffset.toString();
-        }
-    }, 100);
-};
-
-const updateProfileKPIs = (userData: any) => {
-    const streakEl = document.getElementById('kpi-streak');
-    const totalEl = document.getElementById('kpi-total');
-    const weightEl = document.getElementById('kpi-weight');
-
-    if (streakEl) streakEl.textContent = calculateWorkoutStreak(userData.workoutHistory).toString();
-    if (totalEl) totalEl.textContent = (userData.workoutHistory || []).length.toString();
-    
-    const lastWeight = (userData.weightHistory && userData.weightHistory.length > 0) ? userData.weightHistory.slice(-1)[0].weight : (userData.step1?.weight || 0);
-    if (weightEl) weightEl.textContent = lastWeight.toString();
+    const weightChange = (lastWeight && firstWeight) ? lastWeight - firstWeight : 0;
 
     const height = userData.step1?.height;
-    if (height && lastWeight > 0) {
-        const bmi = lastWeight / ((height / 100) ** 2);
-        renderBmiGauge(bmi);
-    } else {
-        renderBmiGauge(null);
+    const bmi = (height && lastWeight > 0) ? (lastWeight / ((height / 100) ** 2)) : null;
+    
+    const lastWeightLog = userData.weightHistory?.slice(-1)[0];
+    let nextLogAvailableTimestamp = 0;
+    if (lastWeightLog) {
+        const lastLogTime = new Date(lastWeightLog.date).getTime();
+        const sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000;
+        nextLogAvailableTimestamp = lastLogTime + sevenDaysInMillis;
     }
+
+    let formHtml = '';
+    if (nextLogAvailableTimestamp > Date.now()) {
+        formHtml = `
+            <div id="weight-log-countdown" data-next-log-timestamp="${nextLogAvailableTimestamp}" class="text-center p-3 bg-bg-tertiary rounded-lg">
+                <p class="font-semibold text-text-secondary text-sm">ثبت بعدی فعال می‌شود تا:</p>
+                <p id="countdown-timer-text" class="text-lg font-bold text-accent mt-1"></p>
+            </div>
+        `;
+    } else {
+        formHtml = `
+            <form id="weight-log-form" class="flex gap-2">
+                <input type="number" step="0.1" id="new-weight-input" class="input-field w-full !py-2" placeholder="ثبت وزن امروز (kg)">
+                <button type="submit" class="primary-button !p-2.5"><i data-lucide="plus" class="w-5 h-5"></i></button>
+            </form>
+        `;
+    }
+
+    container.innerHTML = `
+        <div id="body-metrics-card" class="card p-4 md:p-6 animate-fade-in">
+            <h2 class="text-xl font-bold mb-4">پیگیری پیشرفت</h2>
+            <div class="grid grid-cols-2 gap-4 mb-6 text-center">
+                <div>
+                    <p class="text-sm text-text-secondary">وزن فعلی (kg)</p>
+                    <p class="text-3xl font-bold">${lastWeight ? lastWeight.toFixed(1) : '—'}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-text-secondary">تغییر از ابتدا</p>
+                    <p class="text-3xl font-bold flex items-center justify-center gap-1 ${weightChange > 0.1 ? 'text-red-500' : (weightChange < -0.1 ? 'text-green-500' : 'text-text-secondary')}">
+                        ${weightChange !== 0 ? `<i data-lucide="${weightChange > 0 ? 'trending-up' : 'trending-down'}" class="w-6 h-6"></i>` : ''}
+                        ${weightChange >= 0 ? '+' : ''}${weightChange.toFixed(1)}
+                    </p>
+                </div>
+            </div>
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-1">
+                    <h3 class="font-semibold text-sm">شاخص توده بدنی (BMI)</h3>
+                    <span class="font-bold text-sm">${bmi ? bmi.toFixed(1) : '—'}</span>
+                </div>
+                <div class="w-full bg-bg-tertiary rounded-full h-3 relative" title="آبی: کمبود وزن, سبز: نرمال, زرد: اضافه وزن, قرمز: چاقی">
+                    <div class="absolute top-0 left-0 h-full rounded-l-full bg-blue-500" style="width: 14%;"></div>
+                    <div class="absolute top-0 h-full bg-green-500" style="left: 14%; width: 26%;"></div>
+                    <div class="absolute top-0 h-full bg-yellow-500" style="left: 40%; width: 20%;"></div>
+                    <div class="absolute top-0 h-full rounded-r-full bg-red-500" style="left: 60%; width: 40%;"></div>
+                    <div id="bmi-indicator" class="absolute -top-1 w-5 h-5 rounded-full bg-white border-2 border-accent shadow-lg transition-all duration-500 ease-out" style="left: -10px;">
+                         <div class="w-full h-full rounded-full bg-accent/30"></div>
+                    </div>
+                </div>
+                <div class="flex justify-between text-xs text-text-secondary mt-1 px-1">
+                    <span>۱۸.۵</span>
+                    <span>۲۵</span>
+                    <span>۳۰</span>
+                </div>
+            </div>
+            <div class="h-48 mb-4"><canvas id="weight-chart"></canvas></div>
+            ${formHtml}
+        </div>`;
+
+    if (bmi) {
+        const bmiIndicator = document.getElementById('bmi-indicator');
+        const minBmi = 15; 
+        const maxBmi = 40; 
+        let percentage = (bmi - minBmi) / (maxBmi - minBmi) * 100;
+        percentage = Math.max(0, Math.min(100, percentage)); 
+        if (bmiIndicator) {
+             setTimeout(() => {
+                bmiIndicator.style.left = `calc(${percentage}% - 10px)`;
+            }, 100);
+        }
+    }
+    
+    window.lucide?.createIcons();
+    initWeightChart(userData, 'weight-chart');
 };
 
 const populateProfileForm = (userData: any) => {
@@ -431,6 +563,7 @@ const renderStoreTab = (currentUser: string) => {
     const container = document.getElementById('store-content');
     if (!container) return;
     const cart = getCart(currentUser);
+    const plans = getStorePlans();
 
     container.innerHTML = `
         <div class="text-center mb-8 animate-fade-in-down">
@@ -438,7 +571,7 @@ const renderStoreTab = (currentUser: string) => {
             <p class="text-text-secondary mt-2">پلن‌های تخصصی ما را برای رسیدن به اهداف خود انتخاب کنید.</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in-up">
-            ${STORE_PLANS.map(plan => {
+            ${plans.map((plan: any) => {
                 const isInCart = cart.items.some((item: any) => item.planId === plan.planId);
                 return `
                 <div class="card p-6 flex flex-col border-2 ${plan.planId.includes('full-3m') ? 'border-accent' : 'border-border-primary'} transition-all hover:shadow-xl hover:-translate-y-1">
@@ -449,7 +582,7 @@ const renderStoreTab = (currentUser: string) => {
                         <span class="text-text-secondary"> تومان</span>
                     </div>
                     <ul class="space-y-3 text-sm mb-6">
-                        ${plan.features.map(feature => `
+                        ${(plan.features || []).map((feature: string) => `
                             <li class="flex items-center gap-2">
                                 <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
                                 <span>${feature}</span>
@@ -540,7 +673,6 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
     const dashboardContainer = document.getElementById('user-dashboard-container');
     if (!dashboardContainer) return;
 
-    // --- Springy Tab Logic ---
     const tabs = dashboardContainer.querySelectorAll('.user-dashboard-tab');
     const indicator = dashboardContainer.querySelector('#tab-indicator') as HTMLElement;
     const contents = dashboardContainer.querySelectorAll('.tab-content-panel');
@@ -564,17 +696,26 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         clearNotification(currentUser, targetId);
         updateUserNotifications(currentUser);
         
+        if (weightLogCountdownInterval) {
+            clearInterval(weightLogCountdownInterval);
+            weightLogCountdownInterval = null;
+        }
+
         let currentData = getUserData(currentUser);
 
-        // Initialize content for the active tab
         if (targetId === 'dashboard-content') renderDashboardTab(currentUser, currentData);
-        if (targetId === 'program-content') renderFullProgram(currentData);
+        if (targetId === 'program-content') renderUnifiedProgramView(currentData);
         if (targetId === 'nutrition-content') renderNutritionTab(currentData);
         if (targetId === 'store-content') renderStoreTab(currentUser);
         if (targetId === 'profile-content') {
             populateProfileForm(currentData);
-            initWeightChart(currentData, 'weight-chart');
-            updateProfileKPIs(currentData);
+            renderBodyMetricsCard(currentData, 'body-metrics-container');
+            startWeightCountdown(currentUser);
+            const form = document.getElementById('user-profile-form');
+            if(form) {
+                const metrics = calculateBodyMetrics(form as HTMLElement);
+                // initial calculation for the form's display-only fields
+            }
         }
         if (targetId === 'chat-content') {
             const chatForm = document.getElementById('coach-chat-form') as HTMLFormElement;
@@ -620,27 +761,26 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         }
     };
     
-    const initialTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="profile-content"]');
+    const initialTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="dashboard-content"]');
     if(initialTab) {
-        setTimeout(() => switchTab(initialTab), 50); // Small delay to ensure correct indicator position on load
+        setTimeout(() => switchTab(initialTab), 50);
     }
     
     tabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab)));
     updateCartBadge(currentUser);
     updateUserNotifications(currentUser);
 
-    // --- Event Listeners ---
     dashboardContainer.addEventListener('click', async e => {
         if (!(e.target instanceof HTMLElement)) return;
         const target = e.target;
         const button = target.closest('button');
         if (!button) return;
 
-        // Add to cart
         const addToCartBtn = target.closest('.add-to-cart-btn');
         if (addToCartBtn && !addToCartBtn.hasAttribute('disabled')) {
             const planId = addToCartBtn.getAttribute('data-plan-id');
-            const plan = STORE_PLANS.find(p => p.planId === planId);
+            const plans = getStorePlans();
+            const plan = plans.find((p: any) => p.planId === planId);
             if (plan) {
                 const cart = getCart(currentUser);
                 cart.items.push(plan);
@@ -654,21 +794,18 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             }
         }
 
-        // Cart modal open
         if (button.id === 'cart-btn') {
             const modal = document.getElementById('cart-modal');
             renderCartModalContent(currentUser);
             openModal(modal);
         }
 
-        // Log workout button
         if (button.dataset.action === "log-workout") {
             const dayIndex = parseInt(button.getAttribute('data-day-index')!, 10);
             const currentData = getUserData(currentUser);
             openWorkoutLogModal(currentData.step2.days[dayIndex], dayIndex, currentUser);
         }
 
-        // Generate Nutrition Plan button
         if (button.id === 'generate-nutrition-btn') {
             button.classList.add('is-loading');
             button.setAttribute('disabled', 'true');
@@ -682,13 +819,11 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             button.removeAttribute('disabled');
         }
         
-        // Export buttons
-        if(button.id === 'save-program-pdf-btn') exportElement('#program-export-wrapper', 'pdf', 'برنامه-تمرینی.pdf', button);
-        if(button.id === 'save-program-img-btn') exportElement('#program-export-wrapper', 'png', 'برنامه-تمرینی.png', button);
+        if(button.id === 'save-program-pdf-btn') exportElement('#unified-program-view', 'pdf', 'برنامه-تمرینی.pdf', button);
+        if(button.id === 'save-program-img-btn') exportElement('#unified-program-view', 'png', 'برنامه-تمرینی.png', button);
         if(button.id === 'save-nutrition-pdf-btn') exportElement('#nutrition-plan-content', 'pdf', 'برنامه-غذایی.pdf', button);
-        if(button.id === 'save-nutrition-img-btn') exportElement('#nutrition-plan-content', 'png', 'برنامه-غذایی.png', button);
+        if(button.id === 'save-nutrition-img-btn') exportElement('#nutrition-plan-content', 'png', 'برنامه-تمرینی.png', button);
 
-        // Re-generate Nutrition Plan button
         if (button.id === 'regenerate-nutrition-btn') {
             let freshUserData = getUserData(currentUser);
             delete freshUserData.nutritionPlan;
@@ -696,7 +831,6 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             renderNutritionTab(freshUserData);
         }
 
-        // Save Nutrition Plan button
         if (button.id === 'save-nutrition-plan-btn') {
             const planContent = document.getElementById('nutrition-plan-content')?.innerHTML;
             if (planContent) {
@@ -710,18 +844,8 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         }
     });
     
-    // Profile form
     const profileForm = document.getElementById('user-profile-form');
     if (profileForm) {
-        const updateMetrics = () => {
-            const metrics = calculateBodyMetrics(profileForm as HTMLElement);
-            if (metrics && metrics.bmi) {
-                renderBmiGauge(metrics.bmi);
-            } else {
-                renderBmiGauge(null);
-            }
-        };
-
         profileForm.addEventListener('input', e => {
              const target = e.target as HTMLInputElement;
              if(target.classList.contains('range-slider')) {
@@ -729,9 +853,9 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 if(labelSpan) labelSpan.textContent = target.value;
                 updateSliderTrack(target);
              }
-             updateMetrics();
+             calculateBodyMetrics(profileForm as HTMLElement);
         });
-        profileForm.addEventListener('change', updateMetrics);
+        profileForm.addEventListener('change', () => calculateBodyMetrics(profileForm as HTMLElement));
         
         profileForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -751,6 +875,12 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             freshUserData.step1.trainingGoal = formData.get('training_goal_user') as string;
             freshUserData.step1.trainingDays = parseInt(formData.get('training_days_user') as string, 10);
 
+            // Recalculate and save metrics
+            const metrics = calculateBodyMetrics(profileForm as HTMLElement);
+            if (metrics) {
+                freshUserData.step1.tdee = metrics.tdee;
+            }
+
             saveUserData(currentUser, freshUserData);
             addActivityLog(`${currentUser} اطلاعات پروفایل خود را به‌روزرسانی کرد.`);
             
@@ -760,34 +890,34 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             }
             
             showToast('اطلاعات پروفایل با موفقیت ذخیره و برای مربی ارسال شد.', 'success');
-            
-            calculateBodyMetrics(profileForm as HTMLElement);
-            updateProfileKPIs(freshUserData);
+            renderBodyMetricsCard(freshUserData, 'body-metrics-container');
+            startWeightCountdown(currentUser);
         });
     }
 
-    // Weight log form
-    document.getElementById('weight-log-form')?.addEventListener('submit', e => {
-        e.preventDefault();
-        const input = document.getElementById('new-weight-input') as HTMLInputElement;
-        const newWeight = parseFloat(input.value);
-        if (isNaN(newWeight) || newWeight <= 0) {
-            showToast('لطفا یک وزن معتبر وارد کنید.', 'error');
-            return;
-        }
+    const bodyMetricsContainer = document.getElementById('body-metrics-container');
+    bodyMetricsContainer?.addEventListener('submit', e => {
+        if((e.target as HTMLElement).id === 'weight-log-form') {
+            e.preventDefault();
+            const input = document.getElementById('new-weight-input') as HTMLInputElement;
+            const newWeight = parseFloat(input.value);
+            if (isNaN(newWeight) || newWeight <= 0) {
+                showToast('لطفا یک وزن معتبر وارد کنید.', 'error');
+                return;
+            }
 
-        let freshUserData = getUserData(currentUser);
-        if (!freshUserData.weightHistory) freshUserData.weightHistory = [];
-        freshUserData.weightHistory.push({ date: new Date().toISOString(), weight: newWeight });
-        saveUserData(currentUser, freshUserData);
-        
-        showToast('وزن جدید ثبت شد!', 'success');
-        input.value = '';
-        initWeightChart(freshUserData, 'weight-chart');
-        updateProfileKPIs(freshUserData);
+            let freshUserData = getUserData(currentUser);
+            if (!freshUserData.weightHistory) freshUserData.weightHistory = [];
+            freshUserData.weightHistory.push({ date: new Date().toISOString(), weight: newWeight });
+            saveUserData(currentUser, freshUserData);
+            
+            showToast('وزن جدید ثبت شد!', 'success');
+            input.value = '';
+            renderBodyMetricsCard(freshUserData, 'body-metrics-container');
+            startWeightCountdown(currentUser);
+        }
     });
 
-    // Modal listeners
     const modal = document.getElementById('user-dashboard-modal');
     document.getElementById('close-user-modal-btn')?.addEventListener('click', () => closeModal(modal));
     modal?.addEventListener('click', e => {
@@ -828,13 +958,14 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             freshUserData.workoutHistory.push(logEntry);
             saveUserData(currentUser, freshUserData);
             showToast('تمرین با موفقیت ثبت شد!', 'success');
-            updateProfileKPIs(freshUserData);
-            renderFullProgram(freshUserData);
+            renderBodyMetricsCard(freshUserData, 'body-metrics-container');
+            startWeightCountdown(currentUser);
+            renderUnifiedProgramView(freshUserData);
+            renderDashboardTab(currentUser, freshUserData);
             closeModal(modal);
         }
     });
 
-    // Cart Modal Logic
     const cartModal = document.getElementById('cart-modal');
     cartModal?.addEventListener('click', e => {
         if ((e.target as HTMLElement).id === 'cart-modal') closeModal(cartModal);
@@ -843,7 +974,6 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         const button = target.closest('button');
         if (!button) return;
 
-        // Remove item
         if (button.classList.contains('remove-cart-item-btn')) {
             const itemIndex = parseInt(button.dataset.itemIndex!, 10);
             const cart = getCart(currentUser);
@@ -851,10 +981,9 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             saveCart(currentUser, cart);
             updateCartBadge(currentUser);
             renderCartModalContent(currentUser);
-            renderStoreTab(currentUser); // re-render store to update buttons
+            renderStoreTab(currentUser);
         }
 
-        // Apply discount
         if (button.id === 'apply-discount-btn') {
             const input = document.getElementById('discount-code-input') as HTMLInputElement;
             const code = input.value.trim().toUpperCase();
@@ -881,7 +1010,6 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             renderCartModalContent(currentUser);
         }
 
-        // Checkout
         if (button.id === 'checkout-btn') {
             button.classList.add('is-loading');
             const cart = getCart(currentUser);
@@ -899,7 +1027,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             });
             
             saveUserData(currentUser, freshUserData);
-            saveCart(currentUser, { items: [], discountCode: null }); // Clear cart
+            saveCart(currentUser, { items: [], discountCode: null }); 
             
             const coachUsername = freshUserData.step1?.coachName;
             if (coachUsername) {
@@ -913,11 +1041,10 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 updateCartBadge(currentUser);
                 renderStoreTab(currentUser);
                 addActivityLog(`${currentUser} purchased ${cart.items.length} plan(s).`);
-            }, 1000); // Simulate network delay
+            }, 1000);
         }
     });
     document.getElementById('close-cart-modal-btn')?.addEventListener('click', () => closeModal(cartModal));
-
 }
 
 export function renderUserDashboard(currentUser: string, userData: any) {
@@ -970,238 +1097,162 @@ export function renderUserDashboard(currentUser: string, userData: any) {
                 </button>
             `).join('')}
         </div>
-
-        <div id="profile-content" class="tab-content-panel">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 space-y-6">
-                     <div class="card p-4 md:p-6">
-                        <div class="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-right">
-                            <img src="https://i.pravatar.cc/150?u=${currentUser}" alt="Profile Picture" class="w-24 h-24 rounded-full border-4 border-bg-tertiary shadow-md">
-                            <div class="flex-grow">
-                                <h2 id="profile-user-name" class="text-2xl font-bold">${userData.step1?.clientName || currentUser}</h2>
-                                <p id="profile-user-email" class="text-text-secondary">${userData.step1?.clientEmail || 'ایمیل ثبت نشده'}</p>
-                            </div>
-                        </div>
-                    </div>
-                     <form id="user-profile-form" class="card p-4 md:p-6 space-y-6">
-                        <h2 class="text-xl font-bold">اطلاعات کاربری و اهداف</h2>
-                        
-                        <div>
-                            <label for="mobile_user_input" class="font-semibold text-sm mb-2 block">شماره موبایل</label>
-                            <input id="mobile_user_input" type="tel" name="mobile_user" class="input-field w-full" placeholder="مثال: 09123456789">
-                        </div>
-
-                        <div>
-                            <label class="font-semibold text-sm mb-3 block">هدف تمرینی</label>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                ${trainingGoals.map(goal => `
-                                <label class="option-card-label">
-                                    <input type="radio" name="training_goal_user" value="${goal.value}" class="option-card-input">
-                                    <span class="option-card-content">${goal.label}</span>
-                                </label>
-                                `).join('')}
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="font-semibold text-sm mb-3 block">تعداد روزهای تمرین در هفته</label>
-                            <div class="grid grid-cols-4 lg:grid-cols-7 gap-2">
-                                ${[1, 2, 3, 4, 5, 6, 7].map(d => `
-                                <label class="option-card-label">
-                                    <input type="radio" name="training_days_user" value="${d}" class="option-card-input">
-                                    <span class="option-card-content">${d}</span>
-                                </label>
-                                `).join('')}
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="font-semibold text-sm mb-3 block">سطح فعالیت</label>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                ${activityLevels.map(level => `
-                                <label class="option-card-label">
-                                    <input type="radio" name="activity_level_user" value="${level.value}" class="option-card-input">
-                                    <span class="option-card-content">${level.label}</span>
-                                </label>
-                                `).join('')}
-                            </div>
-                        </div>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-border-primary">
-                            <div class="space-y-2">
-                                <label class="font-semibold text-sm flex justify-between">سن: <span>25</span></label>
-                                <input type="range" name="age_user" min="15" max="80" value="25" class="range-slider age-slider">
-                            </div>
-                            <div class="space-y-2">
-                                <label class="font-semibold text-sm flex justify-between">قد (cm): <span>175</span></label>
-                                <input type="range" name="height_user" min="140" max="220" value="175" class="range-slider height-slider">
-                            </div>
-                            <div class="space-y-2">
-                                <label class="font-semibold text-sm flex justify-between">وزن (kg): <span>75</span></label>
-                                <input type="range" name="weight_user" min="40" max="150" value="75" class="range-slider weight-slider">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="font-semibold text-sm mb-3 block">جنسیت</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="option-card-label">
-                                    <input type="radio" name="gender_user" value="مرد" class="option-card-input">
-                                    <span class="option-card-content">مرد</span>
-                                </label>
-                                <label class="option-card-label">
-                                    <input type="radio" name="gender_user" value="زن" class="option-card-input">
-                                    <span class="option-card-content">زن</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="pt-4 border-t border-border-primary">
-                            <h3 class="font-semibold text-sm mb-3 block">اندازه‌گیری بدن (اختیاری)</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div>
-                                    <label for="neck_user_input" class="font-semibold text-sm mb-2 block">دور گردن</label>
-                                    <input id="neck_user_input" type="number" name="neck_user" class="input-field w-full neck-input" placeholder="(cm)">
-                                </div>
-                                <div>
-                                    <label for="waist_user_input" class="font-semibold text-sm mb-2 block">دور کمر</label>
-                                    <input id="waist_user_input" type="number" name="waist_user" class="input-field w-full waist-input" placeholder="(cm)">
-                                </div>
-                                <div>
-                                    <label for="hip_user_input" class="font-semibold text-sm mb-2 block">دور باسن (بانوان)</label>
-                                    <input id="hip_user_input" type="number" name="hip_user" class="input-field w-full hip-input" placeholder="(cm)">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                            <input type="text" class="input-field bmi-input" placeholder="BMI" title="BMI" readonly><input type="text" class="input-field bmr-input" placeholder="BMR" title="BMR" readonly><input type="text" class="input-field tdee-input" placeholder="TDEE" title="TDEE" readonly><input type="text" class="input-field bodyfat-input" placeholder="Body Fat %" title="Body Fat" readonly><input type="text" class="input-field lbm-input" placeholder="LBM" title="LBM" readonly><input type="text" class="input-field ideal-weight-input" placeholder="Ideal Weight" title="Ideal Weight" readonly>
-                        </div>
-                        <button type="submit" class="primary-button w-full">ذخیره و ارسال برای مربی</button>
-                     </form>
-                </div>
-                <div class="space-y-6">
-                    <div id="bmi-gauge-container" class="card p-4 md:p-6 text-center">
-                        <!-- JS renders BMI gauge here -->
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div class="info-card p-4 text-center">
-                             <h4 class="font-black text-4xl" id="kpi-streak">0</h4>
-                             <p class="text-sm text-text-secondary mt-1">روز زنجیره تمرین</p>
-                        </div>
-                        <div class="info-card p-4 text-center">
-                             <h4 class="font-black text-4xl" id="kpi-total">0</h4>
-                             <p class="text-sm text-text-secondary mt-1">کل تمرینات</p>
-                        </div>
-                        <div class="info-card p-4 text-center">
-                             <h4 class="font-black text-4xl" id="kpi-weight">0</h4>
-                             <p class="text-sm text-text-secondary mt-1">وزن فعلی (kg)</p>
-                        </div>
-                    </div>
-                    <div class="card p-4 md:p-6">
-                         <h2 class="text-xl font-bold mb-4">پیگیری وزن</h2>
-                         <div class="h-48 mb-4"><canvas id="weight-chart"></canvas></div>
-                         <form id="weight-log-form" class="flex gap-2">
-                            <input type="number" step="0.1" id="new-weight-input" class="input-field w-full !py-2" placeholder="وزن امروز (kg)">
-                            <button type="submit" class="primary-button !p-2.5"><i data-lucide="plus" class="w-5 h-5"></i></button>
-                         </form>
-                    </div>
-                </div>
-            </div>
-        </div>
         
-        <div id="dashboard-content" class="tab-content-panel hidden">
-             <div class="space-y-6 animate-fade-in-up">
-                <div class="card p-6">
-                    <h2 id="user-greeting" class="text-2xl font-bold">...</h2>
-                    <p class="text-text-secondary">خوش آمدید! بیایید روز خود را با قدرت شروع کنیم.</p>
-                </div>
-                <div id="today-workout-card-container"></div>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="card p-4 text-center"><h4 class="font-bold text-2xl" style="color: var(--admin-accent-pink);" id="kpi-streak-dash">0</h4><p class="text-sm text-text-secondary">روز زنجیره</p></div>
-                    <div class="card p-4 text-center"><h4 class="font-bold text-2xl" style="color: var(--admin-accent-blue);" id="kpi-total-dash">0</h4><p class="text-sm text-text-secondary">کل تمرینات</p></div>
-                    <div class="card p-4 text-center"><h4 class="font-bold text-2xl" style="color: var(--admin-accent-orange);" id="kpi-weight-dash">0</h4><p class="text-sm text-text-secondary">وزن فعلی (kg)</p></div>
-                    <div class="card p-4 text-center"><h4 class="font-bold text-2xl text-accent" id="kpi-bmi-dash">0</h4><p class="text-sm text-text-secondary">شاخص BMI</p></div>
-                </div>
+        <div id="dashboard-content" class="tab-content-panel hidden"></div>
+        <div id="program-content" class="tab-content-panel hidden animate-fade-in-up">
+            <!-- Content will be injected by renderUnifiedProgramView -->
+        </div>
+        <div id="nutrition-content" class="tab-content-panel hidden">
+             <div id="nutrition-content-wrapper" class="card p-6"></div>
+        </div>
+        <div id="store-content" class="tab-content-panel hidden"></div>
+        <div id="chat-content" class="tab-content-panel hidden">
+            <div class="card p-4 max-w-2xl mx-auto">
+                 <h2 class="text-xl font-bold mb-4">گفتگو با مربی</h2>
+                 <div class="flex flex-col h-[60vh]">
+                     <div id="coach-chat-messages" class="flex-grow p-2 space-y-4 overflow-y-auto flex flex-col bg-bg-tertiary rounded-lg"></div>
+                     <form id="coach-chat-form" class="pt-4 flex items-center gap-2">
+                         <input type="text" id="coach-chat-input" class="input-field flex-grow" placeholder="پیام خود را بنویسید...">
+                         <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
+                     </form>
+                 </div>
              </div>
         </div>
-
-        <div id="program-content" class="tab-content-panel hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
-                <div class="lg:col-span-2 space-y-4">
-                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-2">
-                        <h2 class="text-xl font-bold">برنامه تمرینی هفتگی شما</h2>
-                        <div id="program-actions" class="flex items-center gap-2">
-                            <!-- JS injects export buttons -->
+        <div id="profile-content" class="tab-content-panel hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <form id="user-profile-form" class="card p-4 md:p-6 animate-fade-in">
+                        <div class="flex items-center gap-4 mb-6">
+                           <div class="w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl text-white bg-accent">
+                               ${(userData.step1?.clientName || currentUser).substring(0, 1).toUpperCase()}
+                           </div>
+                           <div>
+                               <h2 id="profile-user-name" class="text-2xl font-bold">${userData.step1?.clientName || currentUser}</h2>
+                               <p id="profile-user-email" class="text-text-secondary">${userData.step1?.clientEmail || 'ایمیل ثبت نشده'}</p>
+                           </div>
                         </div>
-                    </div>
-                    <div id="program-export-wrapper">
-                         <div id="full-program-container" class="space-y-2">
-                            <!-- JS renders program -->
-                         </div>
-                    </div>
-                </div>
-                <div class="lg:col-span-1">
-                    <div class="card p-4 sticky top-6">
-                        <div id="program-notes">
-                           <!-- JS renders notes -->
+                        
+                        <div class="space-y-6">
+                             <div>
+                                <h3 class="font-semibold text-lg mb-3">اطلاعات تماس و اهداف</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="input-group">
+                                        <input type="tel" name="mobile_user" class="input-field w-full" placeholder=" ">
+                                        <label class="input-label">شماره موبایل</label>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        ${[
+                                            { value: '4', label: '۴ روز' },
+                                            { value: '3', label: '۳ روز' },
+                                            { value: '5', label: '۵ روز' },
+                                            { value: '6', label: '۶ روز' },
+                                        ].map(opt => `
+                                            <label class="option-card-label">
+                                                <input type="radio" name="training_days_user" value="${opt.value}" class="option-card-input">
+                                                <span class="option-card-content">${opt.label}</span>
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                     <h4 class="font-semibold text-sm mb-2 text-text-secondary">هدف تمرینی اصلی شما چیست؟</h4>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                        ${trainingGoals.map(goal => `
+                                            <label class="option-card-label">
+                                                <input type="radio" name="training_goal_user" value="${goal.value}" class="option-card-input">
+                                                <span class="option-card-content">${goal.label}</span>
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h3 class="font-semibold text-lg mb-3">اطلاعات بدنی</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <label class="font-semibold text-sm">سن: <span>25</span></label>
+                                        <input type="range" name="age_user" min="15" max="80" value="25" class="range-slider age-slider w-full">
+                                    </div>
+                                     <div>
+                                        <label class="font-semibold text-sm">قد (cm): <span>175</span></label>
+                                        <input type="range" name="height_user" min="140" max="220" value="175" class="range-slider height-slider w-full">
+                                    </div>
+                                     <div>
+                                        <label class="font-semibold text-sm">وزن (kg): <span>75</span></label>
+                                        <input type="range" name="weight_user" min="40" max="150" value="75" step="0.5" class="range-slider weight-slider w-full">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <input type="number" name="neck_user" class="input-field neck-input" placeholder="دور گردن (cm)">
+                                    <input type="number" name="waist_user" class="input-field waist-input" placeholder="دور کمر (cm)">
+                                    <input type="number" name="hip_user" class="input-field hip-input" placeholder="دور باسن (cm)">
+                                </div>
+                                <div class="flex gap-4 mt-4">
+                                    <label class="option-card-label">
+                                        <input type="radio" name="gender_user" value="مرد" class="option-card-input" checked>
+                                        <span class="option-card-content !px-6 !py-2">مرد</span>
+                                    </label>
+                                     <label class="option-card-label">
+                                        <input type="radio" name="gender_user" value="زن" class="option-card-input">
+                                        <span class="option-card-content !px-6 !py-2">زن</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="font-semibold text-lg mb-3">سطح فعالیت روزانه</h3>
+                                <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                    ${activityLevels.map(level => `
+                                        <label class="option-card-label">
+                                            <input type="radio" name="activity_level_user" value="${level.value}" class="option-card-input">
+                                            <span class="option-card-content">${level.label}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            
+                            <div class="info-card p-4 mt-4">
+                                <h4 class="font-bold text-md mb-2">متریک‌های تخمینی بدن شما</h4>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                                    <p>BMI: <strong class="bmi-input font-mono"></strong></p>
+                                    <p>BMR: <strong class="bmr-input font-mono"></strong> kcal</p>
+                                    <p>TDEE: <strong class="tdee-input font-mono"></strong> kcal</p>
+                                    <p>چربی: <strong class="bodyfat-input font-mono"></strong> %</p>
+                                    <p>LBM: <strong class="lbm-input font-mono"></strong> kg</p>
+                                    <p>وزن ایده آل: <strong class="ideal-weight-input font-mono"></strong></p>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="primary-button w-full mt-6">ذخیره و ارسال به مربی</button>
                         </div>
-                         <div id="program-supplements">
-                           <!-- JS renders supplements -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="nutrition-content" class="tab-content-panel hidden">
-            <div id="nutrition-content-wrapper" class="card p-4 md:p-6 max-w-4xl mx-auto animate-fade-in-up">
-                <!-- JS renders nutrition plan -->
-            </div>
-        </div>
-
-        <div id="store-content" class="tab-content-panel hidden">
-            <!-- JS renders store content -->
-        </div>
-
-        <div id="chat-content" class="tab-content-panel hidden">
-            <div class="card p-4 md:p-6 max-w-3xl mx-auto animate-fade-in-up">
-                <h2 class="text-xl font-bold mb-4">گفتگو با مربی</h2>
-                <div class="flex flex-col h-[60vh]">
-                    <div id="coach-chat-messages" class="flex-grow p-4 bg-bg-tertiary rounded-t-lg space-y-4 overflow-y-auto flex flex-col">
-                        <!-- Chat messages injected by JS -->
-                    </div>
-                    <form id="coach-chat-form" class="flex items-center gap-2 p-3 bg-bg-secondary border-t border-border-primary rounded-b-lg">
-                        <input type="text" id="coach-chat-input" class="input-field flex-grow" placeholder="پیام خود را بنویسید...">
-                        <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
                     </form>
                 </div>
+                <div id="body-metrics-container" class="lg:col-span-1">
+                    <!-- Body metrics card will be rendered here by JS -->
+                </div>
             </div>
         </div>
     </div>
-    
-    <!-- Modal for logging workouts -->
+
+    <!-- Modals -->
     <div id="user-dashboard-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
+        <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative max-h-[80vh] flex flex-col">
+             <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
                 <h2 id="user-modal-title" class="font-bold text-xl"></h2>
-                <button id="close-user-modal-btn" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+                <button id="close-user-modal-btn" class="secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
             </div>
-            <div id="user-modal-body" class="p-4 md:p-6 overflow-y-auto">
-                <!-- Modal content will be injected here -->
-            </div>
+            <div id="user-modal-body" class="p-6 overflow-y-auto"></div>
         </div>
     </div>
     
-    <!-- Cart Modal -->
     <div id="cart-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative flex flex-col max-h-[90vh]">
-             <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
-                <h2 id="cart-modal-title" class="font-bold text-xl flex items-center gap-2"><i data-lucide="shopping-cart"></i> سبد خرید</h2>
-                <button id="close-cart-modal-btn" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+        <div class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative">
+             <div class="flex justify-between items-center p-4 border-b border-border-primary">
+                <h2 id="cart-modal-title" class="font-bold text-xl">سبد خرید</h2>
+                <button id="close-cart-modal-btn" class="secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
             </div>
-            <div id="cart-modal-body" class="p-4 md:p-6 overflow-y-auto">
-                <!-- Cart content will be injected here by JS -->
-            </div>
+            <div id="cart-modal-body" class="p-6"></div>
         </div>
     </div>
     `;

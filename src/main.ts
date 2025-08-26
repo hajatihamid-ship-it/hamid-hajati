@@ -3,9 +3,10 @@ import { renderAuthModal, initAuthListeners } from './ui/authModal';
 import { renderCoachDashboard, initCoachDashboard, updateCoachNotifications } from './ui/coachDashboard';
 import { renderUserDashboard, initUserDashboard, updateUserNotifications } from './ui/userDashboard';
 import { renderAdminDashboard, initAdminDashboard } from './ui/adminDashboard';
-import { getUsers, getUserData, saveUsers, saveUserData, addActivityLog, saveDiscounts } from './services/storage';
+import { getUsers, getUserData, saveUsers, saveUserData, addActivityLog, saveDiscounts, getStorePlans, saveStorePlans } from './services/storage';
 import { setCurrentUser, getCurrentUser } from './state';
 import { sanitizeHTML } from './utils/dom';
+import { STORE_PLANS } from './config';
 
 let notificationInterval: number | null = null;
 
@@ -139,6 +140,11 @@ const seedInitialUsers = () => {
         addActivityLog("Initial users (admin, coaches, users) were created automatically.");
         saveDiscounts({ 'WELCOME10': { type: 'percentage', value: 10 }, 'SAVE50K': { type: 'fixed', value: 50000 } });
         addActivityLog("Initial discount codes created.");
+    }
+     // Seed plans if they don't exist
+    if (getStorePlans().length === 0) {
+        saveStorePlans(STORE_PLANS);
+        addActivityLog("Initial store plans were created automatically.");
     }
 };
 

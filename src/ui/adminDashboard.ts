@@ -1,5 +1,4 @@
-import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData } from '../services/storage';
-import { STORE_PLANS } from '../config';
+import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans } from '../services/storage';
 import { formatPrice, timeAgo } from '../utils/helpers';
 import { openModal, closeModal, showToast } from '../utils/dom';
 import { getCurrentUser } from '../state';
@@ -7,6 +6,8 @@ import { getCurrentUser } from '../state';
 const initCharts = () => {
     const revenueCtx = document.getElementById('revenueChart') as HTMLCanvasElement;
     if (revenueCtx && window.Chart) {
+        const existingChart = window.Chart.getChart(revenueCtx);
+        if (existingChart) existingChart.destroy();
         new window.Chart(revenueCtx, {
             type: 'line',
             data: {
@@ -32,10 +33,12 @@ const initCharts = () => {
 
     const plansCtx = document.getElementById('plansChart') as HTMLCanvasElement;
     if (plansCtx && window.Chart) {
+        const existingChart = window.Chart.getChart(plansCtx);
+        if (existingChart) existingChart.destroy();
         new window.Chart(plansCtx, {
             type: 'doughnut',
             data: {
-                labels: STORE_PLANS.map(p => p.planName),
+                labels: getStorePlans().map((p: any) => p.planName),
                 datasets: [{
                     label: 'فروش پلن',
                     data: [12, 19, 28, 21],
@@ -100,6 +103,33 @@ const refreshUserTables = () => {
     if (allUsersTbody) allUsersTbody.innerHTML = allUsersHtml;
     if (coachesTbody) coachesTbody.innerHTML = coachesHtml;
     window.lucide?.createIcons();
+};
+
+const renderPlansAdminHtml = () => {
+    const plans = getStorePlans();
+    return `
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h3 class="font-bold text-lg">مدیریت پلن‌ها</h3>
+                <p class="text-text-secondary text-sm">پلن‌های اشتراک را ایجاد، ویرایش یا حذف کنید.</p>
+            </div>
+            <button id="add-plan-btn" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن پلن</button>
+        </div>
+        <div id="admin-plans-list" class="space-y-2">
+            ${plans.map((plan: any) => `
+                <div class="p-4 border border-border-primary rounded-lg flex items-center justify-between">
+                   <div>
+                     <p class="font-bold">${plan.planName}</p>
+                     <p class="text-sm text-text-secondary">${formatPrice(plan.price)}</p>
+                   </div>
+                   <div class="flex items-center gap-2">
+                        <button class="secondary-button !p-2" data-action="edit-plan" data-plan-id="${plan.planId}"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
+                        <button class="secondary-button !p-2 text-red-accent" data-action="delete-plan" data-plan-id="${plan.planId}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                   </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
 };
 
 export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess: (username: string) => void) {
@@ -204,6 +234,14 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         closeModal(addUserModal);
         addUserForm.reset();
     });
+
+    const refreshPlansAdminList = () => {
+        const container = document.getElementById('plans-content')?.querySelector('.card');
+        if (container) {
+            container.innerHTML = renderPlansAdminHtml();
+            window.lucide?.createIcons();
+        }
+    };
     
     const mainContent = document.querySelector('.admin-dashboard-container main');
     mainContent?.addEventListener('click', e => {
@@ -216,7 +254,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         
         const users = getUsers();
         const userIndex = users.findIndex((u: any) => u.username === username);
-        if (userIndex === -1) return;
+        if (userIndex === -1 && !action.includes('plan')) return;
         const user = users[userIndex];
 
         let message = "";
@@ -229,7 +267,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 const adminUser = getCurrentUser();
                 if(adminUser) sessionStorage.setItem('impersonating_admin', adminUser);
                 handleLoginSuccess(username);
-                return; // Early return as we are switching pages
+                return;
 
             case 'suspend':
                 user.status = 'suspended';
@@ -253,12 +291,92 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 message = `همکاری با مربی ${username} لغو شد.`;
                 logMessage = `ادمین همکاری با ${username} را لغو کرد.`;
                 break;
+            case 'edit-plan': {
+                const planId = actionBtn.getAttribute('data-plan-id');
+                const plans = getStorePlans();
+                const plan = plans.find((p:any) => p.planId === planId);
+                if(plan) openPlanModal(plan);
+                return;
+            }
+            case 'delete-plan': {
+                const planId = actionBtn.getAttribute('data-plan-id');
+                if (confirm('آیا از حذف این پلن مطمئن هستید؟ این عمل غیرقابل بازگشت است.')) {
+                    let plans = getStorePlans();
+                    plans = plans.filter((p: any) => p.planId !== planId);
+                    saveStorePlans(plans);
+                    showToast('پلن با موفقیت حذف شد.', 'success');
+                    addActivityLog(`ادمین پلن با شناسه ${planId} را حذف کرد.`);
+                    refreshPlansAdminList();
+                }
+                return;
+            }
         }
 
         saveUsers(users);
         addActivityLog(logMessage);
         showToast(message, 'success');
         refreshUserTables();
+    });
+
+    const openPlanModal = (planData: any | null = null) => {
+        const modal = document.getElementById('add-edit-plan-modal');
+        const form = document.getElementById('plan-form') as HTMLFormElement;
+        const titleEl = document.getElementById('plan-modal-title');
+        if (!modal || !form || !titleEl) return;
+
+        form.reset();
+        if (planData) {
+            titleEl.textContent = 'ویرایش پلن';
+            (form.elements.namedItem('planId') as HTMLInputElement).value = planData.planId;
+            (form.elements.namedItem('planName') as HTMLInputElement).value = planData.planName;
+            (form.elements.namedItem('planDescription') as HTMLInputElement).value = planData.description;
+            (form.elements.namedItem('planPrice') as HTMLInputElement).value = planData.price;
+            (form.elements.namedItem('planFeatures') as HTMLTextAreaElement).value = (planData.features || []).join('\n');
+        } else {
+            titleEl.textContent = 'افزودن پلن جدید';
+            (form.elements.namedItem('planId') as HTMLInputElement).value = '';
+        }
+        openModal(modal);
+    };
+
+    document.getElementById('add-plan-btn')?.addEventListener('click', () => openPlanModal());
+    const planModal = document.getElementById('add-edit-plan-modal');
+    document.getElementById('close-plan-modal-btn')?.addEventListener('click', () => closeModal(planModal));
+    planModal?.addEventListener('click', e => {
+        if ((e.target as HTMLElement).id === 'add-edit-plan-modal') closeModal(planModal);
+    });
+
+    const planForm = document.getElementById('plan-form') as HTMLFormElement;
+    planForm?.addEventListener('submit', e => {
+        e.preventDefault();
+        const formData = new FormData(planForm);
+        const planId = formData.get('planId') as string;
+        const planData = {
+            planId: planId || `plan_${Date.now()}`,
+            planName: formData.get('planName') as string,
+            description: formData.get('planDescription') as string,
+            price: parseInt(formData.get('planPrice') as string, 10),
+            features: (formData.get('planFeatures') as string).split('\n').filter(f => f.trim() !== '')
+        };
+
+        if (!planData.planName || isNaN(planData.price)) {
+            showToast('نام پلن و قیمت الزامی است.', 'error');
+            return;
+        }
+
+        let plans = getStorePlans();
+        if (planId) { // Editing
+            const index = plans.findIndex((p: any) => p.planId === planId);
+            if (index > -1) plans[index] = planData;
+        } else { // Adding
+            plans.push(planData);
+        }
+        
+        saveStorePlans(plans);
+        showToast(`پلن "${planData.planName}" با موفقیت ذخیره شد.`, 'success');
+        addActivityLog(`ادمین پلن ${planData.planName} را ${planId ? 'ویرایش' : 'ایجاد'} کرد.`);
+        refreshPlansAdminList();
+        closeModal(planModal);
     });
 
 
@@ -302,6 +420,18 @@ export function renderAdminDashboard() {
     const discounts = getDiscounts();
     const activityLog = getActivityLog();
     const transactions = getAllTransactions();
+    const users = getUsers();
+    const coaches = users.filter((u: any) => u.role === 'coach');
+    const verifiedCoaches = coaches.filter((c: any) => c.coachStatus === 'verified').length;
+    const coachActivationRate = coaches.length > 0 ? Math.round((verifiedCoaches / coaches.length) * 100) : 0;
+    const circumference = 2 * Math.PI * 25;
+    const dashoffset = circumference * (1 - coachActivationRate / 100);
+
+    const kpiCards = [
+        { title: 'ثبت‌نام جدید (۳۰ روز)', value: '۴۲', change: '+15%', changeColor: 'text-green-500', icon: 'fa-user-plus', color: 'admin-accent-green' },
+        { title: 'درآمد ماهانه', value: formatPrice(3000000), change: '+8.2%', changeColor: 'text-green-500', icon: 'fa-dollar-sign', color: 'admin-accent-pink' },
+        { title: 'برنامه‌های ساخته شده', value: '۱۲۲', change: '+20', changeColor: 'text-green-500', icon: 'fa-file-signature', color: 'admin-accent-orange' }
+    ];
 
     return `
     <div class="admin-dashboard-container flex h-screen text-text-primary transition-opacity duration-500 opacity-0">
@@ -333,20 +463,29 @@ export function renderAdminDashboard() {
             <div id="admin-dashboard-page" class="page">
                 <h2 class="text-3xl font-extrabold mb-6 text-text-primary">مرکز فرماندهی</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                    ${[
-                        { title: 'ثبت‌نام جدید (۳۰ روز)', value: '۴۲', change: '+15%', color: 'admin-accent-green', icon: 'fa-user-plus' },
-                        { title: 'درآمد ماهانه', value: formatPrice(3000000), change: '+8.2%', color: 'admin-accent-pink', icon: 'fa-dollar-sign' },
-                        { title: 'نرخ ریزش', value: '۳.۱٪', change: '-1.5%', color: 'admin-accent-blue', icon: 'fa-arrow-trend-down' },
-                        { title: 'برنامه‌های ساخته شده', value: '۱۱۲', change: '+20', color: 'admin-accent-orange', icon: 'fa-file-signature' }
-                    ].map(kpi => `
+                    ${kpiCards.map(kpi => `
                     <div class="admin-kpi-card">
                         <div class="icon-container" style="background-color: var(--${kpi.color}); color: white;"><i class="fas ${kpi.icon} fa-lg"></i></div>
                         <div>
                             <p class="text-sm text-text-secondary">${kpi.title}</p>
                             <p class="text-2xl font-bold text-text-primary">${kpi.value}</p>
-                            <p class="text-xs text-text-secondary">${kpi.change}</p>
+                            <p class="text-xs font-semibold ${kpi.changeColor}">${kpi.change}</p>
                         </div>
                     </div>`).join('')}
+                    <div class="admin-kpi-card">
+                        <div class="gauge relative" style="width: 70px; height: 70px;">
+                            <svg class="gauge-svg absolute inset-0" viewBox="0 0 60 60">
+                                <circle class="gauge-track" r="25" cx="30" cy="30" stroke-width="8"></circle>
+                                <circle class="gauge-value" r="25" cx="30" cy="30" stroke-width="8" style="stroke:var(--admin-accent-blue); stroke-dasharray: ${circumference}; stroke-dashoffset: ${dashoffset};"></circle>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center font-bold text-lg">${coachActivationRate}%</div>
+                        </div>
+                        <div class="flex-grow">
+                            <p class="text-sm text-text-secondary">نرخ تایید مربیان</p>
+                            <p class="text-2xl font-bold text-text-primary">${verifiedCoaches} <span class="text-base font-normal">/ ${coaches.length}</span></p>
+                            <p class="text-xs font-semibold text-text-secondary">مربیان تایید شده</p>
+                        </div>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="lg:col-span-2 admin-chart-container h-96">
@@ -431,17 +570,7 @@ export function renderAdminDashboard() {
                 </div>
                 <div id="plans-content" class="admin-tab-content">
                     <div class="card p-4">
-                        <h3 class="font-bold text-lg mb-2">مدیریت پلن‌ها</h3>
-                        <p class="text-text-secondary text-sm mb-4">پلن‌های اشتراک را ایجاد، ویرایش یا حذف کنید.</p>
-                        ${STORE_PLANS.map(plan => `
-                            <div class="p-4 border border-border-primary rounded-lg mb-2 flex items-center justify-between">
-                               <div>
-                                 <p class="font-bold">${plan.planName}</p>
-                                 <p class="text-sm text-text-secondary">${formatPrice(plan.price)}</p>
-                               </div>
-                               <button class="secondary-button !py-1 !px-3 !text-sm">ویرایش</button>
-                            </div>
-                        `).join('')}
+                       ${renderPlansAdminHtml()}
                     </div>
                 </div>
                 <div id="discounts-content" class="admin-tab-content hidden">
@@ -529,6 +658,38 @@ export function renderAdminDashboard() {
                     </div>
                     <div class="pt-2">
                         <button type="submit" class="primary-button w-full !py-3 !text-base">افزودن</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Plan Modal -->
+    <div id="add-edit-plan-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
+             <button id="close-plan-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
+            <div class="p-8">
+                <h2 id="plan-modal-title" class="font-bold text-2xl text-center mb-6"></h2>
+                <form id="plan-form" class="space-y-4" novalidate>
+                    <input type="hidden" name="planId">
+                    <div class="input-group">
+                        <input name="planName" type="text" class="input-field w-full" placeholder=" " required>
+                        <label class="input-label">نام پلن</label>
+                    </div>
+                    <div class="input-group">
+                        <input name="planDescription" type="text" class="input-field w-full" placeholder=" " required>
+                        <label class="input-label">توضیحات</label>
+                    </div>
+                    <div class="input-group">
+                        <input name="planPrice" type="number" class="input-field w-full" placeholder=" " required>
+                        <label class="input-label">قیمت (تومان)</label>
+                    </div>
+                     <div class="input-group">
+                        <textarea name="planFeatures" class="input-field w-full min-h-[100px]" placeholder=" "></textarea>
+                        <label class="input-label">ویژگی‌ها (هر ویژگی در یک خط)</label>
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit" class="primary-button w-full !py-3 !text-base">ذخیره پلن</button>
                     </div>
                 </form>
             </div>

@@ -1,5 +1,5 @@
 import { openModal, closeModal } from '../utils/dom';
-import { STORE_PLANS } from '../config';
+import { getStorePlans } from '../services/storage';
 import { formatPrice } from '../utils/helpers';
 
 const getFeaturesHTML = () => `
@@ -55,14 +55,16 @@ const getFeaturesHTML = () => `
     </div>
 `;
 
-const getPricingHTML = () => `
+const getPricingHTML = () => {
+    const plans = getStorePlans();
+    return `
     <div>
         <div class="text-center mb-8">
             <h3 class="font-bold text-xl text-accent">تعرفه‌ها و پلن‌های عضویت</h3>
             <p class="text-text-secondary mt-2">پلنی را انتخاب کنید که به بهترین شکل با اهداف شما هماهنگ است.</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            ${STORE_PLANS.map(plan => `
+            ${plans.map((plan: any) => `
                 <div class="card p-6 flex flex-col border-2 ${plan.planId.includes('full-3m') ? 'border-accent' : 'border-transparent'}">
                     <h4 class="text-lg font-bold text-text-primary">${plan.planName}</h4>
                     <p class="text-sm text-text-secondary mt-1 flex-grow">${plan.description}</p>
@@ -71,7 +73,7 @@ const getPricingHTML = () => `
                         <span class="text-text-secondary"> تومان</span>
                     </div>
                     <ul class="space-y-3 text-sm mb-6">
-                        ${plan.features.map(feature => `
+                        ${(plan.features || []).map((feature: string) => `
                             <li class="flex items-center gap-2">
                                 <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
                                 <span>${feature}</span>
@@ -84,6 +86,7 @@ const getPricingHTML = () => `
         </div>
     </div>
 `;
+};
 
 const getContactHTML = () => `
     <div class="grid md:grid-cols-2 gap-8">

@@ -132,6 +132,26 @@ export const saveDiscounts = (discounts: any) => {
     }
 };
 
+// --- STORE PLANS ---
+export const getStorePlans = () => {
+    try {
+        return JSON.parse(localStorage.getItem("fitgympro_store_plans") || "[]");
+    } catch (e) {
+        console.error("Error parsing store plans from localStorage:", e);
+        return [];
+    }
+};
+
+export const saveStorePlans = (plans: any[]) => {
+    try {
+        localStorage.setItem("fitgympro_store_plans", JSON.stringify(plans));
+    } catch (t) {
+        console.error("Error saving store plans to localStorage:", t);
+        showToast("خطا در ذخیره‌سازی پلن‌ها", "error");
+    }
+};
+
+
 // --- NOTIFICATIONS ---
 export const getNotifications = (username: string): Record<string, string> => {
     if (!username) return {};
