@@ -9,6 +9,7 @@ import { sanitizeHTML } from './utils/dom';
 import { STORE_PLANS } from './config';
 
 let notificationInterval: number | null = null;
+let themeListenerAttached = false;
 
 const seedInitialUsers = () => {
     if (getUsers().length === 0) {
@@ -290,7 +291,8 @@ const initTheme = () => {
         if (themeToggleBtn) {
             const icon = themeToggleBtn.querySelector("i");
             if (icon) {
-                icon.setAttribute('data-lucide', validTheme === 'dark' ? 'sun' : 'moon');
+                // If it's a light theme, show a moon to switch to dark. Otherwise show a sun to switch to light.
+                icon.setAttribute('data-lucide', (validTheme === 'light' || validTheme === 'lemon') ? 'moon' : 'sun');
             }
         }
         if (window.lucide) {
@@ -301,17 +303,20 @@ const initTheme = () => {
     const currentTheme = localStorage.getItem("fitgympro_theme") || "lemon";
     applyTheme(currentTheme);
 
-    document.body.addEventListener('click', (e) => {
-        if (!(e.target instanceof HTMLElement)) return;
-        const toggleBtn = e.target.closest('#theme-toggle-btn-dashboard');
-        if (toggleBtn) {
-            const currentTheme = docElement.getAttribute("data-theme") || "dark";
-            const currentIndex = themes.indexOf(currentTheme);
-            const nextIndex = (currentIndex + 1) % themes.length;
-            const newTheme = themes[nextIndex];
-            applyTheme(newTheme);
-        }
-    });
+    if (!themeListenerAttached) {
+        document.body.addEventListener('click', (e) => {
+            if (!(e.target instanceof HTMLElement)) return;
+            const toggleBtn = e.target.closest('#theme-toggle-btn-dashboard');
+            if (toggleBtn) {
+                const currentTheme = docElement.getAttribute("data-theme") || "dark";
+                const currentIndex = themes.indexOf(currentTheme);
+                const nextIndex = (currentIndex + 1) % themes.length;
+                const newTheme = themes[nextIndex];
+                applyTheme(newTheme);
+            }
+        });
+        themeListenerAttached = true;
+    }
 };
 
 const initCommonListeners = () => {

@@ -231,10 +231,15 @@ const changeStep = (step: number) => {
     const prevBtn = document.getElementById('prev-step-btn');
     const nextBtn = document.getElementById('next-step-btn');
     const finishBtn = document.getElementById('finish-program-btn');
+    const aiDraftBtn = document.getElementById('ai-draft-btn');
 
     if (prevBtn) (prevBtn as HTMLElement).style.display = currentStep > 1 ? 'inline-flex' : 'none';
     if (nextBtn) (nextBtn as HTMLElement).style.display = currentStep < totalSteps ? 'inline-flex' : 'none';
     if (finishBtn) (finishBtn as HTMLElement).style.display = currentStep === totalSteps ? 'inline-flex' : 'none';
+
+    if (aiDraftBtn) {
+        aiDraftBtn.classList.toggle('hidden', currentStep !== 2);
+    }
 };
 
 const addExerciseRow = (dayId: string, exerciseData: any | null = null) => {
@@ -1148,64 +1153,83 @@ const renderStudentCards = (students: any[], containerId: string) => {
         const latestPurchase = getLatestPurchase(studentData);
 
         const streak = calculateWorkoutStreak(studentData.workoutHistory);
-        const lastActivityFull = getLastActivity(studentData);
-        const [lastActivityVal, ...lastActivityUnitParts] = lastActivityFull.split(' ');
-        const lastActivityUnit = lastActivityUnitParts.join(' ');
-
         const weightChange = getWeightChange(studentData);
-
         const needsPlan = latestPurchase && latestPurchase.fulfilled === false;
-
-        let statusHtml = '<span class="status-badge active !text-xs !py-0.5 !px-2">فعال</span>';
-        if (needsPlan) {
-            statusHtml = `<span class="status-badge pending animate-pulse-accent !text-xs !py-0.5 !px-2">در انتظار برنامه</span>`;
-        }
 
         const trendIcon = weightChange.trend === 'up' ? 'trending-up' : 'trending-down';
         const trendColor = weightChange.trend === 'up' ? 'text-green-500' : 'text-red-500';
 
-        const cardClasses = `student-card card p-5 flex flex-col gap-4 animate-fade-in transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+        const cardClasses = `student-card card p-6 flex flex-col gap-5 animate-fade-in transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
             needsPlan ? 'bg-accent/5 border-accent/40' : 'bg-bg-secondary'
         }`;
+        
+        // --- Purchase Info HTML ---
+        let purchaseInfoHtml = `
+            <div class="info-card !bg-bg-secondary !border-dashed p-3 text-center">
+                 <p class="text-sm text-text-secondary">خریدی ثبت نشده است.</p>
+            </div>
+        `;
+        if (latestPurchase) {
+             purchaseInfoHtml = `
+                <div class="info-card p-3">
+                    <div class="flex justify-between items-center">
+                         <div>
+                            <p class="text-xs text-text-secondary">آخرین خرید</p>
+                            <p class="font-bold text-sm">${latestPurchase.planName}</p>
+                            <p class="text-xs text-text-secondary">${new Date(latestPurchase.purchaseDate).toLocaleDateString('fa-IR')}</p>
+                         </div>
+                         ${needsPlan 
+                            ? '<span class="status-badge pending animate-pulse-accent !text-xs !py-0.5 !px-2 flex-shrink-0">در انتظار</span>' 
+                            : '<span class="status-badge verified !text-xs !py-0.5 !px-2 flex-shrink-0">انجام شده</span>'
+                         }
+                    </div>
+                </div>
+            `;
+        }
+
 
         return `
             <div class="${cardClasses}">
+                <!-- Header -->
                 <div class="flex items-start gap-4">
-                    <div class="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-white" style="background-color: ${getColorForName(name)};">
+                    <div class="w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-xl text-white" style="background-color: ${getColorForName(name)};">
                         ${name.substring(0, 1).toUpperCase()}
                     </div>
                     <div class="flex-grow overflow-hidden">
-                        <div class="flex justify-between items-center">
-                            <h3 class="font-bold text-lg truncate">${name}</h3>
-                            ${statusHtml}
-                        </div>
+                        <h3 class="font-bold text-xl truncate">${name}</h3>
                         <p class="text-sm text-text-secondary truncate">${goal}</p>
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-3 gap-3 text-center text-sm py-3 my-2 border-y border-border-primary">
+                <!-- KPIs -->
+                <div class="grid grid-cols-3 gap-4 text-center text-sm py-4 border-y border-border-primary">
                     <div>
-                        <p class="font-bold text-xl flex items-center justify-center gap-1.5">${streak} <i data-lucide="flame" class="w-4 h-4 text-orange-400"></i></p>
-                        <p class="text-xs text-text-secondary">زنجیره</p>
+                        <p class="font-extrabold text-2xl flex items-center justify-center gap-1.5">${streak} <i data-lucide="flame" class="w-5 h-5 text-orange-400"></i></p>
+                        <p class="text-xs text-text-secondary mt-1">زنجیره تمرین</p>
                     </div>
                     <div>
-                        <p class="font-bold text-xl">${lastActivityVal}</p>
-                        <p class="text-xs text-text-secondary">${lastActivityUnit}</p>
-                    </div>
-                    <div>
-                        <p class="font-bold text-xl flex items-center justify-center gap-1.5 ${weightChange.change !== 0 ? trendColor : ''}">
-                            ${weightChange.change !== 0 ? `<i data-lucide="${trendIcon}" class="w-4 h-4"></i>` : ''}
-                            ${weightChange.change >= 0 ? '+' : ''}${weightChange.change}kg
+                        <p class="font-extrabold text-2xl flex items-center justify-center gap-1.5 ${weightChange.change !== 0 ? trendColor : ''}">
+                            ${weightChange.change !== 0 ? `<i data-lucide="${trendIcon}" class="w-5 h-5"></i>` : ''}
+                            ${weightChange.change >= 0 ? '+' : ''}${weightChange.change}
                         </p>
-                        <p class="text-xs text-text-secondary">تغییر وزن</p>
+                        <p class="text-xs text-text-secondary mt-1">تغییر وزن (kg)</p>
+                    </div>
+                    <div>
+                        <p class="font-extrabold text-2xl">${getLastActivity(studentData).split(' ')[0]}</p>
+                        <p class="text-xs text-text-secondary mt-1">آخرین فعالیت</p>
                     </div>
                 </div>
 
-                <div class="mt-auto flex items-center gap-2">
-                    <button data-action="create-program" data-username="${student.username}" class="${needsPlan ? 'primary-button' : 'secondary-button'} !py-2 !px-3 !text-sm flex-grow">
-                        ${needsPlan ? 'شروع ساخت برنامه' : 'ویرایش برنامه'}
+                <!-- Purchase Info -->
+                ${purchaseInfoHtml}
+                
+                <!-- Actions -->
+                <div class="mt-auto flex items-center gap-3">
+                    <button data-action="create-program" data-username="${student.username}" class="${needsPlan ? 'primary-button' : 'secondary-button'} !py-2.5 !px-4 !text-sm flex-grow">
+                        <i data-lucide="${needsPlan ? 'plus-circle' : 'edit'}" class="w-4 h-4 mr-2"></i>
+                        ${needsPlan ? 'ساخت برنامه' : 'ویرایش برنامه'}
                     </button>
-                    <button data-action="view-student" data-username="${student.username}" class="secondary-button !py-2 !px-3 !text-sm"><i data-lucide="user" class="w-4 h-4 pointer-events-none"></i></button>
+                    <button data-action="view-student" data-username="${student.username}" class="secondary-button !py-2.5 !px-4 !text-sm"><i data-lucide="user" class="w-4 h-4 pointer-events-none"></i></button>
                 </div>
             </div>
         `;
@@ -1245,6 +1269,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
 
         mainContainer.querySelectorAll('.coach-nav-link').forEach(t => t.classList.remove('active-nav-link'));
         activeTab.classList.add('active-nav-link');
+        // Fix: Use classList.toggle instead of toggle
         mainContainer.querySelectorAll('.coach-tab-content').forEach(content => content.classList.toggle('hidden', content.id !== targetId));
         
         const targetData = pageTitles[targetId];
@@ -1784,7 +1809,7 @@ export function renderCoachDashboard() {
                 <div id="needs-attention-container" class="mb-8">
                     <h2 class="text-xl font-bold mb-4">نیازمند توجه</h2>
                     <div class="p-4 rounded-xl bg-accent/10">
-                        <div id="needs-attention-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div id="needs-attention-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             <!-- Cards for students needing a plan will be injected here -->
                         </div>
                     </div>
@@ -1797,7 +1822,7 @@ export function renderCoachDashboard() {
                            <input type="text" id="student-search-input" class="input-field w-full !pr-10 !text-sm" placeholder="جستجوی شاگرد...">
                        </div>
                    </div>
-                   <div id="all-students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                   <div id="all-students-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                         <!-- Student cards injected here -->
                    </div>
                 </div>
@@ -1833,7 +1858,7 @@ export function renderCoachDashboard() {
                         <div id="program-builder-steps-container" class="card p-4 md:p-6">
                             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-6">
                                 <h3 class="text-lg font-bold">مراحل ساخت برنامه</h3>
-                                <button id="ai-draft-btn" class="primary-button flex items-center gap-2" disabled>
+                                <button id="ai-draft-btn" class="primary-button flex items-center gap-2 hidden" disabled>
                                     <i data-lucide="sparkles" class="w-4 h-4"></i> ایجاد پیش‌نویس با AI
                                 </button>
                             </div>
