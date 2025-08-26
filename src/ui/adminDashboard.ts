@@ -1,10 +1,38 @@
-import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans, getExercisesDB, saveExercisesDB, getSupplementsDB, saveSupplementsDB } from '../services/storage';
+import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans, getExercisesDB, saveExercisesDB, getSupplementsDB, saveSupplementsDB, saveDiscounts } from '../services/storage';
 import { formatPrice, timeAgo } from '../utils/helpers';
 import { openModal, closeModal, showToast } from '../utils/dom';
 import { getCurrentUser } from '../state';
 import { sanitizeHTML } from '../utils/dom';
 
 let activityModalChartInstance: any = null;
+
+const renderDiscountsAdminHtml = () => {
+    const discounts = getDiscounts();
+    return `
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h3 class="font-bold text-lg">مدیریت کدهای تخفیف</h3>
+                <p class="text-text-secondary text-sm">کدهای تخفیف را برای کمپین‌های بازاریابی مدیریت کنید.</p>
+            </div>
+            <button id="add-discount-btn" data-action="add-discount" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن کد</button>
+        </div>
+        <div id="admin-discounts-list" class="space-y-2">
+            ${Object.keys(discounts).length > 0 ? Object.entries(discounts).map(([code, details]: [string, any]) => `
+                <div class="p-4 border border-border-primary rounded-lg flex items-center justify-between">
+                   <div>
+                     <p class="font-bold text-admin-accent-blue">${code}</p>
+                     <p class="text-sm text-text-secondary">${details.type === 'percentage' ? `${details.value}% تخفیف` : `${formatPrice(details.value)} تخفیف`}</p>
+                   </div>
+                   <div class="flex items-center gap-2">
+                        <button class="secondary-button !p-2" data-action="edit-discount" data-code="${code}"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
+                        <button class="secondary-button !p-2 text-red-accent" data-action="delete-discount" data-code="${code}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                   </div>
+                </div>
+            `).join('') : '<p class="text-text-secondary">هیچ کد تخفیفی ثبت نشده است.</p>'}
+        </div>
+    `;
+};
+
 
 const initCharts = () => {
     const revenueCtx = document.getElementById('revenueChart') as HTMLCanvasElement;
@@ -333,6 +361,38 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         }
     };
     
+    const refreshDiscountsAdminList = () => {
+        const container = document.getElementById('discounts-content')?.querySelector('.card');
+        if (container) {
+            container.innerHTML = renderDiscountsAdminHtml();
+            window.lucide?.createIcons();
+        }
+    };
+
+    const openDiscountModal = (codeData: { code: string; type: string; value: number } | null = null) => {
+        const modal = document.getElementById('add-edit-discount-modal');
+        const form = document.getElementById('discount-form') as HTMLFormElement;
+        const titleEl = document.getElementById('discount-modal-title');
+        if (!modal || !form || !titleEl) return;
+
+        form.reset();
+        const codeInput = form.elements.namedItem('discountCode') as HTMLInputElement;
+
+        if (codeData) {
+            titleEl.textContent = 'ویرایش کد تخفیف';
+            (form.elements.namedItem('originalCode') as HTMLInputElement).value = codeData.code;
+            codeInput.value = codeData.code;
+            codeInput.readOnly = true;
+            (form.elements.namedItem('discountType') as HTMLSelectElement).value = codeData.type;
+            (form.elements.namedItem('discountValue') as HTMLInputElement).value = String(codeData.value);
+        } else {
+            titleEl.textContent = 'افزودن کد تخفیف';
+            (form.elements.namedItem('originalCode') as HTMLInputElement).value = '';
+            codeInput.readOnly = false;
+        }
+        openModal(modal);
+    };
+
     const mainContent = document.querySelector('.admin-dashboard-container main');
     mainContent?.addEventListener('click', e => {
         const target = e.target as HTMLElement;
@@ -344,7 +404,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         
         const users = getUsers();
         const userIndex = users.findIndex((u: any) => u.username === username);
-        if (userIndex === -1 && !action.includes('plan') && action !== 'view-activity') return;
+        if (userIndex === -1 && !action.includes('plan') && !action.includes('discount') && action !== 'view-activity') return;
         const user = users[userIndex];
 
         let message = "";
@@ -403,7 +463,32 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 }
                 return;
             }
+            case 'add-discount':
+                openDiscountModal();
+                return;
+            case 'edit-discount': {
+                const code = actionBtn.getAttribute('data-code');
+                const discounts = getDiscounts();
+                if (code && discounts[code]) {
+                    openDiscountModal({ code, ...discounts[code] });
+                }
+                return;
+            }
+            case 'delete-discount': {
+                const code = actionBtn.getAttribute('data-code');
+                if (code && confirm(`آیا از حذف کد تخفیف "${code}" مطمئن هستید؟`)) {
+                    const discounts = getDiscounts();
+                    delete discounts[code];
+                    saveDiscounts(discounts);
+                    showToast('کد تخفیف با موفقیت حذف شد.', 'success');
+                    addActivityLog(`ادمین کد تخفیف ${code} را حذف کرد.`);
+                    refreshDiscountsAdminList();
+                }
+                return;
+            }
         }
+
+        if (action.includes('plan') || action.includes('discount')) return;
 
         saveUsers(users);
         addActivityLog(logMessage);
@@ -478,6 +563,209 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         if((e.target as HTMLElement).id === 'view-activity-modal') closeModal(activityModal);
     });
 
+    const discountModal = document.getElementById('add-edit-discount-modal');
+    document.getElementById('close-discount-modal-btn')?.addEventListener('click', () => closeModal(discountModal));
+    discountModal?.addEventListener('click', e => {
+        if ((e.target as HTMLElement).id === 'add-edit-discount-modal') closeModal(discountModal);
+    });
+
+    const discountForm = document.getElementById('discount-form') as HTMLFormElement;
+    discountForm?.addEventListener('submit', e => {
+        e.preventDefault();
+        const formData = new FormData(discountForm);
+        const originalCode = formData.get('originalCode') as string;
+        const code = (formData.get('discountCode') as string).toUpperCase();
+        const type = formData.get('discountType') as string;
+        const value = parseInt(formData.get('discountValue') as string, 10);
+
+        if (!code || isNaN(value)) {
+            showToast('کد و مقدار تخفیف الزامی است.', 'error');
+            return;
+        }
+
+        const discounts = getDiscounts();
+        
+        if (!originalCode && discounts[code]) {
+            showToast('این کد تخفیف قبلا ثبت شده است.', 'error');
+            return;
+        }
+        
+        if (originalCode && originalCode !== code) {
+             delete discounts[originalCode];
+        }
+
+        discounts[code] = { type, value };
+        saveDiscounts(discounts);
+        
+        showToast(`کد تخفیف "${code}" با موفقیت ذخیره شد.`, 'success');
+        addActivityLog(`ادمین کد تخفیف ${code} را ${originalCode ? 'ویرایش' : 'ایجاد'} کرد.`);
+        refreshDiscountsAdminList();
+        closeModal(discountModal);
+    });
+
+    // --- CMS Management ---
+    const cmsPage = document.getElementById('admin-content-page');
+    if(cmsPage) {
+        const refreshCmsLists = () => {
+            const exerciseContainer = document.getElementById('exercise-list-container');
+            const supplementContainer = document.getElementById('supplement-list-container');
+            if(exerciseContainer) exerciseContainer.innerHTML = renderExercisesCmsHtml();
+            if(supplementContainer) supplementContainer.innerHTML = renderSupplementsCmsHtml();
+            window.lucide?.createIcons();
+        };
+
+        cmsPage.addEventListener('input', e => {
+            const target = e.target as HTMLInputElement;
+            if (target.id === 'exercise-search-input') {
+                const searchTerm = target.value.toLowerCase();
+                document.querySelectorAll('.exercise-list-item').forEach(item => {
+                    const name = (item as HTMLElement).dataset.exerciseName?.toLowerCase() || '';
+                    (item as HTMLElement).style.display = name.includes(searchTerm) ? 'flex' : 'none';
+                });
+            }
+        });
+
+        cmsPage.addEventListener('click', e => {
+            const target = e.target as HTMLElement;
+            // FIX: Cast Element to HTMLElement to safely access dataset property.
+            const button = target.closest<HTMLButtonElement>('button[data-action]');
+            if (!button) return;
+
+            const action = button.dataset.action;
+            const groupDetails = button.closest<HTMLElement>('.cms-group-details');
+            const groupName = groupDetails?.dataset.groupName;
+            const listItem = button.closest<HTMLElement>('.exercise-list-item, .supplement-list-item');
+            
+            if (action === 'add-exercise') {
+                const input = button.previousElementSibling as HTMLInputElement;
+                const newName = input.value.trim();
+                if (newName && groupName) {
+                    const db = getExercisesDB();
+                    db[groupName].push(newName);
+                    saveExercisesDB(db);
+                    showToast('حرکت اضافه شد.', 'success');
+                    refreshCmsLists();
+                }
+            } else if (action === 'delete-exercise') {
+                const name = listItem?.dataset.exerciseName;
+                if (name && groupName && confirm(`آیا از حذف "${name}" مطمئن هستید؟`)) {
+                    const db = getExercisesDB();
+                    db[groupName] = db[groupName].filter(ex => ex !== name);
+                    saveExercisesDB(db);
+                    showToast('حرکت حذف شد.', 'success');
+                    refreshCmsLists();
+                }
+            } else if (action === 'edit-exercise') {
+                const span = listItem?.querySelector('.exercise-name-text') as HTMLElement;
+                const currentName = listItem?.dataset.exerciseName;
+                if (span && currentName && !listItem?.querySelector('.edit-exercise-input')) {
+                    span.style.display = 'none';
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = currentName;
+                    input.dataset.originalName = currentName;
+                    input.className = 'edit-exercise-input input-field !text-sm flex-grow';
+                    span.after(input);
+                    input.focus();
+                }
+            } else if (action === 'delete-supplement') {
+                 // FIX: Use optional chaining with HTMLElement to safely access dataset
+                 const supCategory = listItem?.dataset.supCategory;
+                 const supIndex = parseInt(listItem?.dataset.supIndex || '-1', 10);
+                 if (supCategory && supIndex > -1 && confirm('آیا از حذف این مکمل مطمئن هستید؟')) {
+                     const db = getSupplementsDB();
+                     const name = db[supCategory][supIndex].name;
+                     db[supCategory].splice(supIndex, 1);
+                     saveSupplementsDB(db);
+                     showToast(`مکمل "${name}" حذف شد.`, 'success');
+                     refreshCmsLists();
+                 }
+            } else if(action === 'edit-supplement') {
+                 // FIX: Use optional chaining with HTMLElement to safely access dataset
+                 const supCategory = listItem?.dataset.supCategory;
+                 const supIndex = parseInt(listItem?.dataset.supIndex || '-1', 10);
+                 if (supCategory && supIndex > -1) {
+                     const db = getSupplementsDB();
+                     openSupplementModal(db[supCategory][supIndex], supCategory, supIndex);
+                 }
+            }
+        });
+
+        const saveExerciseEdit = (input: HTMLInputElement) => {
+            const originalName = input.dataset.originalName;
+            const newName = input.value.trim();
+            // FIX: Cast closest result to HTMLElement to access dataset property
+            const groupName = input.closest<HTMLElement>('.cms-group-details')?.dataset.groupName;
+
+            if (newName && originalName && groupName && newName !== originalName) {
+                const db = getExercisesDB();
+                const index = db[groupName].indexOf(originalName);
+                if (index > -1) {
+                    db[groupName][index] = newName;
+                    saveExercisesDB(db);
+                    showToast('تغییرات ذخیره شد.', 'success');
+                }
+            }
+            refreshCmsLists();
+        };
+
+        cmsPage.addEventListener('blur', e => {
+            if ((e.target as HTMLElement).matches('.edit-exercise-input')) {
+                saveExerciseEdit(e.target as HTMLInputElement);
+            }
+        }, true);
+
+        cmsPage.addEventListener('keydown', e => {
+            if ((e.target as HTMLElement).matches('.edit-exercise-input') && e.key === 'Enter') {
+                saveExerciseEdit(e.target as HTMLInputElement);
+            }
+        });
+
+        document.getElementById('add-supplement-btn')?.addEventListener('click', () => openSupplementModal());
+        const supplementModal = document.getElementById('add-edit-supplement-modal');
+        document.getElementById('close-supplement-modal-btn')?.addEventListener('click', () => closeModal(supplementModal));
+        supplementModal?.addEventListener('click', e => { if((e.target as HTMLElement).id === 'add-edit-supplement-modal') closeModal(supplementModal); });
+
+        const supplementForm = document.getElementById('supplement-form') as HTMLFormElement;
+        supplementForm?.addEventListener('submit', e => {
+            e.preventDefault();
+            const formData = new FormData(supplementForm);
+            const data = {
+                name: formData.get('supName') as string,
+                note: formData.get('supNote') as string,
+                dosageOptions: (formData.get('supDosage') as string).split(',').map(s => s.trim()).filter(Boolean),
+                timingOptions: (formData.get('supTiming') as string).split(',').map(s => s.trim()).filter(Boolean),
+            };
+
+            const originalCategory = formData.get('supCategory') as string;
+            const selectedCategory = formData.get('supCategorySelect') as string;
+            const index = parseInt(formData.get('supIndex') as string, 10);
+
+            if (!data.name || !selectedCategory) {
+                showToast('نام و دسته بندی مکمل الزامی است.', 'error');
+                return;
+            }
+
+            const db = getSupplementsDB();
+            if (!isNaN(index) && originalCategory) { // Editing
+                if (originalCategory !== selectedCategory) {
+                    db[originalCategory].splice(index, 1);
+                    if (!db[selectedCategory]) db[selectedCategory] = [];
+                    db[selectedCategory].push(data);
+                } else {
+                    db[selectedCategory][index] = data;
+                }
+            } else { // Adding
+                 if (!db[selectedCategory]) db[selectedCategory] = [];
+                 db[selectedCategory].push(data);
+            }
+            saveSupplementsDB(db);
+            showToast('مکمل ذخیره شد.', 'success');
+            refreshCmsLists();
+            closeModal(supplementModal);
+        });
+    }
+
     switchPage('admin-dashboard-page');
     initCharts();
 }
@@ -513,9 +801,104 @@ const getAllTransactions = () => {
     return transactions.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
 };
 
+const renderExercisesCmsHtml = () => {
+    const exerciseDB = getExercisesDB();
+    return Object.entries(exerciseDB).map(([group, exercises]) => `
+        <details class="bg-bg-tertiary rounded-lg overflow-hidden cms-group-details" data-group-name="${group}">
+            <summary class="p-3 font-semibold cursor-pointer flex justify-between items-center">
+                <span>${group}</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-text-secondary bg-bg-secondary px-2 py-1 rounded-md">${exercises.length} حرکت</span>
+                    <i data-lucide="chevron-down" class="details-arrow transition-transform"></i>
+                </div>
+            </summary>
+            <div class="p-3 border-t border-border-primary bg-bg-secondary">
+                <ul class="space-y-2">
+                    ${exercises.map(ex => `
+                        <li class="flex justify-between items-center p-2 rounded-md hover:bg-bg-tertiary exercise-list-item" data-exercise-name="${ex}">
+                            <span class="exercise-name-text font-medium">${ex}</span>
+                            <div class="flex items-center gap-2">
+                                <button class="secondary-button !p-1.5" data-action="edit-exercise" title="ویرایش"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
+                                <button class="secondary-button !p-1.5 text-red-accent" data-action="delete-exercise" title="حذف"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                            </div>
+                        </li>
+                    `).join('')}
+                </ul>
+                <div class="mt-4 pt-3 border-t border-border-primary flex items-center gap-2">
+                    <input type="text" class="add-exercise-input input-field flex-grow !text-sm" placeholder="نام حرکت جدید...">
+                    <button class="primary-button !py-2" data-action="add-exercise">افزودن</button>
+                </div>
+            </div>
+        </details>
+    `).join('');
+};
+
+const renderSupplementsCmsHtml = () => {
+    const supplementsDB = getSupplementsDB();
+    return Object.entries(supplementsDB).map(([category, supplements]) => `
+        <details class="bg-bg-tertiary rounded-lg overflow-hidden cms-group-details" data-group-name="${category}">
+            <summary class="p-3 font-semibold cursor-pointer flex justify-between items-center">
+                <span>${category}</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-text-secondary bg-bg-secondary px-2 py-1 rounded-md">${supplements.length} مکمل</span>
+                    <i data-lucide="chevron-down" class="details-arrow transition-transform"></i>
+                </div>
+            </summary>
+            <div class="p-3 border-t border-border-primary bg-bg-secondary grid grid-cols-1 md:grid-cols-2 gap-3">
+                ${supplements.map((sup, index) => `
+                    <div class="border border-border-primary rounded-lg p-3 supplement-list-item" data-sup-category="${category}" data-sup-index="${index}">
+                        <div class="flex justify-between items-start">
+                            <h5 class="font-bold">${sup.name}</h5>
+                            <div class="flex items-center gap-2">
+                                <button class="secondary-button !p-1.5" data-action="edit-supplement" title="ویرایش"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
+                                <button class="secondary-button !p-1.5 text-red-accent" data-action="delete-supplement" title="حذف"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                            </div>
+                        </div>
+                        <p class="text-xs text-text-secondary mt-1">${sup.note}</p>
+                        <div class="mt-2 text-xs space-y-1">
+                            <p><strong class="font-semibold">دوزها:</strong> ${sup.dosageOptions.join('، ')}</p>
+                            <p><strong class="font-semibold">زمان‌ها:</strong> ${sup.timingOptions.join('، ')}</p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </details>
+    `).join('');
+};
+
+const openSupplementModal = (data: any | null = null, category: string | null = null, index: number | null = null) => {
+    const modal = document.getElementById('add-edit-supplement-modal');
+    const form = document.getElementById('supplement-form') as HTMLFormElement;
+    const titleEl = document.getElementById('supplement-modal-title');
+    const categorySelect = document.getElementById('supCategorySelect') as HTMLSelectElement;
+
+    if (!modal || !form || !titleEl || !categorySelect) return;
+
+    form.reset();
+    
+    // Populate category select
+    const categories = Object.keys(getSupplementsDB());
+    categorySelect.innerHTML = `<option value="">انتخاب دسته بندی...</option>` + categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+
+    if (data) {
+        titleEl.textContent = 'ویرایش مکمل';
+        (form.elements.namedItem('supCategory') as HTMLInputElement).value = category || '';
+        (form.elements.namedItem('supIndex') as HTMLInputElement).value = index !== null ? String(index) : '';
+        (form.elements.namedItem('supName') as HTMLInputElement).value = data.name;
+        (form.elements.namedItem('supNote') as HTMLTextAreaElement).value = data.note;
+        (form.elements.namedItem('supDosage') as HTMLTextAreaElement).value = data.dosageOptions.join(', ');
+        (form.elements.namedItem('supTiming') as HTMLTextAreaElement).value = data.timingOptions.join(', ');
+        categorySelect.value = category || '';
+    } else {
+        titleEl.textContent = 'افزودن مکمل جدید';
+        (form.elements.namedItem('supIndex') as HTMLInputElement).value = '';
+    }
+    openModal(modal);
+};
+
+
 export function renderAdminDashboard() {
     const { allUsersHtml, coachesHtml } = renderUserRowsHtml();
-    const discounts = getDiscounts();
     const activityLog = getActivityLog();
     const transactions = getAllTransactions();
     const users = getUsers();
@@ -524,7 +907,6 @@ export function renderAdminDashboard() {
     const coachActivationRate = coaches.length > 0 ? Math.round((verifiedCoaches / coaches.length) * 100) : 0;
     const circumference = 2 * Math.PI * 25;
     const dashoffset = circumference * (1 - coachActivationRate / 100);
-    const exerciseDB = getExercisesDB();
 
     const kpiCards = [
         { title: 'ثبت‌نام جدید (۳۰ روز)', value: '۴۲', change: '+15%', changeColor: 'text-green-500', icon: 'fa-user-plus', color: 'admin-accent-green' },
@@ -668,12 +1050,33 @@ export function renderAdminDashboard() {
                  </div>
                  <div id="exercises-content-admin" class="admin-tab-content">
                     <div class="card p-4">
-                        <p>بخش مدیریت تمرینات در حال توسعه است.</p>
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg">کتابخانه تمرینات</h3>
+                                <p class="text-text-secondary text-sm">حرکات تمرینی موجود در سیستم را مدیریت کنید.</p>
+                            </div>
+                            <div class="relative w-64">
+                                <i data-lucide="search" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none"></i>
+                                <input type="search" id="exercise-search-input" class="input-field w-full !pr-10 !text-sm" placeholder="جستجوی حرکت...">
+                            </div>
+                        </div>
+                        <div id="exercise-list-container" class="space-y-2">
+                           ${renderExercisesCmsHtml()}
+                        </div>
                     </div>
                  </div>
                  <div id="supplements-content-admin" class="admin-tab-content hidden">
                      <div class="card p-4">
-                        <p>بخش مدیریت مکمل‌ها در حال توسعه است.</p>
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg">کتابخانه مکمل‌ها</h3>
+                                <p class="text-text-secondary text-sm">مکمل‌های موجود در سیستم را مدیریت کنید.</p>
+                            </div>
+                            <button id="add-supplement-btn" data-action="add-supplement-modal" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن مکمل</button>
+                        </div>
+                        <div id="supplement-list-container" class="space-y-2">
+                           ${renderSupplementsCmsHtml()}
+                        </div>
                     </div>
                  </div>
             </div>
@@ -693,18 +1096,8 @@ export function renderAdminDashboard() {
                     </div>
                 </div>
                 <div id="discounts-content" class="admin-tab-content hidden">
-                    <div class="card p-4">
-                        <h3 class="font-bold text-lg mb-2">مدیریت کدهای تخفیف</h3>
-                        <p class="text-text-secondary text-sm mb-4">کدهای تخفیف را برای کمپین‌های بازاریابی مدیریت کنید.</p>
-                         ${Object.entries(discounts).map(([code, details]: [string, any]) => `
-                             <div class="p-4 border border-border-primary rounded-lg mb-2 flex items-center justify-between">
-                                <div>
-                                  <p class="font-bold text-admin-accent-blue">${code}</p>
-                                  <p class="text-sm text-text-secondary">${details.type === 'percentage' ? `${details.value}% تخفیف` : `${formatPrice(details.value)} تخفیف`}</p>
-                                </div>
-                                <button class="secondary-button !py-1 !px-3 !text-sm">ویرایش</button>
-                             </div>
-                         `).join('')}
+                     <div class="card p-4">
+                       ${renderDiscountsAdminHtml()}
                     </div>
                 </div>
                  <div id="transactions-content" class="admin-tab-content hidden">
@@ -822,6 +1215,73 @@ export function renderAdminDashboard() {
             </div>
             <div id="view-activity-modal-body" class="p-6 overflow-y-auto">
                 <!-- Content injected by JS -->
+            </div>
+        </div>
+    </div>
+
+    <div id="add-edit-supplement-modal" class="modal fixed inset-0 bg-black/60 z-[101] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
+             <button id="close-supplement-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
+            <div class="p-8">
+                <h2 id="supplement-modal-title" class="font-bold text-2xl text-center mb-6"></h2>
+                <form id="supplement-form" class="space-y-4" novalidate>
+                    <input type="hidden" name="supCategory">
+                    <input type="hidden" name="supIndex">
+                    <div class="input-group">
+                        <input name="supName" type="text" class="input-field w-full" placeholder=" " required>
+                        <label class="input-label">نام مکمل</label>
+                    </div>
+                    <div>
+                        <label for="supCategorySelect" class="block text-sm font-medium text-text-secondary mb-1">دسته بندی</label>
+                        <select id="supCategorySelect" name="supCategorySelect" class="input-field w-full">
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <textarea name="supNote" class="input-field w-full min-h-[80px]" placeholder=" "></textarea>
+                        <label class="input-label">توضیحات کوتاه</label>
+                    </div>
+                     <div class="input-group">
+                        <textarea name="supDosage" class="input-field w-full" placeholder=" "></textarea>
+                        <label class="input-label">دوزها (با کاما جدا کنید)</label>
+                    </div>
+                     <div class="input-group">
+                        <textarea name="supTiming" class="input-field w-full" placeholder=" "></textarea>
+                        <label class="input-label">زمان‌های مصرف (با کاما جدا کنید)</label>
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit" class="primary-button w-full !py-3 !text-base">ذخیره مکمل</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div id="add-edit-discount-modal" class="modal fixed inset-0 bg-black/60 z-[101] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative">
+            <button id="close-discount-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
+            <div class="p-8">
+                <h2 id="discount-modal-title" class="font-bold text-2xl text-center mb-6"></h2>
+                <form id="discount-form" class="space-y-4" novalidate>
+                    <input type="hidden" name="originalCode">
+                    <div class="input-group">
+                        <input name="discountCode" type="text" class="input-field w-full" placeholder=" " required>
+                        <label class="input-label">کد تخفیف</label>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1">نوع تخفیف</label>
+                        <select name="discountType" class="input-field w-full">
+                            <option value="percentage">درصدی (%)</option>
+                            <option value="fixed">مبلغ ثابت (تومان)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <input name="discountValue" type="number" class="input-field w-full" placeholder=" " required>
+                        <label class="input-label">مقدار</label>
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit" class="primary-button w-full !py-3 !text-base">ذخیره</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

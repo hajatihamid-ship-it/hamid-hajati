@@ -168,9 +168,4 @@ export const supplementsDB: Record<string, any[]> = {
     }]
 };
 
-export const STORE_PLANS = [
-    { planId: 'workout-1m', planName: 'برنامه تمرینی ۱ ماهه', description: 'دریافت برنامه تمرینی شخصی‌سازی شده برای یک ماه.', price: 150000, planType: 'workout', features: ['آنالیز بدن', 'برنامه تمرینی اختصاصی', 'پشتیبانی آنلاین'] },
-    { planId: 'nutrition-1m', planName: 'برنامه غذایی ۱ ماهه', description: 'دریافت برنامه غذایی متناسب با اهداف شما برای یک ماه.', price: 120000, planType: 'nutrition', features: ['آنالیز بدن', 'برنامه غذایی اختصاصی', 'پشتیبانی آنلاین'] },
-    { planId: 'full-1m', planName: 'پکیج کامل ۱ ماهه', description: 'برنامه تمرینی و غذایی همراه با پشتیبانی کامل برای یک ماه.', price: 250000, planType: 'full', features: ['آنالیز بدن', 'برنامه تمرینی و غذایی', 'پشتیبانی ویژه', 'چکاپ هفتگی'] },
-    { planId: 'full-3m', planName: 'پکیج کامل ۳ ماهه', description: 'پکیج کامل سه‌ماهه با تخفیف ویژه برای نتایج پایدار.', price: 650000, planType: 'full', features: ['همه موارد پکیج کامل', 'تخفیف ویژه سه‌ماهه', 'اولویت در پشتیبانی'] }
-];
+export const STORE_PLANS = [];
