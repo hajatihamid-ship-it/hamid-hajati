@@ -321,7 +321,7 @@
 
         /* Landing Page & Auth Modal */
         .landing-page-container { min-height: 100vh; overflow: hidden; position: relative; }
-        .landing-bg { position: absolute; inset: 0; background-image: url('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop'); background-size: cover; background-position: center; }
+        .landing-bg { position: absolute; inset: 0; background-image: url('https://images.unsplash.com/photo-1581009137042-c552e485697a?q=80&w=2070&auto=format&fit=crop'); background-size: cover; background-position: center; }
         .landing-bg::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(18, 24, 40, 0.6) 0%, rgba(18, 24, 40, 0.9) 80%); }
         .glass-nav { background-color: rgba(26, 34, 52, 0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(45, 55, 72, 0.5); }
         .hero-cta-btn { position: relative; overflow: hidden; }
@@ -349,7 +349,7 @@
         .motivational-card .stat-text p:first-child { font-weight: 700; }
         .motivational-card .stat-text p:last-child { color: var(--text-secondary); }
 
-        .landing-nav-link { background: none; border: none; color: var(--text-primary); cursor: pointer; position: relative; padding-bottom: 4px; transition: color 0.3s; }
+        .landing-nav-link { background: none; border: none; color: white; cursor: pointer; position: relative; padding-bottom: 4px; transition: color 0.3s; }
         .landing-nav-link::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background-color: var(--accent); transform: scaleX(0); transition: transform 0.3s ease; }
         .landing-nav-link:hover { color: var(--accent); }
         .landing-nav-link:hover::after { transform: scaleX(1); }
@@ -441,6 +441,7 @@
             transition: all 0.2s ease-in-out;
             display: block;
             text-align: center;
+            color: var(--text-primary);
         }
         .option-card-label:hover .option-card-content {
             border-color: var(--border-secondary);
@@ -616,6 +617,40 @@
             height: 100%;
             background-color: var(--accent);
             transition: width 0.5s ease;
+        }
+
+        /* Landing Page Widgets */
+        .calculator-card {
+            background-color: rgba(59, 130, 246, 0.15); /* blue-500 with 15% opacity */
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); 
+            border: 1px solid rgba(59, 130, 246, 0.3); /* blue-500 with 30% opacity */
+            border-radius: var(--radius-card);
+        }
+        .result-display {
+            transition: transform 0.3s ease;
+        }
+        .result-display:hover {
+            transform: scale(1.05);
+        }
+        .coach-card {
+            padding: 2rem;
+            border-radius: var(--radius-card);
+            transition: transform 0.3s ease, background-color 0.3s ease;
+            background-color: rgba(26, 34, 52, 0.7);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(45, 55, 72, 0.6);
+        }
+        .coach-card:hover {
+            transform: translateY(-8px);
+            background-color: rgba(45, 55, 72, 0.8);
+        }
+        .coach-card img {
+            transition: transform 0.3s ease;
+        }
+        .coach-card:hover img {
+            transform: scale(1.1);
         }
 
     </style>

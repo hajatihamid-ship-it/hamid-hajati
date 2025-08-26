@@ -1,6 +1,7 @@
-import { openModal, closeModal } from '../utils/dom';
+import { openModal, closeModal, updateSliderTrack } from '../utils/dom';
 import { getStorePlans } from '../services/storage';
 import { formatPrice } from '../utils/helpers';
+import { calculateBodyMetrics } from '../utils/calculations';
 
 const getFeaturesHTML = () => `
     <div class="space-y-6">
@@ -179,6 +180,175 @@ const getCoachesHTML = () => `
 </div>
 `;
 
+const getCalculatorHTML = () => {
+    const trainingGoals = [
+        { value: 'کاهش وزن', label: 'کاهش وزن' },
+        { value: 'افزایش حجم', label: 'افزایش حجم' },
+        { value: 'تناسب اندام عمومی', label: 'تناسب اندام' },
+        { value: 'افزایش قدرت', label: 'افزایش قدرت' }
+    ];
+     const activityLevels = [
+        { value: '1.2', label: 'نشسته' },
+        { value: '1.375', label: 'کم' },
+        { value: '1.55', label: 'متوسط' },
+        { value: '1.725', label: 'زیاد' },
+        { value: '1.9', label: 'خیلی زیاد' }
+    ];
+    return `
+    <section id="calculator-widget" class="py-16">
+        <div class="calculator-card max-w-6xl mx-auto p-6 md:p-8 animate-fade-in-up animation-delay-800">
+            <div class="text-center mb-8">
+                <h3 class="font-bold text-2xl text-yellow-400">محاسبه‌گر هوشمند تناسب اندام</h3>
+                <p class="text-yellow-400 mt-2 max-w-3xl mx-auto">اطلاعات خود را وارد کنید تا تمام معیارهای کلیدی بدن خود را مشاهده کرده و یک دید کلی از وضعیت فعلی خود به دست آورید.</p>
+            </div>
+            <form id="landing-page-calculator" class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-8">
+                <!-- Inputs -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
+                    <div class="sm:col-span-2 flex items-center gap-4">
+                        <span class="font-semibold w-16 text-yellow-400 shrink-0">جنسیت:</span>
+                        <div class="flex-grow grid grid-cols-2 gap-2">
+                             <label class="option-card-label">
+                                <input type="radio" name="gender" value="مرد" class="option-card-input" checked>
+                                <span class="option-card-content !py-2">مرد</span>
+                            </label>
+                             <label class="option-card-label">
+                                <input type="radio" name="gender" value="زن" class="option-card-input">
+                                <span class="option-card-content !py-2">زن</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="font-semibold text-sm text-yellow-400">سن: <span class="font-bold text-accent">25</span></label>
+                        <input type="range" name="age" min="15" max="80" value="25" class="range-slider age-slider w-full mt-1">
+                    </div>
+                    <div>
+                        <label class="font-semibold text-sm text-yellow-400">قد (cm): <span class="font-bold text-accent">175</span></label>
+                        <input type="range" name="height" min="140" max="220" value="175" class="range-slider height-slider w-full mt-1">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="font-semibold text-sm text-yellow-400">وزن (kg): <span class="font-bold text-accent">75</span></label>
+                        <input type="range" name="weight" min="40" max="150" value="75" step="0.5" class="range-slider weight-slider w-full mt-1">
+                    </div>
+                    
+                    <div class="sm:col-span-2">
+                        <h4 class="font-semibold text-sm mb-2 text-yellow-400">هدف تمرینی</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                            ${trainingGoals.map((goal, index) => `
+                                <label class="option-card-label">
+                                    <input type="radio" name="training_goal_user" value="${goal.value}" class="option-card-input" ${index === 1 ? 'checked' : ''}>
+                                    <span class="option-card-content !py-2">${goal.label}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <h4 class="font-semibold text-sm mb-2 text-yellow-400">روزهای تمرین در هفته</h4>
+                        <div class="grid grid-cols-4 gap-2 text-xs">
+                            ${[3, 4, 5, 6].map((day, index) => `
+                                <label class="option-card-label">
+                                    <input type="radio" name="training_days_user" value="${day}" class="option-card-input" ${index === 1 ? 'checked' : ''}>
+                                    <span class="option-card-content !py-2">${day} روز</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <h4 class="font-semibold text-sm mb-2 text-yellow-400">سطح فعالیت روزانه</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
+                            ${activityLevels.map((level, index) => `
+                                <label class="option-card-label">
+                                    <input type="radio" name="activity_level" value="${level.value}" class="option-card-input" ${index === 2 ? 'checked' : ''}>
+                                    <span class="option-card-content !py-2">${level.label}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Outputs -->
+                <div class="flex flex-col items-center justify-between bg-bg-tertiary/80 p-6 rounded-2xl">
+                     <div>
+                        <div class="flex justify-between items-center mb-1 w-full">
+                            <h3 class="font-semibold text-sm text-yellow-400">شاخص توده بدنی (BMI)</h3>
+                            <span class="font-bold text-lg bmi-output">24.5</span>
+                        </div>
+                        <div class="w-full bg-bg-tertiary rounded-full h-2.5 relative" title="آبی: کمبود وزن, سبز: نرمال, زرد: اضافه وزن, قرمز: چاقی">
+                            <div class="absolute top-0 left-0 h-full rounded-l-full bg-blue-500" style="width: 14%;"></div>
+                            <div class="absolute top-0 h-full bg-green-500" style="left: 14%; width: 26%;"></div>
+                            <div class="absolute top-0 h-full bg-yellow-500" style="left: 40%; width: 20%;"></div>
+                            <div class="absolute top-0 h-full rounded-r-full bg-red-500" style="left: 60%; width: 40%;"></div>
+                            <div id="landing-bmi-indicator" class="absolute -top-1 w-5 h-5 rounded-full bg-white border-2 border-accent shadow-lg transition-all duration-500 ease-out" style="left: -10px;">
+                                 <div class="w-full h-full rounded-full bg-accent/30"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between text-xs text-text-secondary mt-1 px-1">
+                            <span>۱۸.۵</span>
+                            <span>۲۵</span>
+                            <span>۳۰</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-5 my-6 w-full text-center">
+                        <div class="result-display bg-bg-secondary p-3 rounded-lg">
+                            <p class="text-sm text-yellow-400">کالری روزانه (TDEE)</p>
+                            <p class="font-black text-3xl text-white my-1"><span class="tdee-output">2450</span></p>
+                            <p class="text-xs text-text-secondary">کیلوکالری</p>
+                        </div>
+                         <div class="result-display bg-bg-secondary p-3 rounded-lg">
+                            <p class="text-sm text-yellow-400">درصد چربی بدن</p>
+                            <p class="font-black text-3xl text-white my-1"><span class="bodyfat-output">–</span></p>
+                            <p class="text-xs text-text-secondary">(تخمینی)</p>
+                        </div>
+                         <div class="result-display bg-bg-secondary p-3 rounded-lg">
+                            <p class="text-sm text-yellow-400">توده بدون چربی (LBM)</p>
+                            <p class="font-black text-3xl text-white my-1"><span class="lbm-output">–</span></p>
+                             <p class="text-xs text-text-secondary">کیلوگرم</p>
+                        </div>
+                         <div class="result-display bg-bg-secondary p-3 rounded-lg">
+                            <p class="text-sm text-yellow-400">محدوده وزن ایده‌آل</p>
+                            <p class="font-black text-xl text-white my-1"><span class="ideal-weight-output">...</span></p>
+                             <p class="text-xs text-text-secondary">کیلوگرم</p>
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="open-auth-modal-btn" class="primary-button w-full !py-3">دریافت برنامه شخصی‌سازی شده</button>
+                </div>
+            </form>
+        </div>
+    </section>
+    `;
+}
+const getCoachesShowcaseHTML = () => `
+    <section class="py-16">
+        <div class="text-center mb-12">
+            <h3 class="font-bold text-2xl text-yellow-400">با مربیان متخصص ما آشنا شوید</h3>
+            <p class="text-yellow-400 mt-2 max-w-2xl mx-auto">تیمی از بهترین مربیان کشور که آماده‌اند تا شما را در مسیر رسیدن به اهدافتان همراهی کنند.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            ${[
+                { name: 'مربی تایید شده', specialty: 'متخصص افزایش حجم و قدرت', img: 'https://i.pravatar.cc/200?u=coach10186' },
+                { name: 'سارا احمدی', specialty: 'متخصص فیتنس و کاهش وزن بانوان', img: 'https://i.pravatar.cc/200?u=sara' },
+                { name: 'علی رضایی', specialty: 'متخصص آمادگی جسمانی و حرکات اصلاحی', img: 'https://i.pravatar.cc/200?u=ali' }
+            ].map(coach => `
+                <div class="coach-card text-center">
+                    <div class="relative inline-block">
+                        <img src="${coach.img}" alt="${coach.name}" class="w-32 h-32 rounded-full mx-auto border-4 border-bg-secondary shadow-lg">
+                        <span class="absolute bottom-2 -right-1 bg-green-500 text-white p-1 rounded-full border-2 border-bg-secondary"><i data-lucide="check" class="w-4 h-4"></i></span>
+                    </div>
+                    <h4 class="font-bold text-lg mt-4 text-yellow-400">${coach.name}</h4>
+                    <p class="text-accent text-sm">${coach.specialty}</p>
+                    <div class="flex justify-center gap-4 mt-4">
+                        <a href="#" class="social-icon-link"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-icon-link"><i class="fab fa-telegram"></i></a>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    </section>
+    `;
+
 const openInfoModal = (section: string) => {
     const modal = document.getElementById('info-modal');
     const titleEl = document.getElementById('info-modal-title');
@@ -234,6 +404,77 @@ export function initLandingPageListeners() {
         });
         document.getElementById('close-info-modal-btn')?.addEventListener('click', () => closeModal(infoModal));
     }
+    
+    // Calculator widget logic
+    const calculator = document.getElementById('landing-page-calculator');
+    if (calculator) {
+        const updateCalculatorResults = () => {
+            const metrics = calculateBodyMetrics(calculator);
+            
+            const tdeeOutput = calculator.querySelector('.tdee-output');
+            const bmiOutput = calculator.querySelector('.bmi-output');
+            const bodyfatOutput = calculator.querySelector('.bodyfat-output');
+            const lbmOutput = calculator.querySelector('.lbm-output');
+            const idealWeightOutput = calculator.querySelector('.ideal-weight-output');
+            const bmiIndicator = calculator.querySelector('#landing-bmi-indicator');
+
+            const clearOutputs = () => {
+                if(tdeeOutput) tdeeOutput.textContent = '–';
+                if(bmiOutput) bmiOutput.textContent = '–';
+                if(bodyfatOutput) bodyfatOutput.textContent = '–';
+                if(lbmOutput) lbmOutput.textContent = '–';
+                if(idealWeightOutput) idealWeightOutput.textContent = '–';
+                if(bmiIndicator) (bmiIndicator as HTMLElement).style.left = '-10px';
+            };
+
+            if (metrics) {
+                if (tdeeOutput) tdeeOutput.textContent = metrics.tdee ? String(Math.round(metrics.tdee)) : '–';
+                if (bmiOutput) bmiOutput.textContent = metrics.bmi ? String(metrics.bmi) : '–';
+                if (bodyfatOutput) bodyfatOutput.textContent = metrics.bodyFat ? `${metrics.bodyFat}%` : '–';
+                if (lbmOutput) lbmOutput.textContent = metrics.lbm ? `${metrics.lbm} kg` : '–';
+                if (idealWeightOutput) idealWeightOutput.textContent = metrics.idealWeight || '–';
+
+                if (bmiIndicator && metrics.bmi) {
+                    const bmi = metrics.bmi;
+                    const minBmi = 15;
+                    const maxBmi = 40;
+                    let percentage = (bmi - minBmi) / (maxBmi - minBmi) * 100;
+                    percentage = Math.max(0, Math.min(100, percentage));
+                    setTimeout(() => {
+                        (bmiIndicator as HTMLElement).style.left = `calc(${percentage}% - 10px)`;
+                    }, 100);
+                } else if (bmiIndicator) {
+                     (bmiIndicator as HTMLElement).style.left = '-10px';
+                }
+            } else {
+                clearOutputs();
+            }
+        };
+
+        calculator.addEventListener('input', e => {
+            const target = e.target as HTMLInputElement;
+            if (target.matches('.range-slider')) {
+                const labelSpan = target.previousElementSibling?.querySelector('span');
+                if (labelSpan) labelSpan.textContent = target.value;
+                updateSliderTrack(target);
+            }
+             updateCalculatorResults();
+        });
+        
+        const genderRadios = calculator.querySelectorAll('input[name="gender"]');
+        genderRadios.forEach(radio => radio.addEventListener('change', () => {
+             updateCalculatorResults();
+        }));
+        
+        calculator.addEventListener('change', e => {
+            const target = e.target as HTMLInputElement;
+            if (target.matches('input[type="radio"]') && target.name !== 'gender') {
+                updateCalculatorResults();
+            }
+        });
+        
+        updateCalculatorResults();
+    }
 }
 
 export function renderLandingPage() {
@@ -248,10 +489,10 @@ export function renderLandingPage() {
                         <span class="text-xl font-bold text-white">FitGym Pro</span>
                     </div>
                     <div class="hidden md:flex items-center gap-6">
-                        <button data-section="features" class="landing-nav-link text-white">ویژگی‌ها</button>
-                        <button data-section="pricing" class="landing-nav-link text-white">تعرفه‌ها</button>
-                        <button data-section="coaches" class="landing-nav-link text-white">مربیان</button>
-                        <button data-section="contact" class="landing-nav-link text-white">تماس با ما</button>
+                        <button data-section="features" class="landing-nav-link">ویژگی‌ها</button>
+                        <button data-section="pricing" class="landing-nav-link">تعرفه‌ها</button>
+                        <button data-section="coaches" class="landing-nav-link">مربیان</button>
+                        <button data-section="contact" class="landing-nav-link">تماس با ما</button>
                     </div>
                     <div>
                         <button id="open-auth-modal-btn" class="primary-button">ورود / ثبت نام</button>
@@ -260,11 +501,11 @@ export function renderLandingPage() {
             </header>
 
             <main class="flex-grow flex items-center">
-                <div class="container mx-auto text-center px-4">
+                <div class="container mx-auto text-center px-4 py-16">
                     <h1 class="text-4xl md:text-6xl font-black text-white leading-tight animate-fade-in-down">
                         آینده <span class="text-accent">تناسب اندام</span> اینجاست
                     </h1>
-                    <p class="mt-6 max-w-2xl mx-auto text-lg text-text-secondary animate-fade-in-up animation-delay-200">
+                    <p class="mt-6 max-w-2xl mx-auto text-lg text-yellow-400 animate-fade-in-up animation-delay-200">
                         برنامه‌های تمرینی و غذایی شخصی‌سازی شده با قدرت هوش مصنوعی. به اهداف خود سریع‌تر و هوشمندانه‌تر برسید.
                     </p>
                     <div class="mt-10 animate-fade-in-up animation-delay-400">
@@ -273,26 +514,15 @@ export function renderLandingPage() {
                             شروع کنید
                         </button>
                     </div>
-
-                    <div class="motivational-card animate-fade-in-up animation-delay-600">
-                        <div class="stat">
-                            <i class="fas fa-users fa-2x"></i>
-                            <div class="stat-text text-right">
-                                <p class="text-white">۱,۵۰۰+</p>
-                                <p>کاربر فعال</p>
-                            </div>
-                        </div>
-                         <div class="stat">
-                            <i class="fas fa-chart-line fa-2x"></i>
-                            <div class="stat-text text-right">
-                                <p class="text-white">۱۰,۰۰۰+</p>
-                                <p>برنامه موفق</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </main>
-             <footer class="text-center p-6 text-text-secondary text-sm">
+             <div class="bg-bg-primary pb-8">
+                <div class="container mx-auto px-4">
+                    ${getCalculatorHTML()}
+                    ${getCoachesShowcaseHTML()}
+                </div>
+            </div>
+             <footer class="text-center p-6 text-text-secondary text-sm bg-bg-primary">
                 <div class="flex justify-center gap-6 mb-4">
                     <a href="#" class="social-icon-link"><i class="fab fa-instagram fa-lg"></i></a>
                     <a href="#" class="social-icon-link"><i class="fab fa-telegram fa-lg"></i></a>

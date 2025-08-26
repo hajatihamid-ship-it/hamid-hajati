@@ -10,11 +10,15 @@ export const calculateBodyMetrics = (container: HTMLElement) => {
     if (!n) return null;
 
     const o = n.value === "مرد",
-        m = container.querySelector('input[name^="activity_level"]:checked, input[name^="activity_level_user"]:checked') as HTMLInputElement,
-        d = m ? parseFloat(m.value) : 1.2,
-        c = parseFloat((container.querySelector(".neck-input") as HTMLInputElement).value),
-        g = parseFloat((container.querySelector(".waist-input") as HTMLInputElement).value),
-        x = parseFloat((container.querySelector(".hip-input") as HTMLInputElement).value);
+        m = container.querySelector('input[name="activity_level"]:checked, input[name="activity_level_user"]:checked') as HTMLInputElement,
+        d = m ? parseFloat(m.value) : 1.2;
+    
+    const neckInput = container.querySelector(".neck-input") as HTMLInputElement | null;
+    const waistInput = container.querySelector(".waist-input") as HTMLInputElement | null;
+    const hipInput = container.querySelector(".hip-input") as HTMLInputElement | null;
+    const c = neckInput ? parseFloat(neckInput.value) : NaN;
+    const g = waistInput ? parseFloat(waistInput.value) : NaN;
+    const x = hipInput ? parseFloat(hipInput.value) : NaN;
 
     const clearMetrics = () => {
         [".bmi-input", ".bmr-input", ".tdee-input", ".bodyfat-input", ".lbm-input", ".ideal-weight-input"].forEach(selector => {
@@ -59,13 +63,20 @@ export const calculateBodyMetrics = (container: HTMLElement) => {
         metrics.lbm = parseFloat((a * (1 - bodyFat / 100)).toFixed(1));
     }
 
-    // Update DOM input fields
-    (form.querySelector(".bmi-input") as HTMLInputElement).value = metrics.bmi?.toString() || '';
-    (form.querySelector(".bmr-input") as HTMLInputElement).value = metrics.bmr?.toString() || '';
-    (form.querySelector(".tdee-input") as HTMLInputElement).value = metrics.tdee?.toString() || '';
-    (form.querySelector(".ideal-weight-input") as HTMLInputElement).value = metrics.idealWeight;
-    (form.querySelector(".bodyfat-input") as HTMLInputElement).value = metrics.bodyFat?.toString() || '';
-    (form.querySelector(".lbm-input") as HTMLInputElement).value = metrics.lbm?.toString() || '';
+    // Update DOM input fields safely
+    const updateInputValue = (selector: string, value: string | number | null | undefined) => {
+        const input = form.querySelector(selector) as HTMLInputElement;
+        if (input) {
+            input.value = value?.toString() || '';
+        }
+    };
+    
+    updateInputValue(".bmi-input", metrics.bmi);
+    updateInputValue(".bmr-input", metrics.bmr);
+    updateInputValue(".tdee-input", metrics.tdee);
+    updateInputValue(".ideal-weight-input", metrics.idealWeight);
+    updateInputValue(".bodyfat-input", metrics.bodyFat);
+    updateInputValue(".lbm-input", metrics.lbm);
     
     return metrics;
 };
