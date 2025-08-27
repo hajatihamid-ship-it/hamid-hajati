@@ -11,6 +11,14 @@ let studentModalChartInstance: any = null;
 let currentSelectionTarget: HTMLElement | null = null;
 let exerciseToMuscleGroupMap: Record<string, string> = {};
 
+const getCoachStudents = (coachUsername: string) => {
+    return getUsers().filter((u: any) => {
+        if (u.role !== 'user') return false;
+        const studentData = getUserData(u.username);
+        return studentData.step1?.coachName === coachUsername;
+    });
+};
+
 const getColorForName = (name: string) => {
     const colors = [
         '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
@@ -892,7 +900,7 @@ const resetProgramBuilder = () => {
     calculateAndDisplayVolume();
 };
 
-const openStudentSelectionModal = (target: HTMLElement) => {
+const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) => {
     currentSelectionTarget = target;
     const modal = document.getElementById('selection-modal');
     if (!modal) return;
@@ -911,7 +919,7 @@ const openStudentSelectionModal = (target: HTMLElement) => {
     (filterChipsContainer?.querySelector('.filter-chip[data-filter="all"]') as HTMLElement)?.classList.add('active');
     sortSelect.value = 'name';
 
-    const allStudents = getUsers().filter((u: any) => u.role === 'user');
+    const allStudents = getCoachStudents(coachUsername);
 
     const renderOptions = () => {
         const filter = (filterChipsContainer?.querySelector('.filter-chip.active') as HTMLElement)?.dataset.filter || 'all';
@@ -1249,7 +1257,7 @@ const getLastActivityDate = (userData: any): string => {
 };
 
 
-export function initCoachDashboard(currentUser: string, handleLogout: () => void) {
+export function initCoachDashboard(currentUser: string, handleLogout: () => void, handleGoToHome: () => void) {
     const mainContainer = document.getElementById('coach-dashboard-container');
     if (!mainContainer) return;
 
@@ -1285,24 +1293,24 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
 
         if (targetId === 'templates-content') renderTemplatesTab();
         if (targetId === 'students-content') {
-            const allStudents = getUsers().filter((u: any) => u.role === 'user');
-            const studentsNeedingAttention = getStudentsNeedingAttention(allStudents);
+            const myStudents = getCoachStudents(currentUser);
+            const studentsNeedingAttention = getStudentsNeedingAttention(myStudents);
             renderStudentCards(studentsNeedingAttention, 'needs-attention-grid');
-            renderStudentCards(allStudents, 'all-students-grid');
+            renderStudentCards(myStudents, 'all-students-grid');
         }
     };
 
     // --- Student Tab Initial Render ---
-    const allStudents = getUsers().filter((u: any) => u.role === 'user');
-    const studentsNeedingAttention = getStudentsNeedingAttention(allStudents);
+    const myStudents = getCoachStudents(currentUser);
+    const studentsNeedingAttention = getStudentsNeedingAttention(myStudents);
     renderStudentCards(studentsNeedingAttention, 'needs-attention-grid');
-    renderStudentCards(allStudents, 'all-students-grid');
+    renderStudentCards(myStudents, 'all-students-grid');
     updateCoachNotifications(currentUser);
 
 
     document.getElementById('student-search-input')?.addEventListener('input', e => {
         const searchTerm = (e.target as HTMLInputElement).value.toLowerCase();
-        const filteredStudents = allStudents.filter(s => {
+        const filteredStudents = myStudents.filter(s => {
             const studentData = getUserData(s.username);
             const name = studentData.step1?.clientName || s.username;
             return name.toLowerCase().includes(searchTerm);
@@ -1327,6 +1335,10 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         }
         if (target.closest('#logout-btn')) {
             handleLogout();
+            return;
+        }
+        if (target.closest('#go-to-home-btn')) {
+            handleGoToHome();
             return;
         }
 
@@ -1523,7 +1535,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             if (!button) return;
             
             if (button.id === 'student-select-btn') {
-                openStudentSelectionModal(button);
+                openStudentSelectionModal(button, currentUser);
             }
 
             if (button.classList.contains('selection-button')) {
@@ -1723,29 +1735,89 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             }
         });
     }
+    
+    // --- Profile Form Logic ---
+    const profileForm = document.getElementById('coach-profile-form') as HTMLFormElement;
+    if (profileForm) {
+        const changeAvatarBtn = document.getElementById('change-avatar-btn');
+        const avatarInput = document.getElementById('coach-avatar-input') as HTMLInputElement;
+        changeAvatarBtn?.addEventListener('click', () => avatarInput?.click());
+
+        avatarInput?.addEventListener('change', () => {
+            if (avatarInput.files && avatarInput.files[0]) {
+                const file = avatarInput.files[0];
+                if (file.size > 2 * 1024 * 1024) { // 2MB limit
+                    showToast('حجم عکس باید کمتر از ۲ مگابایت باشد.', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.getElementById('coach-avatar-preview') as HTMLImageElement;
+                    const hiddenInput = document.getElementById('coach-avatar-base64') as HTMLInputElement;
+                    if (preview && hiddenInput && e.target?.result) {
+                        preview.src = e.target.result as string;
+                        hiddenInput.value = e.target.result as string;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+
+        profileForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const formData = new FormData(profileForm);
+            const coachData = getUserData(currentUser);
+            if (!coachData.profile) coachData.profile = {};
+            
+            coachData.profile.bio = formData.get('coach-bio') as string;
+            coachData.profile.specialization = formData.get('coach-specialization') as string;
+            coachData.profile.instagram = formData.get('coach-instagram') as string;
+
+            const avatarBase64 = (formData.get('coach-avatar-base64') as string);
+            if (avatarBase64) {
+                coachData.profile.avatar = avatarBase64;
+            }
+            
+            if (coachData.step1) {
+                coachData.step1.clientName = formData.get('coach-name') as string;
+            } else {
+                coachData.step1 = { clientName: formData.get('coach-name') as string };
+            }
+            
+            saveUserData(currentUser, coachData);
+            
+            const headerAvatar = document.getElementById('coach-header-avatar') as HTMLImageElement;
+            if (headerAvatar && coachData.profile.avatar) {
+                headerAvatar.src = coachData.profile.avatar;
+            }
+            
+            showToast('پروفایل با موفقیت به‌روزرسانی شد.', 'success');
+        });
+    }
 
     renderTemplatesTab();
     if(document.body) (document.body.querySelector('.coach-nav-link') as HTMLElement)?.click();
 }
 
-export function renderCoachDashboard() {
+export function renderCoachDashboard(currentUser: string, userData: any) {
     const daysOfWeek = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
-    const allStudents = getUsers().filter((u: any) => u.role === 'user');
-    const studentsNeedingPlan = getStudentsNeedingAttention(allStudents).length;
+    const myStudents = getCoachStudents(currentUser);
+    const studentsNeedingPlan = getStudentsNeedingAttention(myStudents).length;
     const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const activeStudents = allStudents.filter(s => {
-        const userData = getUserData(s.username);
-        const lastActivityTimestamp = new Date(getLastActivityDate(userData)).getTime();
+    const activeStudents = myStudents.filter(s => {
+        const studentData = getUserData(s.username);
+        const lastActivityTimestamp = new Date(getLastActivityDate(studentData)).getTime();
         return lastActivityTimestamp > oneWeekAgo;
     }).length;
-    const activeRate = allStudents.length > 0 ? Math.round((activeStudents / allStudents.length) * 100) : 0;
+    const activeRate = myStudents.length > 0 ? Math.round((activeStudents / myStudents.length) * 100) : 0;
     
     const coachKpisHtml = `
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="info-card flex items-center p-5 gap-4">
             <div class="bg-blue-500/10 text-blue-500 p-3 rounded-full"><i data-lucide="users" class="w-7 h-7"></i></div>
             <div>
-                <p class="text-3xl font-bold">${allStudents.length}</p>
+                <p class="text-3xl font-bold">${myStudents.length}</p>
                 <p class="text-text-secondary">کل شاگردان</p>
             </div>
         </div>
@@ -1790,6 +1862,7 @@ export function renderCoachDashboard() {
                 `).join('')}
             </nav>
             <div class="space-y-2">
+                 <button id="go-to-home-btn" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="home" class="w-5 h-5"></i><span>صفحه اصلی</span></button>
                  <button id="theme-toggle-btn-dashboard" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="sun" class="w-5 h-5"></i><span>تغییر پوسته</span></button>
                  <button id="logout-btn" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="log-out" class="w-5 h-5"></i><span>خروج</span></button>
             </div>
@@ -1801,6 +1874,13 @@ export function renderCoachDashboard() {
                 <div id="coach-page-title-container">
                     <h1 id="coach-page-title" class="text-3xl font-bold">شاگردان</h1>
                     <p id="coach-page-subtitle" class="text-text-secondary">نمای کلی شاگردان و نیازمندی‌ها.</p>
+                </div>
+                 <div class="flex items-center gap-3 bg-bg-secondary p-2 rounded-lg">
+                    <img id="coach-header-avatar" src="${userData.profile?.avatar || `https://i.pravatar.cc/150?u=${currentUser}`}" alt="Coach Avatar" class="w-10 h-10 rounded-full object-cover">
+                    <div>
+                        <p class="font-bold text-sm">${userData.step1?.clientName || currentUser}</p>
+                        <p class="text-xs text-text-secondary">مربی</p>
+                    </div>
                 </div>
             </header>
 
@@ -1956,7 +2036,36 @@ export function renderCoachDashboard() {
             </div>
 
             <div id="templates-content" class="coach-tab-content hidden"><div class="card p-6"><h2 class="text-xl font-bold mb-4">الگوهای برنامه</h2><div id="templates-list-container" class="space-y-2"></div></div></div>
-            <div id="profile-content" class="coach-tab-content hidden"><div class="card p-6 max-w-2xl mx-auto"><h2 class="text-xl font-bold mb-4">پروفایل مربی</h2><form class="space-y-4"><div class="input-group"><input id="coach-name" type="text" value="مربی تایید شده" class="input-field w-full" placeholder=" "><label for="coach-name" class="input-label">نام نمایشی</label></div><div class="input-group"><textarea id="coach-bio" class="input-field w-full min-h-[100px]" placeholder=" ">مربی رسمی فدراسیون با ۵ سال سابقه در زمینه طراحی برنامه...</textarea><label for="coach-bio" class="input-label">بیوگرافی کوتاه</label></div><div class="input-group"><input id="coach-specialization" type="text" value="فیتنس، افزایش حجم" class="input-field w-full" placeholder=" "><label for="coach-specialization" class="input-label">تخصص‌ها (با کاما جدا کنید)</label></div><div class="input-group"><input id="coach-instagram" type="text" class="input-field w-full" placeholder=" "><label for="coach-instagram" class="input-label">آیدی اینستاگرام</label></div><button type="submit" class="primary-button w-full">ذخیره تغییرات</button></form></div></div>
+            <div id="profile-content" class="coach-tab-content hidden">
+                <div class="card p-6 max-w-2xl mx-auto">
+                    <h2 class="text-xl font-bold mb-6 text-center">پروفایل مربی</h2>
+                    <form id="coach-profile-form" class="space-y-4">
+                         <div class="flex flex-col items-center mb-6">
+                            <img id="coach-avatar-preview" src="${userData.profile?.avatar || `https://i.pravatar.cc/150?u=${currentUser}`}" alt="Avatar Preview" class="w-24 h-24 rounded-full mb-4 border-4 border-accent/50 object-cover shadow-lg">
+                            <input type="file" id="coach-avatar-input" class="hidden" accept="image/jpeg, image/png, image/webp">
+                            <input type="hidden" id="coach-avatar-base64" name="coach-avatar-base64">
+                            <button type="button" id="change-avatar-btn" class="secondary-button !text-sm">تغییر عکس</button>
+                        </div>
+                        <div class="input-group">
+                            <input id="coach-name" name="coach-name" type="text" value="${userData.step1?.clientName || currentUser}" class="input-field w-full" placeholder=" ">
+                            <label for="coach-name" class="input-label">نام نمایشی</label>
+                        </div>
+                        <div class="input-group">
+                            <textarea id="coach-bio" name="coach-bio" class="input-field w-full min-h-[100px]" placeholder=" ">${userData.profile?.bio || 'مربی رسمی فدراسیون با ۵ سال سابقه در زمینه طراحی برنامه...'}</textarea>
+                            <label for="coach-bio" class="input-label">بیوگرافی کوتاه</label>
+                        </div>
+                        <div class="input-group">
+                            <input id="coach-specialization" name="coach-specialization" type="text" value="${userData.profile?.specialization || 'فیتنس، افزایش حجم'}" class="input-field w-full" placeholder=" ">
+                            <label for="coach-specialization" class="input-label">تخصص‌ها (با کاما جدا کنید)</label>
+                        </div>
+                        <div class="input-group">
+                            <input id="coach-instagram" name="coach-instagram" type="text" value="${userData.profile?.instagram || ''}" class="input-field w-full" placeholder=" ">
+                            <label for="coach-instagram" class="input-label">آیدی اینستاگرام</label>
+                        </div>
+                        <button type="submit" class="primary-button w-full">ذخیره تغییرات</button>
+                    </form>
+                </div>
+            </div>
         </main>
     </div>
     

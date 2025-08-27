@@ -1,4 +1,4 @@
-import { getUserData, saveUserData, addActivityLog, getCart, saveCart, getDiscounts, getNotifications, clearNotification, setNotification, getStorePlans } from '../services/storage';
+import { getUserData, saveUserData, addActivityLog, getCart, saveCart, getDiscounts, getNotifications, clearNotification, setNotification, getStorePlans, getUsers } from '../services/storage';
 import { getTodayWorkoutData, calculateBodyMetrics, calculateWorkoutStreak } from '../utils/calculations';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement } from '../utils/dom';
 import { setWeightChartInstance, getWeightChartInstance } from '../state';
@@ -624,8 +624,8 @@ const renderStoreTab = (currentUser: string) => {
             ${plans.map((plan: any) => {
                 const isInCart = cart.items.some((item: any) => item.planId === plan.planId);
                 return `
-                <div class="card p-6 flex flex-col border-2 ${plan.planId.includes('full-3m') ? 'border-accent' : 'border-border-primary'} transition-all hover:shadow-xl hover:-translate-y-1">
-                    <h4 class="text-lg font-bold text-text-primary">${plan.planName}</h4>
+                <div class="card p-6 flex flex-col border-2 transition-all hover:shadow-xl hover:-translate-y-1" style="border-color: ${plan.color || 'var(--border-border-primary)'};">
+                    <h4 class="text-lg font-bold text-text-primary">${plan.emoji || ''} ${plan.planName}</h4>
                     <p class="text-sm text-text-secondary mt-1 flex-grow">${plan.description}</p>
                     <div class="my-6">
                         <span class="text-3xl font-black">${formatPrice(plan.price).split(' ')[0]}</span>
@@ -641,7 +641,7 @@ const renderStoreTab = (currentUser: string) => {
                     </ul>
                     <button 
                         data-plan-id="${plan.planId}" 
-                        class="add-to-cart-btn ${isInCart ? 'green-button' : 'primary-button'} mt-auto w-full"
+                        class="add-to-cart-btn ${isInCart ? 'green-button cursor-not-allowed' : 'primary-button'} mt-auto w-full flex items-center justify-center"
                         ${isInCart ? 'disabled' : ''}
                     >
                         ${isInCart ? '<i data-lucide="check" class="w-4 h-4 mr-2"></i> اضافه شد' : '<i data-lucide="plus" class="w-4 h-4 mr-2"></i> افزودن به سبد'}
@@ -718,6 +718,78 @@ const renderCartModalContent = (currentUser: string) => {
 
 
 export function initUserDashboard(currentUser: string, userData: any, handleLogout: () => void, handleGoToHome: () => void) {
+    const hasActiveSubscription = (user: string): boolean => {
+        const currentData = getUserData(user);
+        if (!currentData.subscriptions || currentData.subscriptions.length === 0) {
+            return false;
+        }
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        return currentData.subscriptions.some((sub: any) => new Date(sub.purchaseDate).getTime() > thirtyDaysAgo);
+    };
+
+    const renderCoachSelectionCard = (currentUser: string, userData: any) => {
+        const container = document.getElementById('coach-selection-container-wrapper');
+        if (!container) return;
+
+        const isActive = hasActiveSubscription(currentUser);
+        const coaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
+        const currentCoachUsername = userData.step1?.coachName;
+
+        let coachListHtml = coaches.map((coach: any) => {
+            const coachData = getUserData(coach.username);
+            const isSelected = currentCoachUsername === coach.username;
+            const coachName = coachData.step1?.clientName || coach.username;
+            const specialization = coachData.profile?.specialization || 'مربی رسمی بدنسازی';
+            const avatar = coachData.profile?.avatar;
+
+            const avatarHtml = avatar
+                ? `<img src="${avatar}" alt="${coachName}" class="w-10 h-10 rounded-full object-cover flex-shrink-0">`
+                : `<div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-white" style="background-color: var(--admin-accent-gray);">${coachName.charAt(0).toUpperCase()}</div>`;
+            
+            return `
+                <button 
+                    class="coach-select-btn w-full text-right p-3 border rounded-lg flex items-center gap-3 transition-all duration-200 hover:border-accent ${isSelected ? 'selected-card' : 'border-border-primary'}" 
+                    data-coach-username="${coach.username}"
+                    ${!isActive ? 'disabled' : ''}
+                >
+                    ${avatarHtml}
+                    <div>
+                        <p class="font-bold text-sm">${coachName}</p>
+                        <p class="text-xs text-text-secondary">${specialization}</p>
+                    </div>
+                </button>
+            `;
+        }).join('');
+
+        if (coaches.length === 0) {
+            coachListHtml = `<p class="text-text-secondary text-sm text-center">در حال حاضر مربی فعالی در سیستم وجود ندارد.</p>`;
+        }
+        
+        let wrapperClass = '';
+        let messageHtml = `<p class="text-text-secondary text-sm mb-4">مربی خود را برای دریافت برنامه‌های اختصاصی انتخاب کنید.</p>`;
+        
+        if (!isActive) {
+            wrapperClass = 'opacity-50';
+            messageHtml = `
+                <p class="text-text-secondary text-sm mb-4">
+                    برای انتخاب مربی، ابتدا باید یک پلن فعال از <button class="font-bold text-accent underline" data-action="go-to-store">فروشگاه</button> خریداری کنید.
+                </p>
+            `;
+        }
+
+        container.innerHTML = `
+            <div class="card p-4 md:p-6 animate-fade-in">
+                <h2 class="text-xl font-bold mb-2">انتخاب مربی</h2>
+                ${messageHtml}
+                <div class="${wrapperClass}">
+                    <div class="space-y-2">
+                        ${coachListHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    };
+
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
 
     const dashboardContainer = document.getElementById('user-dashboard-container');
@@ -760,6 +832,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         if (targetId === 'profile-content') {
             populateProfileForm(currentData);
             renderBodyMetricsCard(currentData, 'body-metrics-container');
+            renderCoachSelectionCard(currentUser, currentData);
             startWeightCountdown(currentUser);
             const form = document.getElementById('user-profile-form');
             if(form) {
@@ -903,6 +976,28 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 showToast('برنامه غذایی ذخیره شد.', 'success');
                 renderNutritionTab(freshUserData);
             }
+        }
+
+        const coachBtn = button.closest('.coach-select-btn');
+        if (coachBtn && !coachBtn.hasAttribute('disabled')) {
+            const coachUsername = (coachBtn as HTMLElement).dataset.coachUsername;
+            if (coachUsername) {
+                let freshUserData = getUserData(currentUser);
+                const oldCoach = freshUserData.step1.coachName;
+                freshUserData.step1.coachName = coachUsername;
+                saveUserData(currentUser, freshUserData);
+                showToast(`مربی شما به "${coachUsername}" تغییر یافت.`, 'success');
+                renderCoachSelectionCard(currentUser, freshUserData);
+                setNotification(coachUsername, 'students-content', '👋');
+                if (oldCoach && oldCoach !== coachUsername) {
+                    setNotification(oldCoach, 'students-content', '🚶');
+                }
+            }
+        }
+        const goToStoreBtn = button.closest('button[data-action="go-to-store"]');
+        if (goToStoreBtn) {
+            const storeTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="store-content"]');
+            if (storeTab) switchTab(storeTab);
         }
     });
     
@@ -1111,6 +1206,12 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 updateCartBadge(currentUser);
                 renderStoreTab(currentUser);
                 addActivityLog(`${currentUser} purchased ${cart.items.length} plan(s).`);
+                
+                // After purchase, re-render the coach selection card to unlock it
+                const profileTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="profile-content"]');
+                if (profileTab?.classList.contains('active-spring-tab')) {
+                     renderCoachSelectionCard(currentUser, freshUserData);
+                }
             }, 1000);
         }
     });
@@ -1357,8 +1458,13 @@ export function renderUserDashboard(currentUser: string, userData: any) {
                         </form>
                     </div>
                 </div>
-                <div id="body-metrics-container" class="lg:col-span-1">
-                    <!-- Body metrics card will be rendered here by JS -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div id="body-metrics-container">
+                        <!-- Body metrics card will be rendered here by JS -->
+                    </div>
+                    <div id="coach-selection-container-wrapper">
+                        <!-- Coach selection card will be rendered here by JS -->
+                    </div>
                 </div>
             </div>
         </div>

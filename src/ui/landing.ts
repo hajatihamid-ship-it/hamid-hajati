@@ -1,58 +1,34 @@
 import { openModal, closeModal, updateSliderTrack } from '../utils/dom';
-import { getStorePlans } from '../services/storage';
+import { getStorePlans, getUsers, getUserData } from '../services/storage';
 import { formatPrice } from '../utils/helpers';
 import { calculateBodyMetrics } from '../utils/calculations';
 import { getCurrentUser } from '../state';
 
+let coachRotationInterval: number | null = null;
+
 const getFeaturesHTML = () => `
     <div class="space-y-6">
         <div>
-            <h3 class="font-bold text-xl mb-3 text-accent">ویژگی‌های کلیدی FitGym Pro</h3>
-            <p class="text-text-secondary">ما ابزارهای قدرتمندی را برای مربیان و ورزشکاران فراهم کرده‌ایم تا به بهترین نتایج دست یابند.</p>
+            <h3 class="font-bold text-2xl mb-3 text-accent">ابزارهایی برای موفقیت شما</h3>
+            <p class="text-text-secondary max-w-3xl">FitGym Pro مجموعه‌ای کامل از ویژگی‌های پیشرفته را برای به حداکثر رساندن پتانسیل ورزشی شما و ساده‌سازی مدیریت مربیگری ارائه می‌دهد.</p>
         </div>
-        <div class="grid md:grid-cols-2 gap-x-8 gap-y-6">
-            <div class="flex items-start gap-4">
-                <div class="bg-accent/10 p-2 rounded-lg"><i data-lucide="brain-circuit" class="w-6 h-6 text-accent"></i></div>
-                <div>
-                    <h4 class="font-semibold text-text-primary">برنامه‌ریزی هوشمند با AI</h4>
-                    <p class="text-sm text-text-secondary">با استفاده از هوش مصنوعی، برنامه‌های تمرینی و غذایی بهینه و شخصی‌سازی شده برای هر ورزشکار ایجاد کنید.</p>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
+             ${[
+                { icon: 'brain-circuit', title: 'برنامه‌ریزی هوشمند با AI', desc: 'با استفاده از هوش مصنوعی، برنامه‌های تمرینی و غذایی بهینه و شخصی‌سازی شده برای هر ورزشکار ایجاد کنید.' },
+                { icon: 'bar-chart-3', title: 'پیگیری دقیق پیشرفت', desc: 'روند پیشرفت وزن، قدرت و سایر معیارهای کلیدی را با نمودارهای تحلیلی و گزارش‌های جامع دنبال کنید.' },
+                { icon: 'users', title: 'مدیریت آسان شاگردان', desc: 'مربیان می‌توانند به راحتی پروفایل شاگردان، برنامه‌ها و ارتباطات را در یک داشبورد متمرکز مدیریت کنند.' },
+                { icon: 'message-square', title: 'ارتباط مستقیم و مؤثر', desc: 'سیستم چت داخلی امکان ارتباط سریع و امن بین مربی و شاگرد را برای پشتیبانی بهتر فراهم می‌کند.' },
+                { icon: 'book-open', title: 'بانک اطلاعاتی جامع', desc: 'دسترسی به پایگاه داده‌ای غنی از حرکات تمرینی و مکمل‌های ورزشی با توضیحات کامل.' },
+                { icon: 'save', title: 'ذخیره و استفاده از الگوها', desc: 'برنامه‌های موفق را به عنوان الگو ذخیره کرده و برای شاگردان جدید با یک کلیک استفاده کنید.' }
+            ].map((feature, index) => `
+                <div class="bg-bg-tertiary p-6 rounded-2xl transition-all duration-300 hover:bg-bg-secondary hover:shadow-xl hover:-translate-y-1.5 animate-fade-in-up" style="animation-delay: ${index * 100}ms;">
+                    <div class="bg-accent/10 text-accent p-3 rounded-xl inline-block mb-4">
+                        <i data-lucide="${feature.icon}" class="w-8 h-8"></i>
+                    </div>
+                    <h4 class="font-bold text-lg mb-2 text-text-primary">${feature.title}</h4>
+                    <p class="text-sm text-text-secondary leading-relaxed">${feature.desc}</p>
                 </div>
-            </div>
-             <div class="flex items-start gap-4">
-                <div class="bg-accent/10 p-2 rounded-lg"><i data-lucide="bar-chart-3" class="w-6 h-6 text-accent"></i></div>
-                <div>
-                    <h4 class="font-semibold text-text-primary">پیگیری دقیق پیشرفت</h4>
-                    <p class="text-sm text-text-secondary">روند پیشرفت وزن، قدرت و سایر معیارهای کلیدی را با نمودارهای تحلیلی و گزارش‌های جامع دنبال کنید.</p>
-                </div>
-            </div>
-             <div class="flex items-start gap-4">
-                <div class="bg-accent/10 p-2 rounded-lg"><i data-lucide="users" class="w-6 h-6 text-accent"></i></div>
-                <div>
-                    <h4 class="font-semibold text-text-primary">مدیریت آسان شاگردان</h4>
-                    <p class="text-sm text-text-secondary">مربیان می‌توانند به راحتی پروفایل شاگردان، برنامه‌ها و ارتباطات را در یک داشبورد متمرکز مدیریت کنند.</p>
-                </div>
-            </div>
-             <div class="flex items-start gap-4">
-                <div class="bg-accent/10 p-2 rounded-lg"><i data-lucide="message-square" class="w-6 h-6 text-accent"></i></div>
-                <div>
-                    <h4 class="font-semibold text-text-primary">ارتباط مستقیم و مؤثر</h4>
-                    <p class="text-sm text-text-secondary">سیستم چت داخلی امکان ارتباط سریع و امن بین مربی و شاگرد را برای پشتیبانی بهتر فراهم می‌کند.</p>
-                </div>
-            </div>
-             <div class="flex items-start gap-4">
-                <div class="bg-accent/10 p-2 rounded-lg"><i data-lucide="book-open" class="w-6 h-6 text-accent"></i></div>
-                <div>
-                    <h4 class="font-semibold text-text-primary">بانک اطلاعاتی جامع</h4>
-                    <p class="text-sm text-text-secondary">دسترسی به پایگاه داده‌ای غنی از حرکات تمرینی و مکمل‌های ورزشی با توضیحات کامل و ویدیوهای آموزشی.</p>
-                </div>
-            </div>
-             <div class="flex items-start gap-4">
-                <div class="bg-accent/10 p-2 rounded-lg"><i data-lucide="save" class="w-6 h-6 text-accent"></i></div>
-                <div>
-                    <h4 class="font-semibold text-text-primary">ذخیره و استفاده از الگوها</h4>
-                    <p class="text-sm text-text-secondary">برنامه‌های تمرینی و غذایی موفق را به عنوان الگو ذخیره کرده و برای شاگردان جدید با یک کلیک استفاده کنید.</p>
-                </div>
-            </div>
+            `).join('')}
         </div>
     </div>
 `;
@@ -67,8 +43,8 @@ const getPricingHTML = () => {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             ${plans.map((plan: any) => `
-                <div class="card p-6 flex flex-col border-2 ${plan.planId.includes('full-3m') ? 'border-accent' : 'border-transparent'}">
-                    <h4 class="text-lg font-bold text-text-primary">${plan.planName}</h4>
+                <div class="card p-6 flex flex-col border-2" style="border-color: ${plan.color || 'transparent'};">
+                    <h4 class="text-lg font-bold text-text-primary">${plan.emoji || ''} ${plan.planName}</h4>
                     <p class="text-sm text-text-secondary mt-1 flex-grow">${plan.description}</p>
                     <div class="my-6">
                         <span class="text-3xl font-black text-white">${formatPrice(plan.price).split(' ')[0]}</span>
@@ -324,37 +300,64 @@ const getCalculatorHTML = () => {
     </section>
     `;
 }
-const getCoachesShowcaseHTML = () => `
+
+const renderCoachCardHTML = (coach: any): string => {
+    const coachData = getUserData(coach.username);
+    const name = coachData.step1?.clientName || coach.username;
+    const specialty = coachData.profile?.specialization || 'مربی رسمی بدنسازی';
+    const avatar = coachData.profile?.avatar;
+
+    const avatarHtml = avatar 
+        ? `<img src="${avatar}" alt="${name}" class="w-full h-full object-cover">`
+        : `<span class="text-5xl font-bold text-text-secondary">${name.charAt(0)}</span>`;
+
+    return `
+    <div class="coach-card text-center group">
+        <div class="relative inline-block">
+            <div class="w-32 h-32 rounded-full mx-auto border-4 border-bg-secondary shadow-lg bg-bg-tertiary flex items-center justify-center overflow-hidden">
+               ${avatarHtml}
+            </div>
+            <span class="absolute bottom-2 -right-1 bg-green-500 text-white p-1 rounded-full border-2 border-bg-secondary"><i data-lucide="check" class="w-4 h-4"></i></span>
+        </div>
+        <h4 class="font-bold text-lg mt-4 text-yellow-400">${name}</h4>
+        <p class="text-yellow-400 text-sm">${specialty}</p>
+        <div class="flex justify-center gap-4 mt-4">
+            <a href="#" class="social-icon-link"><i class="fab fa-instagram"></i></a>
+            <a href="#" class="social-icon-link"><i class="fab fa-telegram"></i></a>
+        </div>
+    </div>
+    `;
+}
+
+const getCoachesShowcaseHTML = () => {
+    const allUsers = getUsers();
+    const verifiedCoaches = allUsers.filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
+
+    if (verifiedCoaches.length === 0) {
+        return `
+        <section class="py-16">
+            <div class="text-center mb-12">
+                <h3 class="font-bold text-2xl text-yellow-400">مربیان متخصص ما به زودی به ما ملحق می‌شوند</h3>
+                <p class="text-yellow-400 mt-2 max-w-2xl mx-auto">ما در حال همکاری با بهترین مربیان کشور هستیم تا بهترین تجربه را برای شما فراهم کنیم.</p>
+            </div>
+        </section>
+        `;
+    }
+    
+    const initialCoaches = verifiedCoaches.slice(0, 3);
+
+    return `
     <section class="py-16">
         <div class="text-center mb-12">
             <h3 class="font-bold text-2xl text-yellow-400">با مربیان متخصص ما آشنا شوید</h3>
             <p class="text-yellow-400 mt-2 max-w-2xl mx-auto">تیمی از بهترین مربیان کشور که آماده‌اند تا شما را در مسیر رسیدن به اهدافتان همراهی کنند.</p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            ${[
-                { name: 'حمید حاجتی', specialty: 'متخصص حرکات اصلاحی و فانکشنال' },
-                { name: 'سارا احمدی', specialty: 'متخصص فیتنس و کاهش وزن بانوان' },
-                { name: 'علی رضایی', specialty: 'متخصص آمادگی جسمانی و حرکات اصلاحی' }
-            ].map(coach => `
-                <div class="coach-card text-center group relative">
-                    <button class="admin-edit-btn absolute top-4 right-4 bg-bg-secondary/50 hover:bg-bg-secondary p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="ویرایش توسط ادمین">✏️</button>
-                    <div class="relative inline-block">
-                        <div class="w-32 h-32 rounded-full mx-auto border-4 border-bg-secondary shadow-lg bg-bg-tertiary flex items-center justify-center">
-                            <span class="text-5xl font-bold text-text-secondary">${coach.name.charAt(0)}</span>
-                        </div>
-                        <span class="absolute bottom-2 -right-1 bg-green-500 text-white p-1 rounded-full border-2 border-bg-secondary"><i data-lucide="check" class="w-4 h-4"></i></span>
-                    </div>
-                    <h4 class="font-bold text-lg mt-4 text-yellow-400">${coach.name}</h4>
-                    <p class="text-accent text-sm">${coach.specialty}</p>
-                    <div class="flex justify-center gap-4 mt-4">
-                        <a href="#" class="social-icon-link"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="social-icon-link"><i class="fab fa-telegram"></i></a>
-                    </div>
-                </div>
-            `).join('')}
+        <div id="coaches-showcase-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8 transition-opacity duration-300">
+            ${initialCoaches.map(coach => renderCoachCardHTML(coach)).join('')}
         </div>
     </section>
     `;
+};
 
 const openInfoModal = (section: string) => {
     const modal = document.getElementById('info-modal');
@@ -378,6 +381,44 @@ const openInfoModal = (section: string) => {
     window.lucide?.createIcons();
     openModal(modal);
 }
+
+const initCoachRotation = () => {
+    if (coachRotationInterval) {
+        clearInterval(coachRotationInterval);
+    }
+
+    const coachesGrid = document.getElementById('coaches-showcase-grid');
+    if (!coachesGrid) return;
+
+    const allVerifiedCoaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
+    if (allVerifiedCoaches.length <= 3) return;
+
+    let currentIndex = 0;
+
+    const rotateCoaches = () => {
+        currentIndex = (currentIndex + 3);
+        if (currentIndex >= allVerifiedCoaches.length) {
+            currentIndex = 0;
+        }
+
+        let nextCoaches = allVerifiedCoaches.slice(currentIndex, currentIndex + 3);
+        if (nextCoaches.length < 3) {
+            const remaining = 3 - nextCoaches.length;
+            nextCoaches = [...nextCoaches, ...allVerifiedCoaches.slice(0, remaining)];
+        }
+        
+        coachesGrid.classList.add('opacity-0');
+
+        setTimeout(() => {
+            coachesGrid.innerHTML = nextCoaches.map(coach => renderCoachCardHTML(coach)).join('');
+            window.lucide?.createIcons();
+            coachesGrid.classList.remove('opacity-0');
+        }, 300);
+    };
+
+    coachRotationInterval = window.setInterval(rotateCoaches, 5000);
+}
+
 
 export function initLandingPageListeners(onGoToDashboard?: () => void) {
     document.body.addEventListener('click', (e) => {
@@ -539,6 +580,8 @@ export function initLandingPageListeners(onGoToDashboard?: () => void) {
         
         updateCalculatorResults();
     }
+    
+    initCoachRotation();
 }
 
 export function renderLandingPage() {

@@ -20,7 +20,10 @@ const seedInitialUsers = () => {
              { username: "coach_pending", email: "newcoach@fitgympro.com", password: "password123", role: "coach", status: "active", coachStatus: "pending", joinDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
              { username: "user_active", email: "user@fitgympro.com", password: "password123", role: "user", status: "active", coachStatus: null, joinDate: new Date().toISOString() },
              { username: "user_suspended", email: "suspended@fitgympro.com", password: "password123", role: "user", status: "suspended", coachStatus: null, joinDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() },
-             { username: "user_needs_plan", email: "needsplan@fitgympro.com", password: "password123", role: "user", status: "active", coachStatus: null, joinDate: new Date().toISOString() }
+             { username: "user_needs_plan", email: "needsplan@fitgympro.com", password: "password123", role: "user", status: "active", coachStatus: null, joinDate: new Date().toISOString() },
+             { username: "hamid_hajati", email: "hamid.h@fitgympro.com", password: "password123", role: "coach", status: "active", coachStatus: "verified", joinDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString() },
+             { username: "morteza_heydari", email: "morteza.h@fitgympro.com", password: "password123", role: "coach", status: "active", coachStatus: "verified", joinDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString() },
+             { username: "khorshidi_m", email: "khorshidi.m@fitgympro.com", password: "password123", role: "coach", status: "active", coachStatus: "verified", joinDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() }
         ];
         saveUsers(initialUsers);
         
@@ -157,6 +160,34 @@ const seedInitialUsers = () => {
             }]
         });
 
+        saveUserData("hamid_hajati", {
+             step1: { coachName: "حمید حاجتی", clientName: "حمید حاجتی" },
+             profile: {
+                 avatar: "https://i.pravatar.cc/150?u=hamid_hajati",
+                 specialization: "فیتنس، کاهش وزن",
+                 bio: "مربی با سابقه در زمینه کاهش وزن و تناسب اندام."
+             },
+             students: 15
+        });
+        saveUserData("morteza_heydari", {
+             step1: { coachName: "مرتضی حیدری نسب", clientName: "مرتضی حیدری نسب" },
+             profile: {
+                 avatar: "https://i.pravatar.cc/150?u=morteza_heydari",
+                 specialization: "افزایش حجم، پاورلیفتینگ",
+                 bio: "متخصص در برنامه‌های افزایش حجم و قدرت."
+             },
+             students: 22
+        });
+        saveUserData("khorshidi_m", {
+             step1: { coachName: "خورشیدی مهر", clientName: "خورشیدی مهر" },
+             profile: {
+                 avatar: "https://i.pravatar.cc/150?u=khorshidi_m",
+                 specialization: "حرکات اصلاحی، آمادگی جسمانی",
+                 bio: "مربی فانکشنال و حرکات اصلاحی."
+             },
+             students: 18
+        });
+
         addActivityLog("Initial users (admin, coaches, users) were created automatically.");
         saveDiscounts({ 'WELCOME10': { type: 'percentage', value: 10 }, 'SAVE50K': { type: 'fixed', value: 50000 } });
         addActivityLog("Initial discount codes created.");
@@ -209,7 +240,7 @@ export const renderApp = () => {
         }
 
         const userData = getUserData(currentUser);
-        const renderLandingPageAsLoggedIn = () => {
+        const handleGoToHome = () => {
             if (!appContainer) return;
             appContainer.innerHTML = renderLandingPage() + renderAuthModal();
             initLandingPageListeners(renderApp); // Pass renderApp as the callback
@@ -225,15 +256,15 @@ export const renderApp = () => {
         switch (currentUserData.role) {
             case 'admin':
                 appContainer.innerHTML = renderAdminDashboard();
-                initAdminDashboard(handleLogout, handleLoginSuccess);
+                initAdminDashboard(handleLogout, handleLoginSuccess, handleGoToHome);
                 break;
             case 'coach':
-                appContainer.innerHTML = renderCoachDashboard();
-                initCoachDashboard(currentUser, handleLogout);
+                appContainer.innerHTML = renderCoachDashboard(currentUser, userData);
+                initCoachDashboard(currentUser, handleLogout, handleGoToHome);
                 break;
             case 'user':
                 appContainer.innerHTML = renderUserDashboard(currentUser, userData);
-                initUserDashboard(currentUser, userData, handleLogout, renderLandingPageAsLoggedIn);
+                initUserDashboard(currentUser, userData, handleLogout, handleGoToHome);
                 break;
             default:
                 handleLogout();

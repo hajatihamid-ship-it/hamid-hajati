@@ -92,31 +92,66 @@ const renderUserRowsHtml = () => {
     const users = getUsers();
     const coaches = users.filter((u: any) => u.role === 'coach');
 
-    const allUsersHtml = users.map((user: any) => `
+    const allUsersHtml = users.map((user: any) => {
+        const userData = getUserData(user.username);
+        const name = userData.step1?.clientName || user.username;
+        const avatar = userData.profile?.avatar;
+        const avatarHtml = avatar
+            ? `<img src="${avatar}" class="w-10 h-10 rounded-full object-cover" alt="${name}">`
+            : `<div class="w-10 h-10 rounded-full bg-bg-tertiary flex items-center justify-center font-bold text-text-secondary">${name.charAt(0).toUpperCase()}</div>`;
+        
+        return `
         <tr class="hover:bg-bg-tertiary transition-colors">
-            <td class="p-4 font-semibold">${user.username}</td>
+            <td class="p-4">
+                <div class="flex items-center gap-3">
+                    ${avatarHtml}
+                    <div>
+                        <p class="font-semibold">${name}</p>
+                        <p class="text-xs text-text-secondary">${user.username}</p>
+                    </div>
+                </div>
+            </td>
             <td class="p-4">${user.email}</td>
             <td class="p-4">${user.role === 'admin' ? 'ادمین' : user.role === 'coach' ? 'مربی' : 'کاربر'}</td>
             <td class="p-4">${new Date(user.joinDate).toLocaleDateString('fa-IR')}</td>
             <td class="p-4">${getStatusBadge(user.status, user.role, user.coachStatus)}</td>
             <td class="p-4 flex items-center gap-2">
                 <button data-action="view-activity" data-username="${user.username}" title="مشاهده فعالیت" class="secondary-button !p-2"><i data-lucide="eye" class="w-4 h-4 pointer-events-none"></i></button>
+                <button data-action="edit-user" data-username="${user.username}" title="ویرایش کاربر" class="secondary-button !p-2"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
                 <button data-action="impersonate" data-username="${user.username}" title="ورود به حساب" class="secondary-button !p-2"><i data-lucide="log-in" class="w-4 h-4 pointer-events-none"></i></button>
                 ${user.role !== 'admin' ? `
                     <button data-action="${user.status === 'active' ? 'suspend' : 'activate'}" data-username="${user.username}" title="${user.status === 'active' ? 'مسدود کردن' : 'فعال کردن'}" class="secondary-button !p-2">
                         <i data-lucide="${user.status === 'active' ? 'shield-off' : 'shield'}" class="w-4 h-4 pointer-events-none"></i>
                     </button>` : ''}
             </td>
-        </tr>`).join('');
+        </tr>`;
+    }).join('');
 
-    const coachesHtml = coaches.map((coach: any) => `
+    const coachesHtml = coaches.map((coach: any) => {
+        const coachData = getUserData(coach.username);
+        const name = coachData.step1?.clientName || coach.username;
+        const avatar = coachData.profile?.avatar;
+        const avatarHtml = avatar
+            ? `<img src="${avatar}" class="w-10 h-10 rounded-full object-cover" alt="${name}">`
+            : `<div class="w-10 h-10 rounded-full bg-bg-tertiary flex items-center justify-center font-bold text-text-secondary">${name.charAt(0).toUpperCase()}</div>`;
+            
+        return `
         <tr class="hover:bg-bg-tertiary transition-colors">
-            <td class="p-4 font-semibold">${coach.username}</td>
+            <td class="p-4">
+                 <div class="flex items-center gap-3">
+                    ${avatarHtml}
+                    <div>
+                        <p class="font-semibold">${name}</p>
+                        <p class="text-xs text-text-secondary">${coach.username}</p>
+                    </div>
+                </div>
+            </td>
             <td class="p-4">${getUserData(coach.username).students || 0}</td>
             <td class="p-4">${new Date(coach.joinDate).toLocaleDateString('fa-IR')}</td>
             <td class="p-4">${getStatusBadge(coach.status, coach.role, coach.coachStatus)}</td>
             <td class="p-4 flex items-center gap-2">
                  <button data-action="view-activity" data-username="${coach.username}" title="مشاهده فعالیت" class="secondary-button !p-2"><i data-lucide="eye" class="w-4 h-4 pointer-events-none"></i></button>
+                <button data-action="edit-user" data-username="${coach.username}" title="ویرایش کاربر" class="secondary-button !p-2"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
                 <button data-action="impersonate" data-username="${coach.username}" title="ورود به حساب" class="secondary-button !p-2"><i data-lucide="log-in" class="w-4 h-4 pointer-events-none"></i></button>
                 ${coach.coachStatus === 'pending' ? `
                     <button data-action="approve" data-username="${coach.username}" class="primary-button !py-1 !px-2 !text-xs">تایید</button>
@@ -124,10 +159,12 @@ const renderUserRowsHtml = () => {
                 ${coach.coachStatus === 'verified' ? `<button data-action="revoke" data-username="${coach.username}" class="secondary-button !py-1 !px-2 !text-xs !text-red-500">لغو همکاری</button>` : ''}
                 ${coach.coachStatus === 'revoked' ? `<button data-action="reapprove" data-username="${coach.username}" class="primary-button !py-1 !px-2 !text-xs">تایید مجدد</button>` : ''}
             </td>
-        </tr>`).join('');
+        </tr>`;
+    }).join('');
 
     return { allUsersHtml, coachesHtml };
 };
+
 
 const refreshUserTables = () => {
     const { allUsersHtml, coachesHtml } = renderUserRowsHtml();
@@ -141,10 +178,13 @@ const refreshUserTables = () => {
 const renderPlansAdminHtml = () => {
     const plans = getStorePlans();
     const plansListHtml = plans.length > 0 ? plans.map((plan: any) => `
-        <div class="p-4 border border-border-primary rounded-lg flex items-center justify-between bg-bg-secondary hover:bg-bg-tertiary transition-colors">
-           <div>
-             <p class="font-bold">${plan.planName}</p>
-             <p class="text-sm text-text-secondary">${formatPrice(plan.price)}</p>
+        <div class="p-4 border-l-4 rounded-lg flex items-center justify-between bg-bg-secondary hover:bg-bg-tertiary transition-colors" style="border-left-color: ${plan.color || 'var(--accent)'};">
+           <div class="flex items-center gap-3">
+                <span class="text-2xl">${plan.emoji || '📄'}</span>
+                <div>
+                    <p class="font-bold">${plan.planName}</p>
+                    <p class="text-sm text-text-secondary">${formatPrice(plan.price)}</p>
+                </div>
            </div>
            <div class="flex items-center gap-2">
                 <button class="secondary-button !p-2" data-action="edit-plan" data-plan-id="${plan.planId}"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
@@ -169,8 +209,8 @@ const renderPlansAdminHtml = () => {
         </div>
         <div>
              <h3 class="font-bold text-lg mb-4 text-center text-text-secondary">پیش‌نمایش کارت پلن</h3>
-             <div class="card p-6 flex flex-col border-2 border-accent transition-all hover:shadow-xl hover:-translate-y-1 bg-bg-secondary">
-                <h4 class="text-lg font-bold text-text-primary">پکیج کامل ۳ ماهه</h4>
+             <div class="card p-6 flex flex-col border-2 transition-all hover:shadow-xl hover:-translate-y-1 bg-bg-secondary" style="border-color: #ec4899;">
+                <h4 class="text-lg font-bold text-text-primary">🚀 پکیج کامل ۳ ماهه</h4>
                 <p class="text-sm text-text-secondary mt-1 flex-grow">بهترین گزینه برای نتایج پایدار و جامع.</p>
                 <div class="my-6">
                     <span class="text-3xl font-black">${formatPrice(750000).split(' ')[0]}</span>
@@ -340,8 +380,9 @@ const renderCommissionsHtml = () => {
     `;
 };
 
-export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess: (username: string) => void) {
+export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess: (username: string) => void, handleGoToHome: () => void) {
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
+    document.getElementById('go-to-home-btn')?.addEventListener('click', handleGoToHome);
     
     const navLinks = document.querySelectorAll('.admin-dashboard-container .nav-link');
     const pages = document.querySelectorAll('.admin-dashboard-container .page');
@@ -449,6 +490,49 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         addUserForm.reset();
     });
 
+    const editUserModal = document.getElementById('edit-user-modal');
+    document.getElementById('close-edit-user-modal-btn')?.addEventListener('click', () => closeModal(editUserModal));
+    editUserModal?.addEventListener('click', e => {
+        if ((e.target as HTMLElement).id === 'edit-user-modal') {
+            closeModal(editUserModal);
+        }
+    });
+
+    const editUserForm = document.getElementById('edit-user-form') as HTMLFormElement;
+    editUserForm?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const originalUsername = (editUserForm.elements.namedItem('originalUsername') as HTMLInputElement).value;
+        const email = (editUserForm.elements.namedItem('email') as HTMLInputElement).value.trim();
+        const password = (editUserForm.elements.namedItem('password') as HTMLInputElement).value;
+        const role = (editUserForm.elements.namedItem('role') as HTMLSelectElement).value;
+
+        if (!originalUsername || !email || !role) {
+            showToast('لطفاً تمام فیلدهای لازم را پر کنید.', 'error');
+            return;
+        }
+
+        const users = getUsers();
+        const userIndex = users.findIndex((u: any) => u.username === originalUsername);
+
+        if (userIndex === -1) {
+            showToast('خطا: کاربر برای ویرایش یافت نشد.', 'error');
+            return;
+        }
+
+        users[userIndex].email = email;
+        users[userIndex].role = role;
+        if (password) {
+            users[userIndex].password = password;
+        }
+        users[userIndex].coachStatus = role === 'coach' ? (users[userIndex].coachStatus || 'verified') : null;
+
+        saveUsers(users);
+        addActivityLog(`ادمین اطلاعات کاربر ${originalUsername} را ویرایش کرد.`);
+        showToast('اطلاعات کاربر با موفقیت ویرایش شد.', 'success');
+        refreshUserTables();
+        closeModal(editUserModal);
+    });
+
     const refreshPlansAdminList = () => {
         const container = document.getElementById('plans-content');
         if (container) {
@@ -500,7 +584,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         
         const users = getUsers();
         const userIndex = users.findIndex((u: any) => u.username === username);
-        if (userIndex === -1 && !action.includes('plan') && !action.includes('discount') && action !== 'view-activity') return;
+        if (userIndex === -1 && !action.includes('plan') && !action.includes('discount') && action !== 'view-activity' && action !== 'edit-user') return;
         const user = users[userIndex];
 
         let message = "";
@@ -510,6 +594,22 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             case 'view-activity':
                 openUserActivityModal(username);
                 return;
+            case 'edit-user': {
+                const userToEdit = users.find((u: any) => u.username === username);
+                if (userToEdit) {
+                    const modal = document.getElementById('edit-user-modal');
+                    const form = document.getElementById('edit-user-form') as HTMLFormElement;
+                    if (modal && form) {
+                        (form.elements.namedItem('originalUsername') as HTMLInputElement).value = userToEdit.username;
+                        (form.elements.namedItem('username') as HTMLInputElement).value = userToEdit.username;
+                        (form.elements.namedItem('email') as HTMLInputElement).value = userToEdit.email;
+                        (form.elements.namedItem('role') as HTMLSelectElement).value = userToEdit.role;
+                        (form.elements.namedItem('password') as HTMLInputElement).value = '';
+                        openModal(modal);
+                    }
+                }
+                return;
+            }
             case 'impersonate':
                 logMessage = `ادمین وارد حساب کاربری ${username} شد.`;
                 addActivityLog(logMessage);
@@ -599,17 +699,27 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         if (!modal || !form || !titleEl) return;
 
         form.reset();
-        if (planData) {
-            titleEl.textContent = 'ویرایش پلن';
-            (form.elements.namedItem('planId') as HTMLInputElement).value = planData.planId;
-            (form.elements.namedItem('planName') as HTMLInputElement).value = planData.planName;
-            (form.elements.namedItem('planDescription') as HTMLInputElement).value = planData.description;
-            (form.elements.namedItem('planPrice') as HTMLInputElement).value = planData.price;
-            (form.elements.namedItem('planFeatures') as HTMLTextAreaElement).value = (planData.features || []).join('\n');
-        } else {
-            titleEl.textContent = 'افزودن پلن جدید';
-            (form.elements.namedItem('planId') as HTMLInputElement).value = '';
-        }
+
+        const dataToDisplay = planData || {
+            planId: '',
+            planName: 'پلن جدید',
+            description: 'توضیحات این پلن را ویرایش کنید.',
+            price: 100000,
+            features: ['ویژگی ۱', 'ویژگی ۲', 'ویژگی ۳'],
+            emoji: '🚀',
+            color: '#3b82f6'
+        };
+
+        titleEl.textContent = planData ? 'ویرایش پلن' : 'افزودن پلن جدید';
+
+        (form.elements.namedItem('planId') as HTMLInputElement).value = dataToDisplay.planId;
+        (form.elements.namedItem('planName') as HTMLInputElement).value = dataToDisplay.planName;
+        (form.elements.namedItem('planDescription') as HTMLInputElement).value = dataToDisplay.description;
+        (form.elements.namedItem('planPrice') as HTMLInputElement).value = dataToDisplay.price;
+        (form.elements.namedItem('planFeatures') as HTMLTextAreaElement).value = (dataToDisplay.features || []).join('\n');
+        (form.elements.namedItem('planEmoji') as HTMLInputElement).value = dataToDisplay.emoji || '🚀';
+        (form.elements.namedItem('planColor') as HTMLInputElement).value = dataToDisplay.color || '#3b82f6';
+
         openModal(modal);
     };
 
@@ -630,7 +740,9 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             planName: formData.get('planName') as string,
             description: formData.get('planDescription') as string,
             price: parseInt(formData.get('planPrice') as string, 10),
-            features: (formData.get('planFeatures') as string).split('\n').filter(f => f.trim() !== '')
+            features: (formData.get('planFeatures') as string).split('\n').filter(f => f.trim() !== ''),
+            emoji: formData.get('planEmoji') as string,
+            color: formData.get('planColor') as string
         };
 
         if (!planData.planName || isNaN(planData.price)) {
@@ -1115,6 +1227,7 @@ export function renderAdminDashboard() {
                 `).join('')}
             </nav>
             <div class="space-y-2">
+                <button id="go-to-home-btn" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="home" class="w-6"></i><span>صفحه اصلی</span></button>
                 <button id="theme-toggle-btn-dashboard" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="sun" class="w-6"></i><span>تغییر پوسته</span></button>
                 <button id="logout-btn" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="log-out" class="w-6"></i><span>خروج</span></button>
             </div>
@@ -1195,7 +1308,7 @@ export function renderAdminDashboard() {
                  <div id="all-users-content" class="admin-tab-content">
                      <div class="card overflow-hidden">
                         <table class="w-full text-sm text-right">
-                           <thead><tr class="font-semibold"><th class="p-4">نام کاربری</th><th class="p-4">ایمیل</th><th class="p-4">نقش</th><th class="p-4">تاریخ عضویت</th><th class="p-4">وضعیت</th><th class="p-4">عملیات</th></tr></thead>
+                           <thead><tr class="font-semibold"><th class="p-4">کاربر</th><th class="p-4">ایمیل</th><th class="p-4">نقش</th><th class="p-4">تاریخ عضویت</th><th class="p-4">وضعیت</th><th class="p-4">عملیات</th></tr></thead>
                            <tbody id="all-users-tbody">
                                ${allUsersHtml}
                            </tbody>
@@ -1205,7 +1318,7 @@ export function renderAdminDashboard() {
                  <div id="coaches-content" class="admin-tab-content hidden">
                     <div class="card overflow-hidden">
                        <table class="w-full text-sm text-right">
-                          <thead><tr class="font-semibold"><th class="p-4">نام مربی</th><th class="p-4">شاگردان فعال</th><th class="p-4">تاریخ عضویت</th><th class="p-4">وضعیت</th><th class="p-4">عملیات</th></tr></thead>
+                          <thead><tr class="font-semibold"><th class="p-4">مربی</th><th class="p-4">شاگردان فعال</th><th class="p-4">تاریخ عضویت</th><th class="p-4">وضعیت</th><th class="p-4">عملیات</th></tr></thead>
                           <tbody id="coaches-tbody">
                               ${coachesHtml}
                           </tbody>
@@ -1408,6 +1521,40 @@ export function renderAdminDashboard() {
         </div>
     </div>
 
+    <div id="edit-user-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative">
+            <button id="close-edit-user-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
+            <div class="p-8">
+                <h2 class="font-bold text-2xl text-center mb-6">ویرایش کاربر</h2>
+                <form id="edit-user-form" class="space-y-4" novalidate>
+                    <input type="hidden" id="edit-original-username" name="originalUsername">
+                    <div class="input-group">
+                        <input id="edit-username" name="username" type="text" class="input-field w-full" placeholder=" " required readonly>
+                        <label for="edit-username" class="input-label">نام کاربری (غیرقابل تغییر)</label>
+                    </div>
+                    <div class="input-group">
+                        <input id="edit-email" name="email" type="email" class="input-field w-full" placeholder=" " required>
+                        <label for="edit-email" class="input-label">ایمیل</label>
+                    </div>
+                    <div class="input-group">
+                        <input id="edit-password" name="password" type="password" class="input-field w-full" placeholder=" ">
+                        <label for="edit-password" class="input-label">رمز عبور جدید (اختیاری)</label>
+                    </div>
+                    <div>
+                        <label for="edit-role" class="block text-sm font-medium text-text-secondary mb-1">نقش</label>
+                        <select id="edit-role" name="role" class="input-field w-full">
+                            <option value="user">کاربر</option>
+                            <option value="coach">مربی</option>
+                        </select>
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit" class="primary-button w-full !py-3 !text-base">ذخیره تغییرات</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div id="add-edit-plan-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
              <button id="close-plan-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
@@ -1418,6 +1565,16 @@ export function renderAdminDashboard() {
                     <div class="input-group">
                         <input name="planName" type="text" class="input-field w-full" placeholder=" " required>
                         <label class="input-label">نام پلن</label>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="input-group sm:col-span-1">
+                            <input name="planEmoji" type="text" class="input-field w-full text-center !p-2" placeholder=" " maxlength="2">
+                            <label class="input-label">ایموجی</label>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="plan-color-input" class="block text-sm font-medium text-text-secondary mb-1">رنگ پلن</label>
+                            <input id="plan-color-input" name="planColor" type="color" class="input-field w-full !p-1" value="#3b82f6">
+                        </div>
                     </div>
                     <div class="input-group">
                         <input name="planDescription" type="text" class="input-field w-full" placeholder=" " required>
