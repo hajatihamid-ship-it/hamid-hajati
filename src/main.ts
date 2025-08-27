@@ -1,3 +1,4 @@
+
 import { renderLandingPage, initLandingPageListeners } from './ui/landing';
 import { renderAuthModal, initAuthListeners } from './ui/authModal';
 import { renderCoachDashboard, initCoachDashboard, updateCoachNotifications } from './ui/coachDashboard';
@@ -6,7 +7,7 @@ import { renderAdminDashboard, initAdminDashboard } from './ui/adminDashboard';
 import { getUsers, getUserData, saveUsers, saveUserData, addActivityLog, saveDiscounts, getStorePlans, saveStorePlans, seedCMSData } from './services/storage';
 import { setCurrentUser, getCurrentUser } from './state';
 import { sanitizeHTML } from './utils/dom';
-import { STORE_PLANS } from './config';
+import { STORE_PLANS as APP_STORE_PLANS } from './config';
 
 let notificationInterval: number | null = null;
 let themeListenerAttached = false;
@@ -23,7 +24,8 @@ const seedInitialUsers = () => {
              { username: "user_needs_plan", email: "needsplan@fitgympro.com", password: "password123", role: "user", status: "active", coachStatus: null, joinDate: new Date().toISOString() },
              { username: "hamid_hajati", email: "hamid.h@fitgympro.com", password: "password123", role: "coach", status: "active", coachStatus: "verified", joinDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString() },
              { username: "morteza_heydari", email: "morteza.h@fitgympro.com", password: "password123", role: "coach", status: "active", coachStatus: "verified", joinDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString() },
-             { username: "khorshidi_m", email: "khorshidi.m@fitgympro.com", password: "password123", role: "coach", status: "active", coachStatus: "verified", joinDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() }
+             { username: "khorshidi_m", email: "khorshidi.m@fitgympro.com", password: "password123", role: "coach", status: "active", coachStatus: "revoked", joinDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() },
+             { username: "sara_ahmadi", email: "sara.a@fitgympro.com", password: "password123", role: "coach", status: "active", coachStatus: "verified", joinDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString() }
         ];
         saveUsers(initialUsers);
         
@@ -33,8 +35,14 @@ const seedInitialUsers = () => {
         });
 
         saveUserData("coach10186", {
-             step1: { coachName: "Coach Verified", clientName: "Coach Verified" },
-             students: 28
+             step1: { coachName: "Coach Verified", clientName: "Coach Verified", gender: "مرد" },
+             students: 28,
+             performance: {
+                 rating: 4.8,
+                 nps: 85,
+                 retentionRate: 92,
+                 avgProgramDeliveryHours: 10
+             }
         });
         
         saveUserData("coach_pending", {
@@ -161,32 +169,67 @@ const seedInitialUsers = () => {
         });
 
         saveUserData("hamid_hajati", {
-             step1: { coachName: "حمید حاجتی", clientName: "حمید حاجتی" },
+             step1: { coachName: "حمید حاجتی", clientName: "حمید حاجتی", gender: "مرد" },
              profile: {
                  avatar: "https://i.pravatar.cc/150?u=hamid_hajati",
                  specialization: "فیتنس، کاهش وزن",
                  bio: "مربی با سابقه در زمینه کاهش وزن و تناسب اندام."
              },
-             students: 15
+             students: 15,
+             performance: {
+                 rating: 4.5,
+                 nps: 78,
+                 retentionRate: 85,
+                 avgProgramDeliveryHours: 14
+             }
         });
         saveUserData("morteza_heydari", {
-             step1: { coachName: "مرتضی حیدری نسب", clientName: "مرتضی حیدری نسب" },
+             step1: { coachName: "مرتضی حیدری نسب", clientName: "مرتضی حیدری نسب", gender: "مرد" },
              profile: {
                  avatar: "https://i.pravatar.cc/150?u=morteza_heydari",
                  specialization: "افزایش حجم، پاورلیفتینگ",
                  bio: "متخصص در برنامه‌های افزایش حجم و قدرت."
              },
-             students: 22
+             students: 22,
+             performance: {
+                 rating: 4.9,
+                 nps: 91,
+                 retentionRate: 88,
+                 avgProgramDeliveryHours: 11
+             }
         });
         saveUserData("khorshidi_m", {
-             step1: { coachName: "خورشیدی مهر", clientName: "خورشیدی مهر" },
+             step1: { coachName: "خورشیدی مهر", clientName: "خورشیدی مهر", gender: "مرد" },
              profile: {
                  avatar: "https://i.pravatar.cc/150?u=khorshidi_m",
                  specialization: "حرکات اصلاحی، آمادگی جسمانی",
                  bio: "مربی فانکشنال و حرکات اصلاحی."
              },
-             students: 18
+             students: 18,
+             performance: {
+                 rating: 4.2,
+                 nps: 72,
+                 retentionRate: 79,
+                 avgProgramDeliveryHours: 18
+             }
         });
+
+        saveUserData("sara_ahmadi", {
+             step1: { coachName: "سارا احمدی", clientName: "سارا احمدی", gender: "زن" },
+             profile: {
+                 avatar: "https://i.pravatar.cc/150?u=sara_ahmadi",
+                 specialization: "فیتنس بانوان، یوگا",
+                 bio: "متخصص تناسب اندام و یوگا برای بانوان."
+             },
+             students: 12,
+             performance: {
+                 rating: 4.7,
+                 nps: 82,
+                 retentionRate: 90,
+                 avgProgramDeliveryHours: 12
+             }
+        });
+
 
         addActivityLog("Initial users (admin, coaches, users) were created automatically.");
         saveDiscounts({ 'WELCOME10': { type: 'percentage', value: 10 }, 'SAVE50K': { type: 'fixed', value: 50000 } });
@@ -194,7 +237,13 @@ const seedInitialUsers = () => {
     }
      // Seed plans if they don't exist
     if (getStorePlans().length === 0) {
-        saveStorePlans(STORE_PLANS);
+        const plans = [
+            { planId: 'basic-1m', planName: 'پکیج پایه ۱ ماهه', description: 'ایده‌آل برای شروع و آشنایی.', price: 150000, features: ['برنامه تمرینی اختصاصی', 'پشتیبانی پایه در چت'], emoji: '💪', color: '#3b82f6' },
+            { planId: 'full-3m', planName: 'پکیج کامل ۳ ماهه', description: 'بهترین گزینه برای نتایج پایدار.', price: 400000, features: ['برنامه تمرینی اختصاصی', 'برنامه غذایی هوشمند', 'پشتیبانی کامل در چت', 'تحلیل هفتگی پیشرفت'], emoji: '🚀', color: '#ec4899', recommended: true },
+            { planId: 'pro-6m', planName: 'پکیج حرفه‌ای ۶ ماهه', description: 'برای ورزشکاران جدی و اهداف بزرگ.', price: 700000, features: ['تمام ویژگی‌های کامل', 'تماس ویدیویی ماهانه', 'اولویت در پشتیبانی'], emoji: '⭐', color: '#f97316' },
+            { planId: 'nutrition-1m', planName: 'برنامه غذایی ۱ ماهه', description: 'فقط برنامه غذایی تخصصی.', price: 100000, features: ['برنامه غذایی هوشمند', 'پشتیبانی تغذیه در چت'], emoji: '🥗', color: '#10b981' }
+        ];
+        saveStorePlans(plans);
         addActivityLog("Initial store plans were created automatically.");
     }
 };
@@ -323,7 +372,7 @@ export const handleLogout = () => {
 
 const initTheme = () => {
     const docElement = document.documentElement;
-    const themes = ['dark', 'lemon', 'light'];
+    const themes = ['dark', 'lemon'];
 
     const applyTheme = (theme: string) => {
         const validTheme = themes.includes(theme) ? theme : 'lemon';
@@ -334,8 +383,8 @@ const initTheme = () => {
         if (themeToggleBtn) {
             const icon = themeToggleBtn.querySelector("i");
             if (icon) {
-                // If it's a light theme, show a moon to switch to dark. Otherwise show a sun to switch to light.
-                icon.setAttribute('data-lucide', (validTheme === 'light' || validTheme === 'lemon') ? 'moon' : 'sun');
+                // If it's the light theme ('lemon'), show a moon icon to switch to dark. Otherwise show a sun icon.
+                icon.setAttribute('data-lucide', validTheme === 'lemon' ? 'moon' : 'sun');
             }
         }
         if (window.lucide) {
@@ -352,9 +401,7 @@ const initTheme = () => {
             const toggleBtn = e.target.closest('#theme-toggle-btn-dashboard');
             if (toggleBtn) {
                 const currentTheme = docElement.getAttribute("data-theme") || "dark";
-                const currentIndex = themes.indexOf(currentTheme);
-                const nextIndex = (currentIndex + 1) % themes.length;
-                const newTheme = themes[nextIndex];
+                const newTheme = currentTheme === 'dark' ? 'lemon' : 'dark';
                 applyTheme(newTheme);
             }
         });

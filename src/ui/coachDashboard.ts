@@ -1171,7 +1171,6 @@ const renderStudentCards = (students: any[], containerId: string) => {
             needsPlan ? 'bg-accent/5 border-accent/40' : 'bg-bg-secondary'
         }`;
         
-        // --- Purchase Info HTML ---
         let purchaseInfoHtml = `
             <div class="info-card !bg-bg-secondary !border-dashed p-3 text-center">
                  <p class="text-sm text-text-secondary">خریدی ثبت نشده است.</p>
@@ -1179,7 +1178,7 @@ const renderStudentCards = (students: any[], containerId: string) => {
         `;
         if (latestPurchase) {
              purchaseInfoHtml = `
-                <div class="info-card p-3">
+                <div class="info-card p-3 ${needsPlan ? '!bg-accent/10' : ''}">
                     <div class="flex justify-between items-center">
                          <div>
                             <p class="text-xs text-text-secondary">آخرین خرید</p>
@@ -1262,12 +1261,90 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
     if (!mainContainer) return;
 
     buildExerciseMap();
+    let activeChatStudentUsername: string | null = null;
 
+
+    const renderCoachConversation = (studentUsername: string) => {
+        const studentData = getUserData(studentUsername);
+        const placeholder = document.getElementById('coach-chat-placeholder');
+        const activeConversation = document.getElementById('coach-chat-active-conversation');
+        const header = document.getElementById('coach-chat-header');
+        const messagesContainer = document.getElementById('coach-chat-messages');
+
+        if (!placeholder || !activeConversation || !header || !messagesContainer) return;
+
+        placeholder.classList.add('hidden');
+        activeConversation.classList.remove('hidden');
+        activeConversation.classList.add('flex');
+
+        const studentName = studentData.step1?.clientName || studentUsername;
+        header.innerHTML = `
+            <div class="student-avatar w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-bg-secondary" style="background-color: ${getColorForName(studentName)};">
+                ${studentName.substring(0, 1).toUpperCase()}
+            </div>
+            <div>
+                <p class="font-bold">${studentName}</p>
+                <p class="text-xs text-text-secondary">در حال گفتگو</p>
+            </div>
+        `;
+
+        const chatHistory = studentData.chatHistory || [];
+        messagesContainer.innerHTML = chatHistory.map((msg: any) => `
+            <div class="message ${msg.sender === 'coach' ? 'coach-message' : 'user-message'}">${msg.message}</div>
+        `).join('') || `<div class="message coach-message text-center w-full">گفتگو را با ${studentName} شروع کنید.</div>`;
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    };
+
+    const renderCoachChatStudentList = (coachUsername: string, searchTerm: string = '') => {
+        const studentListContainer = document.getElementById('coach-chat-student-list');
+        if (!studentListContainer) return;
+        const template = document.getElementById('coach-chat-student-template') as HTMLTemplateElement;
+
+        const students = getCoachStudents(coachUsername)
+            .map(s => {
+                const data = getUserData(s.username);
+                const lastMessage = data.chatHistory ? data.chatHistory[data.chatHistory.length - 1] : null;
+                return {
+                    username: s.username,
+                    name: data.step1?.clientName || s.username,
+                    lastMessageText: lastMessage ? `${lastMessage.sender === 'coach' ? 'شما: ' : ''}${lastMessage.message}` : 'هنوز پیامی ارسال نشده.',
+                    lastMessageTimestamp: lastMessage ? new Date(lastMessage.timestamp).getTime() : new Date(s.joinDate).getTime(),
+                };
+            })
+            .filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+            .sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp);
+
+        if (students.length === 0) {
+            studentListContainer.innerHTML = `<p class="text-center text-text-secondary p-4">شاگردی یافت نشد.</p>`;
+            return;
+        }
+        
+        studentListContainer.innerHTML = students.map(s => {
+            const clone = template.content.cloneNode(true) as DocumentFragment;
+            const button = clone.querySelector('.coach-chat-student-item') as HTMLButtonElement;
+            button.dataset.username = s.username;
+            if (s.username === activeChatStudentUsername) {
+                button.classList.add('active');
+            }
+
+            const avatar = button.querySelector('.student-avatar') as HTMLElement;
+            avatar.style.backgroundColor = getColorForName(s.name);
+            avatar.textContent = s.name.substring(0, 1).toUpperCase();
+
+            (button.querySelector('.student-name') as HTMLElement).textContent = s.name;
+            (button.querySelector('.last-message-time') as HTMLElement).textContent = s.lastMessageTimestamp > 0 ? timeAgo(new Date(s.lastMessageTimestamp).toISOString()) : '';
+            (button.querySelector('.last-message-snippet') as HTMLElement).textContent = s.lastMessageText;
+            
+            return button.outerHTML;
+        }).join('');
+    };
+    
     // --- Tab Switching Logic ---
     const pageTitles: Record<string, {title: string, subtitle: string}> = {
         'students-content': { title: 'شاگردان', subtitle: 'نمای کلی شاگردان و نیازمندی‌ها.' },
         'builder-content': { title: 'ساخت برنامه جدید', subtitle: 'برنامه تمرینی و مکمل را برای شاگردان طراحی کنید.' },
         'templates-content': { title: 'الگوها', subtitle: 'الگوهای برنامه خود را برای استفاده مجدد مدیریت کنید.' },
+        'chat-content': { title: 'گفتگو با شاگردان', subtitle: 'با شاگردان خود در ارتباط باشید و به سوالاتشان پاسخ دهید.' },
         'profile-content': { title: 'پروفایل مربی', subtitle: 'اطلاعات حرفه‌ای خود را ویرایش کنید.' }
     };
 
@@ -1297,6 +1374,9 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             const studentsNeedingAttention = getStudentsNeedingAttention(myStudents);
             renderStudentCards(studentsNeedingAttention, 'needs-attention-grid');
             renderStudentCards(myStudents, 'all-students-grid');
+        }
+        if (targetId === 'chat-content') {
+            renderCoachChatStudentList(currentUser);
         }
     };
 
@@ -1339,6 +1419,17 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         }
         if (target.closest('#go-to-home-btn')) {
             handleGoToHome();
+            return;
+        }
+
+        const chatStudentItem = target.closest('.coach-chat-student-item');
+        if (chatStudentItem) {
+            const username = (chatStudentItem as HTMLElement).dataset.username;
+            if (username) {
+                activeChatStudentUsername = username;
+                renderCoachChatStudentList(currentUser); // Re-render to show active state
+                renderCoachConversation(username);
+            }
             return;
         }
 
@@ -1506,6 +1597,34 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 if (studentTab) switchTab(studentTab);
             }, 1000);
         }
+    });
+
+    const chatSearchInput = document.getElementById('coach-chat-search');
+    chatSearchInput?.addEventListener('input', (e) => {
+        renderCoachChatStudentList(currentUser, (e.target as HTMLInputElement).value);
+    });
+
+    const chatForm = document.getElementById('coach-chat-form') as HTMLFormElement;
+    chatForm?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const chatInput = document.getElementById('coach-chat-input') as HTMLInputElement;
+        const message = chatInput.value.trim();
+
+        if (!message || !activeChatStudentUsername) return;
+
+        const studentData = getUserData(activeChatStudentUsername);
+        if (!studentData.chatHistory) studentData.chatHistory = [];
+        studentData.chatHistory.push({
+            sender: 'coach',
+            message: message,
+            timestamp: new Date().toISOString()
+        });
+        saveUserData(activeChatStudentUsername, studentData);
+        setNotification(activeChatStudentUsername, 'chat-content', '💬');
+
+        chatInput.value = '';
+        renderCoachConversation(activeChatStudentUsername);
+        renderCoachChatStudentList(currentUser); // Update last message snippet
     });
 
     const studentModal = document.getElementById('student-profile-modal');
@@ -1842,6 +1961,7 @@ export function renderCoachDashboard(currentUser: string, userData: any) {
         { target: 'students-content', icon: 'users', label: 'شاگردان' },
         { target: 'builder-content', icon: 'plus-circle', label: 'ساخت برنامه' },
         { target: 'templates-content', icon: 'layout-template', label: 'الگوها' },
+        { target: 'chat-content', icon: 'message-square', label: 'گفتگو' },
         { target: 'profile-content', icon: 'user-circle', label: 'پروفایل' }
     ];
 
@@ -2036,6 +2156,43 @@ export function renderCoachDashboard(currentUser: string, userData: any) {
             </div>
 
             <div id="templates-content" class="coach-tab-content hidden"><div class="card p-6"><h2 class="text-xl font-bold mb-4">الگوهای برنامه</h2><div id="templates-list-container" class="space-y-2"></div></div></div>
+            
+            <div id="chat-content" class="coach-tab-content hidden">
+                <div class="card h-[calc(100vh-10rem)] flex overflow-hidden">
+                    <!-- Conversation Panel (Left) -->
+                    <div id="coach-chat-conversation-panel" class="w-2/3 flex flex-col">
+                        <div id="coach-chat-placeholder" class="m-auto text-center text-text-secondary flex flex-col items-center justify-center">
+                            <i data-lucide="message-square" class="w-12 h-12 mx-auto mb-4"></i>
+                            <p>برای شروع گفتگو، یک شاگرد را از لیست انتخاب کنید.</p>
+                        </div>
+                        <div id="coach-chat-active-conversation" class="hidden flex-col h-full">
+                            <div id="coach-chat-header" class="p-4 border-b border-border-primary flex items-center gap-3">
+                                <!-- Active student info injected here -->
+                            </div>
+                            <div id="coach-chat-messages" class="flex-grow p-4 space-y-4 overflow-y-auto flex flex-col bg-bg-tertiary">
+                                <!-- Messages injected here -->
+                            </div>
+                            <form id="coach-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2">
+                                <input type="text" id="coach-chat-input" class="input-field flex-grow" placeholder="پیام خود را بنویسید...">
+                                <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                    <!-- Student List Panel (Right) -->
+                    <div class="w-1/3 border-r border-border-primary flex flex-col">
+                        <div class="p-4 border-b border-border-primary">
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"></i>
+                                <input type="text" id="coach-chat-search" class="input-field w-full !pr-10 !text-sm" placeholder="جستجوی شاگرد...">
+                            </div>
+                        </div>
+                        <div id="coach-chat-student-list" class="flex-grow overflow-y-auto">
+                            <!-- Student list items will be injected here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="profile-content" class="coach-tab-content hidden">
                 <div class="card p-6 max-w-2xl mx-auto">
                     <h2 class="text-xl font-bold mb-6 text-center">پروفایل مربی</h2>

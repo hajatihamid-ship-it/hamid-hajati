@@ -1,5 +1,5 @@
 import { openModal, closeModal, updateSliderTrack } from '../utils/dom';
-import { getStorePlans, getUsers, getUserData } from '../services/storage';
+import { getStorePlans, getUsers, getUserData, getSiteSettings } from '../services/storage';
 import { formatPrice } from '../utils/helpers';
 import { calculateBodyMetrics } from '../utils/calculations';
 import { getCurrentUser } from '../state';
@@ -586,6 +586,15 @@ export function initLandingPageListeners(onGoToDashboard?: () => void) {
 
 export function renderLandingPage() {
     const currentUser = getCurrentUser();
+    const settings = getSiteSettings();
+    const socialLinks = settings.socialMedia || {};
+
+    const socialIcons = [
+        { name: 'instagram', link: socialLinks.instagram, icon: 'fa-instagram' },
+        { name: 'telegram', link: socialLinks.telegram, icon: 'fa-telegram' },
+        { name: 'youtube', link: socialLinks.youtube, icon: 'fa-youtube' }
+    ];
+
     const headerButtonHtml = currentUser
         ? `<button id="go-to-dashboard-btn" class="primary-button">داشبورد</button>`
         : `<button id="open-auth-modal-btn" class="primary-button">ورود / ثبت نام</button>`;
@@ -642,9 +651,11 @@ export function renderLandingPage() {
             </div>
              <footer class="text-center p-6 text-text-secondary text-sm bg-bg-primary">
                 <div class="flex justify-center gap-6 mb-4">
-                    <a href="#" class="social-icon-link"><i class="fab fa-instagram fa-lg"></i></a>
-                    <a href="#" class="social-icon-link"><i class="fab fa-telegram fa-lg"></i></a>
-                    <a href="#" class="social-icon-link"><i class="fab fa-youtube fa-lg"></i></a>
+                     ${socialIcons.map(social => 
+                        (social.link && social.link.trim() !== '' && social.link.trim() !== '#') 
+                        ? `<a href="${social.link}" target="_blank" rel="noopener noreferrer" class="social-icon-link"><i class="fab ${social.icon} fa-lg"></i></a>` 
+                        : ''
+                    ).join('')}
                 </div>
                 <p>&copy; 2024 FitGym Pro. تمامی حقوق محفوظ است.</p>
             </footer>

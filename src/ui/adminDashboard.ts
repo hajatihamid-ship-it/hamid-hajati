@@ -1,10 +1,11 @@
-import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans, getExercisesDB, saveExercisesDB, getSupplementsDB, saveSupplementsDB, saveDiscounts } from '../services/storage';
+import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans, getExercisesDB, saveExercisesDB, getSupplementsDB, saveSupplementsDB, saveDiscounts, getSiteSettings, saveSiteSettings } from '../services/storage';
 import { formatPrice, timeAgo } from '../utils/helpers';
 import { openModal, closeModal, showToast } from '../utils/dom';
 import { getCurrentUser } from '../state';
 import { sanitizeHTML } from '../utils/dom';
 
 let activityModalChartInstance: any = null;
+let coachAnalyticsSort = { key: 'rating', order: 'desc' };
 
 const renderDiscountsAdminHtml = () => {
     const discounts = getDiscounts();
@@ -397,6 +398,10 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
 
         navLinks.forEach(l => l.classList.remove('active-link'));
         document.querySelector(`.nav-link[data-target="${targetId}"]`)?.classList.add('active-link');
+
+        if(targetId === 'admin-analytics-page') {
+             renderAnalyticsPage();
+        }
     };
     
     navLinks.forEach(link => {
@@ -576,6 +581,20 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
     const mainContent = document.querySelector('.admin-dashboard-container main');
     mainContent?.addEventListener('click', e => {
         const target = e.target as HTMLElement;
+        
+        const sortHeader = target.closest<HTMLElement>('.sortable-header');
+        if (sortHeader && sortHeader.dataset.sortKey) {
+            const key = sortHeader.dataset.sortKey;
+            if (coachAnalyticsSort.key === key) {
+                coachAnalyticsSort.order = coachAnalyticsSort.order === 'asc' ? 'desc' : 'asc';
+            } else {
+                coachAnalyticsSort.key = key;
+                coachAnalyticsSort.order = 'desc';
+            }
+            renderAnalyticsPage(); // Re-render the page with new sorting
+            return;
+        }
+
         const actionBtn = target.closest('button[data-action]');
         if (!actionBtn) return;
 
@@ -1055,6 +1074,24 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             announcementForm.reset();
         });
     }
+    
+    // --- Site Settings ---
+    const socialMediaForm = document.getElementById('social-media-form') as HTMLFormElement;
+    if (socialMediaForm) {
+        socialMediaForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(socialMediaForm);
+            const settings = getSiteSettings();
+            
+            settings.socialMedia.instagram = formData.get('instagram') as string;
+            settings.socialMedia.telegram = formData.get('telegram') as string;
+            settings.socialMedia.youtube = formData.get('youtube') as string;
+            
+            saveSiteSettings(settings);
+            showToast('لینک‌های شبکه‌های اجتماعی با موفقیت ذخیره شد.', 'success');
+            addActivityLog('ادمین لینک‌های شبکه‌های اجتماعی را به‌روزرسانی کرد.');
+        });
+    }
 
     switchPage('admin-dashboard-page');
     initCharts();
@@ -1186,7 +1223,6 @@ const openSupplementModal = (data: any | null = null, category: string | null = 
     openModal(modal);
 };
 
-
 export function renderAdminDashboard() {
     const { allUsersHtml, coachesHtml } = renderUserRowsHtml();
     const activityLog = getActivityLog();
@@ -1197,6 +1233,7 @@ export function renderAdminDashboard() {
     const coachActivationRate = coaches.length > 0 ? Math.round((verifiedCoaches / coaches.length) * 100) : 0;
     const circumference = 2 * Math.PI * 25;
     const dashoffset = circumference * (1 - coachActivationRate / 100);
+    const settings = getSiteSettings();
 
     const kpiCards = [
         { title: 'ثبت‌نام جدید (۳۰ روز)', value: '۴۲', change: '+15%', changeColor: 'text-green-500', icon: 'fa-user-plus', color: 'admin-accent-green' },
@@ -1219,6 +1256,7 @@ export function renderAdminDashboard() {
                     { target: 'admin-analytics-page', icon: 'fa-chart-line', label: 'تحلیل عملکرد' },
                     { target: 'admin-content-page', icon: 'fa-database', label: 'مدیریت محتوا' },
                     { target: 'admin-finance-page', icon: 'fa-chart-pie', label: 'مالی و بازاریابی' },
+                    { target: 'admin-settings-page', icon: 'fa-cog', label: 'تنظیمات سایت' },
                     { target: 'admin-audit-log-page', icon: 'fa-clipboard-list', label: 'گزارش فعالیت‌ها' },
                 ].map(item => `
                     <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-md" data-target="${item.target}">
@@ -1384,8 +1422,7 @@ export function renderAdminDashboard() {
 
             <!-- Analytics Page -->
             <div id="admin-analytics-page" class="page hidden">
-                <h2 class="text-3xl font-extrabold mb-6">تحلیل عملکرد مربیان</h2>
-                <p class="text-text-secondary">این بخش برای نمایش آمارهای دقیق عملکرد مربیان (نرخ حفظ شاگرد، رضایت و ...) در حال توسعه است.</p>
+                <!-- Content will be rendered by JS -->
             </div>
 
             <!-- Content Management Page -->
@@ -1465,6 +1502,32 @@ export function renderAdminDashboard() {
                 </div>
                 <div id="commissions-content" class="admin-tab-content hidden">
                     ${renderCommissionsHtml()}
+                </div>
+            </div>
+
+            <!-- Site Settings Page -->
+            <div id="admin-settings-page" class="page hidden">
+                <h2 class="text-3xl font-extrabold mb-6 text-text-primary">تنظیمات سایت</h2>
+                <div class="card p-6 max-w-2xl mx-auto">
+                    <h3 class="font-bold text-lg mb-4">مدیریت شبکه‌های اجتماعی</h3>
+                    <p class="text-text-secondary text-sm mb-6">لینک‌های شبکه‌های اجتماعی که در فوتر صفحه اصلی نمایش داده می‌شوند را در اینجا مدیریت کنید. برای مخفی کردن یک آیکون، فیلد آن را خالی بگذارید.</p>
+                    <form id="social-media-form" class="space-y-4">
+                        <div class="input-group">
+                            <input id="instagram-link" name="instagram" type="url" class="input-field w-full" placeholder=" " value="${settings.socialMedia.instagram || ''}">
+                            <label for="instagram-link" class="input-label">لینک اینستاگرام</label>
+                        </div>
+                        <div class="input-group">
+                            <input id="telegram-link" name="telegram" type="url" class="input-field w-full" placeholder=" " value="${settings.socialMedia.telegram || ''}">
+                            <label for="telegram-link" class="input-label">لینک تلگرام</label>
+                        </div>
+                        <div class="input-group">
+                            <input id="youtube-link" name="youtube" type="url" class="input-field w-full" placeholder=" " value="${settings.socialMedia.youtube || ''}">
+                            <label for="youtube-link" class="input-label">لینک یوتیوب</label>
+                        </div>
+                        <div class="pt-2">
+                            <button type="submit" class="primary-button w-full">ذخیره تغییرات</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -1676,3 +1739,171 @@ export function renderAdminDashboard() {
     </div>
     `;
 }
+
+const renderStarRating = (rating: number) => {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+        if (i <= rating) {
+            stars += '<i class="fas fa-star text-yellow-400"></i>';
+        } else if (i - rating < 1) {
+            stars += '<i class="fas fa-star-half-alt text-yellow-400"></i>';
+        } else {
+            stars += '<i class="far fa-star text-yellow-400"></i>';
+        }
+    }
+    return `<div class="flex items-center gap-1">${stars} <span class="text-xs text-text-secondary ml-1">(${rating.toFixed(1)})</span></div>`;
+};
+
+const renderProgressBar = (value: number, colorClass: string) => {
+    return `
+        <div class="w-20 bg-bg-tertiary rounded-full h-2">
+            <div class="${colorClass} h-2 rounded-full" style="width: ${value}%"></div>
+        </div>
+        <span class="font-semibold text-sm">${value}%</span>
+    `;
+};
+
+const calculateAvgWeightChange = (coachUsername: string) => {
+    const students = getUsers().filter((u: any) => u.role === 'user' && getUserData(u.username).step1?.coachName === coachUsername);
+    if (students.length === 0) return { change: 0, trend: 'neutral' };
+
+    let totalChange = 0;
+    let studentsWithHistory = 0;
+
+    students.forEach((student: any) => {
+        const userData = getUserData(student.username);
+        if (userData.weightHistory && userData.weightHistory.length >= 2) {
+            const firstWeight = userData.weightHistory[0].weight;
+            const lastWeight = userData.weightHistory[userData.weightHistory.length - 1].weight;
+            totalChange += (lastWeight - firstWeight);
+            studentsWithHistory++;
+        }
+    });
+
+    if (studentsWithHistory === 0) return { change: 0, trend: 'neutral' };
+
+    const avgChange = totalChange / studentsWithHistory;
+    const trend = avgChange > 0.1 ? 'up' : avgChange < -0.1 ? 'down' : 'neutral';
+
+    return { change: parseFloat(avgChange.toFixed(1)), trend };
+};
+
+const renderAnalyticsPage = () => {
+    const pageContainer = document.getElementById('admin-analytics-page');
+    if (!pageContainer) return;
+
+    const coaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified').map((c: any) => ({
+        ...c,
+        ...getUserData(c.username)
+    }));
+    
+    if (coaches.length === 0) {
+        pageContainer.innerHTML = '<p class="text-text-secondary text-center p-8">هیچ مربی فعالی برای نمایش آمار وجود ندارد.</p>';
+        return;
+    }
+
+    // --- KPI Calculations ---
+    const totalRetention = coaches.reduce((sum, c) => sum + (c.performance?.retentionRate || 0), 0);
+    const avgRetention = totalRetention / coaches.length;
+    const totalNps = coaches.reduce((sum, c) => sum + (c.performance?.nps || 0), 0);
+    const avgNps = totalNps / coaches.length;
+    
+    // --- Sorting Logic ---
+    coaches.sort((a, b) => {
+        let valA, valB;
+        if (coachAnalyticsSort.key === 'progress') {
+            valA = calculateAvgWeightChange(a.username).change;
+            valB = calculateAvgWeightChange(b.username).change;
+        } else {
+            valA = a.performance?.[coachAnalyticsSort.key] || 0;
+            valB = b.performance?.[coachAnalyticsSort.key] || 0;
+        }
+        
+        if (coachAnalyticsSort.order === 'asc') {
+            return valA - valB;
+        }
+        return valB - valA;
+    });
+
+    const headers = [
+        { key: 'coach', label: 'مربی' },
+        { key: 'retentionRate', label: 'نرخ حفظ' },
+        { key: 'progress', label: 'پیشرفت شاگردان' },
+        { key: 'avgProgramDeliveryHours', label: 'زمان تحویل برنامه' },
+        { key: 'nps', label: 'شاخص NPS' },
+        { key: 'rating', label: 'امتیاز' },
+    ];
+    
+    const kpiCards = [
+        { title: 'میانگین نرخ حفظ', value: `${avgRetention.toFixed(1)}%`, icon: 'fa-users', color: 'admin-accent-blue' },
+        { title: 'میانگین امتیاز', value: (coaches.reduce((sum, c) => sum + (c.performance?.rating || 0), 0) / coaches.length).toFixed(1), icon: 'fa-star', color: 'admin-accent-yellow' },
+        { title: 'میانگین NPS', value: `${avgNps.toFixed(1)}`, icon: 'fa-smile', color: 'admin-accent-green' }
+    ];
+
+    pageContainer.innerHTML = `
+        <h2 class="text-3xl font-extrabold mb-6 text-text-primary">تحلیل عملکرد مربیان</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            ${kpiCards.map(kpi => `
+                <div class="admin-kpi-card">
+                    <div class="icon-container" style="background-color: var(--${kpi.color}); color: white;"><i class="fas ${kpi.icon} fa-lg"></i></div>
+                    <div>
+                        <p class="text-sm text-text-secondary">${kpi.title}</p>
+                        <p class="text-2xl font-bold text-text-primary">${kpi.value}</p>
+                    </div>
+                </div>`).join('')}
+        </div>
+        <div class="card overflow-hidden">
+            <table class="w-full text-sm text-right">
+                <thead>
+                    <tr class="font-semibold">
+                        ${headers.map(h => `
+                            <th class="p-4 cursor-pointer sortable-header" data-sort-key="${h.key}">
+                                <div class="flex items-center gap-2">
+                                    ${h.label}
+                                    ${coachAnalyticsSort.key === h.key ? `<i data-lucide="${coachAnalyticsSort.order === 'asc' ? 'arrow-up' : 'arrow-down'}" class="w-4 h-4"></i>` : ''}
+                                </div>
+                            </th>
+                        `).join('')}
+                        <th class="p-4">جزئیات</th>
+                    </tr>
+                </thead>
+                <tbody id="analytics-table-body">
+                    ${coaches.map(coach => {
+                        const performance = coach.performance || {};
+                        const progress = calculateAvgWeightChange(coach.username);
+                        const progressColor = progress.trend === 'up' ? 'text-red-500' : progress.trend === 'down' ? 'text-green-500' : 'text-text-secondary';
+                        const progressIcon = progress.trend === 'up' ? 'trending-up' : progress.trend === 'down' ? 'trending-down' : 'minus';
+
+                        return `
+                        <tr class="hover:bg-bg-tertiary transition-colors">
+                            <td class="p-4">
+                                <div class="flex items-center gap-3">
+                                    <img src="${coach.profile?.avatar || `https://i.pravatar.cc/150?u=${coach.username}`}" class="w-10 h-10 rounded-full object-cover" alt="${coach.step1?.clientName}">
+                                    <div>
+                                        <p class="font-semibold">${coach.step1?.clientName || coach.username}</p>
+                                        <p class="text-xs text-text-secondary">${coach.students || 0} شاگرد</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-4"><div class="flex items-center gap-2">${renderProgressBar(performance.retentionRate || 0, 'bg-admin-accent-blue')}</div></td>
+                            <td class="p-4">
+                                <div class="flex items-center gap-2 font-semibold ${progressColor}">
+                                    <i data-lucide="${progressIcon}" class="w-4 h-4"></i>
+                                    <span>${progress.change > 0 ? '+' : ''}${progress.change} kg</span>
+                                </div>
+                            </td>
+                            <td class="p-4">${performance.avgProgramDeliveryHours || 'N/A'} ساعت</td>
+                            <td class="p-4"><div class="flex items-center gap-2">${renderProgressBar(performance.nps || 0, 'bg-admin-accent-green')}</div></td>
+                            <td class="p-4">${renderStarRating(performance.rating || 0)}</td>
+                            <td class="p-4">
+                                <button data-action="view-activity" data-username="${coach.username}" title="مشاهده فعالیت" class="secondary-button !p-2"><i data-lucide="eye" class="w-4 h-4 pointer-events-none"></i></button>
+                            </td>
+                        </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    window.lucide?.createIcons();
+};

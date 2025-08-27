@@ -230,3 +230,39 @@ export const seedCMSData = () => {
         addActivityLog("Initial supplement database was seeded.");
     }
 };
+
+
+// --- Site Settings ---
+export const getSiteSettings = () => {
+    const defaults = {
+        socialMedia: {
+            instagram: 'https://instagram.com',
+            telegram: 'https://telegram.org',
+            youtube: 'https://youtube.com'
+        }
+    };
+    try {
+        const settings = JSON.parse(localStorage.getItem("fitgympro_site_settings") || "{}");
+        // Deep merge to ensure new settings properties are added
+        return {
+            ...defaults,
+            ...settings,
+            socialMedia: {
+                ...defaults.socialMedia,
+                ...(settings.socialMedia || {})
+            }
+        };
+    } catch (e) {
+        console.error("Error parsing site settings from localStorage:", e);
+        return defaults;
+    }
+};
+
+export const saveSiteSettings = (settings: any) => {
+    try {
+        localStorage.setItem("fitgympro_site_settings", JSON.stringify(settings));
+    } catch (t) {
+        console.error("Error saving site settings to localStorage:", t);
+        showToast("خطا در ذخیره‌سازی تنظیمات سایت", "error");
+    }
+};

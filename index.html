@@ -569,6 +569,10 @@
             background-color: var(--accent-transparent-15) !important;
             box-shadow: 0 0 15px var(--accent-transparent-20);
         }
+        .coach-chat-student-item.active {
+            background-color: var(--accent-transparent-10);
+            border-right: 4px solid var(--accent);
+        }
         
         /* Student Selection Modal Enhancements */
         .selection-modal-header {
@@ -787,6 +791,23 @@
                 <div class="student-progress-bar">
                     <div class="student-progress-bar-inner"></div>
                 </div>
+            </div>
+        </button>
+    </template>
+    
+    <template id="coach-chat-student-template">
+        <button class="w-full text-right p-4 border-b border-border-primary hover:bg-bg-tertiary flex items-center gap-3 transition-colors coach-chat-student-item">
+            <div class="relative">
+                <div class="student-avatar w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-bg-secondary">
+                    <!-- Initials -->
+                </div>
+            </div>
+            <div class="flex-grow overflow-hidden">
+                <div class="flex justify-between items-center">
+                    <p class="font-bold student-name truncate"></p>
+                    <p class="text-xs text-text-secondary last-message-time flex-shrink-0"></p>
+                </div>
+                <p class="text-sm text-text-secondary last-message-snippet truncate"></p>
             </div>
         </button>
     </template>

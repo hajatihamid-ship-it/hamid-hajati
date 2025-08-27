@@ -7,6 +7,7 @@ import { sanitizeHTML } from '../utils/dom';
 import { formatPrice } from '../utils/helpers';
 
 let weightLogCountdownInterval: number | null = null;
+let selectedCoachInModal: string | null = null;
 
 const startWeightCountdown = (currentUser: string) => {
     if (weightLogCountdownInterval) clearInterval(weightLogCountdownInterval);
@@ -135,6 +136,31 @@ const renderUnifiedProgramView = (userData: any) => {
     const { step2: workout, supplements } = latestProgram;
     const metrics = calculateUserMetrics(student);
 
+    // --- BMI Calculation for indicator ---
+    const bmi = parseFloat(metrics.bmi);
+    let bmiIndicatorPosition = -10; // Default off-screen
+    let bmiColorClass = 'text-text-primary';
+
+    if (!isNaN(bmi)) {
+        const minBmi = 15;
+        const maxBmi = 40;
+        let percentage = (bmi - minBmi) / (maxBmi - minBmi) * 100;
+        percentage = Math.max(0, Math.min(100, percentage));
+        // The indicator is 20px wide, so offset by 10px to center it
+        bmiIndicatorPosition = percentage;
+
+        if (bmi < 18.5) {
+            bmiColorClass = 'text-blue-400';
+        } else if (bmi < 25) {
+            bmiColorClass = 'text-green-400';
+        } else if (bmi < 30) {
+            bmiColorClass = 'text-yellow-400';
+        } else {
+            bmiColorClass = 'text-red-400';
+        }
+    }
+    // --- End BMI Calculation ---
+
     container.innerHTML = `
         <div class="program-page mx-auto bg-bg-secondary rounded-xl shadow-lg" id="unified-program-view">
              <div class="p-4 md:p-8">
@@ -151,6 +177,27 @@ const renderUnifiedProgramView = (userData: any) => {
                     <div><span>قد:</span> <strong>${student.height || 'N/A'} cm</strong></div>
                     <div><span>وزن:</span> <strong>${student.weight || 'N/A'} kg</strong></div>
                     <div><span>TDEE:</span> <strong>${metrics.tdee || 'N/A'} kcal</strong></div>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <h4 class="font-semibold text-sm">شاخص توده بدنی (BMI)</h4>
+                        <span class="font-bold text-lg ${bmiColorClass}">${metrics.bmi}</span>
+                    </div>
+                    <div class="w-full bg-bg-tertiary rounded-full h-2.5 relative" title="آبی: کمبود وزن, سبز: نرمال, زرد: اضافه وزن, قرمز: چاقی">
+                        <div class="absolute top-0 left-0 h-full rounded-l-full bg-blue-500" style="width: 14%;"></div>
+                        <div class="absolute top-0 h-full bg-green-500" style="left: 14%; width: 26%;"></div>
+                        <div class="absolute top-0 h-full bg-yellow-500" style="left: 40%; width: 20%;"></div>
+                        <div class="absolute top-0 h-full rounded-r-full bg-red-500" style="left: 60%; width: 40%;"></div>
+                        <div class="absolute -top-1 w-5 h-5 rounded-full bg-white border-2 border-accent shadow-lg transition-all duration-500 ease-out" style="left: calc(${bmiIndicatorPosition}% - 10px);">
+                                <div class="w-full h-full rounded-full bg-accent/30"></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between text-xs text-text-secondary mt-1 px-1">
+                        <span>۱۸.۵</span>
+                        <span>۲۵</span>
+                        <span>۳۰</span>
+                    </div>
                 </div>
 
                 <h3 class="preview-section-header mt-6"><i data-lucide="clipboard-list"></i> برنامه تمرینی</h3>
@@ -612,44 +659,113 @@ const updateCartBadge = (currentUser: string) => {
 const renderStoreTab = (currentUser: string) => {
     const container = document.getElementById('store-content');
     if (!container) return;
+
+    const userData = getUserData(currentUser);
     const cart = getCart(currentUser);
     const plans = getStorePlans();
+    const allCoaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
+    const selectedCoachUsername = userData.step1?.coachName;
+    const hasCoachSelected = !!selectedCoachUsername;
+
+    let step1Html = '';
+    if (hasCoachSelected) {
+        const coach = allCoaches.find(c => c.username === selectedCoachUsername);
+        const coachData = getUserData(selectedCoachUsername);
+        const coachName = coachData.step1?.clientName || selectedCoachUsername;
+        const specialization = coachData.profile?.specialization || 'مربی رسمی';
+        const avatar = coachData.profile?.avatar;
+        const avatarHtml = avatar
+            ? `<img src="${avatar}" alt="${coachName}" class="w-12 h-12 rounded-full object-cover flex-shrink-0">`
+            : `<div class="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-white" style="background-color: var(--admin-accent-gray);">${coachName.charAt(0).toUpperCase()}</div>`;
+
+        step1Html = `
+            <h2 class="text-xl font-bold mb-4">قدم ۱: مربی شما انتخاب شد</h2>
+            <div class="flex items-center justify-between p-4 bg-bg-tertiary rounded-lg">
+                <div class="flex items-center gap-4">
+                    ${avatarHtml}
+                    <div>
+                        <p class="font-bold">${coachName}</p>
+                        <p class="text-sm text-text-secondary">${specialization}</p>
+                    </div>
+                </div>
+                <button id="change-coach-btn" class="secondary-button !text-sm">تغییر مربی</button>
+            </div>
+        `;
+    } else {
+        step1Html = `
+            <h2 class="text-xl font-bold mb-4">قدم ۱: مربی خود را انتخاب کنید</h2>
+            <div class="text-center p-8 bg-bg-tertiary rounded-lg">
+                <p class="text-text-secondary mb-4">برای مشاهده و انتخاب پلن‌های اشتراک، ابتدا باید مربی مورد نظر خود را انتخاب کنید.</p>
+                <button id="open-coach-modal-btn" class="primary-button !text-lg !px-8 !py-3">
+                    <i data-lucide="users" class="w-5 h-5 ml-2"></i>
+                    انتخاب مربی
+                </button>
+            </div>
+        `;
+    }
 
     container.innerHTML = `
-        <div class="text-center mb-8 animate-fade-in-down">
-            <h2 class="text-3xl font-extrabold">فروشگاه FitGym Pro</h2>
-            <p class="text-text-secondary mt-2">پلن‌های تخصصی ما را برای رسیدن به اهداف خود انتخاب کنید.</p>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in-up">
-            ${plans.map((plan: any) => {
-                const isInCart = cart.items.some((item: any) => item.planId === plan.planId);
-                return `
-                <div class="card p-6 flex flex-col border-2 transition-all hover:shadow-xl hover:-translate-y-1" style="border-color: ${plan.color || 'var(--border-border-primary)'};">
-                    <h4 class="text-lg font-bold text-text-primary">${plan.emoji || ''} ${plan.planName}</h4>
-                    <p class="text-sm text-text-secondary mt-1 flex-grow">${plan.description}</p>
-                    <div class="my-6">
-                        <span class="text-3xl font-black">${formatPrice(plan.price).split(' ')[0]}</span>
-                        <span class="text-text-secondary"> تومان</span>
-                    </div>
-                    <ul class="space-y-3 text-sm mb-6">
-                        ${(plan.features || []).map((feature: string) => `
-                            <li class="flex items-center gap-2">
-                                <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
-                                <span>${feature}</span>
-                            </li>
-                        `).join('')}
-                    </ul>
-                    <button 
-                        data-plan-id="${plan.planId}" 
-                        class="add-to-cart-btn ${isInCart ? 'green-button cursor-not-allowed' : 'primary-button'} mt-auto w-full flex items-center justify-center"
-                        ${isInCart ? 'disabled' : ''}
-                    >
-                        ${isInCart ? '<i data-lucide="check" class="w-4 h-4 mr-2"></i> اضافه شد' : '<i data-lucide="plus" class="w-4 h-4 mr-2"></i> افزودن به سبد'}
-                    </button>
+        <div class="space-y-8 animate-fade-in-up">
+            <!-- Step 1: Coach Selection -->
+            <div class="card p-4 md:p-6">
+                ${step1Html}
+            </div>
+
+            <div id="coach-selection-feedback" class="text-center transition-all duration-500"></div>
+
+            <!-- Step 2: Plan Selection -->
+            <div id="plan-selection-section" class="card p-4 md:p-6 transition-opacity duration-500 ${!hasCoachSelected ? 'opacity-50 pointer-events-none' : ''}">
+                <h2 class="text-xl font-bold mb-4">قدم ۲: پلن اشتراک خود را انتخاب کنید</h2>
+                ${!hasCoachSelected ? '<p class="text-center text-accent font-semibold mb-4 -mt-2">ابتدا یک مربی انتخاب کنید تا پلن‌ها فعال شوند.</p>' : ''}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    ${plans.map((plan: any) => {
+                        const isInCart = cart.items.some((item: any) => item.planId === plan.planId);
+                        const isRecommended = plan.recommended;
+                        return `
+                        <div class="bg-bg-secondary p-6 rounded-xl flex flex-col border-2 relative overflow-hidden ${isRecommended ? 'border-accent shadow-lg shadow-accent/10' : ''}" style="border-color: ${plan.color || 'var(--border-border-primary)'};">
+                            ${isRecommended ? '<div class="absolute top-0 right-0 bg-accent text-bg-secondary text-xs font-bold px-4 py-1 rounded-bl-lg">محبوب‌ترین</div>' : ''}
+                            <h4 class="text-lg font-bold text-text-primary">${plan.emoji || ''} ${plan.planName}</h4>
+                            <p class="text-sm text-text-secondary mt-1 flex-grow">${plan.description}</p>
+                            <div class="my-6">
+                                <span class="text-3xl font-black">${formatPrice(plan.price).split(' ')[0]}</span>
+                                <span class="text-text-secondary"> تومان</span>
+                            </div>
+                            <ul class="space-y-3 text-sm mb-6">
+                                ${(plan.features || []).map((feature: string) => `
+                                    <li class="flex items-center gap-2">
+                                        <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
+                                        <span>${feature}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                            <button 
+                                data-plan-id="${plan.planId}" 
+                                class="add-to-cart-btn ${isInCart ? 'green-button cursor-not-allowed' : 'primary-button'} mt-auto w-full flex items-center justify-center"
+                                ${isInCart || !hasCoachSelected ? 'disabled' : ''}
+                            >
+                                ${isInCart ? '<i data-lucide="check" class="w-4 h-4 mr-2"></i> اضافه شد' : '<i data-lucide="plus" class="w-4 h-4 mr-2"></i> افزودن به سبد'}
+                            </button>
+                        </div>
+                    `}).join('')}
                 </div>
-            `}).join('')}
+            </div>
         </div>
     `;
+
+    const fromProfileSave = sessionStorage.getItem('fromProfileSave');
+    if (fromProfileSave) {
+        const feedbackEl = document.getElementById('coach-selection-feedback');
+        if (feedbackEl) {
+            feedbackEl.innerHTML = `
+                <div class="p-4 mb-6 bg-yellow-400/10 border-l-4 border-yellow-500 text-yellow-600 rounded-r-lg animate-fade-in">
+                    <p class="font-bold">پروفایل شما با موفقیت ذخیره شد!</p>
+                    <p class="text-sm">حالا مربی خود را انتخاب کنید تا بتوانید پلن‌های اشتراک را مشاهده نمایید.</p>
+                </div>
+            `;
+        }
+        sessionStorage.removeItem('fromProfileSave');
+    }
+    
     window.lucide?.createIcons();
 };
 
@@ -716,80 +832,68 @@ const renderCartModalContent = (currentUser: string) => {
     window.lucide?.createIcons();
 };
 
+const renderCoachesInModal = (genderFilter: 'all' | 'مرد' | 'زن' = 'all') => {
+    const listContainer = document.getElementById('modal-coach-list');
+    if (!listContainer) return;
 
-export function initUserDashboard(currentUser: string, userData: any, handleLogout: () => void, handleGoToHome: () => void) {
-    const hasActiveSubscription = (user: string): boolean => {
-        const currentData = getUserData(user);
-        if (!currentData.subscriptions || currentData.subscriptions.length === 0) {
-            return false;
-        }
-        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-        return currentData.subscriptions.some((sub: any) => new Date(sub.purchaseDate).getTime() > thirtyDaysAgo);
-    };
+    const allCoaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
 
-    const renderCoachSelectionCard = (currentUser: string, userData: any) => {
-        const container = document.getElementById('coach-selection-container-wrapper');
-        if (!container) return;
+    let filteredCoaches = allCoaches;
+    if (genderFilter !== 'all') {
+        filteredCoaches = allCoaches.filter(c => getUserData(c.username).step1?.gender === genderFilter);
+    }
+    
+    const confirmBtn = document.getElementById('confirm-coach-selection-btn') as HTMLButtonElement;
+    if (confirmBtn) confirmBtn.disabled = !selectedCoachInModal;
 
-        const isActive = hasActiveSubscription(currentUser);
-        const coaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
-        const currentCoachUsername = userData.step1?.coachName;
+    if (filteredCoaches.length === 0) {
+        listContainer.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">مربی با این مشخصات یافت نشد.</p>`;
+        return;
+    }
 
-        let coachListHtml = coaches.map((coach: any) => {
-            const coachData = getUserData(coach.username);
-            const isSelected = currentCoachUsername === coach.username;
-            const coachName = coachData.step1?.clientName || coach.username;
-            const specialization = coachData.profile?.specialization || 'مربی رسمی بدنسازی';
-            const avatar = coachData.profile?.avatar;
+    listContainer.innerHTML = filteredCoaches.map((coach: any) => {
+        const coachData = getUserData(coach.username);
+        const isSelected = selectedCoachInModal === coach.username;
+        const coachName = coachData.step1?.clientName || coach.username;
+        const specialization = coachData.profile?.specialization || 'مربی رسمی بدنسازی';
+        const avatar = coachData.profile?.avatar;
+        const studentsCount = coachData.students || 0;
 
-            const avatarHtml = avatar
-                ? `<img src="${avatar}" alt="${coachName}" class="w-10 h-10 rounded-full object-cover flex-shrink-0">`
-                : `<div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-white" style="background-color: var(--admin-accent-gray);">${coachName.charAt(0).toUpperCase()}</div>`;
-            
-            return `
-                <button 
-                    class="coach-select-btn w-full text-right p-3 border rounded-lg flex items-center gap-3 transition-all duration-200 hover:border-accent ${isSelected ? 'selected-card' : 'border-border-primary'}" 
-                    data-coach-username="${coach.username}"
-                    ${!isActive ? 'disabled' : ''}
-                >
+        const avatarHtml = avatar
+            ? `<img src="${avatar}" alt="${coachName}" class="w-16 h-16 rounded-full object-cover flex-shrink-0 pointer-events-none">`
+            : `<div class="w-16 h-16 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-xl text-white pointer-events-none" style="background-color: var(--admin-accent-gray);">${coachName.charAt(0).toUpperCase()}</div>`;
+        
+        return `
+            <button 
+                class="store-coach-card w-full text-right p-4 border-2 rounded-xl flex flex-col gap-3 transition-all duration-200 hover:border-accent hover:shadow-lg hover:-translate-y-1 ${isSelected ? 'selected-card !border-accent' : 'border-border-primary'}" 
+                data-coach-username="${coach.username}"
+            >
+                <div class="flex items-center gap-4 pointer-events-none">
                     ${avatarHtml}
-                    <div>
-                        <p class="font-bold text-sm">${coachName}</p>
-                        <p class="text-xs text-text-secondary">${specialization}</p>
+                    <div class="flex-grow">
+                        <p class="font-bold text-lg">${coachName}</p>
+                        <p class="text-sm text-text-secondary">${specialization}</p>
                     </div>
-                </button>
-            `;
-        }).join('');
-
-        if (coaches.length === 0) {
-            coachListHtml = `<p class="text-text-secondary text-sm text-center">در حال حاضر مربی فعالی در سیستم وجود ندارد.</p>`;
-        }
-        
-        let wrapperClass = '';
-        let messageHtml = `<p class="text-text-secondary text-sm mb-4">مربی خود را برای دریافت برنامه‌های اختصاصی انتخاب کنید.</p>`;
-        
-        if (!isActive) {
-            wrapperClass = 'opacity-50';
-            messageHtml = `
-                <p class="text-text-secondary text-sm mb-4">
-                    برای انتخاب مربی، ابتدا باید یک پلن فعال از <button class="font-bold text-accent underline" data-action="go-to-store">فروشگاه</button> خریداری کنید.
-                </p>
-            `;
-        }
-
-        container.innerHTML = `
-            <div class="card p-4 md:p-6 animate-fade-in">
-                <h2 class="text-xl font-bold mb-2">انتخاب مربی</h2>
-                ${messageHtml}
-                <div class="${wrapperClass}">
-                    <div class="space-y-2">
-                        ${coachListHtml}
+                    ${isSelected ? '<i data-lucide="check-circle-2" class="w-8 h-8 text-accent flex-shrink-0"></i>' : '<div class="w-8 h-8 flex-shrink-0 rounded-full border-2 border-dashed border-border-primary"></div>'}
+                </div>
+                <div class="flex items-center justify-between text-xs text-text-secondary pt-3 border-t border-border-primary pointer-events-none mt-2">
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="users" class="w-4 h-4"></i>
+                        <span>${studentsCount} شاگرد فعال</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-green-500 font-semibold">
+                         <i data-lucide="shield-check" class="w-4 h-4"></i>
+                         <span>مربی تایید شده</span>
                     </div>
                 </div>
-            </div>
+            </button>
         `;
-    };
+    }).join('');
+    window.lucide.createIcons();
+};
 
+
+export function initUserDashboard(currentUser: string, userData: any, handleLogout: () => void, handleGoToHome: () => void) {
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
 
     const dashboardContainer = document.getElementById('user-dashboard-container');
@@ -832,7 +936,6 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         if (targetId === 'profile-content') {
             populateProfileForm(currentData);
             renderBodyMetricsCard(currentData, 'body-metrics-container');
-            renderCoachSelectionCard(currentUser, currentData);
             startWeightCountdown(currentUser);
             const form = document.getElementById('user-profile-form');
             if(form) {
@@ -978,26 +1081,12 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             }
         }
 
-        const coachBtn = button.closest('.coach-select-btn');
-        if (coachBtn && !coachBtn.hasAttribute('disabled')) {
-            const coachUsername = (coachBtn as HTMLElement).dataset.coachUsername;
-            if (coachUsername) {
-                let freshUserData = getUserData(currentUser);
-                const oldCoach = freshUserData.step1.coachName;
-                freshUserData.step1.coachName = coachUsername;
-                saveUserData(currentUser, freshUserData);
-                showToast(`مربی شما به "${coachUsername}" تغییر یافت.`, 'success');
-                renderCoachSelectionCard(currentUser, freshUserData);
-                setNotification(coachUsername, 'students-content', '👋');
-                if (oldCoach && oldCoach !== coachUsername) {
-                    setNotification(oldCoach, 'students-content', '🚶');
-                }
-            }
-        }
-        const goToStoreBtn = button.closest('button[data-action="go-to-store"]');
-        if (goToStoreBtn) {
-            const storeTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="store-content"]');
-            if (storeTab) switchTab(storeTab);
+        if (button.id === 'open-coach-modal-btn' || button.id === 'change-coach-btn') {
+            const coachModal = document.getElementById('coach-selection-modal');
+            const currentUserData = getUserData(currentUser);
+            selectedCoachInModal = currentUserData.step1?.coachName || null;
+            renderCoachesInModal('all');
+            openModal(coachModal);
         }
     });
     
@@ -1050,9 +1139,13 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             }
 
             toggleProfileLock(true);
-            showToast('اطلاعات پروفایل با موفقیت ذخیره و برای مربی ارسال شد.', 'success');
-            renderBodyMetricsCard(freshUserData, 'body-metrics-container');
-            startWeightCountdown(currentUser);
+            
+            // Redirect to store tab
+            sessionStorage.setItem('fromProfileSave', 'true');
+            const storeTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="store-content"]');
+            if (storeTab) {
+                switchTab(storeTab);
+            }
         });
     }
 
@@ -1206,16 +1299,99 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 updateCartBadge(currentUser);
                 renderStoreTab(currentUser);
                 addActivityLog(`${currentUser} purchased ${cart.items.length} plan(s).`);
-                
-                // After purchase, re-render the coach selection card to unlock it
-                const profileTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="profile-content"]');
-                if (profileTab?.classList.contains('active-spring-tab')) {
-                     renderCoachSelectionCard(currentUser, freshUserData);
-                }
             }, 1000);
         }
     });
     document.getElementById('close-cart-modal-btn')?.addEventListener('click', () => closeModal(cartModal));
+
+    const coachSelectionModal = document.getElementById('coach-selection-modal');
+    coachSelectionModal?.addEventListener('click', e => {
+        if (!(e.target instanceof HTMLElement)) return;
+        const target = e.target;
+        
+        const closeBtn = target.closest('#close-coach-modal-btn');
+        if (closeBtn || target.id === 'coach-selection-modal') {
+            closeModal(coachSelectionModal);
+            return;
+        }
+
+        // FIX: Cast closest result to HTMLElement to access dataset property.
+        const filterBtn = target.closest<HTMLElement>('.gender-filter-btn');
+        if (filterBtn) {
+            const gender = filterBtn.dataset.gender as 'all' | 'مرد' | 'زن';
+            coachSelectionModal.querySelectorAll('.gender-filter-btn').forEach(btn => btn.classList.remove('active'));
+            filterBtn.classList.add('active');
+            renderCoachesInModal(gender);
+            return;
+        }
+
+        // FIX: Cast closest result to HTMLElement to access dataset property.
+        const coachCard = target.closest<HTMLElement>('.store-coach-card');
+        if (coachCard) {
+            selectedCoachInModal = coachCard.dataset.coachUsername || null;
+            const activeFilter = (coachSelectionModal.querySelector('.gender-filter-btn.active') as HTMLElement)?.dataset.gender as 'all' | 'مرد' | 'زن' || 'all';
+            renderCoachesInModal(activeFilter); // Re-render to show selection
+            return;
+        }
+
+        const confirmBtn = target.closest('#confirm-coach-selection-btn');
+        if (confirmBtn && selectedCoachInModal) {
+            let freshUserData = getUserData(currentUser);
+            const oldCoach = freshUserData.step1.coachName;
+            freshUserData.step1.coachName = selectedCoachInModal;
+            saveUserData(currentUser, freshUserData);
+            
+            showToast(`مربی "${selectedCoachInModal}" انتخاب شد.`, 'success');
+            renderStoreTab(currentUser);
+            
+            setNotification(selectedCoachInModal, 'students-content', '👋');
+            if (oldCoach && oldCoach !== selectedCoachInModal) {
+                setNotification(oldCoach, 'students-content', '🚶');
+            }
+            
+            closeModal(coachSelectionModal);
+
+            setTimeout(() => {
+                const planSection = document.getElementById('plan-selection-section');
+                const feedbackEl = document.getElementById('coach-selection-feedback');
+                const selectedCoachData = getUserData(selectedCoachInModal!);
+                const coachName = selectedCoachData.step1?.clientName || selectedCoachInModal;
+
+                if (feedbackEl) {
+                    feedbackEl.innerHTML = `<p class="text-green-500 font-semibold animate-fade-in">عالی! حالا یک پلن انتخاب کنید تا <strong>${coachName}</strong> برنامه شما را آماده کند.</p>`;
+                }
+                if (planSection) {
+                    planSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        }
+    });
+}
+
+const renderCoachSelectionModalHTML = () => {
+    return `
+    <div id="coach-selection-modal" class="modal fixed inset-0 bg-black/60 z-[101] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-4xl h-[80vh] transform scale-95 transition-transform duration-300 relative flex flex-col">
+            <div class="p-4 border-b border-border-primary flex-shrink-0">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-bold text-xl">انتخاب مربی</h2>
+                    <button id="close-coach-modal-btn" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+                </div>
+                 <div class="flex justify-center items-center gap-1 bg-bg-tertiary p-1 rounded-lg mt-3">
+                    <button class="gender-filter-btn filter-chip active" data-gender="all">همه</button>
+                    <button class="gender-filter-btn filter-chip" data-gender="مرد">آقایان</button>
+                    <button class="gender-filter-btn filter-chip" data-gender="زن">خانم‌ها</button>
+                </div>
+            </div>
+            <div id="modal-coach-list" class="p-4 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
+                <!-- Coaches injected here -->
+            </div>
+            <div class="p-4 border-t border-border-primary flex-shrink-0">
+                <button id="confirm-coach-selection-btn" class="primary-button w-full" disabled>تایید و ادامه</button>
+            </div>
+        </div>
+    </div>
+    `;
 }
 
 export function renderUserDashboard(currentUser: string, userData: any) {
@@ -1458,12 +1634,9 @@ export function renderUserDashboard(currentUser: string, userData: any) {
                         </form>
                     </div>
                 </div>
-                <div class="lg:col-span-1 space-y-6">
+                <div class="lg:col-span-1">
                     <div id="body-metrics-container">
                         <!-- Body metrics card will be rendered here by JS -->
-                    </div>
-                    <div id="coach-selection-container-wrapper">
-                        <!-- Coach selection card will be rendered here by JS -->
                     </div>
                 </div>
             </div>
@@ -1490,5 +1663,6 @@ export function renderUserDashboard(currentUser: string, userData: any) {
             <div id="cart-modal-body" class="p-6"></div>
         </div>
     </div>
+    ${renderCoachSelectionModalHTML()}
     `;
 }
