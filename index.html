@@ -547,6 +547,21 @@
         .user-dashboard-tab.active-spring-tab { color: var(--tab-color); }
 
         /* Coach Dashboard Enhancements */
+        @keyframes pulse-border-accent {
+            0% { border-color: var(--accent-transparent-40); }
+            50% { border-color: var(--accent); }
+            100% { border-color: var(--accent-transparent-40); }
+        }
+        .student-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .student-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-card);
+        }
+        .student-card.needs-attention-highlight {
+            animation: pulse-border-accent 2s infinite;
+        }
         .status-badge.pending.animate-pulse-accent {
             animation: pulse-accent 1.5s infinite;
         }
@@ -641,10 +656,11 @@
 
         /* Landing Page Widgets */
         .calculator-card {
-            background-color: rgba(59, 130, 246, 0.15); /* blue-500 with 15% opacity */
+            background-color: rgba(26, 34, 52, 0.75); /* Darker glass */
             backdrop-filter: blur(20px); 
             -webkit-backdrop-filter: blur(20px); 
-            border: 1px solid rgba(59, 130, 246, 0.3); /* blue-500 with 30% opacity */
+            border: 1px solid rgba(163, 230, 53, 0.3); /* Accent border */
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
             border-radius: var(--radius-card);
         }
         .result-display {
@@ -656,7 +672,7 @@
         .coach-card {
             padding: 2rem;
             border-radius: var(--radius-card);
-            transition: transform 0.3s ease, background-color 0.3s ease;
+            transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
             background-color: rgba(26, 34, 52, 0.7);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
@@ -665,6 +681,7 @@
         .coach-card:hover {
             transform: translateY(-8px);
             background-color: rgba(45, 55, 72, 0.8);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
         }
         .coach-card img {
             transition: transform 0.3s ease;

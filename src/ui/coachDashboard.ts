@@ -1167,8 +1167,8 @@ const renderStudentCards = (students: any[], containerId: string) => {
         const trendIcon = weightChange.trend === 'up' ? 'trending-up' : 'trending-down';
         const trendColor = weightChange.trend === 'up' ? 'text-green-500' : 'text-red-500';
 
-        const cardClasses = `student-card card p-6 flex flex-col gap-5 animate-fade-in transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-            needsPlan ? 'bg-accent/5 border-accent/40' : 'bg-bg-secondary'
+        const cardClasses = `student-card card p-6 flex flex-col gap-5 animate-fade-in ${
+            needsPlan ? 'bg-accent/5 border-accent/40 needs-attention-highlight' : 'bg-bg-secondary'
         }`;
         
         let purchaseInfoHtml = `
@@ -1933,25 +1933,25 @@ export function renderCoachDashboard(currentUser: string, userData: any) {
     
     const coachKpisHtml = `
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="info-card flex items-center p-5 gap-4">
-            <div class="bg-blue-500/10 text-blue-500 p-3 rounded-full"><i data-lucide="users" class="w-7 h-7"></i></div>
+        <div class="divi-kpi-card animate-fade-in-up">
+            <div class="icon-container" style="--icon-bg: var(--admin-accent-blue);"><i data-lucide="users" class="w-6 h-6 text-white"></i></div>
             <div>
-                <p class="text-3xl font-bold">${myStudents.length}</p>
-                <p class="text-text-secondary">کل شاگردان</p>
+                <p class="kpi-value">${myStudents.length}</p>
+                <p class="kpi-label">کل شاگردان</p>
             </div>
         </div>
-        <div class="info-card flex items-center p-5 gap-4">
-            <div class="bg-orange-500/10 text-orange-500 p-3 rounded-full"><i data-lucide="alert-circle" class="w-7 h-7"></i></div>
+        <div class="divi-kpi-card animate-fade-in-up" style="animation-delay: 100ms;">
+            <div class="icon-container" style="--icon-bg: var(--admin-accent-orange);"><i data-lucide="alert-circle" class="w-6 h-6 text-white"></i></div>
             <div>
-                <p class="text-3xl font-bold">${studentsNeedingPlan}</p>
-                <p class="text-text-secondary">در انتظار برنامه</p>
+                <p class="kpi-value">${studentsNeedingPlan}</p>
+                <p class="kpi-label">در انتظار برنامه</p>
             </div>
         </div>
-        <div class="info-card flex items-center p-5 gap-4">
-            <div class="bg-green-500/10 text-green-500 p-3 rounded-full"><i data-lucide="activity" class="w-7 h-7"></i></div>
+        <div class="divi-kpi-card animate-fade-in-up" style="animation-delay: 200ms;">
+            <div class="icon-container" style="--icon-bg: var(--admin-accent-green);"><i data-lucide="activity" class="w-6 h-6 text-white"></i></div>
             <div>
-                <p class="text-3xl font-bold">${activeRate}%</p>
-                <p class="text-text-secondary">نرخ فعالیت (۷ روز)</p>
+                <p class="kpi-value">${activeRate}%</p>
+                <p class="kpi-label">نرخ فعالیت (۷ روز)</p>
             </div>
         </div>
     </div>
