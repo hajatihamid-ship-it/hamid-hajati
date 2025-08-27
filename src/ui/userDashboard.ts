@@ -415,28 +415,74 @@ const renderNutritionTab = (userData: any) => {
     const container = document.getElementById('nutrition-content-wrapper');
     if (!container) return;
 
+    let planHtml = '';
+
     if (userData.nutritionPlan) {
+        if (typeof userData.nutritionPlan === 'object' && userData.nutritionPlan.weeklyPlan) {
+            // New JSON format
+            const plan = userData.nutritionPlan;
+            planHtml = `
+                <div class="program-page !p-0 !max-w-none !bg-transparent" id="nutrition-plan-render-area">
+                    ${(plan.weeklyPlan || []).map((day: any) => `
+                        <details class="day-card card !shadow-none !border mb-2" open>
+                            <summary class="font-bold cursor-pointer flex justify-between items-center p-3">
+                                <span>${day.dayName}</span>
+                                <i data-lucide="chevron-down" class="details-arrow"></i>
+                            </summary>
+                            <div class="p-3 border-t border-border-primary">
+                                ${(day.meals || []).map((meal: any) => `
+                                    <div>
+                                        <h4 class="font-semibold text-accent mt-3 mb-2 text-md border-r-2 border-accent pr-2">${meal.mealName}</h4>
+                                        <ul class="list-disc pr-4 space-y-1">
+                                            ${(meal.options || []).map((option: string) => `<li>${sanitizeHTML(option)}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </details>
+                    `).join('')}
+
+                    ${plan.generalTips && plan.generalTips.length > 0 ? `
+                        <div class="preview-notes-pro mt-6">
+                            <h4 class="font-bold mb-3">نکات مهم و عمومی</h4>
+                            <ul class="space-y-2">
+                                 ${plan.generalTips.map((tip: string) => `<li class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-accent mt-1 flex-shrink-0"></i><span>${sanitizeHTML(tip)}</span></li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } else if (typeof userData.nutritionPlan === 'string') {
+            // Legacy HTML format
+            planHtml = `<div id="nutrition-plan-render-area" class="program-page !p-0 !max-w-none !bg-transparent">${userData.nutritionPlan}</div>`;
+        }
+    }
+
+    if (planHtml) {
         container.innerHTML = `
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-4">
-                 <h2 class="text-xl font-bold">برنامه غذایی شما</h2>
-                 <div class="flex items-center gap-2">
-                    <button id="save-nutrition-img-btn" class="secondary-button !text-sm"><i data-lucide="image" class="w-4 h-4 ml-2"></i> ذخیره عکس</button>
-                    <button id="save-nutrition-pdf-btn" class="secondary-button !text-sm"><i data-lucide="file-down" class="w-4 h-4 ml-2"></i> ذخیره PDF</button>
-                    <button id="regenerate-nutrition-btn" class="secondary-button !text-sm">ساخت برنامه جدید</button>
-                 </div>
+                 <h2 class="text-xl font-bold">برنامه غذایی ماهانه شما</h2>
+                 <button id="regenerate-nutrition-btn" class="secondary-button !text-sm">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>ساخت برنامه جدید
+                 </button>
             </div>
-            <div id="nutrition-plan-content">${userData.nutritionPlan}</div>
+            <div id="nutrition-plan-content">${planHtml}</div>
+            <div class="flex justify-center items-center gap-4 mt-6 pt-6 border-t border-border-primary">
+                <button id="save-nutrition-img-btn" class="png-button"><i data-lucide="image" class="w-4 h-4 ml-2"></i> ذخیره عکس</button>
+                <button id="save-nutrition-pdf-btn" class="pdf-button"><i data-lucide="file-down" class="w-4 h-4 ml-2"></i> ذخیره PDF</button>
+            </div>
         `;
     } else {
         container.innerHTML = `
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
-                <h2 class="text-xl font-bold">برنامه غذایی هوشمند</h2>
+                <h2 class="text-xl font-bold">برنامه غذایی هوشمند ماهانه</h2>
                 <button id="generate-nutrition-btn" class="primary-button flex-shrink-0">
                    <i data-lucide="sparkles" class="w-4 h-4 ml-2"></i> ساخت برنامه با AI
                 </button>
             </div>
             <div id="nutrition-plan-content" class="text-text-secondary">
-                <p>با کلیک بر روی دکمه، یک نمونه برنامه غذایی متناسب با مشخصات و اهداف شما توسط هوش مصنوعی تولید می‌شود. این برنامه توسط هوش مصنوعی تولید شده و جایگزین مشاوره تخصصی با پزشک یا متخصص تغذیه نیست.</p>
+                <p>با کلیک بر روی دکمه، یک نمونه برنامه غذایی ماهانه (به صورت یک هفته قابل تکرار) متناسب با مشخصات و اهداف شما توسط هوش مصنوعی تولید می‌شود. این برنامه شامل ۱۵۰ وعده در ماه (روزانه ۵ وعده) است.</p>
+                <p class="mt-2 text-xs"><strong>توجه:</strong> این برنامه توسط هوش مصنوعی تولید شده و جایگزین مشاوره تخصصی با پزشک یا متخصص تغذیه نیست.</p>
             </div>
         `;
     }
@@ -1110,37 +1156,28 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             button.classList.add('is-loading');
             button.setAttribute('disabled', 'true');
             const currentData = getUserData(currentUser);
-            const planHtml = await generateNutritionPlan(currentData);
-            const contentEl = document.getElementById('nutrition-plan-content');
-            if (contentEl) {
-                contentEl.innerHTML = planHtml + `<button id="save-nutrition-plan-btn" class="primary-button w-full mt-4">ذخیره این برنامه</button>`;
-            }
+            const planObject = await generateNutritionPlan(currentData);
             button.classList.remove('is-loading');
             button.removeAttribute('disabled');
+            
+            if (planObject) {
+                let freshUserData = getUserData(currentUser);
+                freshUserData.nutritionPlan = planObject;
+                saveUserData(currentUser, freshUserData);
+                renderNutritionTab(freshUserData);
+            }
         }
         
         if(button.id === 'save-program-pdf-btn') exportElement('#unified-program-view', 'pdf', 'برنامه-تمرینی.pdf', button);
         if(button.id === 'save-program-img-btn') exportElement('#unified-program-view', 'png', 'برنامه-تمرینی.png', button);
-        if(button.id === 'save-nutrition-pdf-btn') exportElement('#nutrition-plan-content', 'pdf', 'برنامه-غذایی.pdf', button);
-        if(button.id === 'save-nutrition-img-btn') exportElement('#nutrition-plan-content', 'png', 'برنامه-تمرینی.png', button);
+        if(button.id === 'save-nutrition-pdf-btn') exportElement('#nutrition-plan-render-area', 'pdf', 'برنامه-غذایی.pdf', button);
+        if(button.id === 'save-nutrition-img-btn') exportElement('#nutrition-plan-render-area', 'png', 'برنامه-غذایی.png', button);
 
         if (button.id === 'regenerate-nutrition-btn') {
             let freshUserData = getUserData(currentUser);
             delete freshUserData.nutritionPlan;
             saveUserData(currentUser, freshUserData);
             renderNutritionTab(freshUserData);
-        }
-
-        if (button.id === 'save-nutrition-plan-btn') {
-            const planContent = document.getElementById('nutrition-plan-content')?.innerHTML;
-            if (planContent) {
-                const planHtmlToSave = planContent.replace(/<button.*<\/button>/, '').trim();
-                let freshUserData = getUserData(currentUser);
-                freshUserData.nutritionPlan = planHtmlToSave;
-                saveUserData(currentUser, freshUserData);
-                showToast('برنامه غذایی ذخیره شد.', 'success');
-                renderNutritionTab(freshUserData);
-            }
         }
 
         if (button.id === 'open-coach-modal-btn' || button.id === 'change-coach-btn') {
