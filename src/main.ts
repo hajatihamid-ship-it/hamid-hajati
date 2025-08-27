@@ -1,4 +1,5 @@
 
+
 import { renderLandingPage, initLandingPageListeners } from './ui/landing';
 import { renderAuthModal, initAuthListeners } from './ui/authModal';
 import { renderCoachDashboard, initCoachDashboard, updateCoachNotifications } from './ui/coachDashboard';
@@ -373,36 +374,72 @@ export const handleLogout = () => {
 const initTheme = () => {
     const docElement = document.documentElement;
     const themes = ['dark', 'lemon'];
-
-    const applyTheme = (theme: string) => {
+    
+    const updateThemeUI = (theme: string) => {
         const validTheme = themes.includes(theme) ? theme : 'lemon';
         docElement.setAttribute("data-theme", validTheme);
         localStorage.setItem("fitgympro_theme", validTheme);
         
-        const themeToggleBtn = document.getElementById("theme-toggle-btn-dashboard");
-        if (themeToggleBtn) {
-            const icon = themeToggleBtn.querySelector("i");
-            if (icon) {
-                // If it's the light theme ('lemon'), show a moon icon to switch to dark. Otherwise show a sun icon.
-                icon.setAttribute('data-lucide', validTheme === 'lemon' ? 'moon' : 'sun');
+        const switcher = document.getElementById("theme-switcher");
+        if (switcher) {
+            const glider = switcher.querySelector('#theme-glider') as HTMLElement;
+            const lemonBtn = switcher.querySelector('[data-theme="lemon"]') as HTMLElement;
+            const darkBtn = switcher.querySelector('[data-theme="dark"]') as HTMLElement;
+            
+            if (!glider || !lemonBtn || !darkBtn) return;
+            
+            lemonBtn.classList.remove('active');
+            darkBtn.classList.remove('active');
+
+            // Timeout to allow browser to calculate layout after theme change
+            setTimeout(() => {
+                if (validTheme === 'dark') {
+                    darkBtn.classList.add('active');
+                    glider.style.width = `${darkBtn.offsetWidth}px`;
+                    glider.style.transform = `translateX(${darkBtn.offsetLeft - lemonBtn.offsetLeft}px)`;
+                } else { // lemon
+                    lemonBtn.classList.add('active');
+                    glider.style.width = `${lemonBtn.offsetWidth}px`;
+                    glider.style.transform = 'translateX(0px)';
+                }
+            }, 10);
+
+        } else {
+             // Fallback for old button
+            const themeToggleBtn = document.getElementById("theme-toggle-btn-dashboard");
+            if (themeToggleBtn) {
+                const icon = themeToggleBtn.querySelector("i");
+                if (icon) {
+                    icon.setAttribute('data-lucide', validTheme === 'lemon' ? 'moon' : 'sun');
+                }
             }
         }
+        
         if (window.lucide) {
             window.lucide.createIcons();
         }
     };
 
     const currentTheme = localStorage.getItem("fitgympro_theme") || "lemon";
-    applyTheme(currentTheme);
+    updateThemeUI(currentTheme);
 
     if (!themeListenerAttached) {
         document.body.addEventListener('click', (e) => {
             if (!(e.target instanceof HTMLElement)) return;
+
+            const themeBtn = e.target.closest('.theme-option-btn');
+            if (themeBtn && themeBtn.hasAttribute('data-theme')) {
+                const newTheme = themeBtn.getAttribute('data-theme')!;
+                updateThemeUI(newTheme);
+                return;
+            }
+            
+            // Handle old button for backwards compatibility
             const toggleBtn = e.target.closest('#theme-toggle-btn-dashboard');
-            if (toggleBtn) {
+             if (toggleBtn) {
                 const currentTheme = docElement.getAttribute("data-theme") || "dark";
                 const newTheme = currentTheme === 'dark' ? 'lemon' : 'dark';
-                applyTheme(newTheme);
+                updateThemeUI(newTheme);
             }
         });
         themeListenerAttached = true;

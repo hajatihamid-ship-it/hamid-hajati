@@ -46,7 +46,7 @@
             --radius-btn: 0.75rem;
             --radius-input: 0.75rem;
             --range-track-bg: #e2e8f0;
-            --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --shadow-card: 0 8px 16px -4px rgba(26, 32, 44, 0.08);
             
             /* Transparent Colors for html2canvas compatibility */
             --accent-transparent-8: rgba(163, 230, 53, 0.08);
@@ -82,7 +82,7 @@
             --border-primary: #2d3748;
             --border-secondary: #4a5568;
             --range-track-bg: #2d3748;
-            --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-card: 0 8px 16px -4px rgba(0, 0, 0, 0.2);
 
             /* Transparent Colors for html2canvas compatibility */
             --accent-transparent-8: rgba(163, 230, 53, 0.08);
@@ -126,7 +126,7 @@
             --radius-btn: 0.75rem;
             --radius-input: 0.75rem;
             --range-track-bg: #e7e5e4;
-            --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --shadow-card: 0 8px 16px -4px rgba(28, 25, 23, 0.08);
 
             /* Transparent Colors for html2canvas compatibility */
             --accent-transparent-8: rgba(132, 204, 22, 0.08);
@@ -259,10 +259,6 @@
         .superset-group-pro { background-color: var(--accent-transparent-8); }
         .preview-notes-pro { background-color: var(--bg-tertiary); padding: 1rem; border-radius: 12px; border-left: 4px solid var(--accent); }
         .page-footer { text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-primary); color: var(--text-secondary); font-size: 0.9rem; }
-        
-        .message { padding: 0.75rem 1.25rem; border-radius: 1.25rem; max-width: 80%; line-height: 1.5; }
-        .user-message { background-color: var(--accent); color: var(--bg-secondary); border-bottom-right-radius: 0.5rem; align-self: flex-end; }
-        .coach-message, .ai-message { background-color: var(--bg-tertiary); border-bottom-left-radius: 0.5rem; align-self: flex-start; }
         
         .selected-card { border-color: var(--accent) !important; background-color: var(--accent-transparent-10) !important; }
         
@@ -492,7 +488,6 @@
         .gauge-value {
             fill: none;
             stroke-linecap: round;
-            transition: stroke-dashoffset 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         .gauge-text {
             position: absolute;
@@ -676,6 +671,127 @@
         }
         .coach-card:hover img {
             transform: scale(1.1);
+        }
+
+        /* Chat enhancements */
+        .chat-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-primary);
+        }
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .message-container {
+            display: flex;
+            gap: 0.75rem;
+            max-width: 85%;
+        }
+        .message-container.user-message-container {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+        .message-container.coach-message-container {
+            align-self: flex-start;
+        }
+        .message {
+            padding: 0.75rem 1.25rem;
+            border-radius: 1.25rem;
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+        }
+        .user-message {
+            background-color: var(--accent);
+            color: var(--bg-secondary);
+            border-bottom-right-radius: 0.5rem;
+        }
+        .coach-message {
+            background-color: var(--bg-tertiary);
+            border-bottom-left-radius: 0.5rem;
+        }
+        .message-content {
+            white-space: pre-wrap; /* Preserve newlines */
+            word-break: break-word;
+        }
+        .message-timestamp {
+            font-size: 0.65rem;
+            margin-top: 0.25rem;
+            opacity: 0.7;
+            text-align: left;
+        }
+        .user-message .message-timestamp {
+            text-align: right;
+        }
+        
+        /* Theme switcher */
+        #theme-switcher {
+            min-width: 130px;
+        }
+        #theme-switcher .theme-option-btn {
+            color: var(--text-secondary);
+        }
+        #theme-switcher .theme-option-btn.active {
+            color: var(--text-primary);
+        }
+
+        /* Divi-inspired User Dashboard */
+        .divi-welcome-header {
+            padding: 2.5rem 2rem;
+            border-radius: var(--radius-card);
+            background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, black), color-mix(in srgb, var(--accent) 40%, black));
+            box-shadow: 0 10px 20px -5px var(--accent-transparent-20);
+        }
+        .divi-kpi-card {
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-card);
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            border: 1px solid var(--border-primary);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .divi-kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.07), 0 8px 10px -6px rgba(0,0,0,0.07);
+        }
+        html[data-theme='dark'] .divi-kpi-card:hover {
+             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -4px rgba(0,0,0,0.2);
+        }
+        .divi-kpi-card .icon-container {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background-color: var(--icon-bg);
+        }
+        .divi-kpi-card .kpi-value {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .divi-kpi-card .kpi-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        .gauge-value {
+            transition: stroke-dashoffset 1.2s cubic-bezier(0.65, 0, 0.35, 1);
+        }
+        .divi-today-workout {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .divi-today-workout:hover {
+             transform: translateY(-5px);
+             box-shadow: var(--shadow-card);
         }
 
     </style>

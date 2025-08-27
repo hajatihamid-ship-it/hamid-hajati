@@ -4,7 +4,7 @@ import { showToast, updateSliderTrack, openModal, closeModal, exportElement } fr
 import { setWeightChartInstance, getWeightChartInstance } from '../state';
 import { generateNutritionPlan } from '../services/gemini';
 import { sanitizeHTML } from '../utils/dom';
-import { formatPrice } from '../utils/helpers';
+import { formatPrice, timeAgo } from '../utils/helpers';
 
 let weightLogCountdownInterval: number | null = null;
 let selectedCoachInModal: string | null = null;
@@ -306,83 +306,110 @@ const renderDashboardTab = (currentUser: string, userData: any) => {
     
     const workoutsThisWeek = getWorkoutsThisWeek(userData.workoutHistory);
     const weeklyGoal = userData.step1?.trainingDays || 4;
-    const weeklyProgress = Math.min(100, (workoutsThisWeek / weeklyGoal) * 100);
+    const weeklyProgress = weeklyGoal > 0 ? Math.min(100, (workoutsThisWeek / weeklyGoal) * 100) : 0;
 
     const circumference = 2 * Math.PI * 55; // For the gauge
-    const dashoffset = circumference * (1 - weeklyProgress / 100);
+    // Initial offset for animation
+    const initialDashoffset = circumference;
 
     const todayData = getTodayWorkoutData(userData);
     let todayWorkoutHtml = `
-        <div class="info-card !bg-bg-secondary p-4 text-center h-full flex flex-col justify-center">
-            <div class="w-20 h-20 bg-bg-tertiary rounded-full mx-auto flex items-center justify-center mb-3">
+        <div class="divi-today-workout card p-6 text-center h-full flex flex-col justify-center items-center">
+            <div class="w-20 h-20 bg-bg-tertiary rounded-full mx-auto flex items-center justify-center mb-4">
                  <i data-lucide="coffee" class="w-10 h-10 text-accent"></i>
             </div>
-            <h4 class="font-bold">امروز روز استراحت است</h4>
-            <p class="text-sm text-text-secondary mt-1">از ریکاوری لذت ببرید!</p>
+            <h4 class="font-bold text-lg">امروز روز استراحت است</h4>
+            <p class="text-sm text-text-secondary mt-1">از ریکاوری و رشد عضلات لذت ببرید!</p>
         </div>
     `;
     if (todayData && todayData.day.exercises.length > 0) {
         todayWorkoutHtml = `
-             <div class="card p-4 h-full flex flex-col">
-                <h3 class="font-bold text-lg mb-3">تمرین امروز: <span class="text-accent">${todayData.day.name.split(':')[1]?.trim() || ''}</span></h3>
-                <div class="p-3 rounded-lg bg-bg-tertiary flex-grow">
-                    <ul class="space-y-1 text-sm">
+             <div class="divi-today-workout card p-6 h-full flex flex-col">
+                <h3 class="font-bold text-lg mb-4">تمرین امروز: <span class="text-accent">${todayData.day.name.split(':')[1]?.trim() || ''}</span></h3>
+                <div class="p-4 rounded-xl bg-bg-tertiary flex-grow">
+                    <ul class="space-y-2 text-sm">
                     ${todayData.day.exercises.slice(0, 3).map((ex: any) => `<li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-accent"></i> ${ex.name}</li>`).join('')}
-                    ${todayData.day.exercises.length > 3 ? `<li class="text-text-secondary">+ ${todayData.day.exercises.length - 3} حرکت دیگر</li>` : ''}
+                    ${todayData.day.exercises.length > 3 ? `<li class="text-text-secondary mt-2">+ ${todayData.day.exercises.length - 3} حرکت دیگر...</li>` : ''}
                     </ul>
                 </div>
-                <button class="primary-button w-full mt-4" data-action="log-workout" data-day-index="${todayData.dayIndex}">شروع تمرین</button>
+                <button class="primary-button w-full mt-6" data-action="log-workout" data-day-index="${todayData.dayIndex}">
+                    <i data-lucide="play-circle" class="w-5 h-5 mr-2"></i>
+                    شروع تمرین
+                </button>
             </div>
         `;
     }
 
     dashboardContentEl.innerHTML = `
-        <div class="space-y-6 animate-fade-in-up">
-            <div class="card p-6">
-                <h2 class="text-2xl font-bold">سلام، ${name}!</h2>
-                <p class="text-text-secondary">خوش آمدید! بیایید روز خود را با قدرت شروع کنیم.</p>
+        <div class="space-y-8 animate-fade-in-up">
+            <div class="divi-welcome-header">
+                <h2 class="text-3xl font-bold text-white">سلام، ${name}!</h2>
+                <p class="text-white/80">خوش آمدید! بیایید روز خود را با قدرت شروع کنیم.</p>
             </div>
             
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="divi-kpi-card animate-fade-in-up" style="animation-delay: 100ms;">
+                    <div class="icon-container" style="--icon-bg: var(--admin-accent-pink);"><i data-lucide="flame" class="w-6 h-6 text-white"></i></div>
+                    <div>
+                        <p class="kpi-value">${streak}</p>
+                        <p class="kpi-label">زنجیره تمرین</p>
+                    </div>
+                </div>
+                <div class="divi-kpi-card animate-fade-in-up" style="animation-delay: 200ms;">
+                     <div class="icon-container" style="--icon-bg: var(--admin-accent-blue);"><i data-lucide="dumbbell" class="w-6 h-6 text-white"></i></div>
+                    <div>
+                        <p class="kpi-value">${totalWorkouts}</p>
+                        <p class="kpi-label">کل تمرینات</p>
+                    </div>
+                </div>
+                <div class="divi-kpi-card animate-fade-in-up" style="animation-delay: 300ms;">
+                     <div class="icon-container" style="--icon-bg: var(--admin-accent-orange);"><i data-lucide="gauge-circle" class="w-6 h-6 text-white"></i></div>
+                    <div>
+                        <p class="kpi-value">${lastWeight} <span class="text-lg">kg</span></p>
+                        <p class="kpi-label">آخرین وزن</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="card p-4 flex flex-col items-center justify-center text-center">
-                        <h3 class="font-bold text-lg mb-4">فعالیت این هفته</h3>
-                        <div class="gauge" style="width: 150px; height: 150px;">
-                            <svg class="gauge-svg" viewBox="0 0 120 120">
+                <div class="card p-6 lg:col-span-2 animate-fade-in-up" style="animation-delay: 400ms;">
+                    <h3 class="font-bold text-lg mb-4">پیشرفت این هفته</h3>
+                    <div class="flex flex-col md:flex-row items-center gap-6">
+                        <div class="gauge flex-shrink-0" style="width: 150px; height: 150px;">
+                            <svg id="weekly-progress-gauge" class="gauge-svg" viewBox="0 0 120 120">
                                 <circle class="gauge-track" r="55" cx="60" cy="60" stroke-width="10"></circle>
-                                <circle class="gauge-value" r="55" cx="60" cy="60" stroke-width="10" style="stroke:var(--accent); stroke-dasharray: ${circumference}; stroke-dashoffset: ${dashoffset};"></circle>
+                                <circle class="gauge-value" r="55" cx="60" cy="60" stroke-width="10" style="stroke:var(--accent); stroke-dasharray: ${circumference}; stroke-dashoffset: ${initialDashoffset};"></circle>
                             </svg>
                             <div class="gauge-text">
                                 <span class="gauge-number text-4xl">${workoutsThisWeek}</span>
                                 <span class="gauge-label">از ${weeklyGoal} روز</span>
                             </div>
                         </div>
+                        <div class="flex-grow w-full text-center md:text-right">
+                             <h4 class="font-bold text-xl">آفرین، ادامه بده!</h4>
+                             <p class="text-text-secondary mt-2">شما <strong>${workoutsThisWeek}</strong> جلسه از <strong>${weeklyGoal}</strong> جلسه هفتگی خود را تکمیل کرده‌اید. برای رسیدن به اهدافتان عالی پیش می‌روید!</p>
+                        </div>
                     </div>
-                    ${todayWorkoutHtml}
                 </div>
-
-                <div class="space-y-4">
-                    <div class="card p-4 text-center">
-                        <h4 class="font-bold text-2xl flex items-center justify-center gap-1.5" style="color: var(--admin-accent-pink);">
-                            ${streak} <i data-lucide="flame" class="w-6 h-6"></i>
-                        </h4>
-                        <p class="text-sm text-text-secondary">روز زنجیره تمرین</p>
-                    </div>
-                    <div class="card p-4 text-center">
-                        <h4 class="font-bold text-2xl" style="color: var(--admin-accent-blue);">${totalWorkouts}</h4>
-                        <p class="text-sm text-text-secondary">کل تمرینات ثبت شده</p>
-                    </div>
-                    <div class="card p-4 text-center">
-                        <h4 class="font-bold text-2xl" style="color: var(--admin-accent-orange);">${lastWeight} <span class="text-base">kg</span></h4>
-                        <p class="text-sm text-text-secondary">آخرین وزن ثبت شده</p>
-                    </div>
+                <div class="animate-fade-in-up" style="animation-delay: 500ms;">
+                    ${todayWorkoutHtml}
                 </div>
             </div>
         </div>
     `;
     
     window.lucide?.createIcons();
+
+    // Trigger gauge animation
+    setTimeout(() => {
+        const gaugeValue = document.querySelector('#weekly-progress-gauge .gauge-value');
+        if (gaugeValue) {
+            const finalDashoffset = circumference * (1 - weeklyProgress / 100);
+            (gaugeValue as SVGCircleElement).style.strokeDashoffset = `${finalDashoffset}`;
+        }
+    }, 100); // Small delay for CSS transition
 };
+
 
 const renderNutritionTab = (userData: any) => {
     const container = document.getElementById('nutrition-content-wrapper');
@@ -943,16 +970,51 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             }
         }
         if (targetId === 'chat-content') {
+            const chatHeader = document.getElementById('user-chat-header');
             const chatForm = document.getElementById('coach-chat-form') as HTMLFormElement;
             const chatInput = document.getElementById('coach-chat-input') as HTMLInputElement;
             const messagesContainer = document.getElementById('coach-chat-messages') as HTMLElement;
 
+            const coachUsername = getUserData(currentUser).step1?.coachName;
+            let coachData: any = {};
+            let coachAvatar = `https://i.pravatar.cc/150?u=coach_default`;
+            let coachName = 'مربی شما';
+
+            if (coachUsername) {
+                coachData = getUserData(coachUsername);
+                coachName = coachData.step1?.clientName || coachUsername;
+                coachAvatar = coachData.profile?.avatar || `https://i.pravatar.cc/150?u=${coachUsername}`;
+            }
+
+            if (chatHeader) {
+                chatHeader.innerHTML = `
+                    <img src="${coachAvatar}" alt="${coachName}" class="chat-avatar">
+                    <div>
+                        <p class="font-bold">${coachName}</p>
+                        <p class="text-xs text-text-secondary">${coachData.profile?.specialization || 'مربی رسمی'}</p>
+                    </div>
+                `;
+            }
+
             const renderChat = () => {
                 const chatUserData = getUserData(currentUser);
                 const chatHistory = chatUserData.chatHistory || [];
-                messagesContainer.innerHTML = chatHistory.map((msg: any) => `
-                    <div class="message ${msg.sender === 'coach' ? 'coach-message' : 'user-message'}">${sanitizeHTML(msg.message)}</div>
-                `).join('') || '<div class="message coach-message">سلام! چطور میتونم کمکت کنم؟</div>';
+                messagesContainer.innerHTML = chatHistory.map((msg: any) => {
+                    const isCoach = msg.sender === 'coach';
+                    const messageContainerClass = isCoach ? 'coach-message-container' : 'user-message-container';
+                    const messageClass = isCoach ? 'coach-message' : 'user-message';
+                    const avatarHtml = isCoach ? `<img src="${coachAvatar}" alt="${coachName}" class="chat-avatar w-8 h-8 self-end">` : '';
+
+                    return `
+                        <div class="message-container ${messageContainerClass}">
+                            ${avatarHtml}
+                            <div class="message ${messageClass}">
+                                <p class="message-content">${sanitizeHTML(msg.message)}</p>
+                                <span class="message-timestamp">${timeAgo(msg.timestamp)}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('') || `<p class="text-text-secondary text-center my-auto">گفتگوی شما با مربی‌تان در اینجا نمایش داده می‌شود.</p>`;
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             };
 
@@ -973,9 +1035,9 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                     });
                     saveUserData(currentUser, chatUserData);
                     
-                    const coachUsername = chatUserData.step1?.coachName;
-                    if (coachUsername) {
-                        setNotification(coachUsername, 'students-content', '💬');
+                    const coachUsernameForNotif = chatUserData.step1?.coachName;
+                    if (coachUsernameForNotif) {
+                        setNotification(coachUsernameForNotif, 'chat-content', '💬');
                     }
                     
                     chatInput.value = '';
@@ -986,7 +1048,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         }
     };
     
-    const initialTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="profile-content"]');
+    const initialTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="dashboard-content"]');
     if(initialTab) {
         setTimeout(() => switchTab(initialTab), 50);
     }
@@ -1422,7 +1484,11 @@ export function renderUserDashboard(currentUser: string, userData: any) {
                     <i data-lucide="shopping-cart"></i>
                     <span id="cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
                  </button>
-                 <button id="theme-toggle-btn-dashboard" class="secondary-button !p-2.5 rounded-full"><i data-lucide="sun"></i></button>
+                 <div id="theme-switcher" class="relative bg-bg-tertiary p-1 rounded-full flex items-center">
+                    <div id="theme-glider" class="absolute h-[calc(100%-0.5rem)] top-[0.25rem] bg-bg-secondary rounded-full shadow-sm transition-all duration-300 ease-in-out"></div>
+                    <button class="theme-option-btn flex-1 z-10 text-sm font-semibold py-1 px-4 rounded-full transition-colors duration-300" data-theme="lemon">روشن</button>
+                    <button class="theme-option-btn flex-1 z-10 text-sm font-semibold py-1 px-4 rounded-full transition-colors duration-300" data-theme="dark">تاریک</button>
+                 </div>
                  <button id="go-to-home-btn" class="secondary-button">صفحه اصلی</button>
                  <button id="logout-btn" class="secondary-button">خروج</button>
             </div>
@@ -1432,8 +1498,8 @@ export function renderUserDashboard(currentUser: string, userData: any) {
             <div id="tab-indicator"></div>
             ${[
                 { target: 'profile-content', icon: 'user', label: 'پروفایل' },
-                { target: 'program-content', icon: 'clipboard-list', label: 'برنامه من' },
                 { target: 'dashboard-content', icon: 'layout-dashboard', label: 'داشبورد' },
+                { target: 'program-content', icon: 'clipboard-list', label: 'برنامه من' },
                 { target: 'nutrition-content', icon: 'utensils', label: 'تغذیه' },
                 { target: 'store-content', icon: 'shopping-bag', label: 'فروشگاه' },
                 { target: 'chat-content', icon: 'message-square', label: 'گفتگو' }
@@ -1455,16 +1521,25 @@ export function renderUserDashboard(currentUser: string, userData: any) {
         </div>
         <div id="store-content" class="tab-content-panel hidden"></div>
         <div id="chat-content" class="tab-content-panel hidden">
-            <div class="card p-4 max-w-2xl mx-auto">
-                 <h2 class="text-xl font-bold mb-4">گفتگو با مربی</h2>
-                 <div class="flex flex-col h-[60vh]">
-                     <div id="coach-chat-messages" class="flex-grow p-2 space-y-4 overflow-y-auto flex flex-col bg-bg-tertiary rounded-lg"></div>
-                     <form id="coach-chat-form" class="pt-4 flex items-center gap-2">
-                         <input type="text" id="coach-chat-input" class="input-field flex-grow" placeholder="پیام خود را بنویسید...">
-                         <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
-                     </form>
-                 </div>
-             </div>
+            <div class="card p-0 max-w-2xl mx-auto flex flex-col h-[75vh] overflow-hidden">
+                <div id="user-chat-header" class="chat-header flex-shrink-0">
+                    <!-- Coach info will be injected here by JS -->
+                    <div class="flex items-center gap-3 animate-pulse">
+                        <div class="w-10 h-10 rounded-full bg-bg-tertiary"></div>
+                        <div>
+                            <div class="h-4 w-24 bg-bg-tertiary rounded"></div>
+                            <div class="h-3 w-32 bg-bg-tertiary rounded mt-1"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="coach-chat-messages" class="flex-grow p-4 space-y-4 overflow-y-auto flex flex-col bg-bg-primary">
+                    <!-- Messages injected here -->
+                </div>
+                <form id="coach-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2 flex-shrink-0">
+                    <input type="text" id="coach-chat-input" class="input-field flex-grow" placeholder="پیام خود را بنویسید...">
+                    <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
+                </form>
+            </div>
         </div>
         <div id="profile-content" class="tab-content-panel hidden">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
