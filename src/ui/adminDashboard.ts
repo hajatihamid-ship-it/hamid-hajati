@@ -140,28 +140,54 @@ const refreshUserTables = () => {
 
 const renderPlansAdminHtml = () => {
     const plans = getStorePlans();
+    const plansListHtml = plans.length > 0 ? plans.map((plan: any) => `
+        <div class="p-4 border border-border-primary rounded-lg flex items-center justify-between bg-bg-secondary hover:bg-bg-tertiary transition-colors">
+           <div>
+             <p class="font-bold">${plan.planName}</p>
+             <p class="text-sm text-text-secondary">${formatPrice(plan.price)}</p>
+           </div>
+           <div class="flex items-center gap-2">
+                <button class="secondary-button !p-2" data-action="edit-plan" data-plan-id="${plan.planId}"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
+                <button class="secondary-button !p-2 text-red-accent" data-action="delete-plan" data-plan-id="${plan.planId}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+           </div>
+        </div>
+    `).join('') : '<p class="text-text-secondary p-4 text-center">هنوز پلنی ایجاد نشده است.</p>';
+
     return `
-        <div class="flex justify-between items-center mb-4">
-            <div>
-                <h3 class="font-bold text-lg">مدیریت پلن‌ها</h3>
-                <p class="text-text-secondary text-sm">پلن‌های اشتراک را ایجاد، ویرایش یا حذف کنید.</p>
-            </div>
-            <button id="add-plan-btn" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن پلن</button>
-        </div>
-        <div id="admin-plans-list" class="space-y-2">
-            ${plans.map((plan: any) => `
-                <div class="p-4 border border-border-primary rounded-lg flex items-center justify-between">
-                   <div>
-                     <p class="font-bold">${plan.planName}</p>
-                     <p class="text-sm text-text-secondary">${formatPrice(plan.price)}</p>
-                   </div>
-                   <div class="flex items-center gap-2">
-                        <button class="secondary-button !p-2" data-action="edit-plan" data-plan-id="${plan.planId}"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
-                        <button class="secondary-button !p-2 text-red-accent" data-action="delete-plan" data-plan-id="${plan.planId}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
-                   </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="card p-4">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="font-bold text-lg">مدیریت پلن‌ها</h3>
+                    <p class="text-text-secondary text-sm">پلن‌های اشتراک را ایجاد، ویرایش یا حذف کنید.</p>
                 </div>
-            `).join('')}
+                <button id="add-plan-btn" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن پلن</button>
+            </div>
+            <div id="admin-plans-list" class="space-y-2">
+                ${plansListHtml}
+            </div>
         </div>
+        <div>
+             <h3 class="font-bold text-lg mb-4 text-center text-text-secondary">پیش‌نمایش کارت پلن</h3>
+             <div class="card p-6 flex flex-col border-2 border-accent transition-all hover:shadow-xl hover:-translate-y-1 bg-bg-secondary">
+                <h4 class="text-lg font-bold text-text-primary">پکیج کامل ۳ ماهه</h4>
+                <p class="text-sm text-text-secondary mt-1 flex-grow">بهترین گزینه برای نتایج پایدار و جامع.</p>
+                <div class="my-6">
+                    <span class="text-3xl font-black">${formatPrice(750000).split(' ')[0]}</span>
+                    <span class="text-text-secondary"> تومان</span>
+                </div>
+                <ul class="space-y-3 text-sm mb-6">
+                    ${['برنامه تمرینی اختصاصی', 'برنامه غذایی هوشمند', 'پشتیبانی کامل در چت', 'تحلیل هفتگی پیشرفت'].map(feature => `
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
+                            <span>${feature}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+                <button class="primary-button mt-auto w-full cursor-default">انتخاب پلن</button>
+            </div>
+        </div>
+    </div>
     `;
 };
 
@@ -247,6 +273,73 @@ const openUserActivityModal = (username: string) => {
     }
 };
 
+const renderCommissionsHtml = () => {
+    const coaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
+    const users = getUsers();
+    const coachSales: Record<string, { totalSales: number }> = {};
+
+    coaches.forEach(coach => {
+        coachSales[coach.username] = { totalSales: 0 };
+    });
+
+    users.forEach(user => {
+        const userData = getUserData(user.username);
+        const coachName = userData.step1?.coachName;
+        if (coachName && coachSales[coachName]) {
+            const userSales = (userData.subscriptions || []).reduce((sum: number, sub: any) => sum + sub.price, 0);
+            coachSales[coachName].totalSales += userSales;
+        }
+    });
+
+    const commissionRate = 0.30; // 30%
+
+    return `
+        <div class="card p-4">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="font-bold text-lg">کمیسیون مربیان</h3>
+                    <p class="text-text-secondary text-sm">درآمد و کمیسیون قابل پرداخت به مربیان را مدیریت کنید.</p>
+                </div>
+                 <div class="bg-bg-tertiary p-2 rounded-lg">
+                    <span class="text-sm font-semibold">نرخ کمیسیون: <strong>${commissionRate * 100}%</strong></span>
+                </div>
+            </div>
+            <div class="card overflow-hidden border border-border-primary">
+                <table class="w-full text-sm text-right">
+                    <thead>
+                        <tr class="font-semibold">
+                            <th class="p-4">نام مربی</th>
+                            <th class="p-4">کل فروش</th>
+                            <th class="p-4">کمیسیون قابل پرداخت</th>
+                            <th class="p-4">وضعیت</th>
+                            <th class="p-4">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${coaches.length > 0 ? coaches.map(coach => {
+                            const sales = coachSales[coach.username]?.totalSales || 0;
+                            const commission = sales * commissionRate;
+                            return `
+                                <tr class="hover:bg-bg-tertiary transition-colors">
+                                    <td class="p-4 font-semibold">${coach.username}</td>
+                                    <td class="p-4">${formatPrice(sales)}</td>
+                                    <td class="p-4 font-bold text-admin-accent-green">${formatPrice(commission)}</td>
+                                    <td class="p-4">
+                                        ${commission > 0 ? '<span class="status-badge pending">پرداخت نشده</span>' : '<span class="status-badge verified">تسویه شده</span>'}
+                                    </td>
+                                    <td class="p-4">
+                                        <button class="primary-button !py-1 !px-2 !text-xs" ${commission === 0 ? 'disabled' : ''}>ثبت پرداخت</button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('') : `<tr><td colspan="5" class="p-8 text-center text-text-secondary">هیچ مربی تایید شده‌ای برای محاسبه کمیسیون یافت نشد.</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+};
+
 export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess: (username: string) => void) {
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
     
@@ -299,6 +392,9 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
 
     const financePage = document.getElementById('admin-finance-page');
     if (financePage) initTabs(financePage as HTMLElement);
+    
+    const communicationsPage = document.getElementById('admin-communications-page');
+    if(communicationsPage) initTabs(communicationsPage);
 
     const contentPage = document.getElementById('admin-content-page');
     if(contentPage) initTabs(contentPage);
@@ -354,7 +450,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
     });
 
     const refreshPlansAdminList = () => {
-        const container = document.getElementById('plans-content')?.querySelector('.card');
+        const container = document.getElementById('plans-content');
         if (container) {
             container.innerHTML = renderPlansAdminHtml();
             window.lucide?.createIcons();
@@ -545,14 +641,22 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         let plans = getStorePlans();
         if (planId) { // Editing
             const index = plans.findIndex((p: any) => p.planId === planId);
+            const oldPlan = plans[index];
             if (index > -1) plans[index] = planData;
+            
+            let logMessage = `ادمین پلن "${planData.planName}" را ویرایش کرد.`;
+            if (oldPlan && oldPlan.price !== planData.price) {
+                logMessage += ` قیمت از ${formatPrice(oldPlan.price)} به ${formatPrice(planData.price)} تغییر یافت.`;
+            }
+            addActivityLog(logMessage);
+
         } else { // Adding
             plans.push(planData);
+            addActivityLog(`ادمین پلن جدیدی ایجاد کرد: "${planData.planName}" با قیمت ${formatPrice(planData.price)}.`);
         }
         
         saveStorePlans(plans);
         showToast(`پلن "${planData.planName}" با موفقیت ذخیره شد.`, 'success');
-        addActivityLog(`ادمین پلن ${planData.planName} را ${planId ? 'ویرایش' : 'ایجاد'} کرد.`);
         refreshPlansAdminList();
         closeModal(planModal);
     });
@@ -584,6 +688,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         }
 
         const discounts = getDiscounts();
+        const originalDiscount = originalCode ? { ...discounts[originalCode] } : null;
         
         if (!originalCode && discounts[code]) {
             showToast('این کد تخفیف قبلا ثبت شده است.', 'error');
@@ -597,8 +702,17 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         discounts[code] = { type, value };
         saveDiscounts(discounts);
         
+        if (originalCode) { // Editing
+            let logMessage = `ادمین کد تخفیف "${code}" را ویرایش کرد.`;
+            if (originalDiscount && (originalDiscount.value !== value || originalDiscount.type !== type)) {
+                logMessage += ` مقدار از ${originalDiscount.type === 'percentage' ? originalDiscount.value + '%' : formatPrice(originalDiscount.value)} به ${type === 'percentage' ? value + '%' : formatPrice(value)} تغییر یافت.`;
+            }
+            addActivityLog(logMessage);
+        } else { // Adding
+            addActivityLog(`ادمین کد تخفیف جدیدی ایجاد کرد: "${code}" (${type === 'percentage' ? value + '%' : formatPrice(value)}).`);
+        }
+        
         showToast(`کد تخفیف "${code}" با موفقیت ذخیره شد.`, 'success');
-        addActivityLog(`ادمین کد تخفیف ${code} را ${originalCode ? 'ویرایش' : 'ایجاد'} کرد.`);
         refreshDiscountsAdminList();
         closeModal(discountModal);
     });
@@ -766,6 +880,70 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         });
     }
 
+    // --- Communications Management ---
+    if(communicationsPage) {
+        const coachSelect = document.getElementById('conversation-coach-select') as HTMLSelectElement;
+        const studentSelect = document.getElementById('conversation-student-select') as HTMLSelectElement;
+        const chatContainer = document.getElementById('conversation-chat-container');
+
+        const coaches = getUsers().filter((u:any) => u.role === 'coach' && u.coachStatus === 'verified');
+        coachSelect.innerHTML = '<option value="">انتخاب مربی...</option>' + coaches.map(c => `<option value="${c.username}">${c.username}</option>`).join('');
+
+        coachSelect.addEventListener('change', () => {
+            const coachUsername = coachSelect.value;
+            studentSelect.innerHTML = '<option value="">انتخاب شاگرد...</option>';
+            studentSelect.disabled = true;
+            if (chatContainer) chatContainer.innerHTML = '<p class="text-text-secondary">ابتدا یک مربی و سپس یک شاگرد را انتخاب کنید.</p>';
+
+            if (coachUsername) {
+                const allUsers = getUsers();
+                const students = allUsers.filter(u => {
+                    if (u.role !== 'user') return false;
+                    const userData = getUserData(u.username);
+                    return userData.step1?.coachName === coachUsername;
+                });
+                studentSelect.innerHTML += students.map(s => `<option value="${s.username}">${s.step1?.clientName || s.username}</option>`).join('');
+                studentSelect.disabled = false;
+            }
+        });
+
+        studentSelect.addEventListener('change', () => {
+            const studentUsername = studentSelect.value;
+            if (!chatContainer) return;
+
+            if (studentUsername) {
+                const userData = getUserData(studentUsername);
+                const chatHistory = userData.chatHistory || [];
+                chatContainer.innerHTML = chatHistory.length > 0 ? chatHistory.map((msg: any) => `
+                    <div class="message ${msg.sender === 'coach' ? 'coach-message' : 'user-message'}">
+                        <p class="font-bold text-xs">${msg.sender === 'user' ? (userData.step1?.clientName || studentUsername) : 'مربی'}</p>
+                        ${sanitizeHTML(msg.message)}
+                        <p class="text-xs text-right mt-1 opacity-60">${timeAgo(msg.timestamp)}</p>
+                    </div>
+                `).join('') : '<p class="text-text-secondary">گفتگویی یافت نشد.</p>';
+            } else {
+                chatContainer.innerHTML = '<p class="text-text-secondary">شاگردی را برای مشاهده گفتگو انتخاب کنید.</p>';
+            }
+        });
+        
+        const announcementForm = document.getElementById('announcement-form') as HTMLFormElement;
+        announcementForm?.addEventListener('submit', e => {
+            e.preventDefault();
+            const title = (announcementForm.elements.namedItem('announcement-title') as HTMLInputElement).value;
+            const message = (announcementForm.elements.namedItem('announcement-message') as HTMLTextAreaElement).value;
+            const target = (announcementForm.elements.namedItem('announcement-target') as HTMLInputElement).value;
+            
+            if (!title || !message) {
+                showToast('عنوان و پیام اطلاعیه الزامی است.', 'error');
+                return;
+            }
+            
+            addActivityLog(`ادمین اطلاعیه سراسری با عنوان "${title}" برای "${target}" ارسال کرد.`);
+            showToast('اطلاعیه با موفقیت ارسال شد.', 'success');
+            announcementForm.reset();
+        });
+    }
+
     switchPage('admin-dashboard-page');
     initCharts();
 }
@@ -925,6 +1103,7 @@ export function renderAdminDashboard() {
                 ${[
                     { target: 'admin-dashboard-page', icon: 'fa-tachometer-alt', label: 'داشبورد' },
                     { target: 'admin-users-page', icon: 'fa-users-cog', label: 'کاربران و مربیان' },
+                    { target: 'admin-communications-page', icon: 'fa-bullhorn', label: 'ارتباطات' },
                     { target: 'admin-analytics-page', icon: 'fa-chart-line', label: 'تحلیل عملکرد' },
                     { target: 'admin-content-page', icon: 'fa-database', label: 'مدیریت محتوا' },
                     { target: 'admin-finance-page', icon: 'fa-chart-pie', label: 'مالی و بازاریابی' },
@@ -1034,6 +1213,61 @@ export function renderAdminDashboard() {
                     </div>
                  </div>
             </div>
+            
+             <!-- Communications Page -->
+            <div id="admin-communications-page" class="page hidden">
+                 <h2 class="text-3xl font-extrabold mb-6 text-text-primary">ارتباطات و اطلاعیه‌ها</h2>
+                 <div class="bg-bg-tertiary p-1 rounded-lg flex items-center gap-1 mb-4">
+                     <button class="admin-tab-button active-tab" data-target="conversation-review-content">بازبینی گفتگوها</button>
+                     <button class="admin-tab-button" data-target="announcement-content">ارسال اطلاعیه</button>
+                 </div>
+                 <div id="conversation-review-content" class="admin-tab-content">
+                    <div class="card p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="md:col-span-1 space-y-3">
+                                <h3 class="font-bold text-lg">بازبینی گفتگوها</h3>
+                                <div>
+                                    <label class="text-sm font-semibold mb-1 block">۱. انتخاب مربی</label>
+                                    <select id="conversation-coach-select" class="input-field w-full"></select>
+                                </div>
+                                 <div>
+                                    <label class="text-sm font-semibold mb-1 block">۲. انتخاب شاگرد</label>
+                                    <select id="conversation-student-select" class="input-field w-full" disabled></select>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2">
+                                <div id="conversation-chat-container" class="h-96 bg-bg-tertiary rounded-lg p-4 overflow-y-auto flex flex-col gap-3">
+                                    <p class="text-text-secondary m-auto">ابتدا یک مربی و سپس یک شاگرد را انتخاب کنید.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+                 <div id="announcement-content" class="admin-tab-content hidden">
+                     <div class="card p-4 max-w-2xl mx-auto">
+                         <h3 class="font-bold text-lg mb-4">ارسال اطلاعیه سراسری</h3>
+                         <form id="announcement-form" class="space-y-4">
+                             <div class="input-group">
+                                <input name="announcement-title" type="text" class="input-field w-full" placeholder=" " required>
+                                <label class="input-label">عنوان اطلاعیه</label>
+                            </div>
+                             <div class="input-group">
+                                <textarea name="announcement-message" class="input-field w-full min-h-[120px]" placeholder=" " required></textarea>
+                                <label class="input-label">متن پیام</label>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold mb-2">ارسال برای:</p>
+                                <div class="flex items-center gap-4">
+                                    <label><input type="radio" name="announcement-target" value="all" checked> همه</label>
+                                    <label><input type="radio" name="announcement-target" value="users"> فقط کاربران</label>
+                                    <label><input type="radio" name="announcement-target" value="coaches"> فقط مربیان</label>
+                                </div>
+                            </div>
+                            <button type="submit" class="primary-button w-full">ارسال اطلاعیه</button>
+                         </form>
+                    </div>
+                 </div>
+            </div>
 
             <!-- Analytics Page -->
             <div id="admin-analytics-page" class="page hidden">
@@ -1091,9 +1325,7 @@ export function renderAdminDashboard() {
                     <button class="admin-tab-button" data-target="commissions-content">کمیسیون مربیان</button>
                 </div>
                 <div id="plans-content" class="admin-tab-content">
-                    <div class="card p-4">
-                       ${renderPlansAdminHtml()}
-                    </div>
+                    ${renderPlansAdminHtml()}
                 </div>
                 <div id="discounts-content" class="admin-tab-content hidden">
                      <div class="card p-4">
@@ -1119,7 +1351,7 @@ export function renderAdminDashboard() {
                     </div>
                 </div>
                 <div id="commissions-content" class="admin-tab-content hidden">
-                    <p class="text-text-secondary">این بخش برای مدیریت کمیسیون مربیان در حال توسعه است.</p>
+                    ${renderCommissionsHtml()}
                 </div>
             </div>
 
