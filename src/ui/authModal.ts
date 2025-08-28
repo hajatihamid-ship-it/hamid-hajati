@@ -1,15 +1,41 @@
 import { showToast, closeModal } from '../utils/dom';
-import { getUsers, saveUsers, saveUserData, addActivityLog, getUserData } from '../services/storage';
+import { getUsers, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, getCart, saveCart } from '../services/storage';
 import { performMetricCalculations } from '../utils/calculations';
 
-const switchAuthForm = (formToShow: 'login' | 'signup' | 'forgot-password') => {
-    const loginContainer = document.getElementById("login-form-container");
-    const signupContainer = document.getElementById("signup-form-container");
-    const forgotPasswordContainer = document.getElementById("forgot-password-form-container");
-    
-    loginContainer?.classList.toggle('hidden', formToShow !== 'login');
-    signupContainer?.classList.toggle('hidden', formToShow !== 'signup');
-    forgotPasswordContainer?.classList.toggle('hidden', formToShow !== 'forgot-password');
+const switchAuthForm = (formToShow: 'login' | 'signup' | 'forgot-password' | 'forgot-confirmation') => {
+    const containers: { [key: string]: HTMLElement | null } = {
+        login: document.getElementById("login-form-container"),
+        signup: document.getElementById("signup-form-container"),
+        'forgot-password': document.getElementById("forgot-password-form-container"),
+        'forgot-confirmation': document.getElementById("forgot-password-confirmation"),
+    };
+
+    let activeContainer: HTMLElement | null = null;
+
+    Object.values(containers).forEach(container => {
+        if (container && container.classList.contains('form-active')) {
+            activeContainer = container;
+        }
+    });
+
+    if (activeContainer) {
+        activeContainer.classList.remove('form-active');
+        activeContainer.classList.add('is-switching-out');
+        activeContainer.addEventListener('transitionend', () => {
+            activeContainer?.classList.add('hidden');
+            activeContainer?.classList.remove('is-switching-out');
+        }, { once: true });
+    }
+
+    const newContainer = containers[formToShow];
+    if (newContainer) {
+        setTimeout(() => {
+            newContainer.classList.remove('hidden');
+            // Force reflow to ensure transition is applied
+            void newContainer.offsetWidth; 
+            newContainer.classList.add('form-active');
+        }, activeContainer ? 150 : 0);
+    }
 };
 
 const showValidationError = (inputEl: HTMLInputElement, message: string) => {
@@ -28,9 +54,9 @@ const clearValidationError = (inputEl: HTMLInputElement) => {
     if (errorEl) errorEl.textContent = '';
 };
 
-const applyCalculatorData = (username: string) => {
+const applyCalculatorData = (username: string): boolean => {
     const calculatorDataRaw = sessionStorage.getItem('fitgympro_calculator_data');
-    if (!calculatorDataRaw) return;
+    if (!calculatorDataRaw) return false;
 
     try {
         const calculatorData = JSON.parse(calculatorDataRaw);
@@ -57,11 +83,74 @@ const applyCalculatorData = (username: string) => {
 
         saveUserData(username, userData);
         sessionStorage.removeItem('fitgympro_calculator_data');
-        setTimeout(() => showToast('اطلاعات شما از محاسبه‌گر با موفقیت در پروفایل اعمال شد.', 'success'), 500);
+        return true;
 
     } catch (e) {
         console.error("Failed to apply calculator data:", e);
         sessionStorage.removeItem('fitgympro_calculator_data');
+        return false;
+    }
+}
+
+const addSelectedPlanToCart = (username: string): boolean => {
+    const selectedPlanId = sessionStorage.getItem('fitgympro_selected_plan');
+    if (!selectedPlanId) return false;
+
+    const plans = getStorePlans();
+    const planToAdd = plans.find((p: any) => p.planId === selectedPlanId);
+    
+    if (planToAdd) {
+        const cart = getCart(username);
+        // Avoid duplicates
+        if (!cart.items.some((item: any) => item.planId === selectedPlanId)) {
+            cart.items.push(planToAdd);
+            saveCart(username, cart);
+            showToast(`${planToAdd.planName} به سبد خرید اضافه شد.`, 'success');
+        }
+    }
+    
+    sessionStorage.removeItem('fitgympro_selected_plan');
+    return true;
+};
+
+const checkPasswordStrength = (password: string) => {
+    const meter = document.getElementById('password-strength-meter');
+    const text = document.getElementById('password-strength-text');
+    const bar = meter?.querySelector('.strength-bar') as HTMLElement;
+    if (!meter || !text || !bar) return;
+
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    
+    bar.className = 'strength-bar'; // Reset classes
+    text.className = ''; // Reset classes
+
+    if (password.length === 0) {
+        text.textContent = '';
+        return;
+    }
+
+    switch (score) {
+        case 0:
+        case 1:
+            bar.classList.add('strength-weak');
+            text.textContent = 'ضعیف';
+            text.classList.add('text-weak');
+            break;
+        case 2:
+        case 3:
+            bar.classList.add('strength-medium');
+            text.textContent = 'متوسط';
+            text.classList.add('text-medium');
+            break;
+        case 4:
+            bar.classList.add('strength-strong');
+            text.textContent = 'قوی';
+            text.classList.add('text-strong');
+            break;
     }
 }
 
@@ -69,6 +158,17 @@ const applyCalculatorData = (username: string) => {
 export function initAuthListeners(handleLoginSuccess: (username: string) => void) {
     const authModal = document.getElementById('auth-modal');
     if (!authModal) return;
+
+    const handleLoginActions = (username: string) => {
+        const calculatorDataApplied = applyCalculatorData(username);
+        const planAdded = addSelectedPlanToCart(username);
+        if (calculatorDataApplied || planAdded) {
+            sessionStorage.setItem('fitgympro_redirect_to_tab', 'store-content');
+            if (planAdded) sessionStorage.setItem('fitgympro_open_cart', 'true');
+            if (calculatorDataApplied) sessionStorage.setItem('fromProfileSave', 'true');
+        }
+        handleLoginSuccess(username);
+    };
 
     // --- Modal Controls ---
     document.getElementById('close-auth-modal-btn')?.addEventListener('click', () => closeModal(authModal));
@@ -79,11 +179,12 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
     });
 
     // --- Form Switching ---
-    switchAuthForm('login');
     document.getElementById('switch-to-signup-btn')?.addEventListener('click', () => switchAuthForm('signup'));
     document.getElementById('switch-to-login-btn')?.addEventListener('click', () => switchAuthForm('login'));
     document.getElementById('switch-to-forgot-btn')?.addEventListener('click', () => switchAuthForm('forgot-password'));
     document.getElementById('switch-back-to-login-btn')?.addEventListener('click', () => switchAuthForm('login'));
+    document.getElementById('switch-back-to-login-btn-2')?.addEventListener('click', () => switchAuthForm('login'));
+
 
     // --- Google Login ---
     document.getElementById('google-login-btn')?.addEventListener('click', () => {
@@ -111,8 +212,7 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
             addActivityLog(`${googleUsername} signed up via Google.`);
         }
         
-        applyCalculatorData(googleUsername);
-        handleLoginSuccess(googleUsername);
+        handleLoginActions(googleUsername);
     });
 
     // --- Form Submissions ---
@@ -140,8 +240,7 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
                  showToast("حساب مربیگری شما در انتظار تایید مدیر است.", "error");
                  return;
              }
-            applyCalculatorData(username);
-            handleLoginSuccess(username);
+            handleLoginActions(username);
         } else {
             showToast("نام کاربری یا رمز عبور اشتباه است.", "error");
             loginForm.closest('.card')?.classList.add('shake-animation');
@@ -150,6 +249,9 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
     });
 
     const signupForm = document.getElementById("signup-form") as HTMLFormElement;
+    const signupPasswordInput = document.getElementById("signup-password") as HTMLInputElement;
+    signupPasswordInput?.addEventListener('input', () => checkPasswordStrength(signupPasswordInput.value));
+
     signupForm?.addEventListener("submit", e => {
         e.preventDefault();
         const usernameInput = document.getElementById("signup-username") as HTMLInputElement;
@@ -200,12 +302,30 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
             joinDate: new Date().toISOString()
         });
         
-        applyCalculatorData(username);
-
-        showToast("ثبت نام با موفقیت انجام شد! حالا می‌توانید وارد شوید.", "success");
+        showToast("ثبت نام با موفقیت انجام شد! در حال ورود...", "success");
         addActivityLog(`${username} ثبت نام کرد.`);
-        switchAuthForm("login");
-        (document.getElementById("login-username") as HTMLInputElement).value = username;
+        handleLoginActions(username);
+    });
+
+    const forgotPasswordForm = document.getElementById("forgot-password-form") as HTMLFormElement;
+    forgotPasswordForm?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const emailInput = document.getElementById('forgot-email') as HTMLInputElement;
+        const email = emailInput.value.trim();
+
+        if (!/^\S+@\S+\.\S+$/.test(email)) {
+            showToast('لطفا یک ایمیل معتبر وارد کنید.', 'error');
+            return;
+        }
+
+        const userExists = getUsers().some((u: any) => u.email === email);
+
+        if (userExists) {
+            // Simulate sending email
+            switchAuthForm('forgot-confirmation');
+        } else {
+            showToast('کاربری با این ایمیل یافت نشد.', 'error');
+        }
     });
 }
 
@@ -214,9 +334,9 @@ export function renderAuthModal() {
     <div id="auth-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
         <div class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative">
              <button id="close-auth-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
-            <div class="p-8 pt-12 min-h-[420px] overflow-hidden">
+            <div class="p-8 pt-12 min-h-[520px] overflow-hidden relative">
                 <!-- Login Form -->
-                <div id="login-form-container" class="form-container">
+                <div id="login-form-container" class="form-container form-active">
                     <h2 class="font-bold text-2xl text-center mb-6">خوش آمدید!</h2>
                     <form id="login-form" class="space-y-4" novalidate>
                         <div class="input-group">
@@ -268,6 +388,12 @@ export function renderAuthModal() {
                             <button type="button" class="password-toggle" data-target="signup-password"><i data-lucide="eye" class="w-5 h-5"></i></button>
                             <div class="validation-message"></div>
                         </div>
+                        <div id="password-strength-container">
+                            <div id="password-strength-meter">
+                                <div class="strength-bar"></div>
+                            </div>
+                            <p id="password-strength-text" class="text-right"></p>
+                        </div>
                         <button type="submit" class="primary-button w-full !py-3 !text-base mt-2">ثبت نام</button>
                     </form>
                     <p class="text-center text-sm text-secondary mt-6">
@@ -290,6 +416,16 @@ export function renderAuthModal() {
                     <p class="text-center text-sm text-secondary mt-6">
                         <button id="switch-back-to-login-btn" type="button" class="font-bold text-accent hover:underline">بازگشت به صفحه ورود</button>
                     </p>
+                </div>
+                
+                <!-- Forgot Password Confirmation -->
+                <div id="forgot-password-confirmation" class="form-container hidden text-center">
+                    <div class="icon-container">
+                        <i data-lucide="mail-check" class="w-8 h-8"></i>
+                    </div>
+                    <h2 class="font-bold text-xl text-center mb-2">ایمیل ارسال شد!</h2>
+                    <p class="text-center text-sm text-secondary mb-6">اگر حساب کاربری با این ایمیل وجود داشته باشد، لینک بازیابی برایتان ارسال شد. لطفاً صندوق ورودی و اسپم خود را بررسی کنید.</p>
+                    <button id="switch-back-to-login-btn-2" type="button" class="primary-button w-full">بازگشت به ورود</button>
                 </div>
             </div>
         </div>

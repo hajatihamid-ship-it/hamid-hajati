@@ -314,12 +314,6 @@
             transform: translateY(-50%) scale(0);
             border-color: var(--bg-secondary);
         }
-        .coach-nav-link.active-nav-link .notification-badge, .coach-nav-link:hover .notification-badge {
-            border-color: var(--accent);
-        }
-        .coach-nav-link .notification-badge.visible {
-            transform: translateY(-50%) scale(1);
-        }
         .coach-nav-link.active-nav-link, .coach-nav-link:hover {
             background-color: var(--accent);
             color: var(--bg-secondary);
@@ -382,8 +376,77 @@
             transform: translateY(-3px);
         }
 
-        .form-container { transition: opacity 0.4s ease, transform 0.4s ease; }
-        .form-container.hidden { opacity: 0; pointer-events: none; transform: scale(0.95); position: absolute; top: 4.5rem; left: 2rem; right: 2rem; }
+        .form-container {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            position: absolute;
+            top: 4.5rem;
+            left: 2rem;
+            right: 2rem;
+        }
+        .form-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(20px);
+        }
+        .form-container.form-active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(0);
+            position: relative;
+            top: auto;
+            left: auto;
+            right: auto;
+        }
+        .form-container.is-switching-out {
+            transform: translateX(-20px);
+            opacity: 0;
+        }
+
+        /* Password Strength Meter */
+        #password-strength-container {
+            margin-top: -0.25rem;
+            padding: 0 0.25rem;
+            height: 1.5rem;
+        }
+        #password-strength-meter {
+            display: flex;
+            gap: 0.25rem;
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            background-color: var(--bg-tertiary);
+        }
+        #password-strength-meter .strength-bar {
+            height: 100%;
+            width: 0;
+            border-radius: 3px;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+        #password-strength-text {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.25rem;
+        }
+        .strength-weak { background-color: var(--red-accent); width: 33.33%; }
+        .strength-medium { background-color: var(--admin-accent-yellow); width: 66.66%; }
+        .strength-strong { background-color: var(--green-accent); width: 100%; }
+        .text-weak { color: var(--red-accent); }
+        .text-medium { color: var(--admin-accent-yellow); }
+        .text-strong { color: var(--green-accent); }
+
+        /* Forgot Password Confirmation */
+        #forgot-password-confirmation .icon-container {
+            width: 60px;
+            height: 60px;
+            background-color: var(--accent-transparent-15);
+            color: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+
         .input-group { position: relative; }
         .input-label { position: absolute; right: 1rem; top: 0.75rem; color: var(--text-secondary); pointer-events: none; transition: all 0.2s ease; background-color: var(--bg-tertiary); padding: 0 0.25rem; }
         .input-field:focus + .input-label, .input-field:not(:placeholder-shown) + .input-label { top: -0.6rem; font-size: 0.75rem; color: var(--accent); background-color: var(--bg-secondary); }

@@ -1093,10 +1093,30 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             }
         }
     };
-    
-    const initialTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="dashboard-content"]');
-    if(initialTab) {
-        setTimeout(() => switchTab(initialTab), 50);
+
+    // --- Handle post-login actions ---
+    const redirectToTab = sessionStorage.getItem('fitgympro_redirect_to_tab');
+    if (redirectToTab) {
+        const tabButton = dashboardContainer.querySelector(`.user-dashboard-tab[data-target="${redirectToTab}"]`);
+        if (tabButton) {
+            setTimeout(() => switchTab(tabButton), 50);
+        }
+        sessionStorage.removeItem('fitgympro_redirect_to_tab');
+    } else {
+        const initialTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="dashboard-content"]');
+        if(initialTab) {
+            setTimeout(() => switchTab(initialTab), 50);
+        }
+    }
+
+    const openCart = sessionStorage.getItem('fitgympro_open_cart');
+    if (openCart === 'true') {
+        setTimeout(() => {
+            const cartModal = document.getElementById('cart-modal');
+            renderCartModalContent(currentUser);
+            openModal(cartModal);
+            sessionStorage.removeItem('fitgympro_open_cart');
+        }, 300); // Delay to allow tab switch animation
     }
     
     tabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab)));
@@ -1502,9 +1522,9 @@ export function renderUserDashboard(currentUser: string, userData: any) {
     ];
     const activityLevels = [
         { value: '1.2', label: 'نشسته', icon: 'sofa' },
-        { value: '1.375', label: 'کم', icon: 'walk' },
+        { value: '1.375', label: 'کم', icon: 'footprints' },
         { value: '1.55', label: 'متوسط', icon: 'bike' },
-        { value: '1.725', label: 'زیاد', icon: 'run' },
+        { value: '1.725', label: 'زیاد', icon: 'user-round-running' },
         { value: '1.9', label: 'خیلی زیاد', icon: 'flame' }
     ];
 
@@ -1675,7 +1695,7 @@ export function renderUserDashboard(currentUser: string, userData: any) {
                                             <label class="option-card-label">
                                                 <input type="radio" name="athlete_type_user" value="قدرتی" class="option-card-input">
                                                 <div class="option-card-content flex flex-col items-center justify-center gap-2 h-full p-3">
-                                                    <i data-lucide="barbell" class="w-6 h-6 text-text-secondary"></i>
+                                                    <i data-lucide="dumbbell" class="w-6 h-6 text-text-secondary"></i>
                                                     <span class="font-semibold text-xs text-center">ورزشکاران قدرتی</span>
                                                 </div>
                                             </label>

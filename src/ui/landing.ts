@@ -58,7 +58,7 @@ const getPricingHTML = () => {
                             </li>
                         `).join('')}
                     </ul>
-                    <button class="primary-button mt-auto w-full">انتخاب پلن</button>
+                    <button data-plan-id="${plan.planId}" class="select-plan-btn primary-button mt-auto w-full">انتخاب پلن</button>
                 </div>
             `).join('')}
         </div>
@@ -435,6 +435,19 @@ export function initLandingPageListeners(onGoToDashboard?: () => void) {
         const infoLink = target.closest('.landing-nav-link[data-section]');
         const coachSignupBtn = target.closest('#coach-signup-cta');
         const adminEditBtn = target.closest('.admin-edit-btn');
+        const selectPlanBtn = target.closest('.select-plan-btn');
+
+        if (selectPlanBtn) {
+            const planId = selectPlanBtn.getAttribute('data-plan-id');
+            if (planId) {
+                sessionStorage.setItem('fitgympro_selected_plan', planId);
+            }
+            const infoModal = document.getElementById('info-modal');
+            const authModal = document.getElementById('auth-modal');
+            if(infoModal) closeModal(infoModal);
+            if(authModal) openModal(authModal);
+            return;
+        }
 
         if (adminEditBtn) {
             const authModal = document.getElementById('auth-modal');
@@ -657,7 +670,7 @@ export function renderLandingPage() {
                         : ''
                     ).join('')}
                 </div>
-                <p>&copy; 2024 FitGym Pro. تمامی حقوق محفوظ است.</p>
+                <p class="text-white">&copy; 2024 FitGym Pro. تمامی حقوق محفوظ است.</p>
             </footer>
         </div>
     </div>
