@@ -27,6 +27,11 @@
     <!-- GenAI Module Preload -->
     <link rel="modulepreload" href="https://esm.run/@google/genai">
 
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
     <!-- Custom Styles -->
     <style>
         :root, html[data-theme='light'] {
@@ -945,6 +950,25 @@
         </button>
     </template>
 
+    <script>
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyBIxsc97PAqB-NAu2GFI9VepP2G_ZOOoqM",
+        authDomain: "fitgympro-85c9a.firebaseapp.com",
+        projectId: "fitgympro-85c9a",
+        storageBucket: "fitgympro-85c9a.firebasestorage.app",
+        messagingSenderId: "901919943915",
+        appId: "1:901919943915:web:9fac62d8fa4318df9362ae",
+        measurementId: "G-LH5JHEZCC9"
+      };
+
+      // Initialize Firebase
+      if (typeof firebase !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
+      } else {
+        console.error("Firebase SDK not loaded.");
+      }
+    </script>
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>
