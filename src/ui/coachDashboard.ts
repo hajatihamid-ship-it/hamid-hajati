@@ -1,7 +1,7 @@
 import { getTemplates, saveTemplate, deleteTemplate, getUsers, getUserData, saveUserData, getNotifications, setNotification, clearNotification, getExercisesDB, getSupplementsDB } from '../services/storage';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement } from '../utils/dom';
 import { getLatestPurchase, timeAgo, getLastActivity } from '../utils/helpers';
-import { generateWorkoutPlan, generateSupplementPlan } from '../services/gemini';
+import { generateWorkoutPlan, generateSupplementPlan, generateNutritionPlan } from '../services/gemini';
 import { calculateWorkoutStreak } from '../utils/calculations';
 
 let currentStep = 1;
@@ -10,6 +10,8 @@ let activeStudentUsername: string | null = null;
 let studentModalChartInstance: any = null;
 let currentSelectionTarget: HTMLElement | null = null;
 let exerciseToMuscleGroupMap: Record<string, string> = {};
+let currentNutritionPlanObject: any | null = null;
+
 
 const getCoachStudents = (coachUsername: string) => {
     return getUsers().filter((u: any) => {
@@ -335,12 +337,14 @@ const _renderStudentProgram = (programData: any) => {
     if (!programData || !programData.step2 || !programData.step2.days || programData.step2.days.length === 0) {
         return `<p class="text-text-secondary text-center p-4">هنوز برنامه‌ای برای این شاگرد ثبت نشده است.</p>`;
     }
+    const dayColors = ['#3b82f6', '#ef4444', '#f97316', '#10b981', '#a855f7', '#ec4899', '#f59e0b'];
 
-    let programHtml = programData.step2.days.map((day: any) => {
+    let programHtml = programData.step2.days.map((day: any, index: number) => {
         const hasExercises = day.exercises && day.exercises.length > 0;
+        const dayColor = dayColors[index % dayColors.length];
         return `
         <details class="day-card card !shadow-none !border mb-2">
-            <summary class="font-bold cursor-pointer flex justify-between items-center p-3">
+            <summary class="font-bold cursor-pointer flex justify-between items-center p-3 rounded-md" style="border-right: 4px solid ${dayColor}; background-color: color-mix(in srgb, ${dayColor} 10%, transparent);">
                 <span>${day.name}</span>
                 <i data-lucide="chevron-down" class="details-arrow"></i>
             </summary>
@@ -586,7 +590,8 @@ const gatherPlanData = () => {
     const plan: any = {
         student: studentData.step1,
         workout: { days: [] as any[], notes: '' },
-        supplements: { items: [] as any[], notes: '' }
+        supplements: { items: [] as any[], notes: '' },
+        nutritionPlan: currentNutritionPlanObject,
     };
 
     // Gather workout data
@@ -635,11 +640,13 @@ const renderProgramPreview = () => {
         return;
     }
 
-    const { student, workout, supplements } = planData;
+    const { student, workout, supplements, nutritionPlan } = planData;
     const metrics = calculateMetricsFromData(student);
+    const dayColors = ['#3b82f6', '#ef4444', '#f97316', '#10b981', '#a855f7', '#ec4899', '#f59e0b'];
     
     previewContainer.innerHTML = `
-        <div class="p-4">
+        <div class="p-4 relative">
+            <div class="watermark-text-overlay">FitGym Pro</div>
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold">برنامه اختصاصی FitGym Pro</h2>
                 <p class="font-semibold">${new Date().toLocaleDateString('fa-IR')}</p>
@@ -657,9 +664,9 @@ const renderProgramPreview = () => {
 
             <h3 class="preview-section-header mt-6"><i data-lucide="clipboard-list"></i> برنامه تمرینی</h3>
             <div class="space-y-4">
-            ${workout.days.filter((d: any) => d.exercises.length > 0).map((day: any) => `
+            ${workout.days.filter((d: any) => d.exercises.length > 0).map((day: any, index: number) => `
                 <div>
-                    <h4 class="font-bold mb-2">${day.name}</h4>
+                    <h4 class="font-bold mb-2 p-2 rounded-md" style="border-right: 4px solid ${dayColors[index % dayColors.length]}; background-color: color-mix(in srgb, ${dayColors[index % dayColors.length]} 10%, transparent);">${day.name}</h4>
                     <table class="preview-table-pro">
                         <thead><tr><th>حرکت</th><th>ست</th><th>تکرار</th><th>استراحت</th></tr></thead>
                         <tbody>
@@ -678,6 +685,16 @@ const renderProgramPreview = () => {
                     ${supplements.items.map((sup: any) => `<tr><td>${sup.name}</td><td>${sup.dosage}</td><td>${sup.timing}</td><td>${sup.notes || '-'}</td></tr>`).join('')}
                 </tbody>
             </table>
+            ` : ''}
+
+            ${nutritionPlan && nutritionPlan.weeklyPlan ? `
+            <h3 class="preview-section-header mt-6"><i data-lucide="utensils-crossed"></i> برنامه غذایی نمونه</h3>
+            <div class="preview-notes-pro">
+                <p>این یک برنامه غذایی نمونه برای یک هفته است که می‌توانید آن را تکرار کنید. برای تنوع بیشتر می‌توانید از گزینه‌های مختلف در هر وعده استفاده نمایید.</p>
+                <ul class="list-disc pr-4 mt-2 text-sm">
+                    ${(nutritionPlan.generalTips || []).slice(0, 2).map((tip: string) => `<li>${tip}</li>`).join('')}
+                </ul>
+            </div>
             ` : ''}
 
             ${workout.notes ? `
@@ -889,6 +906,15 @@ const resetProgramBuilder = () => {
         (supNameBtn.querySelector('span') as HTMLElement).textContent = "مکمل را انتخاب کنید";
         (supNameBtn as HTMLButtonElement).disabled = true;
     }
+
+    const nutritionPlaceholder = document.getElementById('nutrition-plan-placeholder');
+    const nutritionDisplay = document.getElementById('nutrition-plan-display');
+    if (nutritionPlaceholder) nutritionPlaceholder.classList.remove('hidden');
+    if (nutritionDisplay) {
+        nutritionDisplay.classList.add('hidden');
+        nutritionDisplay.innerHTML = '';
+    }
+    currentNutritionPlanObject = null;
 
 
     const notesTextarea = document.getElementById('coach-notes-final') as HTMLTextAreaElement;
@@ -1569,6 +1595,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 notes: finalPlanData.workout.notes
             };
             studentUserData.supplements = finalPlanData.supplements.items;
+            studentUserData.nutritionPlan = finalPlanData.nutritionPlan;
 
             if (!studentUserData.programHistory) {
                 studentUserData.programHistory = [];
@@ -1576,7 +1603,8 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             studentUserData.programHistory.unshift({
                 date: new Date().toISOString(),
                 step2: studentUserData.step2,
-                supplements: studentUserData.supplements
+                supplements: studentUserData.supplements,
+                nutritionPlan: studentUserData.nutritionPlan,
             });
 
             const latestPurchase = getLatestPurchase(studentUserData);
@@ -1587,6 +1615,9 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             
             saveUserData(activeStudentUsername, studentUserData);
             setNotification(activeStudentUsername, 'program-content', '✨');
+            if(studentUserData.nutritionPlan) {
+                 setNotification(activeStudentUsername, 'nutrition-content', '🥗');
+            }
 
             button.classList.add('is-loading');
             setTimeout(() => {
@@ -1640,12 +1671,54 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         activeStudentUsername = null;
     });
 
+    const renderNutritionPlanForCoach = (plan: any) => {
+        const container = document.getElementById('nutrition-plan-display');
+        if (!container) return;
+    
+        const dayColors = ['#3b82f6', '#ef4444', '#f97316', '#10b981', '#a855f7', '#ec4899', '#f59e0b'];
+        let planHtml = `
+            <div class="flex justify-between items-center mb-3">
+                <h4 class="font-bold">پیش‌نویس برنامه غذایی</h4>
+                <button id="ai-regenerate-nutrition-btn" class="secondary-button !text-sm !py-1">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 mr-1"></i> ایجاد مجدد
+                </button>
+            </div>
+            <div class="space-y-2 max-h-96 overflow-y-auto pr-2">
+        `;
+    
+        (plan.weeklyPlan || []).forEach((day: any, index: number) => {
+            const dayColor = dayColors[index % dayColors.length];
+            planHtml += `
+                <details class="day-card card !shadow-none !border bg-bg-secondary" open>
+                    <summary class="font-bold cursor-pointer flex justify-between items-center p-2" style="border-right: 3px solid ${dayColor};">
+                        <span>${day.dayName}</span>
+                        <i data-lucide="chevron-down" class="details-arrow"></i>
+                    </summary>
+                    <div class="p-2 border-t border-border-primary text-sm">
+                        ${(day.meals || []).map((meal: any) => `
+                            <div>
+                                <h5 class="font-semibold text-accent mt-2 mb-1">${meal.mealName}</h5>
+                                <ul class="list-disc pr-4 space-y-1 text-xs">
+                                    ${(meal.options || []).map((option: string) => `<li>${option}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `).join('')}
+                    </div>
+                </details>
+            `;
+        });
+    
+        planHtml += '</div>';
+        container.innerHTML = planHtml;
+        window.lucide.createIcons();
+    };
+
     // --- Program Builder Logic ---
     const builderContentTab = document.getElementById('builder-content');
     if (builderContentTab) {
         changeStep(1); 
 
-        builderContentTab.addEventListener('click', e => {
+        builderContentTab.addEventListener('click', async e => {
             if (!(e.target instanceof HTMLElement)) return;
             const target = e.target;
             const button = target.closest('button');
@@ -1656,6 +1729,30 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             if (button.id === 'student-select-btn') {
                 openStudentSelectionModal(button, currentUser);
             }
+
+            if(button.id === 'ai-generate-nutrition-btn' || button.id === 'ai-regenerate-nutrition-btn') {
+                if (!activeStudentUsername) {
+                    showToast("لطفا ابتدا یک شاگرد را انتخاب کنید.", "error");
+                    return;
+                }
+                const studentData = getUserData(activeStudentUsername);
+                if (!studentData.step1 || !studentData.step1.tdee) {
+                    showToast("اطلاعات پروفایل شاگرد (مانند TDEE) کامل نیست.", "error");
+                    return;
+                }
+                button.classList.add('is-loading');
+                const plan = await generateNutritionPlan(studentData);
+                button.classList.remove('is-loading');
+                if (plan) {
+                    currentNutritionPlanObject = plan;
+                    document.getElementById('nutrition-plan-placeholder')?.classList.add('hidden');
+                    const displayEl = document.getElementById('nutrition-plan-display');
+                    if (displayEl) displayEl.classList.remove('hidden');
+                    renderNutritionPlanForCoach(plan);
+                    showToast("برنامه غذایی با موفقیت ایجاد شد.", "success");
+                }
+            }
+
 
             if (button.classList.contains('selection-button')) {
                 const type = button.dataset.type;
@@ -2064,7 +2161,7 @@ export function renderCoachDashboard(currentUser: string, userData: any) {
                             </div>
 
                             <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
-                                ${[ "اطلاعات شاگرد", "برنامه تمرینی", "برنامه مکمل", "بازبینی و ارسال"].map((title, i) => `
+                                ${[ "اطلاعات شاگرد", "برنامه تمرینی", "مکمل و تغذیه", "بازبینی و ارسال"].map((title, i) => `
                                     <div class="stepper-item" data-step="${i+1}">
                                        <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm">${i+1}</div>
                                        <span class="hidden md:inline">${title}</span>
@@ -2124,6 +2221,19 @@ export function renderCoachDashboard(currentUser: string, userData: any) {
                                     </div>
                                     <div id="added-supplements-container" class="md:col-span-2 space-y-2">
                                         <p class="text-text-secondary text-center p-4">مکمل‌های انتخابی در اینجا نمایش داده می‌شوند.</p>
+                                    </div>
+                                </div>
+                                <h3 class="text-lg font-bold mb-4 mt-8 pt-6 border-t border-border-primary">برنامه غذایی</h3>
+                                <div id="nutrition-plan-container" class="card p-4 bg-bg-tertiary">
+                                    <div id="nutrition-plan-placeholder" class="text-center text-text-secondary">
+                                        <p>برای این شاگرد یک برنامه غذایی نمونه ایجاد کنید.</p>
+                                        <button id="ai-generate-nutrition-btn" class="primary-button mt-4">
+                                            <i data-lucide="sparkles" class="w-4 h-4 mr-2"></i>
+                                            ایجاد برنامه غذایی با AI
+                                        </button>
+                                    </div>
+                                    <div id="nutrition-plan-display" class="hidden">
+                                        <!-- Generated plan will be rendered here -->
                                     </div>
                                 </div>
                             </div>

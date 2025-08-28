@@ -135,6 +135,7 @@ const renderUnifiedProgramView = (userData: any) => {
     const { step1: student } = userData;
     const { step2: workout, supplements } = latestProgram;
     const metrics = calculateUserMetrics(student);
+    const dayColors = ['#3b82f6', '#ef4444', '#f97316', '#10b981', '#a855f7', '#ec4899', '#f59e0b'];
 
     // --- BMI Calculation for indicator ---
     const bmi = parseFloat(metrics.bmi);
@@ -163,6 +164,7 @@ const renderUnifiedProgramView = (userData: any) => {
 
     container.innerHTML = `
         <div class="program-page mx-auto bg-bg-secondary rounded-xl shadow-lg" id="unified-program-view">
+             <div class="watermark-text-overlay">FitGym Pro</div>
              <div class="p-4 md:p-8">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold">برنامه اختصاصی FitGym Pro</h2>
@@ -202,9 +204,9 @@ const renderUnifiedProgramView = (userData: any) => {
 
                 <h3 class="preview-section-header mt-6"><i data-lucide="clipboard-list"></i> برنامه تمرینی</h3>
                 <div class="space-y-4">
-                ${(workout.days || []).filter((d: any) => d.exercises && d.exercises.length > 0).map((day: any) => `
+                ${(workout.days || []).filter((d: any) => d.exercises && d.exercises.length > 0).map((day: any, index: number) => `
                     <div>
-                        <h4 class="font-bold mb-2">${day.name}</h4>
+                         <h4 class="font-bold mb-2 p-2 rounded-md" style="border-right: 4px solid ${dayColors[index % dayColors.length]}; background-color: color-mix(in srgb, ${dayColors[index % dayColors.length]} 10%, transparent);">${day.name}</h4>
                         <table class="preview-table-pro">
                             <thead><tr><th>حرکت</th><th>ست</th><th>تکرار</th><th>استراحت</th></tr></thead>
                             <tbody>
@@ -415,56 +417,49 @@ const renderNutritionTab = (userData: any) => {
     const container = document.getElementById('nutrition-content-wrapper');
     if (!container) return;
 
-    let planHtml = '';
+    const latestProgram = (userData.programHistory && userData.programHistory.length > 0) ? userData.programHistory[0] : userData;
+    const nutritionPlan = latestProgram.nutritionPlan;
 
-    if (userData.nutritionPlan) {
-        if (typeof userData.nutritionPlan === 'object' && userData.nutritionPlan.weeklyPlan) {
-            // New JSON format
-            const plan = userData.nutritionPlan;
-            planHtml = `
-                <div class="program-page !p-0 !max-w-none !bg-transparent" id="nutrition-plan-render-area">
-                    ${(plan.weeklyPlan || []).map((day: any) => `
-                        <details class="day-card card !shadow-none !border mb-2" open>
-                            <summary class="font-bold cursor-pointer flex justify-between items-center p-3">
-                                <span>${day.dayName}</span>
-                                <i data-lucide="chevron-down" class="details-arrow"></i>
-                            </summary>
-                            <div class="p-3 border-t border-border-primary">
-                                ${(day.meals || []).map((meal: any) => `
-                                    <div>
-                                        <h4 class="font-semibold text-accent mt-3 mb-2 text-md border-r-2 border-accent pr-2">${meal.mealName}</h4>
-                                        <ul class="list-disc pr-4 space-y-1">
-                                            ${(meal.options || []).map((option: string) => `<li>${sanitizeHTML(option)}</li>`).join('')}
-                                        </ul>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </details>
-                    `).join('')}
-
-                    ${plan.generalTips && plan.generalTips.length > 0 ? `
-                        <div class="preview-notes-pro mt-6">
-                            <h4 class="font-bold mb-3">نکات مهم و عمومی</h4>
-                            <ul class="space-y-2">
-                                 ${plan.generalTips.map((tip: string) => `<li class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-accent mt-1 flex-shrink-0"></i><span>${sanitizeHTML(tip)}</span></li>`).join('')}
-                            </ul>
+    if (nutritionPlan && typeof nutritionPlan === 'object' && nutritionPlan.weeklyPlan) {
+        const plan = nutritionPlan;
+        const dayColors = ['#3b82f6', '#ef4444', '#f97316', '#10b981', '#a855f7', '#ec4899', '#f59e0b'];
+        const planHtml = `
+            <div class="program-page nutrition-plan-text !p-0 !max-w-none !bg-transparent relative" id="nutrition-plan-render-area">
+                <div class="watermark-text-overlay">FitGym Pro</div>
+                ${(plan.weeklyPlan || []).map((day: any, index: number) => {
+                    const dayColor = dayColors[index % dayColors.length];
+                    return `
+                    <details class="day-card card !shadow-none !border mb-2" open>
+                        <summary class="font-bold cursor-pointer flex justify-between items-center p-3" style="border-right: 4px solid ${dayColor}; background-color: color-mix(in srgb, ${dayColor} 10%, transparent);">
+                            <span>${day.dayName}</span>
+                            <i data-lucide="chevron-down" class="details-arrow"></i>
+                        </summary>
+                        <div class="p-3 border-t border-border-primary">
+                            ${(day.meals || []).map((meal: any) => `
+                                <div>
+                                    <h4 class="font-semibold text-accent mt-3 mb-2 text-md border-r-2 border-accent pr-2">${meal.mealName}</h4>
+                                    <ul class="list-disc pr-4 space-y-1">
+                                        ${(meal.options || []).map((option: string) => `<li>${sanitizeHTML(option)}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            `).join('')}
                         </div>
-                    ` : ''}
-                </div>
-            `;
-        } else if (typeof userData.nutritionPlan === 'string') {
-            // Legacy HTML format
-            planHtml = `<div id="nutrition-plan-render-area" class="program-page !p-0 !max-w-none !bg-transparent">${userData.nutritionPlan}</div>`;
-        }
-    }
+                    </details>
+                `}).join('')}
 
-    if (planHtml) {
+                ${plan.generalTips && plan.generalTips.length > 0 ? `
+                    <div class="preview-notes-pro mt-6">
+                        <h4 class="font-bold mb-3">نکات مهم و عمومی</h4>
+                        <ul class="space-y-2">
+                             ${plan.generalTips.map((tip: string) => `<li class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-accent mt-1 flex-shrink-0"></i><span>${sanitizeHTML(tip)}</span></li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            </div>
+        `;
         container.innerHTML = `
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-4">
-                 <h2 class="text-xl font-bold">برنامه غذایی ماهانه شما</h2>
-                 <button id="regenerate-nutrition-btn" class="secondary-button !text-sm">
-                    <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>ساخت برنامه جدید
-                 </button>
+                 <h2 class="text-xl font-bold">برنامه غذایی شما</h2>
             </div>
             <div id="nutrition-plan-content">${planHtml}</div>
             <div class="flex justify-center items-center gap-4 mt-6 pt-6 border-t border-border-primary">
@@ -474,15 +469,10 @@ const renderNutritionTab = (userData: any) => {
         `;
     } else {
         container.innerHTML = `
-            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
-                <h2 class="text-xl font-bold">برنامه غذایی هوشمند ماهانه</h2>
-                <button id="generate-nutrition-btn" class="primary-button flex-shrink-0">
-                   <i data-lucide="sparkles" class="w-4 h-4 ml-2"></i> ساخت برنامه با AI
-                </button>
-            </div>
-            <div id="nutrition-plan-content" class="text-text-secondary">
-                <p>با کلیک بر روی دکمه، یک نمونه برنامه غذایی ماهانه (به صورت یک هفته قابل تکرار) متناسب با مشخصات و اهداف شما توسط هوش مصنوعی تولید می‌شود. این برنامه شامل ۱۵۰ وعده در ماه (روزانه ۵ وعده) است.</p>
-                <p class="mt-2 text-xs"><strong>توجه:</strong> این برنامه توسط هوش مصنوعی تولید شده و جایگزین مشاوره تخصصی با پزشک یا متخصص تغذیه نیست.</p>
+            <div class="card p-8 text-center text-text-secondary">
+                <i data-lucide="utensils-crossed" class="w-12 h-12 mx-auto mb-4"></i>
+                <h3 class="font-bold text-lg">برنامه غذایی شما آماده نیست</h3>
+                <p class="mt-2">مربی شما هنوز برنامه غذایی را ارسال نکرده است. لطفاً منتظر بمانید یا از طریق بخش گفتگو با مربی خود در ارتباط باشید.</p>
             </div>
         `;
     }
@@ -965,6 +955,127 @@ const renderCoachesInModal = (genderFilter: 'all' | 'مرد' | 'زن' = 'all') =
     window.lucide.createIcons();
 };
 
+export function renderUserDashboard(currentUser: string, userData: any) {
+    const name = userData.step1?.clientName || currentUser;
+    
+    const navItems = [
+        { target: 'dashboard-content', icon: 'layout-dashboard', label: 'داشبورد' },
+        { target: 'program-content', icon: 'clipboard-list', label: 'برنامه' },
+        { target: 'nutrition-content', icon: 'utensils-crossed', label: 'تغذیه' },
+        { target: 'store-content', icon: 'store', label: 'فروشگاه' },
+        { target: 'profile-content', icon: 'user', label: 'پروفایل' },
+        { target: 'chat-content', icon: 'message-square', label: 'گفتگو' }
+    ];
+
+    return `
+    <div id="user-dashboard-container" class="flex h-screen bg-bg-primary text-text-primary transition-opacity duration-500 opacity-0">
+        <main class="flex-1 flex flex-col p-4 md:p-6 lg:p-8 overflow-y-auto">
+            <div id="impersonation-banner-placeholder"></div>
+            <header class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+                <div class="flex items-center gap-4">
+                    <img src="https://i.pravatar.cc/150?u=${currentUser}" alt="User Avatar" class="w-12 h-12 rounded-full object-cover border-2 border-accent">
+                    <div>
+                        <h1 class="text-2xl font-bold text-text-primary">${name}</h1>
+                        <p class="text-sm text-text-secondary">خوش آمدید!</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button id="go-to-home-btn" class="secondary-button"><i data-lucide="home" class="w-5 h-5"></i><span class="hidden sm:inline"> صفحه اصلی</span></button>
+                    <button id="cart-button" class="secondary-button relative">
+                        <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                        <span id="cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center hidden">0</span>
+                    </button>
+                    <button id="logout-btn" class="secondary-button"><i data-lucide="log-out" class="w-5 h-5"></i><span class="hidden sm:inline"> خروج</span></button>
+                </div>
+            </header>
+            <div class="relative bg-bg-secondary p-2 rounded-xl mb-6">
+                <div id="tab-indicator" class="absolute top-2 h-10 bg-accent rounded-lg transition-all duration-300 ease-in-out"></div>
+                <div class="relative grid grid-cols-3 md:grid-cols-6 gap-2">
+                    ${navItems.map(item => `
+                        <button class="user-dashboard-tab" data-target="${item.target}">
+                            <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+                            <span class="hidden md:inline">${item.label}</span>
+                            <span class="notification-badge"></span>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="flex-grow">
+                <div id="dashboard-content" class="tab-content-panel hidden"></div>
+                <div id="program-content" class="tab-content-panel hidden"></div>
+                <div id="nutrition-content" class="tab-content-panel hidden"><div id="nutrition-content-wrapper"></div></div>
+                <div id="store-content" class="tab-content-panel hidden"></div>
+                <div id="profile-content" class="tab-content-panel hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2">
+                            <form id="user-profile-form" class="card p-4 md:p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-12 h-12 bg-bg-tertiary rounded-full flex items-center justify-center font-bold text-xl">${name.charAt(0)}</div>
+                                        <div>
+                                            <h2 id="profile-user-name" class="text-xl font-bold"></h2>
+                                            <p id="profile-user-email" class="text-sm text-text-secondary"></p>
+                                        </div>
+                                    </div>
+                                    <button type="button" id="edit-profile-btn" class="secondary-button flex items-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> ویرایش</button>
+                                </div>
+                                <fieldset id="profile-fieldset" class="space-y-6 pt-4 border-t border-border-primary" disabled>
+                                    <div class="input-group"><input type="tel" name="mobile_user" class="input-field w-full" placeholder=" "><label class="input-label">شماره موبایل</label></div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div class="slider-group"><label class="flex justify-between text-sm font-medium text-text-secondary mb-1"><span>سن</span><span class="value-display font-bold text-accent">25</span></label><input type="range" min="15" max="80" value="25" class="range-slider age-slider w-full"></div>
+                                        <div class="slider-group"><label class="flex justify-between text-sm font-medium text-text-secondary mb-1"><span>قد (cm)</span><span class="value-display font-bold text-accent">175</span></label><input type="range" min="140" max="220" value="175" class="range-slider height-slider w-full"></div>
+                                        <div class="slider-group"><label class="flex justify-between text-sm font-medium text-text-secondary mb-1"><span>وزن (kg)</span><span class="value-display font-bold text-accent">75</span></label><input type="range" min="40" max="150" step="0.5" value="75" class="range-slider weight-slider w-full"></div>
+                                    </div>
+                                    <div class="flex items-center gap-4"><span class="font-semibold text-sm w-16 text-text-secondary shrink-0">جنسیت:</span><div class="flex-grow grid grid-cols-2 gap-2"><label class="option-card-label"><input type="radio" name="gender_user" value="مرد" class="option-card-input"><span class="option-card-content !py-2">مرد</span></label><label class="option-card-label"><input type="radio" name="gender_user" value="زن" class="option-card-input"><span class="option-card-content !py-2">زن</span></label></div></div>
+                                    <div><h4 class="font-semibold text-sm mb-2">هدف تمرینی</h4><div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs"><label class="option-card-label"><input type="radio" name="training_goal_user" value="کاهش وزن" class="option-card-input"><span class="option-card-content !py-2">کاهش وزن</span></label><label class="option-card-label"><input type="radio" name="training_goal_user" value="افزایش حجم" class="option-card-input"><span class="option-card-content !py-2">افزایش حجم</span></label><label class="option-card-label"><input type="radio" name="training_goal_user" value="تناسب اندام عمومی" class="option-card-input"><span class="option-card-content !py-2">تناسب اندام</span></label><label class="option-card-label"><input type="radio" name="training_goal_user" value="افزایش قدرت" class="option-card-input"><span class="option-card-content !py-2">افزایش قدرت</span></label></div></div>
+                                    <div><h4 class="font-semibold text-sm mb-2">روزهای تمرین در هفته</h4><div class="grid grid-cols-4 gap-2 text-xs"><label class="option-card-label"><input type="radio" name="training_days_user" value="3" class="option-card-input"><span class="option-card-content !py-2">3 روز</span></label><label class="option-card-label"><input type="radio" name="training_days_user" value="4" class="option-card-input"><span class="option-card-content !py-2">4 روز</span></label><label class="option-card-label"><input type="radio" name="training_days_user" value="5" class="option-card-input"><span class="option-card-content !py-2">5 روز</span></label><label class="option-card-label"><input type="radio" name="training_days_user" value="6" class="option-card-input"><span class="option-card-content !py-2">6 روز</span></label></div></div>
+                                    <div><h4 class="font-semibold text-sm mb-2">سطح فعالیت روزانه</h4><div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 text-xs"><label class="option-card-label"><input type="radio" name="activity_level_user" value="1.2" class="option-card-input"><span class="option-card-content !py-2">نشسته</span></label><label class="option-card-label"><input type="radio" name="activity_level_user" value="1.375" class="option-card-input"><span class="option-card-content !py-2">کم</span></label><label class="option-card-label"><input type="radio" name="activity_level_user" value="1.55" class="option-card-input"><span class="option-card-content !py-2">متوسط</span></label><label class="option-card-label"><input type="radio" name="activity_level_user" value="1.725" class="option-card-input"><span class="option-card-content !py-2">زیاد</span></label><label class="option-card-label"><input type="radio" name="activity_level_user" value="1.9" class="option-card-input"><span class="option-card-content !py-2">خیلی زیاد</span></label></div></div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2"><div class="input-group"><input type="number" class="input-field w-full neck-input" placeholder=" "><label class="input-label">دور گردن (cm)</label></div><div class="input-group"><input type="number" class="input-field w-full waist-input" placeholder=" "><label class="input-label">دور کمر (cm)</label></div><div class="input-group"><input type="number" class="input-field w-full hip-input" placeholder=" "><label class="input-label">دور باسن (cm)</label></div></div>
+                                </fieldset>
+                                <button type="submit" id="save-profile-btn" class="primary-button w-full mt-4" style="display: none;">ذخیره تغییرات</button>
+                            </form>
+                        </div>
+                        <div id="body-metrics-container" class="lg:col-span-1 space-y-6"></div>
+                    </div>
+                </div>
+                <div id="chat-content" class="tab-content-panel hidden">
+                    <div class="card h-[calc(100vh-16rem)] flex flex-col overflow-hidden">
+                        <div id="user-chat-header" class="p-4 border-b border-border-primary flex items-center gap-3"></div>
+                        <div id="coach-chat-messages" class="flex-grow p-4 space-y-4 overflow-y-auto flex flex-col bg-bg-tertiary"></div>
+                        <form id="coach-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2">
+                            <input type="text" id="coach-chat-input" class="input-field flex-grow" placeholder="پیام خود را بنویسید...">
+                            <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <div id="user-dashboard-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+            <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
+                <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0"><h2 id="user-modal-title" class="font-bold text-xl"></h2><button id="close-user-modal-btn" class="secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button></div>
+                <div id="user-modal-body" class="p-6 overflow-y-auto"></div>
+            </div>
+        </div>
+        <div id="cart-modal" class="modal fixed inset-0 bg-black/60 z-[101] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+            <div class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative">
+                 <div class="flex justify-between items-center p-4 border-b border-border-primary"><h2 class="font-bold text-xl">سبد خرید</h2><button id="close-cart-modal-btn" class="secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button></div>
+                <div id="cart-modal-body" class="p-6"></div>
+            </div>
+        </div>
+        <div id="coach-selection-modal" class="modal fixed inset-0 bg-black/60 z-[102] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+            <div class="card w-full max-w-4xl h-[80vh] transform scale-95 transition-transform duration-300 relative flex flex-col">
+                 <div class="p-4 border-b border-border-primary flex-shrink-0">
+                    <div class="flex justify-between items-center mb-3"><h2 class="font-bold text-xl">انتخاب مربی</h2><button id="close-coach-selection-modal-btn" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button></div>
+                    <div class="flex items-center gap-2 bg-bg-tertiary p-1 rounded-lg"><button class="coach-filter-chip active" data-gender="all">همه</button><button class="coach-filter-chip" data-gender="مرد">آقایان</button><button class="coach-filter-chip" data-gender="زن">بانوان</button></div>
+                 </div>
+                 <div id="modal-coach-list" class="p-4 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-3 content-start"></div>
+                 <div class="p-4 border-t border-border-primary flex-shrink-0"><button id="confirm-coach-selection-btn" class="primary-button w-full" disabled>تایید و ادامه</button></div>
+            </div>
+        </div>
+    </div>
+    `;
+}
 
 export function initUserDashboard(currentUser: string, userData: any, handleLogout: () => void, handleGoToHome: () => void) {
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
@@ -1113,688 +1224,291 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
     if (openCart === 'true') {
         setTimeout(() => {
             const cartModal = document.getElementById('cart-modal');
-            renderCartModalContent(currentUser);
-            openModal(cartModal);
-            sessionStorage.removeItem('fitgympro_open_cart');
-        }, 300); // Delay to allow tab switch animation
+            if(cartModal) {
+                renderCartModalContent(currentUser);
+                openModal(cartModal);
+            }
+        }, 100);
+        sessionStorage.removeItem('fitgympro_open_cart');
     }
-    
-    tabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab)));
-    updateCartBadge(currentUser);
-    updateUserNotifications(currentUser);
 
-    dashboardContainer.addEventListener('click', async e => {
+    // --- Event Delegation ---
+    dashboardContainer.addEventListener('click', async (e) => {
         if (!(e.target instanceof HTMLElement)) return;
         const target = e.target;
-        const button = target.closest('button');
-        if (!button) return;
 
-        if (button.id === 'go-to-home-btn') {
-            handleGoToHome();
+        const tab = target.closest('.user-dashboard-tab');
+        if (tab) {
+            switchTab(tab);
             return;
         }
 
-        if (button.id === 'edit-profile-btn') {
-            let freshUserData = getUserData(currentUser);
-            if (freshUserData.step1) freshUserData.step1.profileLocked = false;
-            saveUserData(currentUser, freshUserData);
-            toggleProfileLock(false);
-            showToast('پروفایل برای ویرایش باز شد.', 'success');
-        }
-
-        const addToCartBtn = target.closest('.add-to-cart-btn');
-        if (addToCartBtn && !addToCartBtn.hasAttribute('disabled')) {
-            const planId = addToCartBtn.getAttribute('data-plan-id');
-            const plans = getStorePlans();
-            const plan = plans.find((p: any) => p.planId === planId);
-            if (plan) {
-                const cart = getCart(currentUser);
-                cart.items.push(plan);
-                saveCart(currentUser, cart);
-                showToast(`${plan.planName} به سبد خرید اضافه شد.`, 'success');
-                updateCartBadge(currentUser);
-                (addToCartBtn as HTMLButtonElement).disabled = true;
-                addToCartBtn.innerHTML = `<i data-lucide="check" class="w-4 h-4 mr-2"></i> اضافه شد`;
-                addToCartBtn.classList.replace('primary-button', 'green-button');
-                window.lucide.createIcons();
-            }
-        }
-
-        if (button.id === 'cart-btn') {
-            const modal = document.getElementById('cart-modal');
-            renderCartModalContent(currentUser);
-            openModal(modal);
-        }
-
-        if (button.dataset.action === "log-workout") {
-            const dayIndex = parseInt(button.getAttribute('data-day-index')!, 10);
-            const currentData = getUserData(currentUser);
-            openWorkoutLogModal(currentData.step2.days[dayIndex], dayIndex, currentUser);
-        }
-
-        if (button.id === 'generate-nutrition-btn') {
-            button.classList.add('is-loading');
-            button.setAttribute('disabled', 'true');
-            const currentData = getUserData(currentUser);
-            const planObject = await generateNutritionPlan(currentData);
-            button.classList.remove('is-loading');
-            button.removeAttribute('disabled');
-            
-            if (planObject) {
-                let freshUserData = getUserData(currentUser);
-                freshUserData.nutritionPlan = planObject;
-                saveUserData(currentUser, freshUserData);
-                renderNutritionTab(freshUserData);
+        const actionButton = target.closest('button[data-action="log-workout"]') as HTMLButtonElement | null;
+        if (actionButton) {
+            const dayIndex = parseInt(actionButton.dataset.dayIndex || '-1', 10);
+            const todayData = getTodayWorkoutData(userData);
+            if (todayData && dayIndex === todayData.dayIndex) {
+                openWorkoutLogModal(todayData.day, dayIndex, currentUser);
             }
         }
         
-        if(button.id === 'save-program-pdf-btn') exportElement('#unified-program-view', 'pdf', 'برنامه-تمرینی.pdf', button);
-        if(button.id === 'save-program-img-btn') exportElement('#unified-program-view', 'png', 'برنامه-تمرینی.png', button);
-        if(button.id === 'save-nutrition-pdf-btn') exportElement('#nutrition-plan-render-area', 'pdf', 'برنامه-غذایی.pdf', button);
-        if(button.id === 'save-nutrition-img-btn') exportElement('#nutrition-plan-render-area', 'png', 'برنامه-غذایی.png', button);
-
-        if (button.id === 'regenerate-nutrition-btn') {
-            let freshUserData = getUserData(currentUser);
-            delete freshUserData.nutritionPlan;
-            saveUserData(currentUser, freshUserData);
-            renderNutritionTab(freshUserData);
+        if (target.id === 'save-program-img-btn') {
+            exportElement('#unified-program-view', 'png', 'برنامه-تمرینی.png', target as HTMLButtonElement);
+        }
+        if (target.id === 'save-program-pdf-btn') {
+            exportElement('#unified-program-view', 'pdf', 'برنامه-تمرینی.pdf', target as HTMLButtonElement);
+        }
+        if (target.id === 'save-nutrition-img-btn') {
+            exportElement('#nutrition-plan-render-area', 'png', 'برنامه-غذایی.png', target as HTMLButtonElement);
+        }
+        if (target.id === 'save-nutrition-pdf-btn') {
+            exportElement('#nutrition-plan-render-area', 'pdf', 'برنامه-غذایی.pdf', target as HTMLButtonElement);
+        }
+        if (target.id === 'edit-profile-btn') {
+            toggleProfileLock(false);
         }
 
-        if (button.id === 'open-coach-modal-btn' || button.id === 'change-coach-btn') {
-            const coachModal = document.getElementById('coach-selection-modal');
-            const currentUserData = getUserData(currentUser);
-            selectedCoachInModal = currentUserData.step1?.coachName || null;
-            renderCoachesInModal('all');
-            openModal(coachModal);
+        if(target.id === 'cart-button') {
+            renderCartModalContent(currentUser);
+            openModal(document.getElementById('cart-modal'));
+        }
+        
+        if (target.id === 'open-coach-modal-btn') {
+            selectedCoachInModal = getUserData(currentUser).step1?.coachName || null;
+            renderCoachesInModal();
+            openModal(document.getElementById('coach-selection-modal'));
+        }
+        
+        if(target.id === 'change-coach-btn') {
+            selectedCoachInModal = getUserData(currentUser).step1?.coachName || null;
+            renderCoachesInModal();
+            openModal(document.getElementById('coach-selection-modal'));
+        }
+        
+        const addToCartBtn = target.closest('.add-to-cart-btn');
+        if (addToCartBtn) {
+            const planId = (addToCartBtn as HTMLElement).dataset.planId;
+            const plans = getStorePlans();
+            const planToAdd = plans.find((p:any) => p.planId === planId);
+            if (planToAdd) {
+                const cart = getCart(currentUser);
+                if (!cart.items.some((item: any) => item.planId === planId)) {
+                    cart.items.push(planToAdd);
+                    saveCart(currentUser, cart);
+                    showToast(`${planToAdd.planName} به سبد خرید اضافه شد.`, 'success');
+                    updateCartBadge(currentUser);
+                    renderStoreTab(currentUser);
+                }
+            }
+        }
+    });
+
+    const profileForm = document.getElementById('user-profile-form');
+    profileForm?.addEventListener('input', (e) => {
+        const target = e.target as HTMLInputElement;
+        if(target.classList.contains('range-slider')) {
+            const labelSpan = target.closest('.slider-group')?.querySelector('.value-display');
+            if(labelSpan) labelSpan.textContent = target.value;
+            updateSliderTrack(target);
+        }
+        updateProfileMetricsAndIndicator(profileForm as HTMLElement);
+    });
+     profileForm?.addEventListener('change', () => updateProfileMetricsAndIndicator(profileForm as HTMLElement));
+
+    profileForm?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(profileForm as HTMLFormElement);
+        const freshUserData = getUserData(currentUser);
+        if (!freshUserData.step1) freshUserData.step1 = {};
+
+        const step1Data: any = {
+            ...freshUserData.step1,
+            mobile: formData.get('mobile_user'),
+            gender: formData.get('gender_user'),
+            age: parseInt(formData.get('age') as string, 10),
+            height: parseInt(formData.get('height') as string, 10),
+            weight: parseFloat(formData.get('weight') as string),
+            neck: formData.get('neck'),
+            waist: formData.get('waist'),
+            hip: formData.get('hip'),
+            trainingGoal: formData.get('training_goal_user'),
+            trainingDays: parseInt(formData.get('training_days_user') as string, 10),
+            activityLevel: parseFloat(formData.get('activity_level_user') as string)
+        };
+
+        const metrics = calculateBodyMetrics(profileForm as HTMLElement);
+        if (metrics) {
+            step1Data.bmi = metrics.bmi;
+            step1Data.bmr = metrics.bmr;
+            step1Data.tdee = metrics.tdee;
+            step1Data.bodyFat = metrics.bodyFat;
+            step1Data.lbm = metrics.lbm;
+        }
+
+        freshUserData.step1 = step1Data;
+        
+        saveUserData(currentUser, freshUserData);
+        toggleProfileLock(true);
+        showToast('پروفایل شما با موفقیت ذخیره شد.', 'success');
+        addActivityLog(`${currentUser} updated their profile.`);
+
+        const coachName = freshUserData.step1?.coachName;
+        if (coachName) {
+            setNotification(coachName, 'students-content', '👤');
+        } else {
+             sessionStorage.setItem('fromProfileSave', 'true');
+             renderStoreTab(currentUser);
         }
     });
     
-    const profileForm = document.getElementById('user-profile-form') as HTMLFormElement;
-    if (profileForm) {
-        profileForm.addEventListener('input', e => {
-             const target = e.target as HTMLInputElement;
-             if (target.classList.contains('range-slider')) {
-                const valueDisplay = target.closest('.slider-group')?.querySelector('.value-display');
-                if (valueDisplay) (valueDisplay as HTMLElement).textContent = target.value;
-                updateSliderTrack(target);
-            }
-            updateProfileMetricsAndIndicator(profileForm);
-        });
-        profileForm.addEventListener('change', () => updateProfileMetricsAndIndicator(profileForm));
-        
-        profileForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            let freshUserData = getUserData(currentUser);
-            const formData = new FormData(e.target as HTMLFormElement);
-            
-            freshUserData.step1.age = parseInt(formData.get('age_user') as string);
-            freshUserData.step1.height = parseInt(formData.get('height_user') as string);
-            freshUserData.step1.weight = parseInt(formData.get('weight_user') as string);
-            freshUserData.step1.gender = formData.get('gender_user') as string;
-            freshUserData.step1.activityLevel = parseFloat(formData.get('activity_level_user') as string);
-            freshUserData.step1.neck = parseFloat(formData.get('neck_user') as string) || undefined;
-            freshUserData.step1.waist = parseFloat(formData.get('waist_user') as string) || undefined;
-            freshUserData.step1.hip = parseFloat(formData.get('hip_user') as string) || undefined;
-            
-            freshUserData.step1.mobile = formData.get('mobile_user') as string;
-            freshUserData.step1.trainingGoal = formData.get('training_goal_user') as string;
-            freshUserData.step1.trainingDays = parseInt(formData.get('training_days_user') as string, 10);
-            freshUserData.step1.athleteType = formData.get('athlete_type_user') as string;
-            freshUserData.step1.profileLocked = true;
-
-
-            // Recalculate and save metrics
-            const metrics = calculateBodyMetrics(profileForm as HTMLElement);
-            if (metrics) {
-                freshUserData.step1.tdee = metrics.tdee;
-            }
-
-            saveUserData(currentUser, freshUserData);
-            addActivityLog(`${currentUser} اطلاعات پروفایل خود را به‌روزرسانی کرد.`);
-            
-            const coachUsername = freshUserData.step1?.coachName;
-            if (coachUsername) {
-                setNotification(coachUsername, 'students-content', '🔔');
-            }
-
-            toggleProfileLock(true);
-            
-            // Redirect to store tab
-            sessionStorage.setItem('fromProfileSave', 'true');
-            const storeTab = dashboardContainer.querySelector('.user-dashboard-tab[data-target="store-content"]');
-            if (storeTab) {
-                switchTab(storeTab);
-            }
-        });
-    }
-
-    const bodyMetricsContainer = document.getElementById('body-metrics-container');
-    bodyMetricsContainer?.addEventListener('submit', e => {
-        if((e.target as HTMLElement).id === 'weight-log-form') {
-            e.preventDefault();
-            const input = document.getElementById('new-weight-input') as HTMLInputElement;
-            const newWeight = parseFloat(input.value);
-            if (isNaN(newWeight) || newWeight <= 0) {
-                showToast('لطفا یک وزن معتبر وارد کنید.', 'error');
-                return;
-            }
-
-            let freshUserData = getUserData(currentUser);
-            if (!freshUserData.weightHistory) freshUserData.weightHistory = [];
-            freshUserData.weightHistory.push({ date: new Date().toISOString(), weight: newWeight });
-            saveUserData(currentUser, freshUserData);
-            
-            showToast('وزن جدید ثبت شد!', 'success');
-            input.value = '';
-            renderBodyMetricsCard(freshUserData, 'body-metrics-container');
-            startWeightCountdown(currentUser);
-        }
+    const userModal = document.getElementById('user-dashboard-modal');
+    document.getElementById('close-user-modal-btn')?.addEventListener('click', () => closeModal(userModal));
+    userModal?.addEventListener('click', e => {
+        if((e.target as HTMLElement).id === 'user-dashboard-modal') closeModal(userModal);
     });
-
-    const modal = document.getElementById('user-dashboard-modal');
-    document.getElementById('close-user-modal-btn')?.addEventListener('click', () => closeModal(modal));
-    modal?.addEventListener('click', e => {
-        if ((e.target as HTMLElement).id === 'user-dashboard-modal') closeModal(modal);
-    });
-    modal?.addEventListener('submit', e => {
+    
+    userModal?.addEventListener('submit', e => {
         if((e.target as HTMLElement).id === 'workout-log-form') {
             e.preventDefault();
             const form = e.target as HTMLFormElement;
-            const dayIndex = parseInt(form.dataset.dayIndex!, 10);
+            const dayIndex = parseInt(form.dataset.dayIndex || '-1', 10);
+            if (dayIndex === -1) return;
             
-            let freshUserData = getUserData(currentUser);
-            if(!freshUserData.workoutHistory) freshUserData.workoutHistory = [];
-            
-            const logEntry = {
-                date: new Date().toISOString(),
-                dayIndex: dayIndex,
-                exercises: [] as any[]
-            };
-
-            const exItems = form.querySelectorAll('.exercise-log-item');
-            exItems.forEach(exItem => {
-                const exerciseName = (exItem.querySelector('h4') as HTMLElement).textContent;
-                const setsData: any[] = [];
-                const setRows = exItem.querySelectorAll('.set-log-row');
-                setRows.forEach(setRow => {
-                    const weight = (setRow.querySelector('.weight-log-input') as HTMLInputElement).value;
-                    const reps = (setRow.querySelector('.reps-log-input') as HTMLInputElement).value;
-                    if (reps) {
-                        const setData: { reps: number; weight?: number } = { reps: parseInt(reps, 10) };
-                        if (weight) {
-                            setData.weight = parseFloat(weight);
-                        }
-                        setsData.push(setData);
-                    }
+            const exercises: any[] = [];
+            form.querySelectorAll('.exercise-log-item').forEach(exEl => {
+                const name = (exEl.querySelector('h4') as HTMLElement).textContent;
+                const sets: any[] = [];
+                exEl.querySelectorAll('.set-log-row').forEach(setEl => {
+                    const weight = parseFloat((setEl.querySelector('.weight-log-input') as HTMLInputElement).value) || 0;
+                    const reps = parseFloat((setEl.querySelector('.reps-log-input') as HTMLInputElement).value) || 0;
+                    if(reps > 0) sets.push({ weight, reps });
                 });
-                if (setsData.length > 0) {
-                    logEntry.exercises.push({ name: exerciseName, sets: setsData });
-                }
+                if(sets.length > 0) exercises.push({ name, sets });
             });
-
-            freshUserData.workoutHistory.push(logEntry);
-            saveUserData(currentUser, freshUserData);
-            showToast('تمرین با موفقیت ثبت شد!', 'success');
-            renderBodyMetricsCard(freshUserData, 'body-metrics-container');
-            startWeightCountdown(currentUser);
-            renderUnifiedProgramView(freshUserData);
-            renderDashboardTab(currentUser, freshUserData);
-            closeModal(modal);
+            
+            if(exercises.length > 0) {
+                const freshUserData = getUserData(currentUser);
+                if (!freshUserData.workoutHistory) freshUserData.workoutHistory = [];
+                freshUserData.workoutHistory.push({
+                    date: new Date().toISOString(),
+                    dayIndex,
+                    exercises
+                });
+                saveUserData(currentUser, freshUserData);
+                showToast('تمرین با موفقیت ثبت شد. آفرین!', 'success');
+                addActivityLog(`${currentUser} logged a workout.`);
+                renderDashboardTab(currentUser, freshUserData);
+            }
+            closeModal(userModal);
         }
     });
-
+    
     const cartModal = document.getElementById('cart-modal');
     cartModal?.addEventListener('click', e => {
         if ((e.target as HTMLElement).id === 'cart-modal') closeModal(cartModal);
-
+        
         const target = e.target as HTMLElement;
-        const button = target.closest('button');
-        if (!button) return;
+        if (target.closest('#close-cart-modal-btn')) closeModal(cartModal);
 
-        if (button.classList.contains('remove-cart-item-btn')) {
-            const itemIndex = parseInt(button.dataset.itemIndex!, 10);
-            const cart = getCart(currentUser);
-            cart.items.splice(itemIndex, 1);
-            saveCart(currentUser, cart);
-            updateCartBadge(currentUser);
-            renderCartModalContent(currentUser);
-            renderStoreTab(currentUser);
+        const removeBtn = target.closest('.remove-cart-item-btn') as HTMLButtonElement | null;
+        if (removeBtn) {
+            const index = parseInt(removeBtn.dataset.itemIndex || '-1', 10);
+            if (index > -1) {
+                const cart = getCart(currentUser);
+                cart.items.splice(index, 1);
+                saveCart(currentUser, cart);
+                renderCartModalContent(currentUser);
+                updateCartBadge(currentUser);
+                renderStoreTab(currentUser);
+            }
         }
-
-        if (button.id === 'apply-discount-btn') {
+        
+        if (target.id === 'apply-discount-btn') {
             const input = document.getElementById('discount-code-input') as HTMLInputElement;
             const code = input.value.trim().toUpperCase();
-            const feedbackEl = document.getElementById('discount-feedback');
             const discounts = getDiscounts();
-            
-            if (discounts[code]) {
+            const feedbackEl = document.getElementById('discount-feedback');
+
+            if (code && discounts[code]) {
                 const cart = getCart(currentUser);
                 cart.discountCode = code;
                 saveCart(currentUser, cart);
-                if(feedbackEl) {
+                renderCartModalContent(currentUser);
+                if (feedbackEl) {
                     feedbackEl.textContent = 'کد تخفیف با موفقیت اعمال شد.';
                     feedbackEl.className = 'text-sm h-5 mb-2 text-green-500';
                 }
             } else {
-                 const cart = getCart(currentUser);
-                 cart.discountCode = null;
-                 saveCart(currentUser, cart);
-                if(feedbackEl) {
+                if (feedbackEl) {
                     feedbackEl.textContent = 'کد تخفیف نامعتبر است.';
                     feedbackEl.className = 'text-sm h-5 mb-2 text-red-500';
                 }
             }
-            renderCartModalContent(currentUser);
         }
-
-        if (button.id === 'checkout-btn') {
-            button.classList.add('is-loading');
-            const cart = getCart(currentUser);
-            let freshUserData = getUserData(currentUser);
-            if (!freshUserData.subscriptions) freshUserData.subscriptions = [];
-
-            cart.items.forEach((item: any) => {
-                freshUserData.subscriptions.push({
-                    planId: item.planId,
-                    planName: item.planName,
-                    price: item.price,
-                    purchaseDate: new Date().toISOString(),
-                    fulfilled: false
-                });
-            });
-            
-            saveUserData(currentUser, freshUserData);
-            saveCart(currentUser, { items: [], discountCode: null }); 
-            
-            const coachUsername = freshUserData.step1?.coachName;
-            if (coachUsername) {
+        
+        if (target.id === 'checkout-btn') {
+             const cart = getCart(currentUser);
+             if (cart.items.length === 0) return;
+             
+             const freshUserData = getUserData(currentUser);
+             if (!freshUserData.subscriptions) freshUserData.subscriptions = [];
+             
+             cart.items.forEach((item: any) => {
+                 freshUserData.subscriptions.push({
+                     ...item,
+                     purchaseDate: new Date().toISOString(),
+                     fulfilled: false
+                 });
+             });
+             
+             saveUserData(currentUser, freshUserData);
+             
+             const coachUsername = freshUserData.step1?.coachName;
+             if (coachUsername) {
                 setNotification(coachUsername, 'students-content', '💰');
-            }
-
-            setTimeout(() => {
-                button.classList.remove('is-loading');
-                showToast('خرید شما با موفقیت انجام شد! مربی به زودی برنامه شما را ارسال خواهد کرد.', 'success');
-                closeModal(cartModal);
-                updateCartBadge(currentUser);
-                renderStoreTab(currentUser);
-                addActivityLog(`${currentUser} purchased ${cart.items.length} plan(s).`);
-            }, 1000);
+             }
+             
+             addActivityLog(`${currentUser} purchased ${cart.items.map((i:any) => i.planName).join(', ')}.`);
+             saveCart(currentUser, { items: [], discountCode: null });
+             
+             showToast('خرید شما با موفقیت ثبت شد! مربی به زودی برنامه شما را ارسال می‌کند.', 'success');
+             closeModal(cartModal);
+             renderStoreTab(currentUser);
+             updateCartBadge(currentUser);
         }
     });
-    document.getElementById('close-cart-modal-btn')?.addEventListener('click', () => closeModal(cartModal));
 
-    const coachSelectionModal = document.getElementById('coach-selection-modal');
-    coachSelectionModal?.addEventListener('click', e => {
-        if (!(e.target instanceof HTMLElement)) return;
-        const target = e.target;
+    const coachModal = document.getElementById('coach-selection-modal');
+    coachModal?.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+        if (target.id === 'coach-selection-modal' || target.closest('#close-coach-selection-modal-btn')) {
+            closeModal(coachModal);
+            selectedCoachInModal = null;
+        }
+
+        const filterChip = target.closest('.coach-filter-chip') as HTMLElement | null;
+        if (filterChip) {
+            document.querySelectorAll('.coach-filter-chip').forEach(c => c.classList.remove('active'));
+            filterChip.classList.add('active');
+            renderCoachesInModal(filterChip.dataset.gender as any);
+        }
         
-        const closeBtn = target.closest('#close-coach-modal-btn');
-        if (closeBtn || target.id === 'coach-selection-modal') {
-            closeModal(coachSelectionModal);
-            return;
-        }
-
-        // FIX: Cast closest result to HTMLElement to access dataset property.
-        const filterBtn = target.closest<HTMLElement>('.gender-filter-btn');
-        if (filterBtn) {
-            const gender = filterBtn.dataset.gender as 'all' | 'مرد' | 'زن';
-            coachSelectionModal.querySelectorAll('.gender-filter-btn').forEach(btn => btn.classList.remove('active'));
-            filterBtn.classList.add('active');
-            renderCoachesInModal(gender);
-            return;
-        }
-
-        // FIX: Cast closest result to HTMLElement to access dataset property.
-        const coachCard = target.closest<HTMLElement>('.store-coach-card');
+        const coachCard = target.closest('.store-coach-card') as HTMLElement | null;
         if (coachCard) {
             selectedCoachInModal = coachCard.dataset.coachUsername || null;
-            const activeFilter = (coachSelectionModal.querySelector('.gender-filter-btn.active') as HTMLElement)?.dataset.gender as 'all' | 'مرد' | 'زن' || 'all';
-            renderCoachesInModal(activeFilter); // Re-render to show selection
-            return;
+            renderCoachesInModal((document.querySelector('.coach-filter-chip.active') as HTMLElement)?.dataset.gender as any);
         }
-
-        const confirmBtn = target.closest('#confirm-coach-selection-btn');
-        if (confirmBtn && selectedCoachInModal) {
-            let freshUserData = getUserData(currentUser);
-            const oldCoach = freshUserData.step1.coachName;
+        
+        if (target.id === 'confirm-coach-selection-btn' && selectedCoachInModal) {
+            const freshUserData = getUserData(currentUser);
             freshUserData.step1.coachName = selectedCoachInModal;
             saveUserData(currentUser, freshUserData);
-            
-            showToast(`مربی "${selectedCoachInModal}" انتخاب شد.`, 'success');
+            showToast(`مربی شما با موفقیت انتخاب شد.`, 'success');
+            addActivityLog(`${currentUser} selected ${selectedCoachInModal} as their coach.`);
             renderStoreTab(currentUser);
-            
-            setNotification(selectedCoachInModal, 'students-content', '👋');
-            if (oldCoach && oldCoach !== selectedCoachInModal) {
-                setNotification(oldCoach, 'students-content', '🚶');
-            }
-            
-            closeModal(coachSelectionModal);
-
-            setTimeout(() => {
-                const planSection = document.getElementById('plan-selection-section');
-                const feedbackEl = document.getElementById('coach-selection-feedback');
-                const selectedCoachData = getUserData(selectedCoachInModal!);
-                const coachName = selectedCoachData.step1?.clientName || selectedCoachInModal;
-
-                if (feedbackEl) {
-                    feedbackEl.innerHTML = `<p class="text-green-500 font-semibold animate-fade-in">عالی! حالا یک پلن انتخاب کنید تا <strong>${coachName}</strong> برنامه شما را آماده کند.</p>`;
-                }
-                if (planSection) {
-                    planSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 100);
+            closeModal(coachModal);
         }
     });
-}
 
-const renderCoachSelectionModalHTML = () => {
-    return `
-    <div id="coach-selection-modal" class="modal fixed inset-0 bg-black/60 z-[101] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-4xl h-[80vh] transform scale-95 transition-transform duration-300 relative flex flex-col">
-            <div class="p-4 border-b border-border-primary flex-shrink-0">
-                <div class="flex justify-between items-center">
-                    <h2 class="font-bold text-xl">انتخاب مربی</h2>
-                    <button id="close-coach-modal-btn" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
-                </div>
-                 <div class="flex justify-center items-center gap-1 bg-bg-tertiary p-1 rounded-lg mt-3">
-                    <button class="gender-filter-btn filter-chip active" data-gender="all">همه</button>
-                    <button class="gender-filter-btn filter-chip" data-gender="مرد">آقایان</button>
-                    <button class="gender-filter-btn filter-chip" data-gender="زن">خانم‌ها</button>
-                </div>
-            </div>
-            <div id="modal-coach-list" class="p-4 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
-                <!-- Coaches injected here -->
-            </div>
-            <div class="p-4 border-t border-border-primary flex-shrink-0">
-                <button id="confirm-coach-selection-btn" class="primary-button w-full" disabled>تایید و ادامه</button>
-            </div>
-        </div>
-    </div>
-    `;
-}
-
-export function renderUserDashboard(currentUser: string, userData: any) {
-    const trainingGoals = [
-        { value: 'کاهش وزن', label: 'کاهش وزن', icon: 'trending-down' },
-        { value: 'افزایش حجم', label: 'افزایش حجم', icon: 'dumbbell' },
-        { value: 'تناسب اندام عمومی', label: 'تناسب اندام', icon: 'heart-pulse' },
-        { value: 'افزایش قدرت', label: 'افزایش قدرت', icon: 'zap' }
-    ];
-    const activityLevels = [
-        { value: '1.2', label: 'نشسته', icon: 'sofa' },
-        { value: '1.375', label: 'کم', icon: 'footprints' },
-        { value: '1.55', label: 'متوسط', icon: 'bike' },
-        { value: '1.725', label: 'زیاد', icon: 'user-round-running' },
-        { value: '1.9', label: 'خیلی زیاد', icon: 'flame' }
-    ];
-
-    return `
-    <div id="user-dashboard-container" class="p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto transition-opacity duration-500 opacity-0">
-        <div id="impersonation-banner-placeholder"></div>
-        <header class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-            <div>
-                 <h1 class="text-3xl font-bold">داشبورد شما</h1>
-                 <p class="text-text-secondary">برنامه‌ها و پیشرفت خود را مدیریت کنید.</p>
-            </div>
-            <div class="flex items-center gap-2">
-                 <button id="cart-btn" class="secondary-button !p-2.5 rounded-full relative">
-                    <i data-lucide="shopping-cart"></i>
-                    <span id="cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
-                 </button>
-                 <div id="theme-switcher" class="relative bg-bg-tertiary p-1 rounded-full flex items-center">
-                    <div id="theme-glider" class="absolute h-[calc(100%-0.5rem)] top-[0.25rem] bg-bg-secondary rounded-full shadow-sm transition-all duration-300 ease-in-out"></div>
-                    <button class="theme-option-btn flex-1 z-10 text-sm font-semibold py-1 px-4 rounded-full transition-colors duration-300" data-theme="lemon">روشن</button>
-                    <button class="theme-option-btn flex-1 z-10 text-sm font-semibold py-1 px-4 rounded-full transition-colors duration-300" data-theme="dark">تاریک</button>
-                 </div>
-                 <button id="go-to-home-btn" class="secondary-button">صفحه اصلی</button>
-                 <button id="logout-btn" class="secondary-button">خروج</button>
-            </div>
-        </header>
-        
-        <div class="card !p-1.5 !rounded-full mb-6 relative flex">
-            <div id="tab-indicator"></div>
-            ${[
-                { target: 'profile-content', icon: 'user', label: 'پروفایل' },
-                { target: 'dashboard-content', icon: 'layout-dashboard', label: 'داشبورد' },
-                { target: 'program-content', icon: 'clipboard-list', label: 'برنامه من' },
-                { target: 'nutrition-content', icon: 'utensils', label: 'تغذیه' },
-                { target: 'store-content', icon: 'shopping-bag', label: 'فروشگاه' },
-                { target: 'chat-content', icon: 'message-square', label: 'گفتگو' }
-            ].map(tab => `
-                <button class="user-dashboard-tab" data-target="${tab.target}">
-                    <i data-lucide="${tab.icon}" class="w-5 h-5"></i>
-                    <span class="hidden sm:inline">${tab.label}</span>
-                    <span class="notification-badge"></span>
-                </button>
-            `).join('')}
-        </div>
-        
-        <div id="dashboard-content" class="tab-content-panel hidden"></div>
-        <div id="program-content" class="tab-content-panel hidden animate-fade-in-up">
-            <!-- Content will be injected by renderUnifiedProgramView -->
-        </div>
-        <div id="nutrition-content" class="tab-content-panel hidden">
-             <div id="nutrition-content-wrapper" class="card p-6"></div>
-        </div>
-        <div id="store-content" class="tab-content-panel hidden"></div>
-        <div id="chat-content" class="tab-content-panel hidden">
-            <div class="card p-0 max-w-2xl mx-auto flex flex-col h-[75vh] overflow-hidden">
-                <div id="user-chat-header" class="chat-header flex-shrink-0">
-                    <!-- Coach info will be injected here by JS -->
-                    <div class="flex items-center gap-3 animate-pulse">
-                        <div class="w-10 h-10 rounded-full bg-bg-tertiary"></div>
-                        <div>
-                            <div class="h-4 w-24 bg-bg-tertiary rounded"></div>
-                            <div class="h-3 w-32 bg-bg-tertiary rounded mt-1"></div>
-                        </div>
-                    </div>
-                </div>
-                <div id="coach-chat-messages" class="flex-grow p-4 space-y-4 overflow-y-auto flex flex-col bg-bg-primary">
-                    <!-- Messages injected here -->
-                </div>
-                <form id="coach-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2 flex-shrink-0">
-                    <input type="text" id="coach-chat-input" class="input-field flex-grow" placeholder="پیام خود را بنویسید...">
-                    <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
-                </form>
-            </div>
-        </div>
-        <div id="profile-content" class="tab-content-panel hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2">
-                    <div class="card p-4 md:p-6 animate-fade-in">
-                        <div class="flex items-start gap-4 mb-6">
-                           <img src="https://i.pravatar.cc/150?u=${currentUser}" alt="${userData.step1?.clientName || currentUser}" class="w-16 h-16 rounded-full border-2 border-accent/50 shadow-md">
-                           <div class="flex-grow">
-                               <h2 id="profile-user-name" class="text-2xl font-bold">${userData.step1?.clientName || currentUser}</h2>
-                               <p id="profile-user-email" class="text-text-secondary">${userData.step1?.clientEmail || 'ایمیل ثبت نشده'}</p>
-                           </div>
-                            <button id="edit-profile-btn" class="secondary-button !p-2 hidden items-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i><span class="hidden sm:inline">ویرایش</span></button>
-                        </div>
-                        <form id="user-profile-form">
-                            <fieldset id="profile-fieldset">
-                                <div class="space-y-8">
-                                    <div class="input-group">
-                                        <input type="tel" name="mobile_user" class="input-field w-full !text-sm !py-2" placeholder=" ">
-                                        <label for="mobile_user" class="input-label !top-2 !text-xs">شماره موبایل (اختیاری)</label>
-                                    </div>
-                                    <div>
-                                        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><i data-lucide="users" class="w-5 h-5 text-accent"></i>جنسیت</h3>
-                                        <div class="grid grid-cols-2 gap-4">
-                                            <label class="option-card-label">
-                                                <input type="radio" name="gender_user" value="مرد" class="option-card-input" checked>
-                                                <span class="option-card-content !py-4">مرد</span>
-                                            </label>
-                                            <label class="option-card-label">
-                                                <input type="radio" name="gender_user" value="زن" class="option-card-input">
-                                                <span class="option-card-content !py-4">زن</span>
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><i data-lucide="ruler" class="w-5 h-5 text-accent"></i>اطلاعات بدنی</h3>
-                                        <div class="space-y-4">
-                                            <div class="slider-group">
-                                                <label class="font-semibold text-sm flex justify-between items-center"><span>سن</span><span class="value-display font-bold text-accent">25</span></label>
-                                                <input type="range" name="age_user" min="15" max="80" value="25" class="range-slider age-slider w-full mt-1">
-                                            </div>
-                                            <div class="slider-group">
-                                                <label class="font-semibold text-sm flex justify-between items-center"><span>قد (cm)</span><span class="value-display font-bold text-accent">175</span></label>
-                                                <input type="range" name="height_user" min="140" max="220" value="175" class="range-slider height-slider w-full mt-1">
-                                            </div>
-                                            <div class="slider-group">
-                                                <label class="font-semibold text-sm flex justify-between items-center"><span>وزن (kg)</span><span class="value-display font-bold text-accent">75</span></label>
-                                                <input type="range" name="weight_user" min="40" max="150" value="75" step="0.5" class="range-slider weight-slider w-full mt-1">
-                                            </div>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                                            <input type="number" name="neck_user" class="input-field neck-input" placeholder="دور گردن (cm)">
-                                            <input type="number" name="waist_user" class="input-field waist-input" placeholder="دور کمر (cm)">
-                                            <input type="number" name="hip_user" class="input-field hip-input" placeholder="دور باسن (cm)">
-                                        </div>
-                                        <div class="mt-6">
-                                            <div class="flex justify-between items-center mb-1">
-                                                <h3 class="font-semibold text-sm">شاخص توده بدنی (BMI)</h3>
-                                                <span class="font-bold text-sm bmi-input"></span>
-                                            </div>
-                                            <div class="w-full bg-bg-tertiary rounded-full h-3 relative" title="آبی: کمبود وزن, سبز: نرمال, زرد: اضافه وزن, قرمز: چاقی">
-                                                <div class="absolute top-0 left-0 h-full rounded-l-full bg-blue-500" style="width: 14%;"></div>
-                                                <div class="absolute top-0 h-full bg-green-500" style="left: 14%; width: 26%;"></div>
-                                                <div class="absolute top-0 h-full bg-yellow-500" style="left: 40%; width: 20%;"></div>
-                                                <div class="absolute top-0 h-full rounded-r-full bg-red-500" style="left: 60%; width: 40%;"></div>
-                                                <div id="profile-bmi-indicator" class="absolute -top-1 w-5 h-5 rounded-full bg-white border-2 border-accent shadow-lg transition-all duration-500 ease-out" style="left: -10px;">
-                                                     <div class="w-full h-full rounded-full bg-accent/30"></div>
-                                                </div>
-                                            </div>
-                                            <div class="flex justify-between text-xs text-text-secondary mt-1 px-1">
-                                                <span>۱۸.۵</span>
-                                                <span>۲۵</span>
-                                                <span>۳۰</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><i data-lucide="crosshair" class="w-5 h-5 text-accent"></i>هدف اصلی شما چیست؟</h3>
-                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            ${trainingGoals.map(goal => `
-                                                <label class="option-card-label">
-                                                    <input type="radio" name="training_goal_user" value="${goal.value}" class="option-card-input">
-                                                    <div class="option-card-content flex flex-col items-center justify-center gap-2 h-full p-4">
-                                                        <i data-lucide="${goal.icon}" class="w-7 h-7 text-text-secondary"></i>
-                                                        <span class="font-semibold text-sm">${goal.label}</span>
-                                                    </div>
-                                                </label>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><i data-lucide="award" class="w-5 h-5 text-accent"></i>طراحی برنامه بدنسازی برای اهداف</h3>
-                                        <div class="grid grid-cols-2 gap-4">
-                                            <label class="option-card-label">
-                                                <input type="radio" name="athlete_type_user" value="قدرتی" class="option-card-input">
-                                                <div class="option-card-content flex flex-col items-center justify-center gap-2 h-full p-3">
-                                                    <i data-lucide="dumbbell" class="w-6 h-6 text-text-secondary"></i>
-                                                    <span class="font-semibold text-xs text-center">ورزشکاران قدرتی</span>
-                                                </div>
-                                            </label>
-                                            <label class="option-card-label">
-                                                <input type="radio" name="athlete_type_user" value="استقامتی" class="option-card-input">
-                                                <div class="option-card-content flex flex-col items-center justify-center gap-2 h-full p-3">
-                                                    <i data-lucide="timer" class="w-6 h-6 text-text-secondary"></i>
-                                                    <span class="font-semibold text-xs text-center">ورزشکاران استقامتی</span>
-                                                </div>
-                                            </label>
-                                            <label class="option-card-label">
-                                                <input type="radio" name="athlete_type_user" value="تیمی" class="option-card-input">
-                                                <div class="option-card-content flex flex-col items-center justify-center gap-2 h-full p-3">
-                                                    <i data-lucide="users" class="w-6 h-6 text-text-secondary"></i>
-                                                    <span class="font-semibold text-xs text-center">ورزشکاران تیمی</span>
-                                                </div>
-                                            </label>
-                                            <label class="option-card-label">
-                                                <input type="radio" name="athlete_type_user" value="زیبایی" class="option-card-input">
-                                                <div class="option-card-content flex flex-col items-center justify-center gap-2 h-full p-3">
-                                                    <i data-lucide="person-standing" class="w-6 h-6 text-text-secondary"></i>
-                                                    <span class="font-semibold text-xs text-center">ورزشکاران زیبایی</span>
-                                                </div>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    
-                                    <div>
-                                        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><i data-lucide="calendar-days" class="w-5 h-5 text-accent"></i>چند روز در هفته تمرین می‌کنید؟</h3>
-                                        <div class="grid grid-cols-4 gap-4">
-                                             ${[3, 4, 5, 6].map(day => `
-                                                <label class="option-card-label">
-                                                    <input type="radio" name="training_days_user" value="${day}" class="option-card-input">
-                                                    <span class="option-card-content">${day} روز</span>
-                                                </label>
-                                             `).join('')}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h3 class="font-semibold text-lg mb-4 flex items-center gap-2"><i data-lucide="activity" class="w-5 h-5 text-accent"></i>سطح فعالیت روزانه (خارج از باشگاه)</h3>
-                                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-                                             ${activityLevels.map(level => `
-                                                <label class="option-card-label">
-                                                    <input type="radio" name="activity_level_user" value="${level.value}" class="option-card-input">
-                                                    <div class="option-card-content flex flex-col items-center justify-center gap-1 !py-2 h-full">
-                                                         <i data-lucide="${level.icon}" class="w-5 h-5 text-text-secondary"></i>
-                                                        <span class="font-semibold text-xs">${level.label}</span>
-                                                    </div>
-                                                </label>
-                                             `).join('')}
-                                        </div>
-                                    </div>
-
-                                    <div class="info-card p-4 mt-4">
-                                        <h4 class="font-bold text-md mb-2">متریک‌های تخمینی بدن شما</h4>
-                                        <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
-                                            <p>BMR: <strong class="bmr-input font-mono"></strong> kcal</p>
-                                            <p>TDEE: <strong class="tdee-input font-mono"></strong> kcal</p>
-                                            <p>چربی: <strong class="bodyfat-input font-mono"></strong> %</p>
-                                            <p>LBM: <strong class="lbm-input font-mono"></strong> kg</p>
-                                            <p class="md:col-span-2">وزن ایده آل: <strong class="ideal-weight-input font-mono"></strong></p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </fieldset>
-                            <button type="submit" id="save-profile-btn" class="primary-button w-full !text-base !py-3 mt-6">ذخیره و ارسال به مربی</button>
-                        </form>
-                    </div>
-                </div>
-                <div class="lg:col-span-1">
-                    <div id="body-metrics-container">
-                        <!-- Body metrics card will be rendered here by JS -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modals -->
-    <div id="user-dashboard-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative max-h-[80vh] flex flex-col">
-             <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
-                <h2 id="user-modal-title" class="font-bold text-xl"></h2>
-                <button id="close-user-modal-btn" class="secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
-            </div>
-            <div id="user-modal-body" class="p-6 overflow-y-auto"></div>
-        </div>
-    </div>
-    
-    <div id="cart-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative">
-             <div class="flex justify-between items-center p-4 border-b border-border-primary">
-                <h2 id="cart-modal-title" class="font-bold text-xl">سبد خرید</h2>
-                <button id="close-cart-modal-btn" class="secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
-            </div>
-            <div id="cart-modal-body" class="p-6"></div>
-        </div>
-    </div>
-    ${renderCoachSelectionModalHTML()}
-    `;
+    updateCartBadge(currentUser);
 }
