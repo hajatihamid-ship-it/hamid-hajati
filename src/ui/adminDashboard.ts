@@ -7,6 +7,69 @@ import { sanitizeHTML } from '../utils/dom';
 let activityModalChartInstance: any = null;
 let coachAnalyticsSort = { key: 'rating', order: 'desc' };
 
+const renderAnalyticsPage = () => {
+    const pageContainer = document.getElementById('admin-analytics-page');
+    if (!pageContainer) return;
+
+    const coaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified').map((c: any) => {
+        const data = getUserData(c.username);
+        return {
+            username: c.username,
+            name: data.step1?.clientName || c.username,
+            students: data.students || 0,
+            rating: data.performance?.rating || 0,
+            nps: data.performance?.nps || 0,
+            retentionRate: data.performance?.retentionRate || 0,
+            avgProgramDeliveryHours: data.performance?.avgProgramDeliveryHours || 0
+        };
+    });
+
+    coaches.sort((a, b) => {
+        const key = coachAnalyticsSort.key as keyof typeof a;
+        if (a[key] < b[key]) return coachAnalyticsSort.order === 'asc' ? -1 : 1;
+        if (a[key] > b[key]) return coachAnalyticsSort.order === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const renderSortIcon = (key: string) => {
+        if (coachAnalyticsSort.key !== key) return `<i data-lucide="unfold-vertical" class="w-4 h-4 ml-1 text-text-secondary"></i>`;
+        return coachAnalyticsSort.order === 'asc'
+            ? `<i data-lucide="arrow-up" class="w-4 h-4 ml-1 text-accent"></i>`
+            : `<i data-lucide="arrow-down" class="w-4 h-4 ml-1 text-accent"></i>`;
+    };
+
+    pageContainer.innerHTML = `
+        <h2 class="text-3xl font-extrabold mb-6 text-text-primary">تحلیل عملکرد مربیان</h2>
+        <div class="card overflow-hidden">
+            <table class="w-full text-sm text-right">
+                <thead>
+                    <tr class="font-semibold">
+                        <th class="p-4">نام مربی</th>
+                        <th class="p-4 sortable-header cursor-pointer" data-sort-key="students">تعداد شاگردان ${renderSortIcon('students')}</th>
+                        <th class="p-4 sortable-header cursor-pointer" data-sort-key="rating">امتیاز (از ۵) ${renderSortIcon('rating')}</th>
+                        <th class="p-4 sortable-header cursor-pointer" data-sort-key="nps">شاخص NPS ${renderSortIcon('nps')}</th>
+                        <th class="p-4 sortable-header cursor-pointer" data-sort-key="retentionRate">نرخ نگهداری (%) ${renderSortIcon('retentionRate')}</th>
+                        <th class="p-4 sortable-header cursor-pointer" data-sort-key="avgProgramDeliveryHours">زمان تحویل برنامه (ساعت) ${renderSortIcon('avgProgramDeliveryHours')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${coaches.map(coach => `
+                        <tr class="hover:bg-bg-tertiary transition-colors">
+                            <td class="p-4 font-semibold">${coach.name}</td>
+                            <td class="p-4 text-center">${coach.students}</td>
+                            <td class="p-4 text-center">${coach.rating.toFixed(1)}</td>
+                            <td class="p-4 text-center">${coach.nps}</td>
+                            <td class="p-4 text-center">${coach.retentionRate}%</td>
+                            <td class="p-4 text-center">${coach.avgProgramDeliveryHours}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    window.lucide?.createIcons();
+};
+
 const renderDiscountsAdminHtml = () => {
     const discounts = getDiscounts();
     return `
@@ -40,25 +103,48 @@ const initCharts = () => {
     if (revenueCtx && window.Chart) {
         const existingChart = window.Chart.getChart(revenueCtx);
         if (existingChart) existingChart.destroy();
+
+        const plans = getStorePlans();
+        const revenueData = {
+            'basic-1m': [200000, 300000, 250000, 400000, 350000, 500000],
+            'full-3m': [500000, 800000, 600000, 1000000, 900000, 1200000],
+            'pro-6m': [400000, 600000, 500000, 800000, 700000, 1000000],
+            'nutrition-1m': [100000, 200000, 150000, 300000, 250000, 300000],
+        };
+
+        const datasets = plans.map((plan: any) => ({
+            label: plan.planName,
+            data: revenueData[plan.planId as keyof typeof revenueData] || [],
+            backgroundColor: plan.color,
+        })).filter((ds: any) => ds.data.length > 0);
+
         new window.Chart(revenueCtx, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'],
-                datasets: [{
-                    label: 'درآمد (تومان)',
-                    data: [1200000, 1900000, 1500000, 2500000, 2200000, 3000000],
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    borderColor: 'rgba(16, 185, 129, 1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4
-                }]
+                datasets: datasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true } },
-                plugins: { legend: { display: false } }
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
             }
         });
     }
@@ -74,7 +160,7 @@ const initCharts = () => {
                 datasets: [{
                     label: 'فروش پلن',
                     data: [12, 19, 28, 21],
-                    backgroundColor: ['#3b82f6', '#ec4899', '#10b981', '#f97316'],
+                    backgroundColor: ['#3b82f6', '#ec4899', '#f97316', '#10b981'],
                     hoverOffset: 4
                 }]
             },
@@ -239,61 +325,62 @@ const openUserActivityModal = (username: string) => {
     if (!modal || !body || !title) return;
 
     const userData = getUserData(username);
-
     title.textContent = `نمای کلی فعالیت: ${username}`;
 
-    const latestProgram = (userData.programHistory && userData.programHistory.length > 0) 
-        ? userData.programHistory[0] 
-        : { step2: userData.step2 };
-        
-    const chatHistory = (userData.chatHistory || []).slice(-5);
+    const programHistory = userData.programHistory || [];
+    if (programHistory.length === 0 && userData.step2) {
+        programHistory.push({
+            date: userData.joinDate || new Date().toISOString(),
+            step2: userData.step2,
+            supplements: userData.supplements || []
+        });
+    }
+
+    const chatHistory = (userData.chatHistory || []).slice().reverse();
 
     body.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="md:col-span-1 space-y-4">
-                <div class="card p-4">
-                    <h4 class="font-bold mb-2">متریک‌های کلیدی</h4>
-                    <div class="text-sm space-y-1">
-                        <p><strong>هدف:</strong> ${userData.step1?.trainingGoal || 'N/A'}</p>
-                        <p><strong>وزن:</strong> ${userData.step1?.weight || 'N/A'} kg</p>
-                        <p><strong>قد:</strong> ${userData.step1?.height || 'N/A'} cm</p>
-                        <p><strong>TDEE:</strong> ${Math.round(userData.step1?.tdee) || 'N/A'} kcal</p>
-                    </div>
-                </div>
-                 <div class="card p-4">
-                    <h4 class="font-bold mb-2">تاریخچه وزن</h4>
-                    <div class="h-48"><canvas id="activity-modal-weight-chart"></canvas></div>
+        <div class="space-y-6">
+            <div>
+                <h4 class="font-bold text-lg mb-2 text-accent border-b-2 border-accent/30 pb-2">تاریخچه وزن</h4>
+                <div class="h-64 card p-4"><canvas id="activity-modal-weight-chart"></canvas></div>
+            </div>
+            <div>
+                <h4 class="font-bold text-lg mb-2 text-accent border-b-2 border-accent/30 pb-2">تاریخچه برنامه‌ها</h4>
+                <div class="space-y-4 max-h-96 overflow-y-auto pr-2">
+                    ${programHistory.length > 0 ? programHistory.map((p: any) => `
+                        <details class="day-card card !shadow-none !border mb-2" open>
+                            <summary class="font-bold cursor-pointer flex justify-between items-center p-3">
+                                <span>برنامه تاریخ: ${new Date(p.date).toLocaleDateString('fa-IR')}</span>
+                                <i data-lucide="chevron-down" class="details-arrow"></i>
+                            </summary>
+                            <div class="p-3 border-t border-border-primary text-sm">
+                                ${(p.step2?.days || []).map((day: any) => `
+                                    <div class="mb-2">
+                                        <p class="font-semibold">${day.name}</p>
+                                        <p class="text-xs text-text-secondary">${day.exercises.map((e:any) => e.name).join(' - ')}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </details>
+                    `).join('') : '<p class="text-text-secondary text-center p-4">هنوز برنامه‌ای برای این کاربر ثبت نشده است.</p>'}
                 </div>
             </div>
-            <div class="md:col-span-2 space-y-4">
-                <div class="card p-4">
-                    <h4 class="font-bold mb-2">آخرین برنامه تمرینی</h4>
-                    ${!latestProgram.step2 ? '<p class="text-text-secondary text-sm">برنامه‌ای یافت نشد.</p>' : 
-                        latestProgram.step2.days.slice(0, 2).map((day: any) => `
-                        <div class="mb-2">
-                            <p class="font-semibold text-sm">${day.name}</p>
-                            <p class="text-xs text-text-secondary">${day.exercises.map((e:any) => e.name).join(' - ')}</p>
+            <div>
+                <h4 class="font-bold text-lg mb-2 text-accent border-b-2 border-accent/30 pb-2">تاریخچه گفتگو</h4>
+                <div class="space-y-2 text-sm max-h-96 overflow-y-auto pr-2 bg-bg-tertiary p-3 rounded-lg">
+                    ${chatHistory.length > 0 ? chatHistory.map((msg: any) => `
+                        <div class="p-2 rounded-lg ${msg.sender === 'user' ? 'bg-bg-secondary' : 'bg-green-500/10'}">
+                            <p class="font-semibold text-xs">${msg.sender === 'user' ? username : 'مربی'} - <span class="text-text-secondary">${timeAgo(msg.timestamp)}</span></p>
+                            <p>${sanitizeHTML(msg.message)}</p>
                         </div>
-                        `).join('')
-                    }
-                </div>
-                 <div class="card p-4">
-                    <h4 class="font-bold mb-2">آخرین گفتگوها</h4>
-                    <div class="space-y-2 text-sm">
-                        ${chatHistory.length === 0 ? '<p class="text-text-secondary text-sm">گفتگویی یافت نشد.</p>' :
-                            chatHistory.map((msg: any) => `
-                            <div class="p-2 rounded-lg ${msg.sender === 'user' ? 'bg-bg-tertiary' : 'bg-green-500/10'}">
-                                <p><strong>${msg.sender === 'user' ? username : 'مربی'}:</strong> ${sanitizeHTML(msg.message)}</p>
-                            </div>
-                            `).join('')
-                        }
-                    </div>
+                    `).join('') : '<p class="text-text-secondary text-center p-4">گفتگویی یافت نشد.</p>'}
                 </div>
             </div>
         </div>
     `;
 
     openModal(modal);
+    window.lucide?.createIcons();
 
     const ctx = document.getElementById('activity-modal-weight-chart') as HTMLCanvasElement;
     if (activityModalChartInstance) activityModalChartInstance.destroy();
@@ -306,7 +393,9 @@ const openUserActivityModal = (username: string) => {
                     data: (userData.weightHistory || []).map((e: any) => e.weight),
                     borderColor: 'var(--accent)',
                     tension: 0.2,
-                    pointRadius: 2
+                    pointRadius: 2,
+                    backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)',
+                    fill: true,
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
@@ -510,6 +599,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         const email = (editUserForm.elements.namedItem('email') as HTMLInputElement).value.trim();
         const password = (editUserForm.elements.namedItem('password') as HTMLInputElement).value;
         const role = (editUserForm.elements.namedItem('role') as HTMLSelectElement).value;
+        const coach = (editUserForm.elements.namedItem('coach') as HTMLSelectElement).value;
 
         if (!originalUsername || !email || !role) {
             showToast('لطفاً تمام فیلدهای لازم را پر کنید.', 'error');
@@ -530,9 +620,23 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             users[userIndex].password = password;
         }
         users[userIndex].coachStatus = role === 'coach' ? (users[userIndex].coachStatus || 'verified') : null;
+        
+        let logMessage = `ادمین اطلاعات کاربر ${originalUsername} را ویرایش کرد.`;
+
+        if (role === 'user') {
+            const userData = getUserData(originalUsername);
+            const oldCoach = userData.step1?.coachName || 'هیچکس';
+            const newCoach = coach || null;
+            if (oldCoach !== newCoach) {
+                userData.step1.coachName = newCoach;
+                saveUserData(originalUsername, userData);
+                const newCoachName = coach ? (getUserData(coach).step1?.clientName || coach) : 'هیچکس';
+                logMessage = `ادمین مربی کاربر ${originalUsername} را از ${oldCoach} به ${newCoachName} تغییر داد.`;
+            }
+        }
 
         saveUsers(users);
-        addActivityLog(`ادمین اطلاعات کاربر ${originalUsername} را ویرایش کرد.`);
+        addActivityLog(logMessage);
         showToast('اطلاعات کاربر با موفقیت ویرایش شد.', 'success');
         refreshUserTables();
         closeModal(editUserModal);
@@ -595,11 +699,11 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             return;
         }
 
-        const actionBtn = target.closest('button[data-action]');
+        const actionBtn = target.closest<HTMLButtonElement>('button[data-action]');
         if (!actionBtn) return;
 
-        const action = actionBtn.getAttribute('data-action')!;
-        const username = actionBtn.getAttribute('data-username')!;
+        const action = actionBtn.dataset.action!;
+        const username = actionBtn.dataset.username!;
         
         const users = getUsers();
         const userIndex = users.findIndex((u: any) => u.username === username);
@@ -624,6 +728,26 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                         (form.elements.namedItem('email') as HTMLInputElement).value = userToEdit.email;
                         (form.elements.namedItem('role') as HTMLSelectElement).value = userToEdit.role;
                         (form.elements.namedItem('password') as HTMLInputElement).value = '';
+
+                        const coachAssignmentContainer = document.getElementById('coach-assignment-container');
+                        const coachSelect = document.getElementById('edit-coach') as HTMLSelectElement;
+                        if (coachAssignmentContainer && coachSelect) {
+                            if (userToEdit.role === 'user') {
+                                const verifiedCoaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
+                                const userToEditData = getUserData(userToEdit.username);
+                                coachSelect.innerHTML = '<option value="">بدون مربی</option>'; // "No Coach" option
+                                verifiedCoaches.forEach((coach: any) => {
+                                    const option = document.createElement('option');
+                                    option.value = coach.username;
+                                    option.textContent = getUserData(coach.username).step1?.clientName || coach.username;
+                                    coachSelect.appendChild(option);
+                                });
+                                coachSelect.value = userToEditData.step1?.coachName || '';
+                                coachAssignmentContainer.classList.remove('hidden');
+                            } else {
+                                coachAssignmentContainer.classList.add('hidden');
+                            }
+                        }
                         openModal(modal);
                     }
                 }
@@ -660,15 +784,15 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 logMessage = `ادمین همکاری با ${username} را لغو کرد.`;
                 break;
             case 'edit-plan': {
-                const planId = actionBtn.getAttribute('data-plan-id');
+                const planId = actionBtn.dataset.planId;
                 const plans = getStorePlans();
                 const plan = plans.find((p:any) => p.planId === planId);
                 if(plan) openPlanModal(plan);
                 return;
             }
             case 'delete-plan': {
-                const planId = actionBtn.getAttribute('data-plan-id');
-                if (confirm('آیا از حذف این پلن مطمئن هستید؟ این عمل غیرقابل بازگشت است.')) {
+                const planId = actionBtn.dataset.planId;
+                if (planId && confirm('آیا از حذف این پلن مطمئن هستید؟ این عمل غیرقابل بازگشت است.')) {
                     let plans = getStorePlans();
                     plans = plans.filter((p: any) => p.planId !== planId);
                     saveStorePlans(plans);
@@ -682,7 +806,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 openDiscountModal();
                 return;
             case 'edit-discount': {
-                const code = actionBtn.getAttribute('data-code');
+                const code = actionBtn.dataset.code;
                 const discounts = getDiscounts();
                 if (code && discounts[code]) {
                     openDiscountModal({ code, ...discounts[code] });
@@ -690,7 +814,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 return;
             }
             case 'delete-discount': {
-                const code = actionBtn.getAttribute('data-code');
+                const code = actionBtn.dataset.code;
                 if (code && confirm(`آیا از حذف کد تخفیف "${code}" مطمئن هستید؟`)) {
                     const discounts = getDiscounts();
                     delete discounts[code];
@@ -716,9 +840,9 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         const form = document.getElementById('plan-form') as HTMLFormElement;
         const titleEl = document.getElementById('plan-modal-title');
         if (!modal || !form || !titleEl) return;
-
+    
         form.reset();
-
+    
         const dataToDisplay = planData || {
             planId: '',
             planName: 'پلن جدید',
@@ -726,11 +850,12 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             price: 100000,
             features: ['ویژگی ۱', 'ویژگی ۲', 'ویژگی ۳'],
             emoji: '🚀',
-            color: '#3b82f6'
+            color: '#3b82f6',
+            access: ['workout_plan', 'chat']
         };
-
+    
         titleEl.textContent = planData ? 'ویرایش پلن' : 'افزودن پلن جدید';
-
+    
         (form.elements.namedItem('planId') as HTMLInputElement).value = dataToDisplay.planId;
         (form.elements.namedItem('planName') as HTMLInputElement).value = dataToDisplay.planName;
         (form.elements.namedItem('planDescription') as HTMLInputElement).value = dataToDisplay.description;
@@ -738,7 +863,11 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         (form.elements.namedItem('planFeatures') as HTMLTextAreaElement).value = (dataToDisplay.features || []).join('\n');
         (form.elements.namedItem('planEmoji') as HTMLInputElement).value = dataToDisplay.emoji || '🚀';
         (form.elements.namedItem('planColor') as HTMLInputElement).value = dataToDisplay.color || '#3b82f6';
-
+        
+        (form.querySelectorAll('input[name="planAccess"]') as NodeListOf<HTMLInputElement>).forEach(cb => {
+            cb.checked = dataToDisplay.access?.includes(cb.value) ?? false;
+        });
+    
         openModal(modal);
     };
 
@@ -761,7 +890,8 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             price: parseInt(formData.get('planPrice') as string, 10),
             features: (formData.get('planFeatures') as string).split('\n').filter(f => f.trim() !== ''),
             emoji: formData.get('planEmoji') as string,
-            color: formData.get('planColor') as string
+            color: formData.get('planColor') as string,
+            access: formData.getAll('planAccess') as string[]
         };
 
         if (!planData.planName || isNaN(planData.price)) {
@@ -872,7 +1002,6 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
 
         cmsPage.addEventListener('click', e => {
             const target = e.target as HTMLElement;
-            // FIX: Cast Element to HTMLElement to safely access dataset property.
             const button = target.closest<HTMLButtonElement>('button[data-action]');
             if (!button) return;
 
@@ -914,7 +1043,6 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                     input.focus();
                 }
             } else if (action === 'delete-supplement') {
-                 // FIX: Use optional chaining with HTMLElement to safely access dataset
                  const supCategory = listItem?.dataset.supCategory;
                  const supIndex = parseInt(listItem?.dataset.supIndex || '-1', 10);
                  if (supCategory && supIndex > -1 && confirm('آیا از حذف این مکمل مطمئن هستید؟')) {
@@ -926,7 +1054,6 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                      refreshCmsLists();
                  }
             } else if(action === 'edit-supplement') {
-                 // FIX: Use optional chaining with HTMLElement to safely access dataset
                  const supCategory = listItem?.dataset.supCategory;
                  const supIndex = parseInt(listItem?.dataset.supIndex || '-1', 10);
                  if (supCategory && supIndex > -1) {
@@ -939,7 +1066,6 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         const saveExerciseEdit = (input: HTMLInputElement) => {
             const originalName = input.dataset.originalName;
             const newName = input.value.trim();
-            // FIX: Cast closest result to HTMLElement to access dataset property
             const groupName = input.closest<HTMLElement>('.cms-group-details')?.dataset.groupName;
 
             if (newName && originalName && groupName && newName !== originalName) {
@@ -1029,11 +1155,10 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             if (coachUsername) {
                 const allUsers = getUsers();
                 const students = allUsers.filter(u => {
-                    if (u.role !== 'user') return false;
                     const userData = getUserData(u.username);
-                    return userData.step1?.coachName === coachUsername;
+                    return u.role === 'user' && userData.step1?.coachName === coachUsername;
                 });
-                studentSelect.innerHTML += students.map(s => `<option value="${s.username}">${s.step1?.clientName || s.username}</option>`).join('');
+                studentSelect.innerHTML += students.map(s => `<option value="${s.username}">${getUserData(s.username).step1?.clientName || s.username}</option>`).join('');
                 studentSelect.disabled = false;
             }
         });
@@ -1045,13 +1170,17 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             if (studentUsername) {
                 const userData = getUserData(studentUsername);
                 const chatHistory = userData.chatHistory || [];
-                chatContainer.innerHTML = chatHistory.length > 0 ? chatHistory.map((msg: any) => `
-                    <div class="message ${msg.sender === 'coach' ? 'coach-message' : 'user-message'}">
-                        <p class="font-bold text-xs">${msg.sender === 'user' ? (userData.step1?.clientName || studentUsername) : 'مربی'}</p>
-                        ${sanitizeHTML(msg.message)}
-                        <p class="text-xs text-right mt-1 opacity-60">${timeAgo(msg.timestamp)}</p>
-                    </div>
-                `).join('') : '<p class="text-text-secondary">گفتگویی یافت نشد.</p>';
+                chatContainer.innerHTML = chatHistory.length > 0 ? chatHistory.map((msg: any) => {
+                     const isCoachMsg = msg.sender === 'coach';
+                     const bubbleClass = isCoachMsg ? 'bg-green-500/10' : 'bg-bg-secondary';
+                     const name = isCoachMsg ? (getUserData(userData.step1?.coachName).step1?.clientName || 'مربی') : (userData.step1?.clientName || studentUsername);
+                     return `
+                        <div class="p-2 rounded-lg ${bubbleClass}">
+                            <p class="font-bold text-xs">${name} - <span class="text-text-secondary">${timeAgo(msg.timestamp)}</span></p>
+                            <div class="message-content">${sanitizeHTML(msg.message)}</div>
+                        </div>
+                    `
+                }).join('') : '<p class="text-text-secondary p-4">گفتگویی یافت نشد.</p>';
             } else {
                 chatContainer.innerHTML = '<p class="text-text-secondary">شاگردی را برای مشاهده گفتگو انتخاب کنید.</p>';
             }
@@ -1062,7 +1191,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             e.preventDefault();
             const title = (announcementForm.elements.namedItem('announcement-title') as HTMLInputElement).value;
             const message = (announcementForm.elements.namedItem('announcement-message') as HTMLTextAreaElement).value;
-            const target = (announcementForm.elements.namedItem('announcement-target') as HTMLInputElement).value;
+            const target = (announcementForm.querySelector('input[name="announcement-target"]:checked') as HTMLInputElement).value;
             
             if (!title || !message) {
                 showToast('عنوان و پیام اطلاعیه الزامی است.', 'error');
@@ -1266,11 +1395,16 @@ export function renderAdminDashboard() {
             </nav>
             <div class="space-y-2">
                 <button id="go-to-home-btn" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="home" class="w-6"></i><span>صفحه اصلی</span></button>
-                <button id="theme-toggle-btn-dashboard" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="sun" class="w-6"></i><span>تغییر پوسته</span></button>
+                <div id="theme-switcher" class="bg-bg-tertiary rounded-xl p-1 relative flex items-center justify-around">
+                    <div id="theme-glider"></div>
+                    <button data-theme="lemon" class="theme-option-btn flex-1 py-2 px-4 z-10 rounded-lg">روشن</button>
+                    <button data-theme="dark" class="theme-option-btn flex-1 py-2 px-4 z-10 rounded-lg">تاریک</button>
+                </div>
                 <button id="logout-btn" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="log-out" class="w-6"></i><span>خروج</span></button>
             </div>
         </aside>
         <main class="flex-1 p-6 lg:p-8 overflow-y-auto bg-bg-primary">
+            <div id="impersonation-banner-placeholder"></div>
             <!-- Dashboard Page -->
             <div id="admin-dashboard-page" class="page">
                 <h2 class="text-3xl font-extrabold mb-6 text-text-primary">مرکز فرماندهی</h2>
@@ -1315,17 +1449,17 @@ export function renderAdminDashboard() {
                         <div class="space-y-4">
                              ${[
                                 { name: 'coach10186', students: 28, avatar: 'https://i.pravatar.cc/150?u=coach10186' },
-                                { name: 'Jessica Miller', students: 21, avatar: 'https://i.pravatar.cc/150?u=jessica' },
-                                { name: 'David Wilson', students: 15, avatar: 'https://i.pravatar.cc/150?u=david' }
-                            ].map((coach, index) => `
+                                { name: 'morteza_heydari', students: 22, avatar: 'https://i.pravatar.cc/150?u=morteza_heydari' },
+                                { name: 'sara_ahmadi', students: 12, avatar: 'https://i.pravatar.cc/150?u=sara_ahmadi' }
+                            ].slice(0,3).map((coach, index) => `
                                 <div class="flex items-center gap-3">
                                     <span class="font-bold text-text-secondary w-5">${index + 1}.</span>
-                                    <img src="${coach.avatar}" class="w-10 h-10 rounded-full" alt="${coach.name}">
+                                     <img src="${coach.avatar}" class="w-10 h-10 rounded-full" alt="${coach.name}">
                                     <div class="flex-grow">
-                                        <p class="font-semibold text-text-primary">${coach.name}</p>
+                                        <p class="font-semibold text-text-primary">${getUserData(coach.name).step1?.clientName || coach.name}</p>
                                         <p class="text-xs text-text-secondary">${coach.students} شاگرد فعال</p>
                                     </div>
-                                    <button class="secondary-button !py-1 !px-2 !text-xs">مشاهده</button>
+                                    <button class="secondary-button !py-1 !px-2 !text-xs" data-action="edit-user" data-username="${coach.name}">مشاهده</button>
                                 </div>
                             `).join('')}
                         </div>
@@ -1409,9 +1543,9 @@ export function renderAdminDashboard() {
                             <div>
                                 <p class="text-sm font-semibold mb-2">ارسال برای:</p>
                                 <div class="flex items-center gap-4">
-                                    <label><input type="radio" name="announcement-target" value="all" checked> همه</label>
-                                    <label><input type="radio" name="announcement-target" value="users"> فقط کاربران</label>
-                                    <label><input type="radio" name="announcement-target" value="coaches"> فقط مربیان</label>
+                                    <label class="custom-checkbox-label"><input type="radio" name="announcement-target" value="all" class="custom-checkbox" checked><span>همه</span></label>
+                                    <label class="custom-checkbox-label"><input type="radio" name="announcement-target" value="users" class="custom-checkbox"><span>فقط کاربران</span></label>
+                                    <label class="custom-checkbox-label"><input type="radio" name="announcement-target" value="coaches" class="custom-checkbox"><span>فقط مربیان</span></label>
                                 </div>
                             </div>
                             <button type="submit" class="primary-button w-full">ارسال اطلاعیه</button>
@@ -1610,6 +1744,12 @@ export function renderAdminDashboard() {
                             <option value="coach">مربی</option>
                         </select>
                     </div>
+                    <div id="coach-assignment-container" class="hidden">
+                        <label for="edit-coach" class="block text-sm font-medium text-text-secondary mb-1">مربی</label>
+                        <select id="edit-coach" name="coach" class="input-field w-full">
+                            <!-- Options populated by JS -->
+                        </select>
+                    </div>
                     <div class="pt-2">
                         <button type="submit" class="primary-button w-full !py-3 !text-base">ذخیره تغییرات</button>
                     </div>
@@ -1629,27 +1769,35 @@ export function renderAdminDashboard() {
                         <input name="planName" type="text" class="input-field w-full" placeholder=" " required>
                         <label class="input-label">نام پلن</label>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div class="input-group sm:col-span-1">
-                            <input name="planEmoji" type="text" class="input-field w-full text-center !p-2" placeholder=" " maxlength="2">
-                            <label class="input-label">ایموجی</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="input-group md:col-span-2">
+                            <input name="planDescription" type="text" class="input-field w-full" placeholder=" " required>
+                            <label class="input-label">توضیحات کوتاه</label>
                         </div>
-                        <div class="sm:col-span-2">
-                            <label for="plan-color-input" class="block text-sm font-medium text-text-secondary mb-1">رنگ پلن</label>
-                            <input id="plan-color-input" name="planColor" type="color" class="input-field w-full !p-1" value="#3b82f6">
+                        <div class="input-group">
+                            <input name="planPrice" type="number" class="input-field w-full" placeholder=" " required>
+                            <label class="input-label">قیمت (تومان)</label>
+                        </div>
+                        <div class="input-group">
+                            <input name="planEmoji" type="text" class="input-field w-full" placeholder=" " required>
+                            <label class="input-label">ایموجی (مثال: 🚀)</label>
+                        </div>
+                        <div class="input-group col-span-2">
+                            <label class="block text-sm font-medium text-text-secondary mb-1">رنگ پلن</label>
+                            <input name="planColor" type="color" class="input-field w-full !p-1" required>
                         </div>
                     </div>
                     <div class="input-group">
-                        <input name="planDescription" type="text" class="input-field w-full" placeholder=" " required>
-                        <label class="input-label">توضیحات</label>
+                        <textarea name="planFeatures" class="input-field w-full min-h-[100px]" placeholder=" " required></textarea>
+                        <label class="input-label">ویژگی‌ها (هر کدام در یک خط)</label>
                     </div>
-                    <div class="input-group">
-                        <input name="planPrice" type="number" class="input-field w-full" placeholder=" " required>
-                        <label class="input-label">قیمت (تومان)</label>
-                    </div>
-                     <div class="input-group">
-                        <textarea name="planFeatures" class="input-field w-full min-h-[100px]" placeholder=" "></textarea>
-                        <label class="input-label">ویژگی‌ها (هر ویژگی در یک خط)</label>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">سطوح دسترسی</label>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            <label class="custom-checkbox-label text-sm"><input type="checkbox" name="planAccess" value="workout_plan" class="custom-checkbox"><span>برنامه تمرینی</span></label>
+                            <label class="custom-checkbox-label text-sm"><input type="checkbox" name="planAccess" value="nutrition_plan" class="custom-checkbox"><span>برنامه غذایی</span></label>
+                            <label class="custom-checkbox-label text-sm"><input type="checkbox" name="planAccess" value="chat" class="custom-checkbox"><span>چت با مربی</span></label>
+                        </div>
                     </div>
                     <div class="pt-2">
                         <button type="submit" class="primary-button w-full !py-3 !text-base">ذخیره پلن</button>
@@ -1660,18 +1808,50 @@ export function renderAdminDashboard() {
     </div>
     
     <div id="view-activity-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-4xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
+        <div class="card w-full max-w-2xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
                 <h2 id="view-activity-modal-title" class="font-bold text-xl"></h2>
-                <button id="close-view-activity-modal-btn" class="secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
+                <button id="close-view-activity-modal-btn" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
             </div>
             <div id="view-activity-modal-body" class="p-6 overflow-y-auto">
                 <!-- Content injected by JS -->
             </div>
         </div>
     </div>
-
-    <div id="add-edit-supplement-modal" class="modal fixed inset-0 bg-black/60 z-[101] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+    
+    <div id="add-edit-discount-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative">
+             <button id="close-discount-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
+            <div class="p-8">
+                <h2 id="discount-modal-title" class="font-bold text-2xl text-center mb-6"></h2>
+                <form id="discount-form" class="space-y-4" novalidate>
+                    <input type="hidden" name="originalCode">
+                    <div class="input-group">
+                        <input name="discountCode" type="text" class="input-field w-full" placeholder=" " required>
+                        <label class="input-label">کد تخفیف</label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">نوع</label>
+                            <select name="discountType" class="input-field w-full">
+                                <option value="percentage">درصدی</option>
+                                <option value="fixed">مبلغ ثابت</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <input name="discountValue" type="number" class="input-field w-full" placeholder=" " required>
+                            <label class="input-label">مقدار</label>
+                        </div>
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit" class="primary-button w-full !py-3 !text-base">ذخیره</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div id="add-edit-supplement-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
              <button id="close-supplement-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
             <div class="p-8">
@@ -1679,25 +1859,26 @@ export function renderAdminDashboard() {
                 <form id="supplement-form" class="space-y-4" novalidate>
                     <input type="hidden" name="supCategory">
                     <input type="hidden" name="supIndex">
-                    <div class="input-group">
-                        <input name="supName" type="text" class="input-field w-full" placeholder=" " required>
-                        <label class="input-label">نام مکمل</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="input-group">
+                            <input name="supName" type="text" class="input-field w-full" placeholder=" " required>
+                            <label class="input-label">نام مکمل</label>
+                        </div>
+                         <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">دسته بندی</label>
+                            <select id="supCategorySelect" name="supCategorySelect" class="input-field w-full"></select>
+                        </div>
                     </div>
-                    <div>
-                        <label for="supCategorySelect" class="block text-sm font-medium text-text-secondary mb-1">دسته بندی</label>
-                        <select id="supCategorySelect" name="supCategorySelect" class="input-field w-full">
-                        </select>
-                    </div>
                     <div class="input-group">
-                        <textarea name="supNote" class="input-field w-full min-h-[80px]" placeholder=" "></textarea>
+                        <textarea name="supNote" class="input-field w-full" placeholder=" "></textarea>
                         <label class="input-label">توضیحات کوتاه</label>
                     </div>
                      <div class="input-group">
-                        <textarea name="supDosage" class="input-field w-full" placeholder=" "></textarea>
-                        <label class="input-label">دوزها (با کاما جدا کنید)</label>
+                        <textarea name="supDosage" class="input-field w-full" placeholder=" " required></textarea>
+                        <label class="input-label">دوزهای مصرفی (با کاما جدا کنید)</label>
                     </div>
                      <div class="input-group">
-                        <textarea name="supTiming" class="input-field w-full" placeholder=" "></textarea>
+                        <textarea name="supTiming" class="input-field w-full" placeholder=" " required></textarea>
                         <label class="input-label">زمان‌های مصرف (با کاما جدا کنید)</label>
                     </div>
                     <div class="pt-2">
@@ -1707,203 +1888,5 @@ export function renderAdminDashboard() {
             </div>
         </div>
     </div>
-    
-    <div id="add-edit-discount-modal" class="modal fixed inset-0 bg-black/60 z-[101] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative">
-            <button id="close-discount-modal-btn" class="absolute top-3 left-3 secondary-button !p-2 rounded-full z-10"><i data-lucide="x"></i></button>
-            <div class="p-8">
-                <h2 id="discount-modal-title" class="font-bold text-2xl text-center mb-6"></h2>
-                <form id="discount-form" class="space-y-4" novalidate>
-                    <input type="hidden" name="originalCode">
-                    <div class="input-group">
-                        <input name="discountCode" type="text" class="input-field w-full" placeholder=" " required>
-                        <label class="input-label">کد تخفیف</label>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-text-secondary mb-1">نوع تخفیف</label>
-                        <select name="discountType" class="input-field w-full">
-                            <option value="percentage">درصدی (%)</option>
-                            <option value="fixed">مبلغ ثابت (تومان)</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <input name="discountValue" type="number" class="input-field w-full" placeholder=" " required>
-                        <label class="input-label">مقدار</label>
-                    </div>
-                    <div class="pt-2">
-                        <button type="submit" class="primary-button w-full !py-3 !text-base">ذخیره</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
     `;
 }
-
-const renderStarRating = (rating: number) => {
-    let stars = '';
-    for (let i = 1; i <= 5; i++) {
-        if (i <= rating) {
-            stars += '<i class="fas fa-star text-yellow-400"></i>';
-        } else if (i - rating < 1) {
-            stars += '<i class="fas fa-star-half-alt text-yellow-400"></i>';
-        } else {
-            stars += '<i class="far fa-star text-yellow-400"></i>';
-        }
-    }
-    return `<div class="flex items-center gap-1">${stars} <span class="text-xs text-text-secondary ml-1">(${rating.toFixed(1)})</span></div>`;
-};
-
-const renderProgressBar = (value: number, colorClass: string) => {
-    return `
-        <div class="w-20 bg-bg-tertiary rounded-full h-2">
-            <div class="${colorClass} h-2 rounded-full" style="width: ${value}%"></div>
-        </div>
-        <span class="font-semibold text-sm">${value}%</span>
-    `;
-};
-
-const calculateAvgWeightChange = (coachUsername: string) => {
-    const students = getUsers().filter((u: any) => u.role === 'user' && getUserData(u.username).step1?.coachName === coachUsername);
-    if (students.length === 0) return { change: 0, trend: 'neutral' };
-
-    let totalChange = 0;
-    let studentsWithHistory = 0;
-
-    students.forEach((student: any) => {
-        const userData = getUserData(student.username);
-        if (userData.weightHistory && userData.weightHistory.length >= 2) {
-            const firstWeight = userData.weightHistory[0].weight;
-            const lastWeight = userData.weightHistory[userData.weightHistory.length - 1].weight;
-            totalChange += (lastWeight - firstWeight);
-            studentsWithHistory++;
-        }
-    });
-
-    if (studentsWithHistory === 0) return { change: 0, trend: 'neutral' };
-
-    const avgChange = totalChange / studentsWithHistory;
-    const trend = avgChange > 0.1 ? 'up' : avgChange < -0.1 ? 'down' : 'neutral';
-
-    return { change: parseFloat(avgChange.toFixed(1)), trend };
-};
-
-const renderAnalyticsPage = () => {
-    const pageContainer = document.getElementById('admin-analytics-page');
-    if (!pageContainer) return;
-
-    const coaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified').map((c: any) => ({
-        ...c,
-        ...getUserData(c.username)
-    }));
-    
-    if (coaches.length === 0) {
-        pageContainer.innerHTML = '<p class="text-text-secondary text-center p-8">هیچ مربی فعالی برای نمایش آمار وجود ندارد.</p>';
-        return;
-    }
-
-    // --- KPI Calculations ---
-    const totalRetention = coaches.reduce((sum, c) => sum + (c.performance?.retentionRate || 0), 0);
-    const avgRetention = totalRetention / coaches.length;
-    const totalNps = coaches.reduce((sum, c) => sum + (c.performance?.nps || 0), 0);
-    const avgNps = totalNps / coaches.length;
-    
-    // --- Sorting Logic ---
-    coaches.sort((a, b) => {
-        let valA, valB;
-        if (coachAnalyticsSort.key === 'progress') {
-            valA = calculateAvgWeightChange(a.username).change;
-            valB = calculateAvgWeightChange(b.username).change;
-        } else {
-            valA = a.performance?.[coachAnalyticsSort.key] || 0;
-            valB = b.performance?.[coachAnalyticsSort.key] || 0;
-        }
-        
-        if (coachAnalyticsSort.order === 'asc') {
-            return valA - valB;
-        }
-        return valB - valA;
-    });
-
-    const headers = [
-        { key: 'coach', label: 'مربی' },
-        { key: 'retentionRate', label: 'نرخ حفظ' },
-        { key: 'progress', label: 'پیشرفت شاگردان' },
-        { key: 'avgProgramDeliveryHours', label: 'زمان تحویل برنامه' },
-        { key: 'nps', label: 'شاخص NPS' },
-        { key: 'rating', label: 'امتیاز' },
-    ];
-    
-    const kpiCards = [
-        { title: 'میانگین نرخ حفظ', value: `${avgRetention.toFixed(1)}%`, icon: 'fa-users', color: 'admin-accent-blue' },
-        { title: 'میانگین امتیاز', value: (coaches.reduce((sum, c) => sum + (c.performance?.rating || 0), 0) / coaches.length).toFixed(1), icon: 'fa-star', color: 'admin-accent-yellow' },
-        { title: 'میانگین NPS', value: `${avgNps.toFixed(1)}`, icon: 'fa-smile', color: 'admin-accent-green' }
-    ];
-
-    pageContainer.innerHTML = `
-        <h2 class="text-3xl font-extrabold mb-6 text-text-primary">تحلیل عملکرد مربیان</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            ${kpiCards.map(kpi => `
-                <div class="admin-kpi-card">
-                    <div class="icon-container" style="background-color: var(--${kpi.color}); color: white;"><i class="fas ${kpi.icon} fa-lg"></i></div>
-                    <div>
-                        <p class="text-sm text-text-secondary">${kpi.title}</p>
-                        <p class="text-2xl font-bold text-text-primary">${kpi.value}</p>
-                    </div>
-                </div>`).join('')}
-        </div>
-        <div class="card overflow-hidden">
-            <table class="w-full text-sm text-right">
-                <thead>
-                    <tr class="font-semibold">
-                        ${headers.map(h => `
-                            <th class="p-4 cursor-pointer sortable-header" data-sort-key="${h.key}">
-                                <div class="flex items-center gap-2">
-                                    ${h.label}
-                                    ${coachAnalyticsSort.key === h.key ? `<i data-lucide="${coachAnalyticsSort.order === 'asc' ? 'arrow-up' : 'arrow-down'}" class="w-4 h-4"></i>` : ''}
-                                </div>
-                            </th>
-                        `).join('')}
-                        <th class="p-4">جزئیات</th>
-                    </tr>
-                </thead>
-                <tbody id="analytics-table-body">
-                    ${coaches.map(coach => {
-                        const performance = coach.performance || {};
-                        const progress = calculateAvgWeightChange(coach.username);
-                        const progressColor = progress.trend === 'up' ? 'text-red-500' : progress.trend === 'down' ? 'text-green-500' : 'text-text-secondary';
-                        const progressIcon = progress.trend === 'up' ? 'trending-up' : progress.trend === 'down' ? 'trending-down' : 'minus';
-
-                        return `
-                        <tr class="hover:bg-bg-tertiary transition-colors">
-                            <td class="p-4">
-                                <div class="flex items-center gap-3">
-                                    <img src="${coach.profile?.avatar || `https://i.pravatar.cc/150?u=${coach.username}`}" class="w-10 h-10 rounded-full object-cover" alt="${coach.step1?.clientName}">
-                                    <div>
-                                        <p class="font-semibold">${coach.step1?.clientName || coach.username}</p>
-                                        <p class="text-xs text-text-secondary">${coach.students || 0} شاگرد</p>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="p-4"><div class="flex items-center gap-2">${renderProgressBar(performance.retentionRate || 0, 'bg-admin-accent-blue')}</div></td>
-                            <td class="p-4">
-                                <div class="flex items-center gap-2 font-semibold ${progressColor}">
-                                    <i data-lucide="${progressIcon}" class="w-4 h-4"></i>
-                                    <span>${progress.change > 0 ? '+' : ''}${progress.change} kg</span>
-                                </div>
-                            </td>
-                            <td class="p-4">${performance.avgProgramDeliveryHours || 'N/A'} ساعت</td>
-                            <td class="p-4"><div class="flex items-center gap-2">${renderProgressBar(performance.nps || 0, 'bg-admin-accent-green')}</div></td>
-                            <td class="p-4">${renderStarRating(performance.rating || 0)}</td>
-                            <td class="p-4">
-                                <button data-action="view-activity" data-username="${coach.username}" title="مشاهده فعالیت" class="secondary-button !p-2"><i data-lucide="eye" class="w-4 h-4 pointer-events-none"></i></button>
-                            </td>
-                        </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-    window.lucide?.createIcons();
-};

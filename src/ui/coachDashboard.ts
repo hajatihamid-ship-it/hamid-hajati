@@ -1,5 +1,5 @@
 import { getTemplates, saveTemplate, deleteTemplate, getUsers, getUserData, saveUserData, getNotifications, setNotification, clearNotification, getExercisesDB, getSupplementsDB } from '../services/storage';
-import { showToast, updateSliderTrack, openModal, closeModal, exportElement } from '../utils/dom';
+import { showToast, updateSliderTrack, openModal, closeModal, exportElement, sanitizeHTML } from '../utils/dom';
 import { getLatestPurchase, timeAgo, getLastActivity } from '../utils/helpers';
 import { generateWorkoutPlan, generateSupplementPlan, generateNutritionPlan } from '../services/gemini';
 import { calculateWorkoutStreak } from '../utils/calculations';
@@ -12,6 +12,145 @@ let currentSelectionTarget: HTMLElement | null = null;
 let exerciseToMuscleGroupMap: Record<string, string> = {};
 let currentNutritionPlanObject: any | null = null;
 
+export function renderCoachDashboard(currentUser: string, userData: any) {
+    const name = userData.step1?.clientName || currentUser;
+    const navItems = [
+        { target: 'dashboard-content', icon: 'layout-dashboard', label: 'داشبورد' },
+        { target: 'students-content', icon: 'users', label: 'شاگردان' },
+        { target: 'chat-content', icon: 'message-square', label: 'گفتگو' },
+        { target: 'program-builder-content', icon: 'file-plus-2', label: 'برنامه‌ساز' },
+        { target: 'templates-content', icon: 'save', label: 'الگوها' },
+        { target: 'profile-content', icon: 'user-cog', label: 'پروفایل' }
+    ];
+    
+    return `
+    <div id="coach-dashboard-container" class="flex h-screen bg-bg-primary transition-opacity duration-500 opacity-0">
+        <aside class="w-64 bg-bg-secondary p-4 flex flex-col flex-shrink-0 border-l border-border-primary">
+            <div class="flex items-center gap-3 p-2 mb-6">
+                <i data-lucide="dumbbell" class="w-8 h-8 text-accent"></i>
+                <h1 class="text-xl font-bold">FitGym Pro</h1>
+            </div>
+            <nav class="space-y-2 flex-grow">
+                ${navItems.map(item => `
+                    <button class="coach-nav-link w-full flex items-center gap-3 py-3 rounded-lg text-md" data-target="${item.target}">
+                        <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+                        <span>${item.label}</span>
+                        <span class="notification-badge mr-auto"></span>
+                    </button>
+                `).join('')}
+            </nav>
+            <div class="space-y-2">
+                <button id="go-to-home-btn" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="home" class="w-5 h-5"></i><span>صفحه اصلی</span></button>
+                 <div id="theme-switcher" class="bg-bg-tertiary rounded-xl p-1 relative flex items-center justify-around">
+                    <div id="theme-glider"></div>
+                    <button data-theme="lemon" class="theme-option-btn flex-1 py-2 px-4 z-10 rounded-lg">روشن</button>
+                    <button data-theme="dark" class="theme-option-btn flex-1 py-2 px-4 z-10 rounded-lg">تاریک</button>
+                </div>
+                <button id="logout-btn" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="log-out" class="w-5 h-5"></i><span>خروج</span></button>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-6 lg:p-8 overflow-y-auto">
+            <div id="impersonation-banner-placeholder"></div>
+            <header class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+                <div>
+                    <h1 id="coach-page-title" class="text-3xl font-bold">داشبورد</h1>
+                    <p id="coach-page-subtitle" class="text-text-secondary">خلاصه فعالیت‌ها و آمار شما.</p>
+                </div>
+                <div class="flex items-center gap-3 bg-bg-secondary p-2 rounded-lg">
+                    <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-bg-secondary" style="background-color: var(--accent);">
+                        ${name.substring(0, 1).toUpperCase()}
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm">${name}</p>
+                        <p class="text-xs text-text-secondary">مربی</p>
+                    </div>
+                </div>
+            </header>
+
+            <div id="dashboard-content" class="coach-tab-content hidden"></div>
+            <div id="students-content" class="coach-tab-content hidden"></div>
+            <div id="chat-content" class="coach-tab-content hidden"></div>
+            <div id="program-builder-content" class="coach-tab-content hidden"></div>
+            <div id="templates-content" class="coach-tab-content hidden"></div>
+            <div id="profile-content" class="coach-tab-content hidden"></div>
+        </main>
+    </div>
+
+    <!-- Modals for Coach Dashboard -->
+    <div id="selection-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-2xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
+            <div class="selection-modal-header p-4 border-b border-border-primary flex-shrink-0">
+                 <div class="flex justify-between items-center mb-4">
+                    <h2 class="selection-modal-title font-bold text-xl"></h2>
+                    <button class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div class="relative flex-grow">
+                        <i data-lucide="search" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"></i>
+                        <input type="search" class="selection-modal-search input-field w-full !pr-10" placeholder="جستجو...">
+                    </div>
+                    <div id="student-filter-chips" class="flex items-center gap-2">
+                        <span class="filter-chip active" data-filter="all">همه</span>
+                        <span class="filter-chip" data-filter="needs_plan">در انتظار</span>
+                        <span class="filter-chip" data-filter="inactive">غیرفعال</span>
+                    </div>
+                     <select id="student-sort-select" class="input-field !text-sm">
+                        <option value="name">مرتب‌سازی: نام</option>
+                        <option value="activity">مرتب‌سازی: آخرین فعالیت</option>
+                        <option value="join_date">مرتب‌سازی: تاریخ عضویت</option>
+                    </select>
+                </div>
+            </div>
+            <div class="selection-modal-options p-4 pt-2 overflow-y-auto flex-grow">
+                <!-- Options will be injected here -->
+            </div>
+        </div>
+    </div>
+    
+    <div id="student-profile-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-5xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
+                <h2 id="student-modal-name" class="font-bold text-xl"></h2>
+                <button class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div class="flex-grow flex flex-col md:flex-row overflow-hidden">
+                <div class="w-full md:w-1/3 border-l border-border-primary flex-shrink-0 bg-bg-tertiary overflow-y-auto">
+                    <!-- Student Info Sidebar -->
+                </div>
+                <div class="w-full md:w-2/3 flex flex-col">
+                    <div class="flex-shrink-0 p-2 bg-bg-tertiary border-b border-border-primary">
+                        <div class="bg-bg-secondary p-1 rounded-lg flex items-center gap-1">
+                             <button class="student-modal-tab admin-tab-button flex-1 active-tab" data-target="student-program-content">برنامه</button>
+                             <button class="student-modal-tab admin-tab-button flex-1" data-target="student-progress-content">روند پیشرفت</button>
+                             <button class="student-modal-tab admin-tab-button flex-1" data-target="student-chat-content">گفتگو</button>
+                        </div>
+                    </div>
+                    <div class="flex-grow overflow-y-auto p-4">
+                        <div id="student-program-content" class="student-modal-content">
+                            <div id="student-program-content-wrapper"></div>
+                        </div>
+                        <div id="student-progress-content" class="student-modal-content hidden"></div>
+                        <div id="student-chat-content" class="student-modal-content hidden h-full">
+                           <div class="h-full flex flex-col">
+                                 <div id="coach-chat-messages-container" class="p-2 flex-grow overflow-y-auto message-container flex flex-col-reverse">
+                                    <div class="space-y-4"></div>
+                                </div>
+                                <div class="p-2 border-t border-border-primary">
+                                    <form id="coach-chat-form" class="flex items-center gap-3">
+                                        <input id="coach-chat-input" type="text" class="input-field flex-grow" placeholder="پیام خود را بنویسید..." autocomplete="off">
+                                        <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+}
 
 const getCoachStudents = (coachUsername: string) => {
     return getUsers().filter((u: any) => {
@@ -460,7 +599,7 @@ const openStudentProfileModal = (username: string) => {
                         </div>
                     ` : ''}
                 </div>
-                <button class="primary-button w-full mt-4 !text-sm">ارسال برنامه جدید</button>
+                <button data-action="create-program" data-username="${username}" class="primary-button w-full mt-4 !text-sm">ویرایش / ارسال برنامه</button>
             </div>
         `;
 
@@ -542,17 +681,21 @@ const openStudentProfileModal = (username: string) => {
     
     // --- Chat Logic ---
     const chatContent = modal.querySelector('#student-chat-content');
-    const messagesContainer = chatContent?.querySelector('#coach-chat-messages-container') as HTMLElement;
+    const messagesContainer = chatContent?.querySelector('#coach-chat-messages-container > div') as HTMLElement;
     const chatForm = chatContent?.querySelector('#coach-chat-form') as HTMLFormElement;
     const chatInput = chatContent?.querySelector('#coach-chat-input') as HTMLInputElement;
 
     const renderChat = () => {
         const chatUserData = getUserData(username);
-        const chatHistory = chatUserData.chatHistory || [];
+        const chatHistory = (chatUserData.chatHistory || []).slice().reverse();
         messagesContainer.innerHTML = chatHistory.map((msg: any) => `
-            <div class="message ${msg.sender === 'coach' ? 'coach-message' : 'user-message'}">${msg.message}</div>
+            <div class="flex ${msg.sender === 'coach' ? 'justify-end' : 'justify-start'}">
+                 <div class="message-bubble ${msg.sender === 'coach' ? 'message-sent' : 'message-received'}">
+                    <div class="message-content">${sanitizeHTML(msg.message)}</div>
+                    <div class="message-timestamp">${timeAgo(msg.timestamp)}</div>
+                 </div>
+            </div>
         `).join('');
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     };
 
     renderChat();
@@ -678,7 +821,7 @@ const renderProgramPreview = () => {
             </div>
             
             ${supplements.items.length > 0 ? `
-            <h3 class="preview-section-header mt-6"><i data-lucide="pilcrow"></i> برنامه مکمل</h3>
+            <h3 class="preview-section-header mt-6"><i data-lucide="pill"></i> برنامه مکمل</h3>
             <table class="preview-table-pro">
                 <thead><tr><th>مکمل</th><th>دوز</th><th>زمان</th><th>یادداشت</th></tr></thead>
                 <tbody>
@@ -804,7 +947,7 @@ const renderStudentInfoForBuilder = (username: string) => {
         </div>`;
 
     if (latestPurchase) {
-        purchaseHtml = `
+         purchaseHtml = `
         <div class="mt-8">
             <div class="flex justify-between items-center p-4 bg-bg-tertiary rounded-lg">
                 <div>
@@ -1277,112 +1420,414 @@ const getLastActivityDate = (userData: any): string => {
     if (allDates.length === 0) {
         return userData.joinDate || new Date(0).toISOString();
     }
-    const lastTimestamp = Math.max(...allDates);
+    const validDates = allDates.filter(d => d && d > 0);
+    if (validDates.length === 0) {
+        return userData.joinDate || new Date(0).toISOString();
+    }
+    const lastTimestamp = Math.max(...validDates);
     return new Date(lastTimestamp).toISOString();
 };
+// Helper function to render the coach dashboard tab
+const renderDashboardTab = (currentUser: string) => {
+    const students = getCoachStudents(currentUser);
+    const needsPlanStudents = getStudentsNeedingAttention(students);
 
+    const kpiCards = [
+        { title: 'شاگردان فعال', value: students.length, icon: 'users', color: 'admin-accent-blue' },
+        { title: 'در انتظار برنامه', value: needsPlanStudents.length, icon: 'alert-circle', color: 'admin-accent-orange' },
+        { title: 'امتیاز شما', value: '۴.۸ <span class="text-base font-normal">/ ۵</span>', icon: 'star', color: 'admin-accent-green' }
+    ];
+
+    const container = document.getElementById('dashboard-content');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                ${kpiCards.map(kpi => `
+                    <div class="divi-kpi-card">
+                        <div class="icon-container" style="--icon-bg: var(--${kpi.color});"><i data-lucide="${kpi.icon}" class="w-6 h-6 text-white"></i></div>
+                        <div>
+                            <p class="kpi-value">${kpi.value}</p>
+                            <p class="kpi-label">${kpi.title}</p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="card p-6">
+                <h3 class="font-bold text-lg mb-4">شاگردان در انتظار برنامه</h3>
+                <div id="dashboard-needs-attention-list" class="space-y-3">
+                    ${needsPlanStudents.length > 0 ? needsPlanStudents.map(student => {
+                        const studentData = getUserData(student.username);
+                        const name = studentData.step1?.clientName || student.username;
+                        const latestPurchase = getLatestPurchase(studentData);
+                        return `
+                            <div class="flex justify-between items-center p-3 bg-bg-tertiary rounded-lg">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white" style="background-color: ${getColorForName(name)};">
+                                        ${name.substring(0, 1).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold">${name}</p>
+                                        <p class="text-xs text-text-secondary">${latestPurchase?.planName || ''} - ${timeAgo(latestPurchase.purchaseDate)}</p>
+                                    </div>
+                                </div>
+                                <button class="primary-button !py-1 !px-2 !text-xs" data-action="create-program" data-username="${student.username}">ایجاد برنامه</button>
+                            </div>
+                        `;
+                    }).join('') : '<p class="text-text-secondary text-center">هیچ شاگردی منتظر برنامه نیست.</p>'}
+                </div>
+            </div>
+        </div>
+    `;
+    window.lucide?.createIcons();
+};
+
+const renderProfileTab = (currentUser: string, userData: any) => {
+    const container = document.getElementById('profile-content');
+    if (!container) return;
+    const { step1, profile } = userData;
+    container.innerHTML = `
+        <div class="card max-w-2xl mx-auto p-6">
+            <h2 class="text-xl font-bold mb-4">پروفایل مربی</h2>
+            <form id="coach-profile-form" class="space-y-4">
+                <div class="input-group">
+                    <input type="text" id="coach-profile-name" name="coach-profile-name" class="input-field w-full" value="${step1?.coachName || ''}" placeholder=" ">
+                    <label for="coach-profile-name" class="input-label">نام نمایشی</label>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="coach-profile-specialization" name="coach-profile-specialization" class="input-field w-full" value="${profile?.specialization || ''}" placeholder=" ">
+                    <label for="coach-profile-specialization" class="input-label">تخصص (مثلا: فیتنس، کاهش وزن)</label>
+                </div>
+                <div class="input-group">
+                    <textarea id="coach-profile-bio" name="coach-profile-bio" class="input-field w-full min-h-[100px]" placeholder=" ">${profile?.bio || ''}</textarea>
+                    <label for="coach-profile-bio" class="input-label">بیوگرافی کوتاه</label>
+                </div>
+                 <div class="input-group">
+                    <input type="url" id="coach-profile-avatar" name="coach-profile-avatar" class="input-field w-full" value="${profile?.avatar || ''}" placeholder=" ">
+                    <label for="coach-profile-avatar" class="input-label">لینک عکس پروفایل</label>
+                </div>
+                <button type="submit" class="primary-button w-full">ذخیره تغییرات</button>
+            </form>
+        </div>
+    `;
+};
+
+const renderProgramBuilderTab = () => {
+    const container = document.getElementById('program-builder-content');
+    if (!container) return;
+    const daysOfWeek = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
+    container.innerHTML = `
+        <div id="student-selection-prompt" class="text-center card p-8 animate-fade-in">
+            <i data-lucide="users" class="w-12 h-12 mx-auto mb-4 text-accent"></i>
+            <h3 class="font-bold text-xl">ابتدا یک شاگرد را انتخاب کنید</h3>
+            <p class="text-text-secondary mt-2">برای شروع ساخت برنامه، لطفاً شاگرد مورد نظر خود را از لیست انتخاب کنید.</p>
+            <button id="select-student-builder-btn" class="primary-button mt-6">انتخاب شاگرد</button>
+        </div>
+        <div id="program-builder-main" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                 <h2 class="text-xl font-bold">برنامه‌ساز برای: <span id="builder-student-name" class="text-accent"></span></h2>
+                 <button id="reset-builder-btn" class="secondary-button !text-sm"><i data-lucide="rotate-cw" class="w-4 h-4 ml-2"></i>شروع مجدد</button>
+            </div>
+            <div class="card p-4 md:p-6">
+                <!-- Stepper -->
+                <div class="flex justify-around items-start mb-6 border-b border-border-primary pb-4">
+                    ${['انتخاب شاگرد', 'برنامه تمرین', 'مکمل و تغذیه', 'بازبینی و ارسال'].map((title, index) => `
+                        <div class="stepper-item flex-1" data-step="${index + 1}">
+                            <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm transition-all duration-300">${index + 1}</div>
+                            <span class="hidden md:inline font-semibold">${title}</span>
+                        </div>
+                        ${index < 3 ? '<div class="flex-grow h-px bg-border-primary mx-2 mt-4"></div>' : ''}
+                    `).join('')}
+                </div>
+
+                <!-- Step Content -->
+                <div id="step-content-1" class="step-content">
+                    <div id="student-info-display"></div>
+                </div>
+
+                <div id="step-content-2" class="step-content hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 space-y-4">
+                             ${daysOfWeek.map(day => `
+                                <details class="day-card card !shadow-none !border" id="day-card-${day}" open>
+                                    <summary class="font-bold cursor-pointer flex justify-between items-center p-3">
+                                        <span>${day}</span>
+                                        <div class="flex items-center gap-2">
+                                            <button class="add-exercise-btn secondary-button !py-1 !px-2 !text-xs" data-day-id="day-card-${day}">افزودن حرکت</button>
+                                            <i data-lucide="chevron-down" class="details-arrow"></i>
+                                        </div>
+                                    </summary>
+                                    <div class="exercises-container p-3 border-t border-border-primary space-y-2"></div>
+                                </details>
+                            `).join('')}
+                        </div>
+                        <div class="lg:col-span-1">
+                             <div class="card p-4 sticky top-6">
+                                <h4 class="font-bold mb-3 border-b border-border-primary pb-2">تحلیل حجم تمرین</h4>
+                                <div id="volume-analysis-content" class="space-y-2 text-sm">
+                                    <p class="text-text-secondary">با افزودن حرکات، حجم تمرین هفتگی برای هر گروه عضلانی در اینجا نمایش داده می‌شود.</p>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="step-content-3" class="step-content hidden">
+                   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="font-bold text-lg mb-4">برنامه مکمل</h3>
+                            <div class="card p-4">
+                                <div class="flex flex-col sm:flex-row items-center gap-2 mb-3">
+                                    <button type="button" class="selection-button supplement-category-select-btn input-field w-full text-right justify-start" data-type="supplement-category">
+                                        <span class="truncate">انتخاب دسته</span>
+                                    </button>
+                                    <button type="button" class="selection-button supplement-name-select-btn input-field w-full text-right justify-start" data-type="supplement-name" disabled>
+                                        <span class="truncate">انتخاب مکمل</span>
+                                    </button>
+                                    <button id="add-supplement-btn" class="primary-button flex-shrink-0 !p-2.5"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                                </div>
+                                <button id="ai-supplement-btn" class="secondary-button w-full !text-sm"><i data-lucide="sparkles" class="w-4 h-4 ml-2"></i>پیشنهاد مکمل با AI</button>
+                                <div id="added-supplements-container" class="mt-4 space-y-3">
+                                    <p class="text-text-secondary text-center p-4">مکمل‌های انتخابی در اینجا نمایش داده می‌شوند.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-4">برنامه غذایی</h3>
+                            <div class="card p-4">
+                                <div id="nutrition-plan-placeholder">
+                                    <p class="text-text-secondary mb-4">یک برنامه غذایی نمونه و هوشمند بر اساس اطلاعات و هدف شاگرد خود ایجاد کنید.</p>
+                                    <button id="ai-nutrition-btn" class="primary-button w-full"><i data-lucide="sparkles" class="w-4 h-4 ml-2"></i>تولید برنامه غذایی با AI</button>
+                                </div>
+                                <div id="nutrition-plan-display" class="hidden max-h-96 overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="step-content-4" class="step-content hidden">
+                    <div>
+                        <h3 class="font-bold text-lg mb-4">بازبینی نهایی و یادداشت مربی</h3>
+                        <div class="input-group mb-6">
+                            <textarea id="coach-notes-final" class="input-field w-full min-h-[100px]" placeholder=" "></textarea>
+                            <label for="coach-notes-final" class="input-label">یادداشت برای شاگرد (اختیاری)</label>
+                        </div>
+                        <div class="program-page !max-w-full !p-0" id="program-preview-for-export"></div>
+                        <div class="flex justify-center items-center gap-4 mt-6">
+                            <button id="save-program-img-btn-builder" class="png-button"><i data-lucide="image" class="w-4 h-4 ml-2"></i> ذخیره عکس</button>
+                            <button id="save-program-pdf-btn-builder" class="pdf-button"><i data-lucide="file-down" class="w-4 h-4 ml-2"></i> ذخیره PDF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="flex justify-between items-center mt-6 pt-4 border-t border-border-primary">
+                    <button id="prev-step-btn" class="secondary-button" style="display: none;">قبلی</button>
+                    <div class="flex items-center gap-2">
+                         <button id="ai-draft-btn" class="secondary-button hidden"><i data-lucide="sparkles" class="w-4 h-4 ml-2"></i>ساخت پیش‌نویس با AI</button>
+                         <button id="next-step-btn" class="primary-button">بعدی</button>
+                         <button id="finish-program-btn" class="primary-button" style="display: none;">ثبت و ارسال برنامه</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    window.lucide?.createIcons();
+};
+
+const renderChatTab = (currentUser: string) => {
+    const container = document.getElementById('chat-content');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="card h-[calc(100vh-12rem)] flex max-w-7xl mx-auto overflow-hidden">
+            <!-- Students List -->
+            <div class="w-1/3 border-l border-border-primary flex flex-col">
+                <div class="p-4 border-b border-border-primary">
+                    <h3 class="font-bold text-lg">گفتگوها</h3>
+                </div>
+                <div id="coach-chat-student-list" class="flex-grow overflow-y-auto">
+                    <!-- Student items will be injected here -->
+                </div>
+            </div>
+            <!-- Chat Window -->
+            <div id="coach-chat-window" class="w-2/3 flex flex-col">
+                <div class="p-8 text-center flex-grow flex flex-col justify-center items-center text-text-secondary">
+                    <i data-lucide="messages-square" class="w-12 h-12 mb-4"></i>
+                    <p>برای مشاهده گفتگو، یک شاگرد را از لیست انتخاب کنید.</p>
+                </div>
+            </div>
+        </div>
+    `;
+    window.lucide?.createIcons();
+
+    const studentListContainer = document.getElementById('coach-chat-student-list');
+    const students = getCoachStudents(currentUser);
+
+    if (students.length === 0) {
+        studentListContainer!.innerHTML = `<p class="p-4 text-center text-text-secondary">شما هنوز شاگردی ندارید.</p>`;
+        return;
+    }
+
+    const template = document.getElementById('coach-chat-student-template') as HTMLTemplateElement;
+
+    studentListContainer!.innerHTML = students.map(student => {
+        const studentData = getUserData(student.username);
+        const name = studentData.step1?.clientName || student.username;
+        const lastMessage = (studentData.chatHistory || []).slice(-1)[0];
+
+        const clone = template.content.cloneNode(true) as DocumentFragment;
+        const button = clone.querySelector('button')!;
+        button.dataset.username = student.username;
+
+        const avatar = button.querySelector('.student-avatar')!;
+        avatar.textContent = name.substring(0, 1).toUpperCase();
+        avatar.setAttribute('style', `background-color: ${getColorForName(name)}`);
+
+        (button.querySelector('.student-name') as HTMLElement).textContent = name;
+
+        if (lastMessage) {
+            (button.querySelector('.last-message-time') as HTMLElement).textContent = timeAgo(lastMessage.timestamp);
+            (button.querySelector('.last-message-snippet') as HTMLElement).textContent = lastMessage.message;
+        } else {
+            (button.querySelector('.last-message-snippet') as HTMLElement).textContent = 'گفتگویی شروع نشده است.';
+        }
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.appendChild(clone);
+        return tempDiv.innerHTML;
+    }).join('');
+
+    // Function to load a conversation
+    const loadConversation = (studentUsername: string) => {
+        const chatWindow = document.getElementById('coach-chat-window');
+        if (!chatWindow) return;
+
+        // Highlight selected student
+        document.querySelectorAll('.coach-chat-student-item').forEach(item => {
+            item.classList.toggle('active', (item as HTMLElement).dataset.username === studentUsername);
+        });
+
+        const studentData = getUserData(studentUsername);
+        const studentUser = getUsers().find((u:any) => u.username === studentUsername);
+        const name = studentData.step1?.clientName || studentUsername;
+        const avatar = studentData.profile?.avatar;
+        
+        chatWindow.innerHTML = `
+            <div class="chat-header">
+                ${avatar ? 
+                    `<img src="${avatar}" alt="${name}" class="chat-avatar">` :
+                    `<div class="chat-avatar" style="background-color: ${getColorForName(name)}">${name.charAt(0)}</div>`
+                }
+                <div>
+                    <h3 class="font-bold">${name}</h3>
+                    <p class="text-xs text-text-secondary">${studentUser.email}</p>
+                </div>
+            </div>
+            <div id="coach-chat-messages-container" class="p-4 flex-grow overflow-y-auto message-container flex flex-col-reverse">
+                <div class="space-y-4">
+                    <!-- Messages will be injected here in reverse order -->
+                </div>
+            </div>
+            <div class="p-4 border-t border-border-primary">
+                <form id="coach-chat-form-main" data-username="${studentUsername}" class="flex items-center gap-3">
+                    <input id="coach-chat-input-main" type="text" class="input-field flex-grow" placeholder="پیام خود را بنویسید..." autocomplete="off">
+                    <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
+                </form>
+            </div>
+        `;
+        window.lucide?.createIcons();
+
+        const renderMessages = () => {
+            const messagesContainer = chatWindow.querySelector('#coach-chat-messages-container > div');
+            if (!messagesContainer) return;
+            const currentData = getUserData(studentUsername);
+            const chatHistory = (currentData.chatHistory || []).slice().reverse();
+            messagesContainer.innerHTML = chatHistory.map((msg: any) => `
+                <div class="flex ${msg.sender === 'coach' ? 'justify-end' : 'justify-start'}">
+                    <div class="message-bubble ${msg.sender === 'coach' ? 'message-sent' : 'message-received'}">
+                        <div class="message-content">${sanitizeHTML(msg.message)}</div>
+                        <div class="message-timestamp">${timeAgo(msg.timestamp)}</div>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        renderMessages();
+
+        // Attach form listener
+        const chatForm = document.getElementById('coach-chat-form-main');
+        chatForm?.addEventListener('submit', e => {
+            e.preventDefault();
+            const input = document.getElementById('coach-chat-input-main') as HTMLInputElement;
+            const message = input.value.trim();
+            const targetUsername = (e.currentTarget as HTMLElement).dataset.username;
+
+            if (message && targetUsername) {
+                const targetData = getUserData(targetUsername);
+                if (!targetData.chatHistory) targetData.chatHistory = [];
+                targetData.chatHistory.push({
+                    sender: 'coach',
+                    message: message,
+                    timestamp: new Date().toISOString()
+                });
+                saveUserData(targetUsername, targetData);
+                setNotification(targetUsername, 'chat-content', '💬');
+                input.value = '';
+                renderMessages();
+                
+                const studentListItem = studentListContainer?.querySelector(`[data-username="${targetUsername}"]`);
+                if(studentListItem) {
+                    (studentListItem.querySelector('.last-message-snippet') as HTMLElement).textContent = message;
+                    (studentListItem.querySelector('.last-message-time') as HTMLElement).textContent = 'همین الان';
+                }
+            }
+        });
+    };
+
+    // Attach listeners to student list
+    studentListContainer?.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+        const studentItem = target.closest<HTMLButtonElement>('.coach-chat-student-item');
+        if (studentItem && studentItem.dataset.username) {
+            loadConversation(studentItem.dataset.username);
+        }
+    });
+    
+    if(students.length > 0) {
+        loadConversation(students[0].username);
+    }
+};
 
 export function initCoachDashboard(currentUser: string, handleLogout: () => void, handleGoToHome: () => void) {
     const mainContainer = document.getElementById('coach-dashboard-container');
     if (!mainContainer) return;
 
-    buildExerciseMap();
-    let activeChatStudentUsername: string | null = null;
+    document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
+    document.getElementById('go-to-home-btn')?.addEventListener('click', handleGoToHome);
 
-
-    const renderCoachConversation = (studentUsername: string) => {
-        const studentData = getUserData(studentUsername);
-        const placeholder = document.getElementById('coach-chat-placeholder');
-        const activeConversation = document.getElementById('coach-chat-active-conversation');
-        const header = document.getElementById('coach-chat-header');
-        const messagesContainer = document.getElementById('coach-chat-messages');
-
-        if (!placeholder || !activeConversation || !header || !messagesContainer) return;
-
-        placeholder.classList.add('hidden');
-        activeConversation.classList.remove('hidden');
-        activeConversation.classList.add('flex');
-
-        const studentName = studentData.step1?.clientName || studentUsername;
-        header.innerHTML = `
-            <div class="student-avatar w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-bg-secondary" style="background-color: ${getColorForName(studentName)};">
-                ${studentName.substring(0, 1).toUpperCase()}
-            </div>
-            <div>
-                <p class="font-bold">${studentName}</p>
-                <p class="text-xs text-text-secondary">در حال گفتگو</p>
-            </div>
-        `;
-
-        const chatHistory = studentData.chatHistory || [];
-        messagesContainer.innerHTML = chatHistory.map((msg: any) => `
-            <div class="message ${msg.sender === 'coach' ? 'coach-message' : 'user-message'}">${msg.message}</div>
-        `).join('') || `<div class="message coach-message text-center w-full">گفتگو را با ${studentName} شروع کنید.</div>`;
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    };
-
-    const renderCoachChatStudentList = (coachUsername: string, searchTerm: string = '') => {
-        const studentListContainer = document.getElementById('coach-chat-student-list');
-        if (!studentListContainer) return;
-        const template = document.getElementById('coach-chat-student-template') as HTMLTemplateElement;
-
-        const students = getCoachStudents(coachUsername)
-            .map(s => {
-                const data = getUserData(s.username);
-                const lastMessage = data.chatHistory ? data.chatHistory[data.chatHistory.length - 1] : null;
-                return {
-                    username: s.username,
-                    name: data.step1?.clientName || s.username,
-                    lastMessageText: lastMessage ? `${lastMessage.sender === 'coach' ? 'شما: ' : ''}${lastMessage.message}` : 'هنوز پیامی ارسال نشده.',
-                    lastMessageTimestamp: lastMessage ? new Date(lastMessage.timestamp).getTime() : new Date(s.joinDate).getTime(),
-                };
-            })
-            .filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
-            .sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp);
-
-        if (students.length === 0) {
-            studentListContainer.innerHTML = `<p class="text-center text-text-secondary p-4">شاگردی یافت نشد.</p>`;
-            return;
-        }
-        
-        studentListContainer.innerHTML = students.map(s => {
-            const clone = template.content.cloneNode(true) as DocumentFragment;
-            const button = clone.querySelector('.coach-chat-student-item') as HTMLButtonElement;
-            button.dataset.username = s.username;
-            if (s.username === activeChatStudentUsername) {
-                button.classList.add('active');
-            }
-
-            const avatar = button.querySelector('.student-avatar') as HTMLElement;
-            avatar.style.backgroundColor = getColorForName(s.name);
-            avatar.textContent = s.name.substring(0, 1).toUpperCase();
-
-            (button.querySelector('.student-name') as HTMLElement).textContent = s.name;
-            (button.querySelector('.last-message-time') as HTMLElement).textContent = s.lastMessageTimestamp > 0 ? timeAgo(new Date(s.lastMessageTimestamp).toISOString()) : '';
-            (button.querySelector('.last-message-snippet') as HTMLElement).textContent = s.lastMessageText;
-            
-            return button.outerHTML;
-        }).join('');
+    const pageTitles: Record<string, { title: string, subtitle: string }> = {
+        'dashboard-content': { title: 'داشبورد', subtitle: 'خلاصه فعالیت‌ها و آمار شما.' },
+        'students-content': { title: 'شاگردان', subtitle: 'مدیریت شاگردان و برنامه‌هایشان.' },
+        'chat-content': { title: 'گفتگو', subtitle: 'با شاگردان خود در ارتباط باشید.' },
+        'program-builder-content': { title: 'برنامه‌ساز', subtitle: 'ایجاد برنامه‌های تمرینی و غذایی.' },
+        'templates-content': { title: 'الگوها', subtitle: 'مدیریت الگوهای برنامه‌های تمرینی.' },
+        'profile-content': { title: 'پروفایل', subtitle: 'اطلاعات عمومی خود را ویرایش کنید.' }
     };
     
-    // --- Tab Switching Logic ---
-    const pageTitles: Record<string, {title: string, subtitle: string}> = {
-        'students-content': { title: 'شاگردان', subtitle: 'نمای کلی شاگردان و نیازمندی‌ها.' },
-        'builder-content': { title: 'ساخت برنامه جدید', subtitle: 'برنامه تمرینی و مکمل را برای شاگردان طراحی کنید.' },
-        'templates-content': { title: 'الگوها', subtitle: 'الگوهای برنامه خود را برای استفاده مجدد مدیریت کنید.' },
-        'chat-content': { title: 'گفتگو با شاگردان', subtitle: 'با شاگردان خود در ارتباط باشید و به سوالاتشان پاسخ دهید.' },
-        'profile-content': { title: 'پروفایل مربی', subtitle: 'اطلاعات حرفه‌ای خود را ویرایش کنید.' }
-    };
-
-    const switchTab = (activeTab: Element) => {
+    // FIX: Changed parameter type from Element to HTMLElement to match expected usage.
+    const switchTab = (activeTab: HTMLElement) => {
         const targetId = activeTab.getAttribute('data-target');
         if (!targetId) return;
 
         mainContainer.querySelectorAll('.coach-nav-link').forEach(t => t.classList.remove('active-nav-link'));
         activeTab.classList.add('active-nav-link');
-        // Fix: Use classList.toggle instead of toggle
-        mainContainer.querySelectorAll('.coach-tab-content').forEach(content => content.classList.toggle('hidden', content.id !== targetId));
-        
+        mainContainer.querySelectorAll('.coach-tab-content').forEach(content => {
+            content.classList.toggle('hidden', content.id !== targetId);
+        });
+
         const targetData = pageTitles[targetId];
         const titleEl = document.getElementById('coach-page-title');
         const subtitleEl = document.getElementById('coach-page-subtitle');
@@ -1393,1001 +1838,142 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
 
         clearNotification(currentUser, targetId);
         updateCoachNotifications(currentUser);
-
-        if (targetId === 'templates-content') renderTemplatesTab();
-        if (targetId === 'students-content') {
-            const myStudents = getCoachStudents(currentUser);
-            const studentsNeedingAttention = getStudentsNeedingAttention(myStudents);
-            renderStudentCards(studentsNeedingAttention, 'needs-attention-grid');
-            renderStudentCards(myStudents, 'all-students-grid');
-        }
-        if (targetId === 'chat-content') {
-            renderCoachChatStudentList(currentUser);
+        
+        switch (targetId) {
+            case 'dashboard-content':
+                renderDashboardTab(currentUser);
+                break;
+            case 'students-content':
+                 mainContainer.querySelector('#students-content')!.innerHTML = `
+                    <div id="all-students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                 `;
+                const allStudents = getCoachStudents(currentUser);
+                renderStudentCards(allStudents, 'all-students-grid');
+                break;
+            case 'chat-content':
+                renderChatTab(currentUser);
+                break;
+            case 'program-builder-content':
+                renderProgramBuilderTab();
+                resetProgramBuilder();
+                break;
+            case 'templates-content':
+                mainContainer.querySelector('#templates-content')!.innerHTML = `
+                    <div class="card p-6">
+                        <div class="flex justify-between items-center mb-4">
+                             <h3 class="font-bold text-lg">الگوهای برنامه</h3>
+                             <button id="save-current-as-template-btn" class="secondary-button">ذخیره برنامه فعلی به عنوان الگو</button>
+                        </div>
+                        <div id="templates-list-container" class="space-y-2"></div>
+                    </div>
+                `;
+                renderTemplatesTab();
+                break;
+            case 'profile-content':
+                renderProfileTab(currentUser, getUserData(currentUser));
+                break;
         }
     };
-
-    // --- Student Tab Initial Render ---
-    const myStudents = getCoachStudents(currentUser);
-    const studentsNeedingAttention = getStudentsNeedingAttention(myStudents);
-    renderStudentCards(studentsNeedingAttention, 'needs-attention-grid');
-    renderStudentCards(myStudents, 'all-students-grid');
-    updateCoachNotifications(currentUser);
-
-
-    document.getElementById('student-search-input')?.addEventListener('input', e => {
-        const searchTerm = (e.target as HTMLInputElement).value.toLowerCase();
-        const filteredStudents = myStudents.filter(s => {
-            const studentData = getUserData(s.username);
-            const name = studentData.step1?.clientName || s.username;
-            return name.toLowerCase().includes(searchTerm);
-        });
-        renderStudentCards(filteredStudents, 'all-students-grid');
-    });
-
-    // --- Initial Tab Setup ---
-    (document.querySelector('.coach-nav-link[data-target="students-content"]') as HTMLElement)?.classList.add('active-nav-link');
-    (document.getElementById('students-content') as HTMLElement)?.classList.remove('hidden');
-
-    // --- Main Event Delegation for the entire dashboard ---
-    mainContainer.addEventListener('click', async e => {
+    
+    // FIX: Added generic type to querySelector to ensure it returns HTMLElement.
+    const defaultTab = mainContainer.querySelector<HTMLElement>('.coach-nav-link');
+    if(defaultTab) switchTab(defaultTab);
+    
+    mainContainer.addEventListener('click', e => {
         if (!(e.target instanceof HTMLElement)) return;
         const target = e.target;
-
-        // --- Handle Sidebar Navigation, Logout, and Theme Toggle ---
-        const navLink = target.closest('.coach-nav-link');
+        
+        const navLink = target.closest<HTMLElement>('.coach-nav-link');
         if (navLink) {
             switchTab(navLink);
             return;
         }
-        if (target.closest('#logout-btn')) {
-            handleLogout();
+
+        const closeModalBtn = target.closest('.close-modal-btn');
+        if (closeModalBtn) {
+            const modal = closeModalBtn.closest('.modal');
+            if (modal) closeModal(modal as HTMLElement);
             return;
         }
-        if (target.closest('#go-to-home-btn')) {
-            handleGoToHome();
+        
+        // FIX: Added generic type to `closest` to correctly infer the element type as HTMLButtonElement.
+        const actionBtn = target.closest<HTMLButtonElement>('button[data-action]');
+        if (actionBtn) {
+            const action = actionBtn.dataset.action;
+            const username = actionBtn.dataset.username;
+            if (action === 'create-program') {
+                // FIX: Added generic type to querySelector and passed the result to switchTab.
+                const programTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="program-builder-content"]');
+                if (programTab) switchTab(programTab);
+                if (username) renderStudentInfoForBuilder(username);
+            } else if (action === 'view-student' && username) {
+                openStudentProfileModal(username);
+            }
             return;
         }
 
-        const chatStudentItem = target.closest('.coach-chat-student-item');
-        if (chatStudentItem) {
-            const username = (chatStudentItem as HTMLElement).dataset.username;
-            if (username) {
-                activeChatStudentUsername = username;
-                renderCoachChatStudentList(currentUser); // Re-render to show active state
-                renderCoachConversation(username);
-            }
+        // Program Builder: Select Student
+        const selectStudentBuilderBtn = target.closest('#select-student-builder-btn');
+        if (selectStudentBuilderBtn) {
+            openStudentSelectionModal(selectStudentBuilderBtn as HTMLElement, currentUser);
             return;
         }
-
-        // --- Universal Button Logic ---
-        const button = target.closest('button');
-        if (!button) return;
         
-        const action = button.dataset.action;
-        const username = button.dataset.username;
-
-        if (action === "view-student" && username) {
-            openStudentProfileModal(username);
-        }
-
-        if (action === "create-program" && username) {
-            const builderTab = document.querySelector('.coach-nav-link[data-target="builder-content"]');
-            if (builderTab) switchTab(builderTab);
-            resetProgramBuilder();
-            renderStudentInfoForBuilder(username);
-        }
-
-        if (button.id === 'ai-draft-btn') {
-            if (!activeStudentUsername) {
-                showToast("لطفا ابتدا یک شاگرد را انتخاب کنید.", "error");
-                return;
-            }
-            const studentData = getUserData(activeStudentUsername);
-            if (!studentData.step1) {
-                showToast("اطلاعات پروفایل این شاگرد کامل نیست.", "error");
-                return;
-            }
-            button.classList.add('is-loading');
-            button.disabled = true;
-            const aiPlan = await generateWorkoutPlan(studentData.step1);
-            if (aiPlan) {
-                changeStep(2);
-                populateBuilderWithAI(aiPlan);
-            }
-            button.classList.remove('is-loading');
-            button.disabled = false;
-        }
-
-        if (button.id === 'ai-suggest-supplements-btn') {
-            if (!activeStudentUsername) {
-                showToast("لطفا ابتدا یک شاگرد را انتخاب کنید.", "error");
-                return;
-            }
-            const studentData = getUserData(activeStudentUsername);
-            if (!studentData.step1) {
-                showToast("اطلاعات پروفایل این شاگرد کامل نیست.", "error");
-                return;
-            }
-            const goal = (document.getElementById('ai-supplement-goal') as HTMLSelectElement).value;
-    
-            button.classList.add('is-loading');
-            button.disabled = true;
-    
-            const suggestions = await generateSupplementPlan(studentData.step1, goal);
-    
-            if (suggestions) {
-                const container = document.getElementById('added-supplements-container');
-                if (container) {
-                     const placeholder = container.querySelector('p');
-                     if(placeholder) placeholder.remove();
-                }
-    
-                suggestions.forEach(sup => {
-                    const supplementsDB = getSupplementsDB();
-                    let category = '';
-                    let fullSupData: any = null;
-    
-                    for (const cat in supplementsDB) {
-                        const found = supplementsDB[cat].find(s => s.name === sup.name);
-                        if (found) {
-                            category = cat;
-                            fullSupData = found;
-                            break;
-                        }
-                    }
-                    if (!fullSupData) {
-                        console.warn(`AI suggested supplement "${sup.name}" not found in DB.`);
-                        return;
-                    }
-    
-                    const iconMap: Record<string, string> = { "عضله‌ساز و ریکاوری": "dumbbell", "افزایش‌دهنده عملکرد و انرژی": "zap", "مدیریت وزن و چربی‌سوزی": "flame", "سلامت عمومی و مفاصل": "heart-pulse" };
-                    const iconName = iconMap[category] || 'package';
-    
-                    const template = document.getElementById('supplement-row-template') as HTMLTemplateElement;
-                    const clone = template.content.cloneNode(true) as DocumentFragment;
-                    (clone.querySelector('.supplement-name') as HTMLElement).textContent = fullSupData.name;
-                    (clone.querySelector('.supplement-note') as HTMLElement).textContent = fullSupData.note;
-                    (clone.querySelector('.supplement-icon-container i') as HTMLElement).setAttribute('data-lucide', iconName);
-    
-                    const dosageSelect = clone.querySelector('.dosage-select') as HTMLSelectElement;
-                    fullSupData.dosageOptions.forEach((d: string) => dosageSelect.add(new Option(d, d)));
-                    if (fullSupData.dosageOptions.includes(sup.dosage)) {
-                        dosageSelect.value = sup.dosage;
-                    }
-    
-                    const timingSelect = clone.querySelector('.timing-select') as HTMLSelectElement;
-                    fullSupData.timingOptions.forEach((t: string) => timingSelect.add(new Option(t, t)));
-                    if (fullSupData.timingOptions.includes(sup.timing)) {
-                        timingSelect.value = sup.timing;
-                    }
-    
-                    container?.appendChild(clone);
-                });
-                window.lucide?.createIcons();
-                showToast('مکمل‌های پیشنهادی اضافه شدند.', 'success');
-            }
-    
-            button.classList.remove('is-loading');
-            button.disabled = false;
-        }
-
-        if (button.id === 'export-program-pdf-btn') {
-            renderProgramPreview();
-            setTimeout(() => exportElement('#program-preview-for-export', 'pdf', 'برنامه-تمرینی.pdf', button), 100);
-        }
-        
-        if (button.id === 'export-program-img-btn') {
-            renderProgramPreview();
-            setTimeout(() => exportElement('#program-preview-for-export', 'png', 'برنامه-تمرینی.png', button), 100);
-        }
-
-        if (button.id === 'finish-program-btn') {
-            const finalPlanData = gatherPlanData();
-            if (!finalPlanData || !activeStudentUsername) {
-                showToast('خطا: شاگرد یا اطلاعات برنامه موجود نیست.', 'error');
-                return;
-            }
-            
-            const studentUserData = getUserData(activeStudentUsername);
-            
-            studentUserData.step2 = {
-                days: finalPlanData.workout.days,
-                notes: finalPlanData.workout.notes
-            };
-            studentUserData.supplements = finalPlanData.supplements.items;
-            studentUserData.nutritionPlan = finalPlanData.nutritionPlan;
-
-            if (!studentUserData.programHistory) {
-                studentUserData.programHistory = [];
-            }
-            studentUserData.programHistory.unshift({
-                date: new Date().toISOString(),
-                step2: studentUserData.step2,
-                supplements: studentUserData.supplements,
-                nutritionPlan: studentUserData.nutritionPlan,
-            });
-
-            const latestPurchase = getLatestPurchase(studentUserData);
-            if (latestPurchase && !latestPurchase.fulfilled) {
-                const subIndex = studentUserData.subscriptions.findIndex((s:any) => s.purchaseDate === latestPurchase.purchaseDate);
-                if(subIndex > -1) studentUserData.subscriptions[subIndex].fulfilled = true;
-            }
-            
-            saveUserData(activeStudentUsername, studentUserData);
-            setNotification(activeStudentUsername, 'program-content', '✨');
-            if(studentUserData.nutritionPlan) {
-                 setNotification(activeStudentUsername, 'nutrition-content', '🥗');
-            }
-
-            button.classList.add('is-loading');
-            setTimeout(() => {
-                button.classList.remove('is-loading');
-                showToast(`برنامه با موفقیت برای ${activeStudentUsername} ارسال شد.`, 'success');
-                resetProgramBuilder();
-                const studentTab = document.querySelector('.coach-nav-link[data-target="students-content"]')
-                if (studentTab) switchTab(studentTab);
-            }, 1000);
-        }
-    });
-
-    const chatSearchInput = document.getElementById('coach-chat-search');
-    chatSearchInput?.addEventListener('input', (e) => {
-        renderCoachChatStudentList(currentUser, (e.target as HTMLInputElement).value);
-    });
-
-    const chatForm = document.getElementById('coach-chat-form') as HTMLFormElement;
-    chatForm?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const chatInput = document.getElementById('coach-chat-input') as HTMLInputElement;
-        const message = chatInput.value.trim();
-
-        if (!message || !activeChatStudentUsername) return;
-
-        const studentData = getUserData(activeChatStudentUsername);
-        if (!studentData.chatHistory) studentData.chatHistory = [];
-        studentData.chatHistory.push({
-            sender: 'coach',
-            message: message,
-            timestamp: new Date().toISOString()
-        });
-        saveUserData(activeChatStudentUsername, studentData);
-        setNotification(activeChatStudentUsername, 'chat-content', '💬');
-
-        chatInput.value = '';
-        renderCoachConversation(activeChatStudentUsername);
-        renderCoachChatStudentList(currentUser); // Update last message snippet
-    });
-
-    const studentModal = document.getElementById('student-profile-modal');
-    studentModal?.addEventListener('click', e => {
-        if ((e.target as HTMLElement).id === 'student-profile-modal') closeModal(studentModal);
-    });
-    document.getElementById('close-student-modal-btn')?.addEventListener('click', () => {
-        if (studentModalChartInstance) {
-            studentModalChartInstance.destroy();
-            studentModalChartInstance = null;
-        }
-        closeModal(studentModal);
-        activeStudentUsername = null;
-    });
-
-    const renderNutritionPlanForCoach = (plan: any) => {
-        const container = document.getElementById('nutrition-plan-display');
-        if (!container) return;
-    
-        const dayColors = ['#3b82f6', '#ef4444', '#f97316', '#10b981', '#a855f7', '#ec4899', '#f59e0b'];
-        let planHtml = `
-            <div class="flex justify-between items-center mb-3">
-                <h4 class="font-bold">پیش‌نویس برنامه غذایی</h4>
-                <button id="ai-regenerate-nutrition-btn" class="secondary-button !text-sm !py-1">
-                    <i data-lucide="refresh-cw" class="w-4 h-4 mr-1"></i> ایجاد مجدد
-                </button>
-            </div>
-            <div class="space-y-2 max-h-96 overflow-y-auto pr-2">
-        `;
-    
-        (plan.weeklyPlan || []).forEach((day: any, index: number) => {
-            const dayColor = dayColors[index % dayColors.length];
-            planHtml += `
-                <details class="day-card card !shadow-none !border bg-bg-secondary" open>
-                    <summary class="font-bold cursor-pointer flex justify-between items-center p-2" style="border-right: 3px solid ${dayColor};">
-                        <span>${day.dayName}</span>
-                        <i data-lucide="chevron-down" class="details-arrow"></i>
-                    </summary>
-                    <div class="p-2 border-t border-border-primary text-sm">
-                        ${(day.meals || []).map((meal: any) => `
-                            <div>
-                                <h5 class="font-semibold text-accent mt-2 mb-1">${meal.mealName}</h5>
-                                <ul class="list-disc pr-4 space-y-1 text-xs">
-                                    ${(meal.options || []).map((option: string) => `<li>${option}</li>`).join('')}
-                                </ul>
-                            </div>
-                        `).join('')}
-                    </div>
-                </details>
-            `;
-        });
-    
-        planHtml += '</div>';
-        container.innerHTML = planHtml;
-        window.lucide.createIcons();
-    };
-
-    // --- Program Builder Logic ---
-    const builderContentTab = document.getElementById('builder-content');
-    if (builderContentTab) {
-        changeStep(1); 
-
-        builderContentTab.addEventListener('click', async e => {
-            if (!(e.target instanceof HTMLElement)) return;
-            const target = e.target;
-            const button = target.closest('button');
-            const exerciseDB = getExercisesDB();
-            const supplementsDB = getSupplementsDB();
-            if (!button) return;
-            
-            if (button.id === 'student-select-btn') {
-                openStudentSelectionModal(button, currentUser);
-            }
-
-            if(button.id === 'ai-generate-nutrition-btn' || button.id === 'ai-regenerate-nutrition-btn') {
-                if (!activeStudentUsername) {
-                    showToast("لطفا ابتدا یک شاگرد را انتخاب کنید.", "error");
-                    return;
-                }
-                const studentData = getUserData(activeStudentUsername);
-                if (!studentData.step1 || !studentData.step1.tdee) {
-                    showToast("اطلاعات پروفایل شاگرد (مانند TDEE) کامل نیست.", "error");
-                    return;
-                }
-                button.classList.add('is-loading');
-                const plan = await generateNutritionPlan(studentData);
-                button.classList.remove('is-loading');
-                if (plan) {
-                    currentNutritionPlanObject = plan;
-                    document.getElementById('nutrition-plan-placeholder')?.classList.add('hidden');
-                    const displayEl = document.getElementById('nutrition-plan-display');
-                    if (displayEl) displayEl.classList.remove('hidden');
-                    renderNutritionPlanForCoach(plan);
-                    showToast("برنامه غذایی با موفقیت ایجاد شد.", "success");
-                }
-            }
-
-
-            if (button.classList.contains('selection-button')) {
-                const type = button.dataset.type;
-                switch (type) {
-                    case 'muscle-group':
-                        openSelectionModal(Object.keys(exerciseDB), "انتخاب گروه عضلانی", button);
-                        break;
-                    case 'exercise':
-                        const muscleGroup = (button.closest('.exercise-row')?.querySelector('.muscle-group-select') as HTMLElement).dataset.value;
-                        if (muscleGroup && exerciseDB[muscleGroup]) {
-                            openSelectionModal(exerciseDB[muscleGroup], "انتخاب حرکت", button);
-                        } else {
-                            showToast('ابتدا گروه عضلانی را انتخاب کنید', 'error');
-                        }
-                        break;
-                    case 'supplement-category':
-                        openSelectionModal(Object.keys(supplementsDB), "انتخاب دسته مکمل", button);
-                        break;
-                    case 'supplement-name':
-                        const category = (document.getElementById('supplement-category-select-btn') as HTMLElement).dataset.value;
-                         if (category && supplementsDB[category]) {
-                            const supNames = supplementsDB[category].map(s => s.name);
-                            openSelectionModal(supNames, "انتخاب مکمل", button);
-                        } else {
-                            showToast('ابتدا دسته مکمل را انتخاب کنید', 'error');
-                        }
-                        break;
-                }
-            }
-
-
-            const stepperItem = button.closest('.stepper-item');
-            if (stepperItem) {
-                const step = parseInt(stepperItem.getAttribute('data-step')!, 10);
-                if (step > 1 && !activeStudentUsername) {
-                    showToast("لطفاً ابتدا یک شاگرد را انتخاب کنید.", "error");
-                    return;
-                }
-                if (!isNaN(step)) changeStep(step);
-            }
-            if (button.id === 'next-step-btn') {
-                 if (currentStep === 1 && !activeStudentUsername) {
-                    showToast("لطفاً ابتدا یک شاگرد را انتخاب کنید.", "error");
-                    return;
-                }
-                if (currentStep < totalSteps) changeStep(currentStep + 1);
-            }
-            if (button.id === 'prev-step-btn' && currentStep > 1) changeStep(currentStep - 1);
-            
-            if (button.id === 'change-student-btn') {
-                resetProgramBuilder();
-                showToast("شاگرد جدیدی را انتخاب کنید.", "success");
-            }
-
-            if (button.classList.contains('add-exercise-btn')) {
-                const dayCard = button.closest('.day-card');
-                if (dayCard) addExerciseRow(dayCard.id);
-            }
-            if (button.classList.contains('remove-exercise-btn')) {
-                 button.closest('.exercise-row')?.remove();
-                 calculateAndDisplayVolume();
-            }
-            if (button.classList.contains('superset-btn')) {
-                button.classList.toggle('active');
-                button.closest('.exercise-row')?.classList.toggle('is-superset');
-            }
-            if (button.id === 'save-as-template-btn') saveCurrentPlanAsTemplate();
-
-            if (button.id === 'add-supplement-btn') {
-                const name = (document.getElementById('supplement-name-select-btn') as HTMLElement).dataset.value;
-                if (!name) return;
-                const category = (document.getElementById('supplement-category-select-btn') as HTMLElement).dataset.value;
-                if (!category) return;
-                const supData = supplementsDB[category]?.find(s => s.name === name);
-                if (!supData) return;
-                
-                const iconMap: Record<string, string> = { "عضله‌ساز و ریکاوری": "dumbbell", "افزایش‌دهنده عملکرد و انرژی": "zap", "مدیریت وزن و چربی‌سوزی": "flame", "سلامت عمومی و مفاصل": "heart-pulse" };
-                const iconName = iconMap[category] || 'package';
-                
-                const template = document.getElementById('supplement-row-template') as HTMLTemplateElement;
-                const clone = template.content.cloneNode(true) as DocumentFragment;
-                (clone.querySelector('.supplement-name') as HTMLElement).textContent = supData.name;
-                (clone.querySelector('.supplement-note') as HTMLElement).textContent = supData.note;
-                (clone.querySelector('.supplement-icon-container i') as HTMLElement).setAttribute('data-lucide', iconName);
-
-                const dosageSelect = clone.querySelector('.dosage-select') as HTMLSelectElement;
-                supData.dosageOptions.forEach((d: string) => dosageSelect.add(new Option(d, d)));
-                const timingSelect = clone.querySelector('.timing-select') as HTMLSelectElement;
-                supData.timingOptions.forEach((t: string) => timingSelect.add(new Option(t, t)));
-                
-                const container = document.getElementById('added-supplements-container');
-                const placeholder = container?.querySelector('p');
-                if (placeholder) placeholder.remove();
-                container?.appendChild(clone);
-                window.lucide.createIcons();
-            }
-            if (button.classList.contains('remove-supplement-btn')) {
-                const row = button.closest('.supplement-row');
-                const container = row?.parentElement;
-                row?.remove();
-                if (container && container.children.length === 0) {
-                     container.innerHTML = '<p class="text-text-secondary text-center p-4">مکمل‌های انتخابی در اینجا نمایش داده می‌شوند.</p>';
-                }
-            }
-        });
-        
-        builderContentTab.addEventListener('input', e => {
-             const target = e.target as HTMLInputElement;
-             if(target.classList.contains('range-slider')) {
-                const labelSpan = target.previousElementSibling?.querySelector('span');
-                if(labelSpan) labelSpan.textContent = target.value;
-                updateSliderTrack(target);
-                calculateAndDisplayVolume();
-             }
-             if (target.id === 'coach-notes-final') {
-                renderProgramPreview();
-             }
-        });
-    }
-    
-    // Selection Modal Logic
-    const selectionModal = document.getElementById('selection-modal');
-    selectionModal?.addEventListener('click', e => {
-        if (!(e.target instanceof HTMLElement)) return;
-        const target = e.target;
-        if (target.closest('.selection-modal-close-btn') || target.id === 'selection-modal') {
-            closeModal(selectionModal);
-            currentSelectionTarget = null;
-        }
-        
-        const optionBtn = target.closest('.selection-option-btn');
-        if (optionBtn && currentSelectionTarget) {
-            const value = (optionBtn as HTMLElement).dataset.value;
-            if (value) {
-                currentSelectionTarget.dataset.value = value;
-                (currentSelectionTarget.querySelector('span') as HTMLElement).textContent = value;
-                const type = currentSelectionTarget.dataset.type;
-                if (type === 'muscle-group') {
-                    const exerciseButton = currentSelectionTarget.closest('.exercise-row')?.querySelector('.exercise-select') as HTMLButtonElement;
-                    if (exerciseButton) {
-                        exerciseButton.disabled = false;
-                        exerciseButton.dataset.value = "";
-                        (exerciseButton.querySelector('span') as HTMLElement).textContent = "انتخاب حرکت";
-                    }
-                } else if (type === 'supplement-category') {
-                     const nameButton = document.getElementById('supplement-name-select-btn') as HTMLButtonElement;
-                     if(nameButton) {
-                         nameButton.disabled = false;
-                         nameButton.dataset.value = "";
-                         (nameButton.querySelector('span') as HTMLElement).textContent = "مکمل را انتخاب کنید";
-                     }
-                } else if (type === 'exercise') {
-                    const row = currentSelectionTarget.closest('.exercise-row') as HTMLElement;
-                    const muscleGroup = (row.querySelector('.muscle-group-select') as HTMLElement).dataset.value;
-                    if(row && muscleGroup) {
-                        row.dataset.exerciseMuscleGroup = muscleGroup;
-                    }
-                    calculateAndDisplayVolume();
-                }
-            }
-            closeModal(selectionModal);
-            currentSelectionTarget = null;
-        }
-
         const studentOptionBtn = target.closest('.student-option-btn');
-        if (studentOptionBtn && currentSelectionTarget) {
+        if (studentOptionBtn && studentOptionBtn.closest('#selection-modal')) {
             const username = (studentOptionBtn as HTMLElement).dataset.username;
-            if (username) {
+            if(username) {
                 renderStudentInfoForBuilder(username);
+                closeModal(document.getElementById('selection-modal'));
+                changeStep(2);
             }
-            closeModal(selectionModal);
-            currentSelectionTarget = null;
+            return;
+        }
+
+        // Program Builder: Stepper Navigation
+        if (target.closest('#next-step-btn')) {
+            if (currentStep === 1 && !activeStudentUsername) {
+                showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
+                return;
+            }
+            if (currentStep < totalSteps) changeStep(currentStep + 1);
+            return;
+        }
+        if (target.closest('#prev-step-btn')) {
+            if (currentStep > 1) changeStep(currentStep + 1);
+            return;
+        }
+        // FIX: Added generic type to `closest` to correctly infer HTMLElement and allow access to `dataset`.
+        const stepperItem = target.closest<HTMLElement>('.stepper-item');
+        if (stepperItem) {
+            const step = parseInt(stepperItem.dataset.step || '1', 10);
+            if (step < currentStep || (step > 1 && activeStudentUsername)) {
+                changeStep(step);
+            } else if (step > 1 && !activeStudentUsername) {
+                 showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
+            }
         }
     });
 
-
-    // --- Templates Tab Logic ---
-    const templatesContainer = document.getElementById('templates-list-container');
-    if (templatesContainer) {
-        templatesContainer.addEventListener('click', e => {
-            if (!(e.target instanceof HTMLElement)) return;
-            const targetBtn = e.target.closest('button');
-            if (!targetBtn) return;
-
-            const templateName = targetBtn.dataset.templateName;
-            const action = targetBtn.dataset.action;
-
-            if (action === 'delete-template' && templateName) {
-                if (confirm(`آیا از حذف الگوی "${templateName}" مطمئن هستید؟`)) {
-                    deleteTemplate(templateName);
-                    showToast(`الگوی "${templateName}" حذف شد.`, 'success');
-                    renderTemplatesTab();
-                }
-            } else if (action === 'load-template' && templateName) {
-                 showToast(`بارگذاری الگوی "${templateName}" هنوز پیاده‌سازی نشده است.`, 'error');
-            }
-        });
-    }
-    
-    // --- Profile Form Logic ---
-    const profileForm = document.getElementById('coach-profile-form') as HTMLFormElement;
-    if (profileForm) {
-        const changeAvatarBtn = document.getElementById('change-avatar-btn');
-        const avatarInput = document.getElementById('coach-avatar-input') as HTMLInputElement;
-        changeAvatarBtn?.addEventListener('click', () => avatarInput?.click());
-
-        avatarInput?.addEventListener('change', () => {
-            if (avatarInput.files && avatarInput.files[0]) {
-                const file = avatarInput.files[0];
-                if (file.size > 2 * 1024 * 1024) { // 2MB limit
-                    showToast('حجم عکس باید کمتر از ۲ مگابایت باشد.', 'error');
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const preview = document.getElementById('coach-avatar-preview') as HTMLImageElement;
-                    const hiddenInput = document.getElementById('coach-avatar-base64') as HTMLInputElement;
-                    if (preview && hiddenInput && e.target?.result) {
-                        preview.src = e.target.result as string;
-                        hiddenInput.value = e.target.result as string;
-                    }
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-
-        profileForm.addEventListener('submit', e => {
+     mainContainer.addEventListener('submit', e => {
+        if (e.target && (e.target as HTMLElement).id === 'coach-profile-form') {
             e.preventDefault();
-            const formData = new FormData(profileForm);
-            const coachData = getUserData(currentUser);
-            if (!coachData.profile) coachData.profile = {};
-            
-            coachData.profile.bio = formData.get('coach-bio') as string;
-            coachData.profile.specialization = formData.get('coach-specialization') as string;
-            coachData.profile.instagram = formData.get('coach-instagram') as string;
+            const form = e.target as HTMLFormElement;
+            const freshData = getUserData(currentUser);
+            if (!freshData.step1) freshData.step1 = {};
+            if (!freshData.profile) freshData.profile = {};
 
-            const avatarBase64 = (formData.get('coach-avatar-base64') as string);
-            if (avatarBase64) {
-                coachData.profile.avatar = avatarBase64;
-            }
-            
-            if (coachData.step1) {
-                coachData.step1.clientName = formData.get('coach-name') as string;
-            } else {
-                coachData.step1 = { clientName: formData.get('coach-name') as string };
-            }
-            
-            saveUserData(currentUser, coachData);
-            
-            const headerAvatar = document.getElementById('coach-header-avatar') as HTMLImageElement;
-            if (headerAvatar && coachData.profile.avatar) {
-                headerAvatar.src = coachData.profile.avatar;
-            }
-            
-            showToast('پروفایل با موفقیت به‌روزرسانی شد.', 'success');
-        });
-    }
+            freshData.step1.coachName = (form.elements.namedItem('coach-profile-name') as HTMLInputElement).value;
+            freshData.profile.specialization = (form.elements.namedItem('coach-profile-specialization') as HTMLInputElement).value;
+            freshData.profile.bio = (form.elements.namedItem('coach-profile-bio') as HTMLTextAreaElement).value;
+            freshData.profile.avatar = (form.elements.namedItem('coach-profile-avatar') as HTMLInputElement).value;
 
-    renderTemplatesTab();
-    if(document.body) (document.body.querySelector('.coach-nav-link') as HTMLElement)?.click();
-}
-
-export function renderCoachDashboard(currentUser: string, userData: any) {
-    const daysOfWeek = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
-    const myStudents = getCoachStudents(currentUser);
-    const studentsNeedingPlan = getStudentsNeedingAttention(myStudents).length;
-    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const activeStudents = myStudents.filter(s => {
-        const studentData = getUserData(s.username);
-        const lastActivityTimestamp = new Date(getLastActivityDate(studentData)).getTime();
-        return lastActivityTimestamp > oneWeekAgo;
-    }).length;
-    const activeRate = myStudents.length > 0 ? Math.round((activeStudents / myStudents.length) * 100) : 0;
-    
-    const coachKpisHtml = `
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="divi-kpi-card animate-fade-in-up">
-            <div class="icon-container" style="--icon-bg: var(--admin-accent-blue);"><i data-lucide="users" class="w-6 h-6 text-white"></i></div>
-            <div>
-                <p class="kpi-value">${myStudents.length}</p>
-                <p class="kpi-label">کل شاگردان</p>
-            </div>
-        </div>
-        <div class="divi-kpi-card animate-fade-in-up" style="animation-delay: 100ms;">
-            <div class="icon-container" style="--icon-bg: var(--admin-accent-orange);"><i data-lucide="alert-circle" class="w-6 h-6 text-white"></i></div>
-            <div>
-                <p class="kpi-value">${studentsNeedingPlan}</p>
-                <p class="kpi-label">در انتظار برنامه</p>
-            </div>
-        </div>
-        <div class="divi-kpi-card animate-fade-in-up" style="animation-delay: 200ms;">
-            <div class="icon-container" style="--icon-bg: var(--admin-accent-green);"><i data-lucide="activity" class="w-6 h-6 text-white"></i></div>
-            <div>
-                <p class="kpi-value">${activeRate}%</p>
-                <p class="kpi-label">نرخ فعالیت (۷ روز)</p>
-            </div>
-        </div>
-    </div>
-    `;
-
-    const navItems = [
-        { target: 'students-content', icon: 'users', label: 'شاگردان' },
-        { target: 'builder-content', icon: 'plus-circle', label: 'ساخت برنامه' },
-        { target: 'templates-content', icon: 'layout-template', label: 'الگوها' },
-        { target: 'chat-content', icon: 'message-square', label: 'گفتگو' },
-        { target: 'profile-content', icon: 'user-circle', label: 'پروفایل' }
-    ];
-
-    return `
-    <div id="coach-dashboard-container" class="flex h-screen bg-bg-primary transition-opacity duration-500 opacity-0">
-        <aside class="w-64 bg-bg-secondary p-4 flex flex-col flex-shrink-0 border-l border-border-primary">
-            <div class="flex items-center gap-3 p-2 mb-6">
-                <i data-lucide="dumbbell" class="w-8 h-8 text-accent"></i>
-                <h1 class="text-xl font-bold">FitGym Pro</h1>
-            </div>
-            <nav class="space-y-2 flex-grow">
-                ${navItems.map(item => `
-                    <button class="coach-nav-link w-full flex items-center gap-3 px-4 py-3 rounded-lg text-md" data-target="${item.target}">
-                        <i data-lucide="${item.icon}" class="w-5 h-5"></i>
-                        <span>${item.label}</span>
-                        <span class="notification-badge mr-auto"></span>
-                    </button>
-                `).join('')}
-            </nav>
-            <div class="space-y-2">
-                 <button id="go-to-home-btn" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="home" class="w-5 h-5"></i><span>صفحه اصلی</span></button>
-                 <button id="theme-toggle-btn-dashboard" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="sun" class="w-5 h-5"></i><span>تغییر پوسته</span></button>
-                 <button id="logout-btn" class="secondary-button w-full !justify-start !gap-3 !px-4 !py-3"><i data-lucide="log-out" class="w-5 h-5"></i><span>خروج</span></button>
-            </div>
-        </aside>
-
-        <main class="flex-1 p-6 lg:p-8 overflow-y-auto">
-            <div id="impersonation-banner-placeholder"></div>
-            <header class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
-                <div id="coach-page-title-container">
-                    <h1 id="coach-page-title" class="text-3xl font-bold">شاگردان</h1>
-                    <p id="coach-page-subtitle" class="text-text-secondary">نمای کلی شاگردان و نیازمندی‌ها.</p>
-                </div>
-                 <div class="flex items-center gap-3 bg-bg-secondary p-2 rounded-lg">
-                    <img id="coach-header-avatar" src="${userData.profile?.avatar || `https://i.pravatar.cc/150?u=${currentUser}`}" alt="Coach Avatar" class="w-10 h-10 rounded-full object-cover">
-                    <div>
-                        <p class="font-bold text-sm">${userData.step1?.clientName || currentUser}</p>
-                        <p class="text-xs text-text-secondary">مربی</p>
-                    </div>
-                </div>
-            </header>
-
-            <div id="students-content" class="coach-tab-content hidden animate-fade-in-up">
-                ${coachKpisHtml}
-                <div id="needs-attention-container" class="mb-8">
-                    <h2 class="text-xl font-bold mb-4">نیازمند توجه</h2>
-                    <div class="p-4 rounded-xl bg-accent/10">
-                        <div id="needs-attention-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                            <!-- Cards for students needing a plan will be injected here -->
-                        </div>
-                    </div>
-                </div>
-                <div class="card p-4 sm:p-6">
-                    <div class="flex justify-between items-center mb-4">
-                       <h2 class="text-xl font-bold">لیست همه شاگردان</h2>
-                       <div class="relative w-48">
-                           <i data-lucide="search" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"></i>
-                           <input type="text" id="student-search-input" class="input-field w-full !pr-10 !text-sm" placeholder="جستجوی شاگرد...">
-                       </div>
-                   </div>
-                   <div id="all-students-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                        <!-- Student cards injected here -->
-                   </div>
-                </div>
-            </div>
-
-            <div id="builder-content" class="coach-tab-content hidden">
-                <div id="builder-wrapper">
-                    <div id="student-selection-prompt">
-                        <div class="card text-center p-8 md:p-12 animate-fade-in">
-                            <div class="w-20 h-20 bg-accent/10 text-accent rounded-full mx-auto flex items-center justify-center mb-6">
-                                <i data-lucide="user-plus" class="w-10 h-10"></i>
-                            </div>
-                            <h2 class="text-2xl font-bold mb-2">ساخت برنامه جدید</h2>
-                            <p class="text-text-secondary max-w-md mx-auto mb-8">برای شروع، ابتدا یک شاگرد را از لیست انتخاب کنید تا بتوانید برنامه تمرینی و غذایی شخصی‌سازی شده برای او ایجاد کنید.</p>
-                            <button type="button" id="student-select-btn" class="primary-button !text-lg !px-8 !py-3">
-                                <i data-lucide="users" class="w-5 h-5 ml-2"></i>
-                                انتخاب از لیست شاگردان
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="program-builder-main" class="hidden">
-                         <div class="card p-4 md:p-6 mb-6">
-                             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                                <div id="builder-context-header" class="p-2 bg-bg-tertiary rounded-lg text-sm font-semibold flex items-center gap-2">
-                                    <i data-lucide="user-check" class="w-4 h-4 text-accent"></i>
-                                    <span>در حال ساخت برنامه برای: </span>
-                                    <strong id="builder-student-name"></strong>
-                                </div>
-                                 <button id="change-student-btn" class="secondary-button !text-sm"><i data-lucide="users" class="w-4 h-4 mr-2"></i> تغییر شاگرد</button>
-                             </div>
-                        </div>
-                        <div id="program-builder-steps-container" class="card p-4 md:p-6">
-                            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-6">
-                                <h3 class="text-lg font-bold">مراحل ساخت برنامه</h3>
-                                <button id="ai-draft-btn" class="primary-button flex items-center gap-2 hidden" disabled>
-                                    <i data-lucide="sparkles" class="w-4 h-4"></i> ایجاد پیش‌نویس با AI
-                                </button>
-                            </div>
-
-                            <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
-                                ${[ "اطلاعات شاگرد", "برنامه تمرینی", "مکمل و تغذیه", "بازبینی و ارسال"].map((title, i) => `
-                                    <div class="stepper-item" data-step="${i+1}">
-                                       <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm">${i+1}</div>
-                                       <span class="hidden md:inline">${title}</span>
-                                    </div>
-                                    ${i < 3 ? `<div class="flex-grow h-0.5 bg-border-primary mx-2"></div>` : ''}
-                                `).join('')}
-                            </div>
-
-                            <div id="step-content-1" class="step-content">
-                                <div id="student-info-display" class="hidden"></div>
-                            </div>
-                            <div id="step-content-2" class="step-content hidden">
-                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    <div class="lg:col-span-2 space-y-4">
-                                        <h3 class="text-lg font-bold">۲. طراحی برنامه تمرینی</h3>
-                                        <div class="space-y-4">
-                                            ${daysOfWeek.map(day => `<details id="day-card-${day}" class="day-card card !shadow-none !border p-3"><summary class="font-bold cursor-pointer flex justify-between items-center"><span>${day}</span><i data-lucide="chevron-down" class="details-arrow"></i></summary><div class="exercises-container space-y-2 mt-4"></div><button class="add-exercise-btn secondary-button mt-4 !text-sm !py-2"><i data-lucide="plus" class="w-4 h-4"></i> افزودن حرکت</button></details>`).join('')}
-                                        </div>
-                                    </div>
-                                    <div class="lg:col-span-1">
-                                        <div id="volume-analysis-container" class="card !shadow-none !border p-4 sticky top-6">
-                                            <h4 class="font-bold mb-3">تحلیل حجم تمرین</h4>
-                                            <div id="volume-analysis-content" class="space-y-2 text-sm">
-                                                <p class="text-text-secondary">با افزودن حرکات، حجم تمرین هفتگی برای هر گروه عضلانی در اینجا نمایش داده می‌شود.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div id="step-content-3" class="step-content hidden">
-                                <h3 class="text-lg font-bold mb-4">۳. طراحی برنامه مکمل</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div class="md:col-span-1 space-y-4">
-                                        <div class="flex items-center justify-between">
-                                            <h4 class="font-semibold">افزودن مکمل</h4>
-                                            <div class="flex items-center gap-2">
-                                                <select id="ai-supplement-goal" class="input-field !text-sm !py-1.5 !px-3 !bg-bg-tertiary">
-                                                    <option value="افزایش حجم">افزایش حجم</option>
-                                                    <option value="کاهش وزن">کاهش وزن</option>
-                                                    <option value="افزایش قدرت">افزایش قدرت</option>
-                                                    <option value="تناسب اندام عمومی">تناسب اندام عمومی</option>
-                                                </select>
-                                                <button id="ai-suggest-supplements-btn" class="secondary-button !py-1.5 !px-2.5 !text-sm flex items-center gap-1">
-                                                    <i data-lucide="sparkles" class="w-4 h-4"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="p-3 bg-bg-tertiary rounded-lg">
-                                            <p class="text-xs text-text-secondary mb-2">افزودن دستی:</p>
-                                            <div class="space-y-2">
-                                                <button type="button" id="supplement-category-select-btn" class="selection-button input-field !bg-bg-secondary w-full text-right justify-start" data-type="supplement-category"><span class="truncate">انتخاب دسته</span></button>
-                                                <button type="button" id="supplement-name-select-btn" class="selection-button input-field !bg-bg-secondary w-full text-right justify-start" data-type="supplement-name" disabled><span class="truncate">انتخاب مکمل</span></button>
-                                                <button id="add-supplement-btn" class="primary-button w-full">افزودن</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div id="added-supplements-container" class="md:col-span-2 space-y-2">
-                                        <p class="text-text-secondary text-center p-4">مکمل‌های انتخابی در اینجا نمایش داده می‌شوند.</p>
-                                    </div>
-                                </div>
-                                <h3 class="text-lg font-bold mb-4 mt-8 pt-6 border-t border-border-primary">برنامه غذایی</h3>
-                                <div id="nutrition-plan-container" class="card p-4 bg-bg-tertiary">
-                                    <div id="nutrition-plan-placeholder" class="text-center text-text-secondary">
-                                        <p>برای این شاگرد یک برنامه غذایی نمونه ایجاد کنید.</p>
-                                        <button id="ai-generate-nutrition-btn" class="primary-button mt-4">
-                                            <i data-lucide="sparkles" class="w-4 h-4 mr-2"></i>
-                                            ایجاد برنامه غذایی با AI
-                                        </button>
-                                    </div>
-                                    <div id="nutrition-plan-display" class="hidden">
-                                        <!-- Generated plan will be rendered here -->
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="step-content-4" class="step-content hidden">
-                                <h3 class="text-lg font-bold mb-4">۴. بازبینی و ارسال</h3>
-                                <div class="space-y-4">
-                                    <div>
-                                       <label for="coach-notes-final" class="font-semibold text-sm mb-2 block">یادداشت نهایی برای شاگرد</label>
-                                       <textarea id="coach-notes-final" class="input-field w-full min-h-[100px]" placeholder="مثلا: قبل از تمرین حتما گرم کنید..."></textarea>
-                                    </div>
-                                    <div id="program-preview-for-export" class="border border-border-primary rounded-lg"></div>
-                                    <div class="flex justify-start items-center gap-3 mt-4 pt-4 border-t border-border-primary">
-                                        <button id="export-program-img-btn" class="png-button"><i data-lucide="image" class="w-4 h-4 mr-2"></i> ذخیره عکس</button>
-                                        <button id="export-program-pdf-btn" class="pdf-button"><i data-lucide="file-down" class="w-4 h-4 mr-2"></i> ذخیره PDF</button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="flex justify-between items-center mt-6 pt-4 border-t border-border-primary">
-                                <div><button id="save-as-template-btn" class="secondary-button"><i data-lucide="save" class="w-4 h-4 ml-2"></i> ذخیره به عنوان الگو</button></div>
-                                <div class="flex gap-2">
-                                    <button id="prev-step-btn" class="secondary-button">قبلی</button>
-                                    <button id="next-step-btn" class="primary-button">بعدی</button>
-                                    <button id="finish-program-btn" class="primary-button hidden">پایان و ارسال برنامه</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="templates-content" class="coach-tab-content hidden"><div class="card p-6"><h2 class="text-xl font-bold mb-4">الگوهای برنامه</h2><div id="templates-list-container" class="space-y-2"></div></div></div>
-            
-            <div id="chat-content" class="coach-tab-content hidden">
-                <div class="card h-[calc(100vh-10rem)] flex overflow-hidden">
-                    <!-- Conversation Panel (Left) -->
-                    <div id="coach-chat-conversation-panel" class="w-2/3 flex flex-col">
-                        <div id="coach-chat-placeholder" class="m-auto text-center text-text-secondary flex flex-col items-center justify-center">
-                            <i data-lucide="message-square" class="w-12 h-12 mx-auto mb-4"></i>
-                            <p>برای شروع گفتگو، یک شاگرد را از لیست انتخاب کنید.</p>
-                        </div>
-                        <div id="coach-chat-active-conversation" class="hidden flex-col h-full">
-                            <div id="coach-chat-header" class="p-4 border-b border-border-primary flex items-center gap-3">
-                                <!-- Active student info injected here -->
-                            </div>
-                            <div id="coach-chat-messages" class="flex-grow p-4 space-y-4 overflow-y-auto flex flex-col bg-bg-tertiary">
-                                <!-- Messages injected here -->
-                            </div>
-                            <form id="coach-chat-form" class="p-4 border-t border-border-primary flex items-center gap-2">
-                                <input type="text" id="coach-chat-input" class="input-field flex-grow" placeholder="پیام خود را بنویسید...">
-                                <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
-                            </form>
-                        </div>
-                    </div>
-                    <!-- Student List Panel (Right) -->
-                    <div class="w-1/3 border-r border-border-primary flex flex-col">
-                        <div class="p-4 border-b border-border-primary">
-                            <div class="relative">
-                                <i data-lucide="search" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"></i>
-                                <input type="text" id="coach-chat-search" class="input-field w-full !pr-10 !text-sm" placeholder="جستجوی شاگرد...">
-                            </div>
-                        </div>
-                        <div id="coach-chat-student-list" class="flex-grow overflow-y-auto">
-                            <!-- Student list items will be injected here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="profile-content" class="coach-tab-content hidden">
-                <div class="card p-6 max-w-2xl mx-auto">
-                    <h2 class="text-xl font-bold mb-6 text-center">پروفایل مربی</h2>
-                    <form id="coach-profile-form" class="space-y-4">
-                         <div class="flex flex-col items-center mb-6">
-                            <img id="coach-avatar-preview" src="${userData.profile?.avatar || `https://i.pravatar.cc/150?u=${currentUser}`}" alt="Avatar Preview" class="w-24 h-24 rounded-full mb-4 border-4 border-accent/50 object-cover shadow-lg">
-                            <input type="file" id="coach-avatar-input" class="hidden" accept="image/jpeg, image/png, image/webp">
-                            <input type="hidden" id="coach-avatar-base64" name="coach-avatar-base64">
-                            <button type="button" id="change-avatar-btn" class="secondary-button !text-sm">تغییر عکس</button>
-                        </div>
-                        <div class="input-group">
-                            <input id="coach-name" name="coach-name" type="text" value="${userData.step1?.clientName || currentUser}" class="input-field w-full" placeholder=" ">
-                            <label for="coach-name" class="input-label">نام نمایشی</label>
-                        </div>
-                        <div class="input-group">
-                            <textarea id="coach-bio" name="coach-bio" class="input-field w-full min-h-[100px]" placeholder=" ">${userData.profile?.bio || 'مربی رسمی فدراسیون با ۵ سال سابقه در زمینه طراحی برنامه...'}</textarea>
-                            <label for="coach-bio" class="input-label">بیوگرافی کوتاه</label>
-                        </div>
-                        <div class="input-group">
-                            <input id="coach-specialization" name="coach-specialization" type="text" value="${userData.profile?.specialization || 'فیتنس، افزایش حجم'}" class="input-field w-full" placeholder=" ">
-                            <label for="coach-specialization" class="input-label">تخصص‌ها (با کاما جدا کنید)</label>
-                        </div>
-                        <div class="input-group">
-                            <input id="coach-instagram" name="coach-instagram" type="text" value="${userData.profile?.instagram || ''}" class="input-field w-full" placeholder=" ">
-                            <label for="coach-instagram" class="input-label">آیدی اینستاگرام</label>
-                        </div>
-                        <button type="submit" class="primary-button w-full">ذخیره تغییرات</button>
-                    </form>
-                </div>
-            </div>
-        </main>
-    </div>
-    
-    <div id="student-profile-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-4xl transform scale-95 transition-transform duration-300 relative flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0"><h3 id="student-modal-name" class="font-bold text-xl"></h3><button id="close-student-modal-btn" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button></div>
-            <div class="flex-grow flex flex-col md:flex-row overflow-hidden">
-                <div class="w-full md:w-1/3 border-b md:border-b-0 md:border-l border-border-primary flex-shrink-0"></div>
-                <div class="flex-grow p-4 overflow-y-auto">
-                    <div class="flex items-center gap-1 bg-bg-tertiary p-1 rounded-lg mb-4"><button class="student-modal-tab admin-tab-button flex-1" data-target="student-program-content">برنامه تمرینی</button><button class="student-modal-tab admin-tab-button flex-1" data-target="student-progress-content">روند پیشرفت</button><button class="student-modal-tab admin-tab-button flex-1" data-target="student-chat-content">گفتگو</button></div>
-                    <div id="student-program-content" class="student-modal-content"><div id="student-program-content-wrapper"></div></div>
-                    <div id="student-progress-content" class="student-modal-content hidden"></div>
-                    <div id="student-chat-content" class="student-modal-content hidden">
-                        <div class="flex flex-col h-96">
-                            <div id="coach-chat-messages-container" class="flex-grow p-1 space-y-4 overflow-y-auto flex flex-col">
-                                <!-- Messages injected by JS -->
-                            </div>
-                            <form id="coach-chat-form" class="pt-2 flex items-center gap-2">
-                                <input type="text" id="coach-chat-input" class="input-field flex-grow" placeholder="پیام خود را بنویسید...">
-                                <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Selection Modal -->
-    <div id="selection-modal" class="modal fixed inset-0 bg-black/60 z-[101] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-4xl h-[80vh] transform scale-95 transition-transform duration-300 relative flex flex-col">
-            <div class="selection-modal-header p-4 border-b border-border-primary flex-shrink-0">
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="selection-modal-title font-bold text-xl"></h2>
-                    <button class="selection-modal-close-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
-                </div>
-                <input type="search" class="selection-modal-search input-field w-full" placeholder="جستجو...">
-                <div class="flex flex-wrap items-center gap-2 mt-3">
-                    <div id="student-filter-chips" class="flex items-center gap-2">
-                        <button class="filter-chip active" data-filter="all">همه</button>
-                        <button class="filter-chip" data-filter="needs_plan">در انتظار برنامه</button>
-                        <button class="filter-chip" data-filter="inactive">غیرفعال</button>
-                    </div>
-                    <div class="flex-grow"></div>
-                    <select id="student-sort-select" class="input-field !text-sm !py-1 !px-2">
-                        <option value="name">مرتب‌سازی بر اساس نام</option>
-                        <option value="activity">مرتب‌سازی بر اساس آخرین فعالیت</option>
-                        <option value="join_date">مرتب‌سازی بر اساس تاریخ عضویت</option>
-                    </select>
-                </div>
-            </div>
-            <div class="selection-modal-options p-4 pt-2 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-3 content-start">
-                <!-- Options injected here -->
-            </div>
-        </div>
-    </div>
-    `;
+            saveUserData(currentUser, freshData);
+            showToast('پروفایل با موفقیت ذخیره شد.', 'success');
+            // Re-render header with new name
+            const name = freshData.step1.coachName || currentUser;
+            const headerNameEl = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary .font-bold.text-sm');
+            if (headerNameEl) headerNameEl.textContent = name;
+        }
+    });
 }

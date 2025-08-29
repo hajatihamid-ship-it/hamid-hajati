@@ -62,6 +62,7 @@
             --accent-transparent-40: rgba(163, 230, 53, 0.40);
             --text-primary-transparent-30: rgba(26, 32, 44, 0.3);
             --admin-accent-green-transparent-15: rgba(16, 185, 129, 0.15);
+            --admin-accent-yellow-transparent-30: rgba(245, 158, 11, 0.3);
 
             /* Admin & Status Colors */
             --admin-accent-green: #10b981;
@@ -98,6 +99,7 @@
             --accent-transparent-40: rgba(163, 230, 53, 0.40);
             --text-primary-transparent-30: rgba(247, 250, 252, 0.3);
             --admin-accent-green-transparent-15: rgba(16, 185, 129, 0.15);
+            --admin-accent-yellow-transparent-30: rgba(245, 158, 11, 0.3);
 
              /* Admin & Status Colors */
             --admin-accent-green: #10b981;
@@ -142,6 +144,7 @@
             --accent-transparent-40: rgba(132, 204, 22, 0.40);
             --text-primary-transparent-30: rgba(28, 25, 23, 0.3);
             --admin-accent-green-transparent-15: rgba(34, 197, 94, 0.15);
+            --admin-accent-yellow-transparent-30: rgba(234, 179, 8, 0.3);
 
              /* Admin & Status Colors */
             --admin-accent-green: #22c55e;
@@ -293,46 +296,30 @@
         }
 
         .selected-card { border-color: var(--accent) !important; background-color: var(--accent-transparent-10) !important; }
+        .coach-selection-card:hover {
+            border-color: var(--border-secondary);
+            transform: translateY(-2px);
+        }
+        .coach-selection-card.selected-card {
+            box-shadow: 0 0 0 3px var(--accent-transparent-20);
+        }
         
         input[type=range].range-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: var(--range-track-bg); border-radius: 5px; outline: none; padding: 0; margin: 0; }
         input[type=range].range-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: white; border: 3px solid var(--accent); cursor: pointer; transition: transform 0.2s; }
         input[type=range].range-slider:hover::-webkit-slider-thumb { transform: scale(1.1); }
         
-        #tab-indicator {
-            position: absolute;
-            height: calc(100% - 0.5rem);
-            top: 0.25rem;
-            background-color: var(--bg-secondary);
-            border-radius: var(--radius-btn);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-        html[data-theme='dark'] #tab-indicator { box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .user-dashboard-tab {
-            z-index: 1;
-            position: relative;
-            padding: 0.6rem 0.5rem;
-            color: var(--text-secondary);
-            font-weight: 600;
-            transition: color 0.3s;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            border-radius: var(--radius-btn);
-        }
-        .user-dashboard-tab.active-spring-tab {
-            color: var(--text-primary);
-        }
-
-        /* Coach Dashboard Sidebar */
+        /* Sidebar Navigation (Used by Coach and User Dashboards) */
         .coach-nav-link {
             position: relative;
             color: var(--text-secondary);
-            transition: all 0.2s ease;
+            transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
             text-align: right;
             justify-content: flex-start;
+            font-weight: 600;
+            border-right: 3px solid transparent;
+            /* Replaces Tailwind's px-4 for custom alignment with border */
+            padding-right: calc(1rem - 3px);
+            padding-left: 1rem;
         }
         .coach-nav-link .notification-badge {
             right: auto;
@@ -341,23 +328,33 @@
             transform: translateY(-50%) scale(0);
             border-color: var(--bg-secondary);
         }
-        .coach-nav-link.active-nav-link, .coach-nav-link:hover {
-            background-color: var(--accent);
-            color: var(--bg-secondary);
+        /* Fix for notification badge popping out of vertical alignment */
+        .coach-nav-link .notification-badge.visible {
+            transform: translateY(-50%) scale(1);
+            animation: none;
         }
-        html[data-theme='lemon'] .coach-nav-link.active-nav-link, html[data-theme='lemon'] .coach-nav-link:hover {
-            color: #1c1917;
+        .coach-nav-link:hover {
+            background-color: var(--accent-transparent-8);
+            color: var(--text-primary);
         }
-
-        /* User Dashboard Tab Colors */
-        .user-dashboard-tab[data-target="profile-content"] { --tab-color: #3b82f6; } /* blue */
-        .user-dashboard-tab[data-target="dashboard-content"] { --tab-color: #a3e635; } /* lime green */
-        .user-dashboard-tab[data-target="program-content"] { --tab-color: #f97316; } /* orange */
-        .user-dashboard-tab[data-target="nutrition-content"] { --tab-color: #14b8a6; } /* teal */
-        .user-dashboard-tab[data-target="store-content"] { --tab-color: #a855f7; } /* purple */
-        .user-dashboard-tab[data-target="chat-content"] { --tab-color: #ec4899; } /* pink */
-        
-        .user-dashboard-tab.active-spring-tab { color: var(--tab-color); }
+        .coach-nav-link.active-nav-link {
+            background-color: var(--accent-transparent-15);
+            color: var(--text-primary);
+            font-weight: 700;
+            border-right-color: var(--accent);
+        }
+        .coach-nav-link.locked-feature {
+            opacity: 0.6;
+            cursor: pointer;
+        }
+        .coach-nav-link.locked-feature:hover {
+            background-color: transparent;
+            color: var(--text-secondary);
+            border-right-color: transparent;
+        }
+        .coach-nav-link.locked-feature .lock-icon {
+            color: var(--admin-accent-yellow);
+        }
 
         /* Landing Page & Auth Modal */
         .landing-page-container { min-height: 100vh; overflow: hidden; position: relative; }
@@ -552,6 +549,7 @@
             color: #1c1917;
         }
         .option-card-content {
+            position: relative;
             padding: 0.75rem 1rem;
             border-radius: var(--radius-btn);
             background-color: var(--bg-tertiary);
@@ -564,6 +562,50 @@
         .option-card-label:hover .option-card-content {
             border-color: var(--border-secondary);
             background-color: var(--border-primary);
+        }
+        @keyframes pop-in { from { transform: scale(0); } to { transform: scale(1); } }
+        .option-card-input:checked + .option-card-content::after {
+            content: '';
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem; /* RTL friendly */
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-position: center;
+            transform: scale(0);
+            animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        html[data-theme='lemon'] .option-card-input:checked + .option-card-content::after {
+            background-color: #1c1917;
+        }
+
+        /* Profile page input with icon */
+        .input-group-with-icon {
+            position: relative;
+        }
+        .input-group-with-icon .input-field {
+            padding-right: 2.75rem; /* 44px */
+        }
+        .input-group-with-icon .input-label {
+            right: 2.75rem;
+        }
+        .input-group-with-icon .input-icon {
+            position: absolute;
+            right: 1rem;
+            top: 0.75rem; /* same as label */
+            color: var(--text-secondary);
+            pointer-events: none;
+            transition: color 0.2s ease;
+        }
+        .input-group-with-icon .input-field:focus ~ .input-icon,
+        .input-group-with-icon .input-field:not(:placeholder-shown) ~ .input-icon {
+            color: var(--accent);
         }
         
         /* Gauge Component */
@@ -630,16 +672,6 @@
             transform: scale(1);
             animation: pop 0.3s ease-out;
         }
-
-        /* User Dashboard Tab Colors */
-        .user-dashboard-tab[data-target="profile-content"] { --tab-color: #3b82f6; } /* blue */
-        .user-dashboard-tab[data-target="dashboard-content"] { --tab-color: #a3e635; } /* lime green */
-        .user-dashboard-tab[data-target="program-content"] { --tab-color: #f97316; } /* orange */
-        .user-dashboard-tab[data-target="nutrition-content"] { --tab-color: #14b8a6; } /* teal */
-        .user-dashboard-tab[data-target="store-content"] { --tab-color: #a855f7; } /* purple */
-        .user-dashboard-tab[data-target="chat-content"] { --tab-color: #ec4899; } /* pink */
-        
-        .user-dashboard-tab.active-spring-tab { color: var(--tab-color); }
 
         /* Coach Dashboard Enhancements */
         @keyframes pulse-border-accent {
@@ -801,29 +833,26 @@
         }
         .message-container {
             display: flex;
-            gap: 0.75rem;
-            max-width: 85%;
+            flex-direction: column;
         }
-        .message-container.user-message-container {
-            align-self: flex-end;
-            flex-direction: row-reverse;
-        }
-        .message-container.coach-message-container {
-            align-self: flex-start;
-        }
-        .message {
+        .message-bubble {
             padding: 0.75rem 1.25rem;
             border-radius: 1.25rem;
             line-height: 1.5;
-            display: flex;
-            flex-direction: column;
+            max-width: 80%;
+            display: inline-block;
         }
-        .user-message {
+        .message-sent {
+            align-self: flex-end;
             background-color: var(--accent);
             color: var(--bg-secondary);
             border-bottom-right-radius: 0.5rem;
         }
-        .coach-message {
+        html[data-theme='lemon'] .message-sent {
+            color: #1c1917;
+        }
+        .message-received {
+            align-self: flex-start;
             background-color: var(--bg-tertiary);
             border-bottom-left-radius: 0.5rem;
         }
@@ -835,20 +864,34 @@
             font-size: 0.65rem;
             margin-top: 0.25rem;
             opacity: 0.7;
-            text-align: left;
-        }
-        .user-message .message-timestamp {
             text-align: right;
         }
+        .message-received + .message-timestamp {
+            text-align: left;
+        }
         
-        /* Theme switcher */
+        /* New Theme switcher */
         #theme-switcher {
             min-width: 130px;
+            position: relative;
         }
-        #theme-switcher .theme-option-btn {
+        #theme-glider {
+            position: absolute;
+            left: 0;
+            height: calc(100% - 0.5rem);
+            top: 0.25rem;
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-btn);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+         html[data-theme='dark'] #theme-glider { box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        .theme-option-btn {
             color: var(--text-secondary);
+            font-weight: 600;
+            transition: color 0.3s;
         }
-        #theme-switcher .theme-option-btn.active {
+        .theme-option-btn.active {
             color: var(--text-primary);
         }
 
@@ -906,7 +949,68 @@
              box-shadow: var(--shadow-card);
         }
 
+        /* User Profile Page Enhancements */
+        .highlight-coach-selection {
+            border: 2px solid var(--admin-accent-yellow) !important;
+            box-shadow: 0 0 8px var(--admin-accent-yellow-transparent-30);
+        }
+        .highlight-coach-selection span {
+            color: var(--admin-accent-yellow);
+            font-weight: 700;
+        }
+        .coach-selection-warning {
+            color: var(--admin-accent-yellow);
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* Custom slider colors */
+        .slider-container-blue .range-slider::-webkit-slider-thumb { border-color: var(--admin-accent-blue); }
+        .slider-container-blue .range-slider { background: linear-gradient(to left, var(--admin-accent-blue) 50%, var(--range-track-bg) 50%); } /* Initial value */
+        .slider-container-blue .range-slider:hover::-webkit-slider-thumb { transform: scale(1.1); }
+        .slider-container-blue label span { color: var(--admin-accent-blue); font-weight: 700; }
+
+        .slider-container-green .range-slider::-webkit-slider-thumb { border-color: var(--admin-accent-green); }
+        .slider-container-green .range-slider { background: linear-gradient(to left, var(--admin-accent-green) 50%, var(--range-track-bg) 50%); }
+        .slider-container-green .range-slider:hover::-webkit-slider-thumb { transform: scale(1.1); }
+        .slider-container-green label span { color: var(--admin-accent-green); font-weight: 700; }
+
+        .slider-container-orange .range-slider::-webkit-slider-thumb { border-color: var(--admin-accent-orange); }
+        .slider-container-orange .range-slider { background: linear-gradient(to left, var(--admin-accent-orange) 50%, var(--range-track-bg) 50%); }
+        .slider-container-orange .range-slider:hover::-webkit-slider-thumb { transform: scale(1.1); }
+        .slider-container-orange label span { color: var(--admin-accent-orange); font-weight: 700; }
+
+        /* Custom radio colors */
+        .radio-group-pink .option-card-input:checked + .option-card-content {
+            background-color: var(--admin-accent-pink);
+            border-color: var(--admin-accent-pink);
+            color: white;
+        }
+        .radio-group-pink .option-card-input:checked + .option-card-content::after {
+            background-color: white;
+        }
+        html[data-theme='lemon'] .radio-group-pink .option-card-input:checked + .option-card-content { color: white; }
+
+        /* Custom input field color for measurements */
+        .input-group-gray .input-field:focus {
+            border-color: var(--admin-accent-gray);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-accent-gray) 20%, transparent);
+        }
+        .input-group-gray .input-field:focus + .input-label {
+            color: var(--admin-accent-gray);
+        }
+
     </style>
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.16.0"
+  }
+}
+</script>
 </head>
 <body>
     <div id="app-root"></div>
@@ -1036,6 +1140,20 @@
                     <p class="text-xs text-text-secondary last-message-time flex-shrink-0"></p>
                 </div>
                 <p class="text-sm text-text-secondary last-message-snippet truncate"></p>
+            </div>
+        </button>
+    </template>
+    
+    <template id="coach-selection-option-template">
+        <button class="coach-selection-card text-right w-full p-3 rounded-xl outline-none card transition-all duration-200">
+            <div class="flex items-center gap-4">
+                <div class="coach-avatar w-16 h-16 rounded-full flex-shrink-0 bg-bg-tertiary flex items-center justify-center overflow-hidden">
+                    <!-- Avatar img or initials -->
+                </div>
+                <div class="flex-grow overflow-hidden">
+                    <p class="font-bold text-lg coach-name truncate"></p>
+                    <p class="text-sm text-text-secondary coach-specialization truncate"></p>
+                </div>
             </div>
         </button>
     </template>

@@ -45,16 +45,30 @@ export const performMetricCalculations = (data: { age: number, height: number, w
 
 
 export const calculateBodyMetrics = (container: HTMLElement) => {
-    const form = container.closest('form') ?? container;
     const s = parseFloat((container.querySelector(".age-slider") as HTMLInputElement).value);
     const r = parseFloat((container.querySelector(".height-slider") as HTMLInputElement).value);
     const a = parseFloat((container.querySelector(".weight-slider") as HTMLInputElement).value);
-    const n = container.querySelector('input[name^="gender"]:checked, input[name^="gender_user"]:checked') as HTMLInputElement;
+
+    let n: HTMLInputElement | null = null;
+    const genderRadios = container.querySelectorAll('input[name="gender"], input[name="gender_user"]');
+    for (const radio of Array.from(genderRadios)) {
+        if ((radio as HTMLInputElement).checked || radio.getAttribute('data-is-checked') === 'true') {
+            n = radio as HTMLInputElement;
+            break;
+        }
+    }
 
     if (!n) return null;
 
-    const o = n.value === "مرد";
-    const m = container.querySelector('input[name="activity_level"]:checked, input[name="activity_level_user"]:checked') as HTMLInputElement;
+    let m: HTMLInputElement | null = null;
+    const activityRadios = container.querySelectorAll('input[name="activity_level"], input[name="activity_level_user"]');
+    for (const radio of Array.from(activityRadios)) {
+        if ((radio as HTMLInputElement).checked || radio.getAttribute('data-is-checked') === 'true') {
+            m = radio as HTMLInputElement;
+            break;
+        }
+    }
+    
     const d = m ? parseFloat(m.value) : 1.2;
     
     const neckInput = container.querySelector(".neck-input") as HTMLInputElement | null;
@@ -64,54 +78,14 @@ export const calculateBodyMetrics = (container: HTMLElement) => {
     const g = waistInput ? parseFloat(waistInput.value) : NaN;
     const x = hipInput ? parseFloat(hipInput.value) : NaN;
 
-    const clearMetrics = () => {
-        [".bmi-input", ".bmr-input", ".tdee-input", ".bodyfat-input", ".lbm-input", ".ideal-weight-input"].forEach(selector => {
-            const input = form.querySelector(selector) as HTMLElement;
-            if (input) {
-                if (input instanceof HTMLInputElement) {
-                    input.value = "";
-                } else {
-                    input.textContent = "–";
-                }
-            }
-        });
-    };
-
     if (isNaN(r) || isNaN(a) || r <= 0 || a <= 0) {
-        clearMetrics();
         return null;
     }
 
-    const metrics = performMetricCalculations({
+    return performMetricCalculations({
         age: s, height: r, weight: a, gender: n.value, activityLevel: d,
         neck: c, waist: g, hip: x
     });
-    
-    if (!metrics) {
-        clearMetrics();
-        return null;
-    }
-
-    const updateMetricDisplay = (selector: string, value: string | number | null | undefined) => {
-        const element = form.querySelector(selector) as HTMLElement;
-        if (element) {
-            const displayValue = value?.toString();
-            if (element instanceof HTMLInputElement) {
-                element.value = displayValue || '';
-            } else {
-                element.textContent = displayValue || '–';
-            }
-        }
-    };
-    
-    updateMetricDisplay(".bmi-input", metrics.bmi);
-    updateMetricDisplay(".bmr-input", metrics.bmr);
-    updateMetricDisplay(".tdee-input", metrics.tdee);
-    updateMetricDisplay(".ideal-weight-input", metrics.idealWeight);
-    updateMetricDisplay(".bodyfat-input", metrics.bodyFat);
-    updateMetricDisplay(".lbm-input", metrics.lbm);
-    
-    return metrics;
 };
 
 export const calculateWorkoutStreak = (history: any[] = []) => {
@@ -157,4 +131,78 @@ export const getTodayWorkoutData = (userData: any) => {
     }
     
     return null;
+};
+
+export const calculateWeeklyMetrics = (history: any[] = []) => {
+    if (!history || history.length === 0) {
+        return { labels: [], volumes: [], frequencies: [] };
+    }
+
+    const getWeekStartDate = (d: Date) => {
+        const date = new Date(d);
+        const day = date.getDay(); // Sunday - 0, ... Saturday - 6
+        const diff = (day + 1) % 7; // Sunday: 1, ..., Saturday: 0
+        date.setDate(date.getDate() - diff);
+        return date.setHours(0, 0, 0, 0);
+    };
+
+    const weeklyData: Record<number, { volume: number, workoutDays: Set<string> }> = {};
+
+    history.forEach(log => {
+        const logDate = new Date(log.date);
+        const weekStartTimestamp = getWeekStartDate(logDate);
+
+        if (!weeklyData[weekStartTimestamp]) {
+            weeklyData[weekStartTimestamp] = { volume: 0, workoutDays: new Set() };
+        }
+
+        weeklyData[weekStartTimestamp].workoutDays.add(logDate.toDateString());
+
+        (log.exercises || []).forEach((ex: any) => {
+            (ex.sets || []).forEach((set: any) => {
+                const weight = parseFloat(set.weight) || 0;
+                const reps = parseInt(set.reps, 10) || 0;
+                if (weight > 0 && reps > 0) {
+                    weeklyData[weekStartTimestamp].volume += weight * reps;
+                }
+            });
+        });
+    });
+
+    const sortedWeeks = Object.keys(weeklyData).map(Number).sort((a, b) => a - b);
+    
+    const recentWeeks = sortedWeeks.slice(-12);
+
+    const labels = recentWeeks.map(ts => new Date(ts).toLocaleDateString('fa-IR', { month: 'short', day: 'numeric' }));
+    const volumes = recentWeeks.map(ts => Math.round(weeklyData[ts].volume));
+    const frequencies = recentWeeks.map(ts => weeklyData[ts].workoutDays.size);
+    
+    return { labels, volumes, frequencies };
+};
+
+export const findBestLifts = (history: any[] = [], targetExercises: string[]) => {
+    const bestLifts: Record<string, { weight: number, reps: number, date: string }> = {};
+
+    history.forEach(log => {
+        (log.exercises || []).forEach((ex: any) => {
+            if (targetExercises.includes(ex.name)) {
+                (ex.sets || []).forEach((set: any) => {
+                    const weight = parseFloat(set.weight) || 0;
+                    const reps = parseInt(set.reps, 10) || 0;
+
+                    if (weight > 0 && reps > 0) {
+                        const currentBest = bestLifts[ex.name];
+                        if (!currentBest || weight > currentBest.weight || (weight === currentBest.weight && reps > currentBest.reps)) {
+                            bestLifts[ex.name] = { weight, reps, date: log.date };
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    return targetExercises.map(exerciseName => ({
+        exerciseName,
+        ...bestLifts[exerciseName]
+    }));
 };

@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "https://esm.run/@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { getGenAI } from '../state';
 import { showToast } from "../utils/dom";
 import { getExercisesDB, getSupplementsDB } from "./storage";

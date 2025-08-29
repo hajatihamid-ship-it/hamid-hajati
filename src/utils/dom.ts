@@ -42,7 +42,16 @@ export const updateSliderTrack = (slider: HTMLInputElement) => {
     const max = +slider.max || 100;
     const val = (+slider.value || 0);
     const percentage = (val - min) / (max - min) * 100;
-    const accentColor = "var(--accent)";
+    
+    // Check for custom color from parent
+    const parentContainer = slider.closest('[class*="slider-container-"]');
+    let accentColor = 'var(--accent)';
+    if (parentContainer) {
+        if (parentContainer.classList.contains('slider-container-blue')) accentColor = 'var(--admin-accent-blue)';
+        else if (parentContainer.classList.contains('slider-container-green')) accentColor = 'var(--admin-accent-green)';
+        else if (parentContainer.classList.contains('slider-container-orange')) accentColor = 'var(--admin-accent-orange)';
+    }
+
     const trackColor = getComputedStyle(document.documentElement).getPropertyValue("--range-track-bg").trim();
     slider.style.background = `linear-gradient(to left, ${accentColor} ${percentage}%, ${trackColor} ${percentage}%)`;
 };

@@ -29,9 +29,10 @@ export const getLatestPurchase = (userData: any) => {
 export const getLastActivity = (userData: any): string => {
     const workoutDates = (userData.workoutHistory || []).map((h: any) => new Date(h.date).getTime());
     const weightDates = (userData.weightHistory || []).map((h: any) => new Date(h.date).getTime());
+    const profileUpdateDate = userData.lastProfileUpdate ? new Date(userData.lastProfileUpdate).getTime() : 0;
 
-    const allDates = [...workoutDates, ...weightDates];
-    if (allDates.length === 0) {
+    const allDates = [...workoutDates, ...weightDates, profileUpdateDate];
+    if (allDates.every(d => d === 0)) {
         return "بدون فعالیت";
     }
 

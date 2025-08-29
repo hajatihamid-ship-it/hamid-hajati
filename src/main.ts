@@ -1,5 +1,6 @@
 
 
+
 import { renderLandingPage, initLandingPageListeners } from './ui/landing';
 import { renderAuthModal, initAuthListeners } from './ui/authModal';
 import { renderCoachDashboard, initCoachDashboard, updateCoachNotifications } from './ui/coachDashboard';
@@ -78,52 +79,56 @@ const seedInitialUsers = () => {
                 hip: 95
             },
             joinDate: new Date().toISOString(),
-            step2: {
-                days: [{
-                    name: "شنبه: سینه و پشت بازو",
-                    exercises: [
-                        { name: "پرس سینه هالتر", sets: 4, reps: 10, rest: 60, is_superset: false },
-                        { name: "پشت بازو سیم‌کش", sets: 4, reps: 12, rest: 60, is_superset: false },
-                        { name: "قفسه سینه دمبل", sets: 3, reps: 12, rest: 45, is_superset: true },
-                        { name: "دیپ پارالل", sets: 3, reps: 15, rest: 45, is_superset: true },
-                    ]
-                }, {
-                    name: "یکشنبه: پشت و جلو بازو",
-                     exercises: [
-                        { name: "ددلیفت", sets: 4, reps: 6, rest: 120, is_superset: false },
-                        { name: "بارفیکس دست باز", sets: 4, reps: 10, rest: 75, is_superset: false },
-                        { name: "جلو بازو هالتر", sets: 3, reps: 12, rest: 45, is_superset: false },
-                    ]
-                }, {
-                    name: "دوشنبه: پا",
-                    exercises: [
-                        { name: "اسکوات با هالتر", sets: 5, reps: 8, rest: 90, is_superset: false },
-                        { name: "پرس پا", sets: 4, reps: 12, rest: 60, is_superset: false },
-                        { name: "پشت پا ماشین خوابیده", sets: 4, reps: 15, rest: 45, is_superset: false },
-                    ]
-                }, {
-                    name: "سه‌شنبه: استراحت",
-                    exercises: []
-                }, {
-                    name: "چهارشنبه: سرشانه",
-                     exercises: [
-                        { name: "پرس سرشانه هالتر", sets: 4, reps: 8, rest: 75, is_superset: false },
-                        { name: "نشر از جانب دمبل", sets: 4, reps: 12, rest: 60, is_superset: false },
-                        { name: "فیس پول", sets: 3, reps: 15, rest: 45, is_superset: false },
-                    ]
-                }, {
-                    name: "پنجشنبه: فول بادی (اختیاری)",
-                     exercises: [
-                        { name: "اسکوات گابلت", sets: 3, reps: 12, rest: 60, is_superset: false },
-                        { name: "شنا سوئدی", sets: 3, reps: 15, rest: 60, is_superset: false },
-                        { name: "پلانک", sets: 3, reps: 60, rest: 60, is_superset: false },
-                    ]
-                }, {
-                    name: "جمعه: استراحت",
-                    exercises: []
-                }],
-                notes: "قبل از هر تمرین ۵ دقیقه گرم کنید. بعد از تمرین حرکات کششی فراموش نشود. به میزان کافی آب بنوشید و روی کیفیت خواب تمرکز کنید."
-            },
+            programHistory: [{
+                date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+                step2: {
+                    days: [{
+                        name: "شنبه: سینه و پشت بازو",
+                        exercises: [
+                            { name: "پرس سینه هالتر", sets: 4, reps: 10, rest: 60, is_superset: false },
+                            { name: "پشت بازو سیم‌کش", sets: 4, reps: 12, rest: 60, is_superset: false },
+                            { name: "قفسه سینه دمبل", sets: 3, reps: 12, rest: 45, is_superset: true },
+                            { name: "دیپ پارالل", sets: 3, reps: 15, rest: 45, is_superset: true },
+                        ]
+                    }, {
+                        name: "یکشنبه: پشت و جلو بازو",
+                         exercises: [
+                            { name: "ددلیفت", sets: 4, reps: 6, rest: 120, is_superset: false },
+                            { name: "بارفیکس دست باز", sets: 4, reps: 10, rest: 75, is_superset: false },
+                            { name: "جلو بازو هالتر", sets: 3, reps: 12, rest: 45, is_superset: false },
+                        ]
+                    }, {
+                        name: "دوشنبه: پا",
+                        exercises: [
+                            { name: "اسکوات با هالتر", sets: 5, reps: 8, rest: 90, is_superset: false },
+                            { name: "پرس پا", sets: 4, reps: 12, rest: 60, is_superset: false },
+                            { name: "پشت پا ماشین خوابیده", sets: 4, reps: 15, rest: 45, is_superset: false },
+                        ]
+                    }, {
+                        name: "سه‌شنبه: استراحت",
+                        exercises: []
+                    }, {
+                        name: "چهارشنبه: سرشانه",
+                         exercises: [
+                            { name: "پرس سرشانه هالتر", sets: 4, reps: 8, rest: 75, is_superset: false },
+                            { name: "نشر از جانب دمبل", sets: 4, reps: 12, rest: 60, is_superset: false },
+                            { name: "فیس پول", sets: 3, reps: 15, rest: 45, is_superset: false },
+                        ]
+                    }, {
+                        name: "پنجشنبه: فول بادی (اختیاری)",
+                         exercises: [
+                            { name: "اسکوات گابلت", sets: 3, reps: 12, rest: 60, is_superset: false },
+                            { name: "شنا سوئدی", sets: 3, reps: 15, rest: 60, is_superset: false },
+                            { name: "پلانک", sets: 3, reps: 60, rest: 60, is_superset: false },
+                        ]
+                    }, {
+                        name: "جمعه: استراحت",
+                        exercises: []
+                    }],
+                    notes: "قبل از هر تمرین ۵ دقیقه گرم کنید. بعد از تمرین حرکات کششی فراموش نشود. به میزان کافی آب بنوشید و روی کیفیت خواب تمرکز کنید."
+                },
+                supplements: []
+            }],
             chatHistory: [
                 { sender: 'coach', message: 'سلام! برنامه جدیدت رو ارسال کردم. حتما بررسی کن.', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
                 { sender: 'user', message: 'ممنون مربی، عالیه!', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() }
@@ -161,11 +166,12 @@ const seedInitialUsers = () => {
             step1: { clientName: "User Needs Plan", clientEmail: "needsplan@fitgympro.com", coachName: "coach10186" },
             joinDate: new Date().toISOString(),
             subscriptions: [{
-                planId: 'full-1m',
-                planName: 'پکیج کامل ۱ ماهه',
-                price: 250000,
+                planId: 'full-3m',
+                planName: 'پکیج کامل ۳ ماهه',
+                price: 400000,
                 purchaseDate: new Date().toISOString(),
-                fulfilled: false
+                fulfilled: false,
+                access: ['workout_plan', 'nutrition_plan', 'chat']
             }]
         });
 
@@ -239,10 +245,10 @@ const seedInitialUsers = () => {
      // Seed plans if they don't exist
     if (getStorePlans().length === 0) {
         const plans = [
-            { planId: 'basic-1m', planName: 'پکیج پایه ۱ ماهه', description: 'ایده‌آل برای شروع و آشنایی.', price: 150000, features: ['برنامه تمرینی اختصاصی', 'پشتیبانی پایه در چت'], emoji: '💪', color: '#3b82f6' },
-            { planId: 'full-3m', planName: 'پکیج کامل ۳ ماهه', description: 'بهترین گزینه برای نتایج پایدار.', price: 400000, features: ['برنامه تمرینی اختصاصی', 'برنامه غذایی هوشمند', 'پشتیبانی کامل در چت', 'تحلیل هفتگی پیشرفت'], emoji: '🚀', color: '#ec4899', recommended: true },
-            { planId: 'pro-6m', planName: 'پکیج حرفه‌ای ۶ ماهه', description: 'برای ورزشکاران جدی و اهداف بزرگ.', price: 700000, features: ['تمام ویژگی‌های کامل', 'تماس ویدیویی ماهانه', 'اولویت در پشتیبانی'], emoji: '⭐', color: '#f97316' },
-            { planId: 'nutrition-1m', planName: 'برنامه غذایی ۱ ماهه', description: 'فقط برنامه غذایی تخصصی.', price: 100000, features: ['برنامه غذایی هوشمند', 'پشتیبانی تغذیه در چت'], emoji: '🥗', color: '#10b981' }
+            { planId: 'basic-1m', planName: 'پکیج پایه ۱ ماهه', description: 'ایده‌آل برای شروع و آشنایی.', price: 150000, features: ['برنامه تمرینی اختصاصی', 'پشتیبانی پایه در چت'], emoji: '💪', color: '#3b82f6', access: ['workout_plan', 'chat'] },
+            { planId: 'full-3m', planName: 'پکیج کامل ۳ ماهه', description: 'بهترین گزینه برای نتایج پایدار.', price: 400000, features: ['برنامه تمرینی اختصاصی', 'برنامه غذایی هوشمند', 'پشتیبانی کامل در چت', 'تحلیل هفتگی پیشرفت'], emoji: '🚀', color: '#ec4899', recommended: true, access: ['workout_plan', 'nutrition_plan', 'chat'] },
+            { planId: 'pro-6m', planName: 'پکیج حرفه‌ای ۶ ماهه', description: 'برای ورزشکاران جدی و اهداف بزرگ.', price: 700000, features: ['تمام ویژگی‌های کامل', 'تماس ویدیویی ماهانه', 'اولویت در پشتیبانی'], emoji: '⭐', color: '#f97316', access: ['workout_plan', 'nutrition_plan', 'chat'] },
+            { planId: 'nutrition-1m', planName: 'برنامه غذایی ۱ ماهه', description: 'فقط برنامه غذایی تخصصی.', price: 100000, features: ['برنامه غذایی هوشمند', 'پشتیبانی تغذیه در چت'], emoji: '🥗', color: '#10b981', access: ['nutrition_plan', 'chat'] }
         ];
         saveStorePlans(plans);
         addActivityLog("Initial store plans were created automatically.");
@@ -380,40 +386,26 @@ const initTheme = () => {
         docElement.setAttribute("data-theme", validTheme);
         localStorage.setItem("fitgympro_theme", validTheme);
         
-        const switcher = document.getElementById("theme-switcher");
-        if (switcher) {
+        document.querySelectorAll("#theme-switcher").forEach(switcher => {
             const glider = switcher.querySelector('#theme-glider') as HTMLElement;
             const lemonBtn = switcher.querySelector('[data-theme="lemon"]') as HTMLElement;
             const darkBtn = switcher.querySelector('[data-theme="dark"]') as HTMLElement;
             
             if (!glider || !lemonBtn || !darkBtn) return;
             
-            lemonBtn.classList.remove('active');
-            darkBtn.classList.remove('active');
-
             // Timeout to allow browser to calculate layout after theme change
             setTimeout(() => {
-                if (validTheme === 'dark') {
-                    darkBtn.classList.add('active');
-                    glider.style.width = `${darkBtn.offsetWidth}px`;
-                    glider.style.transform = `translateX(${darkBtn.offsetLeft - lemonBtn.offsetLeft}px)`;
-                } else { // lemon
-                    lemonBtn.classList.add('active');
-                    glider.style.width = `${lemonBtn.offsetWidth}px`;
-                    glider.style.transform = 'translateX(0px)';
-                }
-            }, 10);
+                const activeBtn = validTheme === 'dark' ? darkBtn : lemonBtn;
+                const inactiveBtn = validTheme === 'dark' ? lemonBtn : darkBtn;
 
-        } else {
-             // Fallback for old button
-            const themeToggleBtn = document.getElementById("theme-toggle-btn-dashboard");
-            if (themeToggleBtn) {
-                const icon = themeToggleBtn.querySelector("i");
-                if (icon) {
-                    icon.setAttribute('data-lucide', validTheme === 'lemon' ? 'moon' : 'sun');
-                }
-            }
-        }
+                activeBtn.classList.add('active');
+                inactiveBtn.classList.remove('active');
+                
+                glider.style.width = `${activeBtn.offsetWidth}px`;
+                glider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+            }, 50);
+
+        });
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -432,14 +424,6 @@ const initTheme = () => {
                 const newTheme = themeBtn.getAttribute('data-theme')!;
                 updateThemeUI(newTheme);
                 return;
-            }
-            
-            // Handle old button for backwards compatibility
-            const toggleBtn = e.target.closest('#theme-toggle-btn-dashboard');
-             if (toggleBtn) {
-                const currentTheme = docElement.getAttribute("data-theme") || "dark";
-                const newTheme = currentTheme === 'dark' ? 'lemon' : 'dark';
-                updateThemeUI(newTheme);
             }
         });
         themeListenerAttached = true;
