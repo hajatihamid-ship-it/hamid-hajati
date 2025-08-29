@@ -1042,7 +1042,7 @@ const resetProgramBuilder = () => {
     const supNameBtn = document.getElementById('supplement-name-select-btn');
     if (supCatBtn) {
         supCatBtn.dataset.value = "";
-        (supCatBtn.querySelector('span') as HTMLElement).textContent = "دسته را انتخاب کنید";
+        (supCatBtn.querySelector('span') as HTMLElement).textContent = "انتخاب دسته";
     }
     if (supNameBtn) {
         supNameBtn.dataset.value = "";
@@ -1077,22 +1077,26 @@ const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) =
     const titleEl = modal.querySelector('.selection-modal-title') as HTMLElement;
     const optionsContainer = modal.querySelector('.selection-modal-options') as HTMLElement;
     const searchInput = modal.querySelector('.selection-modal-search') as HTMLInputElement;
-    const filterChipsContainer = modal.querySelector('#student-filter-chips');
-    const sortSelect = modal.querySelector('#student-sort-select') as HTMLSelectElement;
+    const filterChipsContainer = modal.querySelector('#student-filter-chips') as HTMLElement;
+    const sortSelect = modal.querySelector('#student-sort-select') as HTMLElement;
 
     titleEl.textContent = "انتخاب شاگرد";
     searchInput.value = '';
+    
+    // Show student-specific elements
+    if (filterChipsContainer) filterChipsContainer.style.display = 'flex';
+    if (sortSelect) sortSelect.style.display = 'block';
 
     // Reset filters and sort
     filterChipsContainer?.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
     (filterChipsContainer?.querySelector('.filter-chip[data-filter="all"]') as HTMLElement)?.classList.add('active');
-    sortSelect.value = 'name';
+    (sortSelect as HTMLSelectElement).value = 'name';
 
     const allStudents = getCoachStudents(coachUsername);
 
     const renderOptions = () => {
         const filter = (filterChipsContainer?.querySelector('.filter-chip.active') as HTMLElement)?.dataset.filter || 'all';
-        const sortBy = sortSelect.value;
+        const sortBy = (sortSelect as HTMLSelectElement).value;
         const searchTerm = searchInput.value.toLowerCase();
 
         const studentDataWithDetails = allStudents.map((s: any) => {
@@ -1237,6 +1241,12 @@ const openSelectionModal = (options: string[], title: string, target: HTMLElemen
     const modal = document.getElementById('selection-modal');
     if (!modal) return;
 
+    // Hide student-specific elements for generic selection
+    const studentFilters = modal.querySelector('#student-filter-chips') as HTMLElement;
+    const studentSorter = modal.querySelector('#student-sort-select') as HTMLElement;
+    if (studentFilters) studentFilters.style.display = 'none';
+    if (studentSorter) studentSorter.style.display = 'none';
+
     const titleEl = modal.querySelector('.selection-modal-title') as HTMLElement;
     const optionsContainer = modal.querySelector('.selection-modal-options') as HTMLElement;
     const searchInput = modal.querySelector('.selection-modal-search') as HTMLInputElement;
@@ -1248,13 +1258,23 @@ const openSelectionModal = (options: string[], title: string, target: HTMLElemen
         const filteredOptions = options.filter(opt => opt.toLowerCase().includes(filter.toLowerCase()));
         const optionTemplate = document.getElementById('selection-modal-option-template') as HTMLTemplateElement;
 
-        optionsContainer.innerHTML = filteredOptions.map(opt => {
+        if (!optionTemplate) {
+            optionsContainer.innerHTML = '<p>Template not found.</p>';
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        filteredOptions.forEach(opt => {
             const optionNode = optionTemplate.content.cloneNode(true) as DocumentFragment;
             const button = optionNode.querySelector('.selection-option-btn') as HTMLButtonElement;
-            button.textContent = opt;
-            button.dataset.value = opt;
-            return button.outerHTML;
-        }).join('');
+            if (button) {
+                button.textContent = opt;
+                button.dataset.value = opt;
+                fragment.appendChild(button);
+            }
+        });
+        optionsContainer.innerHTML = ''; // Clear existing
+        optionsContainer.appendChild(fragment);
     };
     
     renderOptions();
@@ -1805,6 +1825,59 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
     const mainContainer = document.getElementById('coach-dashboard-container');
     if (!mainContainer) return;
 
+    // Helper functions for AI features
+    const findSupplementInDB = (name: string) => {
+        const supplementsDB = getSupplementsDB();
+        for (const category in supplementsDB) {
+            const supplement = supplementsDB[category].find(s => s.name === name);
+            if (supplement) return supplement;
+        }
+        return null;
+    };
+
+    const addSupplementRow = (supData: any) => {
+        const container = document.getElementById('added-supplements-container');
+        const template = document.getElementById('supplement-row-template') as HTMLTemplateElement;
+        if (!container || !template) return;
+
+        if (container.querySelector('p')) {
+            container.innerHTML = '';
+        }
+
+        const clone = template.content.cloneNode(true) as DocumentFragment;
+        const newRow = clone.querySelector('.supplement-row') as HTMLElement;
+
+        (newRow.querySelector('.supplement-name') as HTMLElement).textContent = supData.name;
+        (newRow.querySelector('.supplement-note') as HTMLElement).textContent = supData.note;
+        
+        const dosageSelect = newRow.querySelector('.dosage-select') as HTMLSelectElement;
+        const timingSelect = newRow.querySelector('.timing-select') as HTMLSelectElement;
+
+        supData.dosageOptions.forEach((opt: string) => {
+            const option = new Option(opt, opt);
+            dosageSelect.add(option);
+        });
+
+        supData.timingOptions.forEach((opt: string) => {
+            const option = new Option(opt, opt);
+            timingSelect.add(option);
+        });
+        
+        if (supData.selectedDosage && supData.dosageOptions.includes(supData.selectedDosage)) {
+            dosageSelect.value = supData.selectedDosage;
+        }
+        if (supData.selectedTiming && supData.timingOptions.includes(supData.selectedTiming)) {
+            timingSelect.value = supData.selectedTiming;
+        }
+        if (supData.notes) {
+            (newRow.querySelector('.notes-input') as HTMLInputElement).value = supData.notes;
+        }
+
+        container.appendChild(newRow);
+        window.lucide?.createIcons();
+    };
+
+
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
     document.getElementById('go-to-home-btn')?.addEventListener('click', handleGoToHome);
 
@@ -1943,6 +2016,59 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             return;
         }
         
+        const addSupplementBtn = target.closest('#add-supplement-btn');
+        if (addSupplementBtn) {
+            const card = addSupplementBtn.closest('.card');
+            if (!card) {
+                console.error('Could not find parent card for supplement controls.');
+                return;
+            }
+            const nameSelectBtn = card.querySelector('.supplement-name-select-btn') as HTMLElement;
+            const supplementName = nameSelectBtn?.dataset.value;
+
+            if (!supplementName) {
+                showToast('لطفا ابتدا یک مکمل را انتخاب کنید.', 'error');
+                return;
+            }
+
+            const supplementsDB = getSupplementsDB();
+            let supplementData = null;
+            for (const category in supplementsDB) {
+                const found = supplementsDB[category].find((s: any) => s.name === supplementName);
+                if (found) {
+                    supplementData = found;
+                    break;
+                }
+            }
+
+            if (supplementData) {
+                addSupplementRow(supplementData);
+                
+                const catSelectBtn = card.querySelector('.supplement-category-select-btn') as HTMLElement;
+                if(catSelectBtn) {
+                    catSelectBtn.dataset.value = '';
+                    catSelectBtn.querySelector('span')!.textContent = 'انتخاب دسته';
+                }
+                nameSelectBtn.dataset.value = '';
+                nameSelectBtn.querySelector('span')!.textContent = 'انتخاب مکمل';
+                (nameSelectBtn as HTMLButtonElement).disabled = true;
+
+            } else {
+                showToast('خطا: اطلاعات مکمل یافت نشد.', 'error');
+            }
+            return;
+        }
+
+        const removeSupplementBtn = target.closest('.remove-supplement-btn');
+        if (removeSupplementBtn) {
+            removeSupplementBtn.closest('.supplement-row')?.remove();
+            const container = document.getElementById('added-supplements-container');
+            if (container && !container.querySelector('.supplement-row')) {
+                container.innerHTML = '<p class="text-text-secondary text-center p-4">مکمل‌های انتخابی در اینجا نمایش داده می‌شوند.</p>';
+            }
+            return;
+        }
+        
         const selectionBtn = target.closest('.selection-button');
         if (selectionBtn && selectionBtn.closest('#program-builder-main')) {
             const type = (selectionBtn as HTMLElement).dataset.type;
@@ -1967,9 +2093,150 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             return;
         }
         
-        const selectionOption = target.closest('.selection-option-btn');
-        if (selectionOption && currentSelectionTarget) {
-            const value = (selectionOption as HTMLElement).dataset.value;
+        // Program Builder: Select Student
+        const selectStudentBuilderBtn = target.closest('#select-student-builder-btn');
+        if (selectStudentBuilderBtn) {
+            openStudentSelectionModal(selectStudentBuilderBtn as HTMLElement, currentUser);
+            return;
+        }
+
+        // Program Builder: Stepper Navigation
+        if (target.closest('#next-step-btn')) {
+            if (currentStep === 1 && !activeStudentUsername) {
+                showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
+                return;
+            }
+            if (currentStep < totalSteps) changeStep(currentStep + 1);
+            return;
+        }
+        if (target.closest('#prev-step-btn')) {
+            if (currentStep > 1) changeStep(currentStep + 1);
+            return;
+        }
+        const stepperItem = target.closest<HTMLElement>('.stepper-item');
+        if (stepperItem) {
+            const step = parseInt(stepperItem.dataset.step || '1', 10);
+            if (step < currentStep || (step > 1 && activeStudentUsername)) {
+                changeStep(step);
+            } else if (step > 1 && !activeStudentUsername) {
+                 showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
+            }
+        }
+        
+        // AI Buttons
+        const aiDraftBtn = target.closest<HTMLButtonElement>('#ai-draft-btn');
+        if (aiDraftBtn) {
+            if (!activeStudentUsername) {
+                showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
+                return;
+            }
+            const studentData = getUserData(activeStudentUsername);
+            if (!studentData.step1) {
+                showToast('اطلاعات پروفایل این شاگرد کامل نیست.', 'error');
+                return;
+            }
+            aiDraftBtn.classList.add('is-loading');
+            aiDraftBtn.disabled = true;
+            generateWorkoutPlan(studentData.step1)
+                .then(planData => { if (planData) { populateBuilderWithAI(planData); } })
+                .catch(error => { console.error("AI Draft Error:", error); showToast("خطا در ارتباط با هوش مصنوعی.", 'error'); })
+                .finally(() => { aiDraftBtn.classList.remove('is-loading'); aiDraftBtn.disabled = false; });
+            return;
+        }
+
+        const aiSupplementBtn = target.closest<HTMLButtonElement>('#ai-supplement-btn');
+        if (aiSupplementBtn) {
+            if (!activeStudentUsername) {
+                showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
+                return;
+            }
+            const studentData = getUserData(activeStudentUsername).step1;
+            const goal = studentData?.trainingGoal;
+            if (!studentData || !goal) {
+                showToast('هدف تمرینی شاگرد برای پیشنهاد مکمل مشخص نیست.', 'error');
+                return;
+            }
+            aiSupplementBtn.classList.add('is-loading');
+            aiSupplementBtn.disabled = true;
+            generateSupplementPlan(studentData, goal)
+                .then(supplements => {
+                    if (supplements) {
+                        const container = document.getElementById('added-supplements-container');
+                        if (container) container.innerHTML = ''; // Clear existing
+                        supplements.forEach(sup => {
+                            const dbEntry = findSupplementInDB(sup.name);
+                            if (dbEntry) {
+                                addSupplementRow({ ...dbEntry, selectedDosage: sup.dosage, selectedTiming: sup.timing });
+                            }
+                        });
+                        showToast('پیشنهاد مکمل با موفقیت دریافت شد.', 'success');
+                    }
+                })
+                .finally(() => { aiSupplementBtn.classList.remove('is-loading'); aiSupplementBtn.disabled = false; });
+            return;
+        }
+
+        const aiNutritionBtn = target.closest<HTMLButtonElement>('#ai-nutrition-btn');
+        if (aiNutritionBtn) {
+            if (!activeStudentUsername) {
+                showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
+                return;
+            }
+            const userData = getUserData(activeStudentUsername);
+             if (!userData.step1 || !userData.step1.tdee) {
+                showToast('اطلاعات شاگرد (مخصوصا TDEE) برای تولید برنامه غذایی کامل نیست.', 'error');
+                return;
+            }
+            aiNutritionBtn.classList.add('is-loading');
+            aiNutritionBtn.disabled = true;
+            generateNutritionPlan(userData)
+                .then(plan => {
+                    if (plan) {
+                        currentNutritionPlanObject = plan;
+                        const placeholder = document.getElementById('nutrition-plan-placeholder');
+                        const display = document.getElementById('nutrition-plan-display');
+                        if (placeholder && display) {
+                            placeholder.classList.add('hidden');
+                            display.classList.remove('hidden');
+                            let html = `<h4 class="font-bold mb-2">برنامه غذایی نمونه</h4><button id="clear-nutrition-plan" class="secondary-button !p-1 !text-xs absolute top-0 left-0">پاک کردن</button>`;
+                            html += (plan.weeklyPlan || []).map((day: any) => `
+                                <details class="mb-2"><summary class="font-semibold cursor-pointer p-2 bg-bg-tertiary rounded-md">${day.dayName}</summary>
+                                <ul class="pt-2 pr-4 text-sm space-y-2">${(day.meals || []).map((meal: any) => `<li><strong>${meal.mealName}:</strong><ul class="list-disc pr-4 text-text-secondary">${(meal.options || []).map((opt: string) => `<li>${opt}</li>`).join('')}</ul></li>`).join('')}</ul></details>`).join('');
+                            html += `<h4 class="font-bold mt-4 mb-2">نکات</h4><ul class="list-disc pr-4 text-sm text-text-secondary space-y-1">${(plan.generalTips || []).map((tip: string) => `<li>${tip}</li>`).join('')}</ul>`;
+                            display.innerHTML = html;
+                            display.querySelector('#clear-nutrition-plan')?.addEventListener('click', () => {
+                                currentNutritionPlanObject = null;
+                                display.classList.add('hidden');
+                                placeholder.classList.remove('hidden');
+                            });
+                        }
+                        showToast('برنامه غذایی با موفقیت ایجاد شد.', 'success');
+                    }
+                })
+                .finally(() => { aiNutritionBtn.classList.remove('is-loading'); aiNutritionBtn.disabled = false; });
+            return;
+        }
+    });
+
+    const selectionModal = document.getElementById('selection-modal');
+    selectionModal?.addEventListener('click', e => {
+        if (!(e.target instanceof HTMLElement)) return;
+        const target = e.target;
+        
+        const studentOptionBtn = target.closest('.student-option-btn');
+        if (studentOptionBtn) {
+            const username = (studentOptionBtn as HTMLElement).dataset.username;
+            if (username) {
+                renderStudentInfoForBuilder(username);
+                closeModal(selectionModal);
+                changeStep(2);
+            }
+            return;
+        }
+
+        const selectionOptionBtn = target.closest('.selection-option-btn');
+        if (selectionOptionBtn && currentSelectionTarget) {
+            const value = (selectionOptionBtn as HTMLElement).dataset.value;
             if (value) {
                 (currentSelectionTarget.querySelector('span') as HTMLElement).textContent = value;
                 currentSelectionTarget.dataset.value = value;
@@ -1997,52 +2264,11 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 }
                 calculateAndDisplayVolume();
             }
-            closeModal(document.getElementById('selection-modal'));
+            closeModal(selectionModal);
             currentSelectionTarget = null;
-            return;
-        }
-
-        // Program Builder: Select Student
-        const selectStudentBuilderBtn = target.closest('#select-student-builder-btn');
-        if (selectStudentBuilderBtn) {
-            openStudentSelectionModal(selectStudentBuilderBtn as HTMLElement, currentUser);
-            return;
-        }
-        
-        const studentOptionBtn = target.closest('.student-option-btn');
-        if (studentOptionBtn && studentOptionBtn.closest('#selection-modal')) {
-            const username = (studentOptionBtn as HTMLElement).dataset.username;
-            if(username) {
-                renderStudentInfoForBuilder(username);
-                closeModal(document.getElementById('selection-modal'));
-                changeStep(2);
-            }
-            return;
-        }
-
-        // Program Builder: Stepper Navigation
-        if (target.closest('#next-step-btn')) {
-            if (currentStep === 1 && !activeStudentUsername) {
-                showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
-                return;
-            }
-            if (currentStep < totalSteps) changeStep(currentStep + 1);
-            return;
-        }
-        if (target.closest('#prev-step-btn')) {
-            if (currentStep > 1) changeStep(currentStep - 1);
-            return;
-        }
-        const stepperItem = target.closest<HTMLElement>('.stepper-item');
-        if (stepperItem) {
-            const step = parseInt(stepperItem.dataset.step || '1', 10);
-            if (step < currentStep || (step > 1 && activeStudentUsername)) {
-                changeStep(step);
-            } else if (step > 1 && !activeStudentUsername) {
-                 showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
-            }
         }
     });
+
 
      mainContainer.addEventListener('submit', e => {
         if (e.target && (e.target as HTMLElement).id === 'coach-profile-form') {
