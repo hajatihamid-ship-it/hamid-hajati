@@ -1310,109 +1310,6 @@ const getStudentsNeedingAttention = (students: any[]) => {
     });
 };
 
-const renderStudentCards = (students: any[], containerId: string) => {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    if (students.length === 0) {
-        if (containerId === 'needs-attention-grid') {
-            container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">هیچ شاگردی در حال حاضر منتظر برنامه نیست.</p>`;
-        } else {
-            container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">موردی برای نمایش یافت نشد.</p>`;
-        }
-        return;
-    }
-
-    container.innerHTML = students.map(student => {
-        const studentData = getUserData(student.username);
-        const name = studentData.step1?.clientName || student.username;
-        const goal = studentData.step1?.trainingGoal || 'بدون هدف';
-        const latestPurchase = getLatestPurchase(studentData);
-
-        const streak = calculateWorkoutStreak(studentData.workoutHistory);
-        const weightChange = getWeightChange(studentData);
-        const needsPlan = latestPurchase && latestPurchase.fulfilled === false;
-
-        const trendIcon = weightChange.trend === 'up' ? 'trending-up' : 'trending-down';
-        const trendColor = weightChange.trend === 'up' ? 'text-green-500' : 'text-red-500';
-
-        const cardClasses = `student-card card p-6 flex flex-col gap-5 animate-fade-in ${
-            needsPlan ? 'bg-accent/5 border-accent/40 needs-attention-highlight' : 'bg-bg-secondary'
-        }`;
-        
-        let purchaseInfoHtml = `
-            <div class="info-card !bg-bg-secondary !border-dashed p-3 text-center">
-                 <p class="text-sm text-text-secondary">خریدی ثبت نشده است.</p>
-            </div>
-        `;
-        if (latestPurchase) {
-             purchaseInfoHtml = `
-                <div class="info-card p-3 ${needsPlan ? '!bg-accent/10' : ''}">
-                    <div class="flex justify-between items-center">
-                         <div>
-                            <p class="text-xs text-text-secondary">آخرین خرید</p>
-                            <p class="font-bold text-sm">${latestPurchase.planName}</p>
-                            <p class="text-xs text-text-secondary">${new Date(latestPurchase.purchaseDate).toLocaleDateString('fa-IR')}</p>
-                         </div>
-                         ${needsPlan 
-                            ? '<span class="status-badge pending animate-pulse-accent !text-xs !py-0.5 !px-2 flex-shrink-0">در انتظار</span>' 
-                            : '<span class="status-badge verified !text-xs !py-0.5 !px-2 flex-shrink-0">انجام شده</span>'
-                         }
-                    </div>
-                </div>
-            `;
-        }
-
-
-        return `
-            <div class="${cardClasses}">
-                <!-- Header -->
-                <div class="flex items-start gap-4">
-                    <div class="w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-xl text-white" style="background-color: ${getColorForName(name)};">
-                        ${name.substring(0, 1).toUpperCase()}
-                    </div>
-                    <div class="flex-grow overflow-hidden">
-                        <h3 class="font-bold text-xl truncate">${name}</h3>
-                        <p class="text-sm text-text-secondary truncate">${goal}</p>
-                    </div>
-                </div>
-                
-                <!-- KPIs -->
-                <div class="grid grid-cols-3 gap-4 text-center text-sm py-4 border-y border-border-primary">
-                    <div>
-                        <p class="font-extrabold text-2xl flex items-center justify-center gap-1.5">${streak} <i data-lucide="flame" class="w-5 h-5 text-orange-400"></i></p>
-                        <p class="text-xs text-text-secondary mt-1">زنجیره تمرین</p>
-                    </div>
-                    <div>
-                        <p class="font-extrabold text-2xl flex items-center justify-center gap-1.5 ${weightChange.change !== 0 ? trendColor : ''}">
-                            ${weightChange.change !== 0 ? `<i data-lucide="${trendIcon}" class="w-5 h-5"></i>` : ''}
-                            ${weightChange.change >= 0 ? '+' : ''}${weightChange.change}
-                        </p>
-                        <p class="text-xs text-text-secondary mt-1">تغییر وزن (kg)</p>
-                    </div>
-                    <div>
-                        <p class="font-extrabold text-2xl">${getLastActivity(studentData).split(' ')[0]}</p>
-                        <p class="text-xs text-text-secondary mt-1">آخرین فعالیت</p>
-                    </div>
-                </div>
-
-                <!-- Purchase Info -->
-                ${purchaseInfoHtml}
-                
-                <!-- Actions -->
-                <div class="mt-auto flex items-center gap-3">
-                    <button data-action="create-program" data-username="${student.username}" class="${needsPlan ? 'primary-button' : 'secondary-button'} !py-2.5 !px-4 !text-sm flex-grow">
-                        <i data-lucide="${needsPlan ? 'plus-circle' : 'edit'}" class="w-4 h-4 mr-2"></i>
-                        ${needsPlan ? 'ساخت برنامه' : 'ویرایش برنامه'}
-                    </button>
-                    <button data-action="view-student" data-username="${student.username}" class="secondary-button !py-2.5 !px-4 !text-sm"><i data-lucide="user" class="w-4 h-4 pointer-events-none"></i></button>
-                </div>
-            </div>
-        `;
-    }).join('');
-    window.lucide?.createIcons();
-};
-
 const getLastActivityDate = (userData: any): string => {
     const workoutDates = (userData.workoutHistory || []).map((h: any) => new Date(h.date).getTime());
     const weightDates = (userData.weightHistory || []).map((h: any) => new Date(h.date).getTime());
@@ -1801,6 +1698,109 @@ const renderChatTab = (currentUser: string) => {
     }
 };
 
+const renderStudentCards = (students: any[], containerId: string) => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (students.length === 0) {
+        if (containerId === 'needs-attention-grid') {
+            container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">هیچ شاگردی در حال حاضر منتظر برنامه نیست.</p>`;
+        } else {
+            container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">موردی برای نمایش یافت نشد.</p>`;
+        }
+        return;
+    }
+
+    container.innerHTML = students.map(student => {
+        const studentData = getUserData(student.username);
+        const name = studentData.step1?.clientName || student.username;
+        const goal = studentData.step1?.trainingGoal || 'بدون هدف';
+        const latestPurchase = getLatestPurchase(studentData);
+
+        const streak = calculateWorkoutStreak(studentData.workoutHistory);
+        const weightChange = getWeightChange(studentData);
+        const needsPlan = latestPurchase && latestPurchase.fulfilled === false;
+
+        const trendIcon = weightChange.trend === 'up' ? 'trending-up' : 'trending-down';
+        const trendColor = weightChange.trend === 'up' ? 'text-green-500' : 'text-red-500';
+
+        const cardClasses = `student-card card p-6 flex flex-col gap-5 animate-fade-in ${
+            needsPlan ? 'bg-accent/5 border-accent/40 needs-attention-highlight' : 'bg-bg-secondary'
+        }`;
+        
+        let purchaseInfoHtml = `
+            <div class="info-card !bg-bg-secondary !border-dashed p-3 text-center">
+                 <p class="text-sm text-text-secondary">خریدی ثبت نشده است.</p>
+            </div>
+        `;
+        if (latestPurchase) {
+             purchaseInfoHtml = `
+                <div class="info-card p-3 ${needsPlan ? '!bg-accent/10' : ''}">
+                    <div class="flex justify-between items-center">
+                         <div>
+                            <p class="text-xs text-text-secondary">آخرین خرید</p>
+                            <p class="font-bold text-sm">${latestPurchase.planName}</p>
+                            <p class="text-xs text-text-secondary">${new Date(latestPurchase.purchaseDate).toLocaleDateString('fa-IR')}</p>
+                         </div>
+                         ${needsPlan 
+                            ? '<span class="status-badge pending animate-pulse-accent !text-xs !py-0.5 !px-2 flex-shrink-0">در انتظار</span>' 
+                            : '<span class="status-badge verified !text-xs !py-0.5 !px-2 flex-shrink-0">انجام شده</span>'
+                         }
+                    </div>
+                </div>
+            `;
+        }
+
+
+        return `
+            <div class="${cardClasses}">
+                <!-- Header -->
+                <div class="flex items-start gap-4">
+                    <div class="w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-xl text-white" style="background-color: ${getColorForName(name)};">
+                        ${name.substring(0, 1).toUpperCase()}
+                    </div>
+                    <div class="flex-grow overflow-hidden">
+                        <h3 class="font-bold text-xl truncate">${name}</h3>
+                        <p class="text-sm text-text-secondary truncate">${goal}</p>
+                    </div>
+                </div>
+                
+                <!-- KPIs -->
+                <div class="grid grid-cols-3 gap-4 text-center text-sm py-4 border-y border-border-primary">
+                    <div>
+                        <p class="font-extrabold text-2xl flex items-center justify-center gap-1.5">${streak} <i data-lucide="flame" class="w-5 h-5 text-orange-400"></i></p>
+                        <p class="text-xs text-text-secondary mt-1">زنجیره تمرین</p>
+                    </div>
+                    <div>
+                        <p class="font-extrabold text-2xl flex items-center justify-center gap-1.5 ${weightChange.change !== 0 ? trendColor : ''}">
+                            ${weightChange.change !== 0 ? `<i data-lucide="${trendIcon}" class="w-5 h-5"></i>` : ''}
+                            ${weightChange.change >= 0 ? '+' : ''}${weightChange.change}
+                        </p>
+                        <p class="text-xs text-text-secondary mt-1">تغییر وزن (kg)</p>
+                    </div>
+                    <div>
+                        <p class="font-extrabold text-2xl">${getLastActivity(studentData).split(' ')[0]}</p>
+                        <p class="text-xs text-text-secondary mt-1">آخرین فعالیت</p>
+                    </div>
+                </div>
+
+                <!-- Purchase Info -->
+                ${purchaseInfoHtml}
+                
+                <!-- Actions -->
+                <div class="mt-auto flex items-center gap-3">
+                    <button data-action="create-program" data-username="${student.username}" class="${needsPlan ? 'primary-button' : 'secondary-button'} !py-2.5 !px-4 !text-sm flex-grow">
+                        <i data-lucide="${needsPlan ? 'plus-circle' : 'edit'}" class="w-4 h-4 mr-2"></i>
+                        ${needsPlan ? 'ساخت برنامه' : 'ویرایش برنامه'}
+                    </button>
+                    <button data-action="view-student" data-username="${student.username}" class="secondary-button !py-2.5 !px-4 !text-sm"><i data-lucide="user" class="w-4 h-4 pointer-events-none"></i></button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    window.lucide?.createIcons();
+};
+
 export function initCoachDashboard(currentUser: string, handleLogout: () => void, handleGoToHome: () => void) {
     const mainContainer = document.getElementById('coach-dashboard-container');
     if (!mainContainer) return;
@@ -1817,7 +1817,6 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         'profile-content': { title: 'پروفایل', subtitle: 'اطلاعات عمومی خود را ویرایش کنید.' }
     };
     
-    // FIX: Changed parameter type from Element to HTMLElement to match expected usage.
     const switchTab = (activeTab: HTMLElement) => {
         const targetId = activeTab.getAttribute('data-target');
         if (!targetId) return;
@@ -1875,9 +1874,21 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         }
     };
     
-    // FIX: Added generic type to querySelector to ensure it returns HTMLElement.
     const defaultTab = mainContainer.querySelector<HTMLElement>('.coach-nav-link');
     if(defaultTab) switchTab(defaultTab);
+    
+    mainContainer.addEventListener('input', e => {
+        if (!(e.target instanceof HTMLInputElement)) return;
+        const target = e.target;
+        if (target.matches('.range-slider')) {
+            const labelSpan = target.previousElementSibling?.querySelector('span');
+            if (labelSpan) labelSpan.textContent = target.value;
+            updateSliderTrack(target);
+            if (target.matches('.set-slider') || target.matches('.rep-slider')) {
+                calculateAndDisplayVolume();
+            }
+        }
+    });
     
     mainContainer.addEventListener('click', e => {
         if (!(e.target instanceof HTMLElement)) return;
@@ -1896,19 +1907,98 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             return;
         }
         
-        // FIX: Added generic type to `closest` to correctly infer the element type as HTMLButtonElement.
         const actionBtn = target.closest<HTMLButtonElement>('button[data-action]');
         if (actionBtn) {
             const action = actionBtn.dataset.action;
             const username = actionBtn.dataset.username;
             if (action === 'create-program') {
-                // FIX: Added generic type to querySelector and passed the result to switchTab.
                 const programTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="program-builder-content"]');
                 if (programTab) switchTab(programTab);
                 if (username) renderStudentInfoForBuilder(username);
             } else if (action === 'view-student' && username) {
                 openStudentProfileModal(username);
             }
+            return;
+        }
+
+        const addExerciseBtn = target.closest('.add-exercise-btn');
+        if (addExerciseBtn) {
+            const dayId = (addExerciseBtn as HTMLElement).dataset.dayId;
+            if (dayId) addExerciseRow(dayId);
+            return;
+        }
+
+        const removeExerciseBtn = target.closest('.remove-exercise-btn');
+        if (removeExerciseBtn) {
+            removeExerciseBtn.closest('.exercise-row')?.remove();
+            calculateAndDisplayVolume();
+            return;
+        }
+
+        const supersetBtn = target.closest('.superset-btn');
+        if (supersetBtn) {
+            supersetBtn.classList.toggle('active');
+            const row = supersetBtn.closest('.exercise-row');
+            if (row) row.classList.toggle('is-superset');
+            return;
+        }
+        
+        const selectionBtn = target.closest('.selection-button');
+        if (selectionBtn && selectionBtn.closest('#program-builder-main')) {
+            const type = (selectionBtn as HTMLElement).dataset.type;
+            const exerciseDB = getExercisesDB();
+            const supplementsDB = getSupplementsDB();
+            if (type === 'muscle-group') {
+                openSelectionModal(Object.keys(exerciseDB), 'انتخاب گروه عضلانی', selectionBtn as HTMLElement);
+            } else if (type === 'exercise') {
+                const row = selectionBtn.closest('.exercise-row');
+                const muscleGroup = row?.querySelector<HTMLElement>('.muscle-group-select')?.dataset.value;
+                if (muscleGroup && exerciseDB[muscleGroup]) {
+                    openSelectionModal(exerciseDB[muscleGroup], `انتخاب حرکت برای ${muscleGroup}`, selectionBtn as HTMLElement);
+                }
+            } else if (type === 'supplement-category') {
+                openSelectionModal(Object.keys(supplementsDB), 'انتخاب دسته مکمل', selectionBtn as HTMLElement);
+            } else if (type === 'supplement-name') {
+                const category = document.querySelector<HTMLElement>('.supplement-category-select-btn')?.dataset.value;
+                if (category && supplementsDB[category]) {
+                    openSelectionModal(supplementsDB[category].map((s: any) => s.name), 'انتخاب نام مکمل', selectionBtn as HTMLElement);
+                }
+            }
+            return;
+        }
+        
+        const selectionOption = target.closest('.selection-option-btn');
+        if (selectionOption && currentSelectionTarget) {
+            const value = (selectionOption as HTMLElement).dataset.value;
+            if (value) {
+                (currentSelectionTarget.querySelector('span') as HTMLElement).textContent = value;
+                currentSelectionTarget.dataset.value = value;
+                const type = currentSelectionTarget.dataset.type;
+
+                if (type === 'muscle-group') {
+                    const row = currentSelectionTarget.closest('.exercise-row');
+                    const exerciseSelect = row?.querySelector('.exercise-select') as HTMLButtonElement;
+                    if (exerciseSelect) {
+                        exerciseSelect.disabled = false;
+                        exerciseSelect.dataset.value = '';
+                        (exerciseSelect.querySelector('span') as HTMLElement).textContent = 'انتخاب حرکت';
+                    }
+                    if (row) (row as HTMLElement).dataset.exerciseMuscleGroup = value;
+                } else if (type === 'exercise') {
+                     const row = currentSelectionTarget.closest('.exercise-row');
+                     if(row) (row as HTMLElement).dataset.exerciseName = value;
+                } else if (type === 'supplement-category') {
+                    const nameSelect = document.querySelector('.supplement-name-select-btn') as HTMLButtonElement;
+                    if (nameSelect) {
+                        nameSelect.disabled = false;
+                        nameSelect.dataset.value = '';
+                        (nameSelect.querySelector('span') as HTMLElement).textContent = 'انتخاب مکمل';
+                    }
+                }
+                calculateAndDisplayVolume();
+            }
+            closeModal(document.getElementById('selection-modal'));
+            currentSelectionTarget = null;
             return;
         }
 
@@ -1940,10 +2030,9 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             return;
         }
         if (target.closest('#prev-step-btn')) {
-            if (currentStep > 1) changeStep(currentStep + 1);
+            if (currentStep > 1) changeStep(currentStep - 1);
             return;
         }
-        // FIX: Added generic type to `closest` to correctly infer HTMLElement and allow access to `dataset`.
         const stepperItem = target.closest<HTMLElement>('.stepper-item');
         if (stepperItem) {
             const step = parseInt(stepperItem.dataset.step || '1', 10);
