@@ -614,12 +614,13 @@ const renderChatTab = (currentUser: string, userData: any) => {
                 </div>
             </div>
             ${timerHtml}
-            <div id="user-chat-messages-container" class="p-4 flex-grow overflow-y-auto message-container flex flex-col-reverse">
+            <div id="user-chat-messages-container" class="p-4 flex-grow overflow-y-auto message-container flex flex-col">
                 <div class="space-y-4">
-                    <!-- Messages will be injected here in reverse order -->
+                    <!-- Messages will be injected here -->
                 </div>
             </div>
             <div class="p-4 border-t border-border-primary">
+                <div id="user-quick-replies" class="flex items-center gap-2 mb-2 flex-wrap"></div>
                 <form id="user-chat-form" class="flex items-center gap-3">
                     <input id="user-chat-input" type="text" class="input-field flex-grow" placeholder="پیام خود را بنویسید..." autocomplete="off">
                     <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
@@ -629,11 +630,13 @@ const renderChatTab = (currentUser: string, userData: any) => {
     `;
 
     const renderMessages = () => {
-        const messagesContainer = document.querySelector('#user-chat-messages-container > div');
-        if (!messagesContainer) return;
+        const messagesContainer = document.querySelector('#user-chat-messages-container');
+        const messagesInnerContainer = messagesContainer?.querySelector('div');
+        if (!messagesContainer || !messagesInnerContainer) return;
+        
         const currentData = getUserData(currentUser);
-        const chatHistory = (currentData.chatHistory || []).slice().reverse(); // Show latest first
-        messagesContainer.innerHTML = chatHistory.map((msg: any) => `
+        const chatHistory = (currentData.chatHistory || []);
+        messagesInnerContainer.innerHTML = chatHistory.map((msg: any) => `
             <div class="flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}">
                  <div class="message-bubble ${msg.sender === 'user' ? 'message-sent' : 'message-received'}">
                     <div class="message-content">${sanitizeHTML(msg.message)}</div>
@@ -641,8 +644,26 @@ const renderChatTab = (currentUser: string, userData: any) => {
                  </div>
             </div>
         `).join('');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     };
     renderMessages();
+
+    const quickRepliesContainer = document.getElementById('user-quick-replies');
+    if (quickRepliesContainer) {
+        const replies = ['سلام مربی، وقت بخیر.', 'متشکرم.', 'انجام شد.', 'سوال داشتم.'];
+        quickRepliesContainer.innerHTML = replies.map(reply => `<button class="quick-reply-btn secondary-button !text-xs !py-1 !px-3">${reply}</button>`).join('');
+        quickRepliesContainer.addEventListener('click', e => {
+            const target = e.target as HTMLElement;
+            if (target.classList.contains('quick-reply-btn')) {
+                const input = document.getElementById('user-chat-input') as HTMLInputElement;
+                if (input) {
+                    input.value = target.textContent || '';
+                    input.focus();
+                }
+            }
+        });
+    }
+
     window.lucide?.createIcons();
 };
 
