@@ -1,11 +1,3 @@
-
-
-
-
-
-
-
-
 import { getTemplates, saveTemplate, deleteTemplate, getUsers, getUserData, saveUserData, getNotifications, setNotification, clearNotification, getExercisesDB, getSupplementsDB } from '../services/storage';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement, sanitizeHTML, hexToRgba } from '../utils/dom';
 import { getLatestPurchase, timeAgo, getLastActivity } from '../utils/helpers';
@@ -1611,16 +1603,18 @@ const renderChatTab = (currentUser: string) => {
     window.lucide?.createIcons();
 
     const studentListContainer = document.getElementById('coach-chat-student-list');
+    if (!studentListContainer) return;
+
     const students = getCoachStudents(currentUser);
 
     if (students.length === 0) {
-        studentListContainer!.innerHTML = `<p class="p-4 text-center text-text-secondary">شما هنوز شاگردی ندارید.</p>`;
+        studentListContainer.innerHTML = `<p class="p-4 text-center text-text-secondary">شما هنوز شاگردی ندارید.</p>`;
         return;
     }
 
     const template = document.getElementById('coach-chat-student-template') as HTMLTemplateElement;
 
-    studentListContainer!.innerHTML = students.map(student => {
+    studentListContainer.innerHTML = students.map(student => {
         const studentData = getUserData(student.username);
         const name = studentData.step1?.clientName || student.username;
         const lastMessage = (studentData.chatHistory || []).slice(-1)[0];
@@ -1647,12 +1641,10 @@ const renderChatTab = (currentUser: string) => {
         return tempDiv.innerHTML;
     }).join('');
 
-    // Function to load a conversation
     const loadConversation = (studentUsername: string) => {
         const chatWindow = document.getElementById('coach-chat-window');
         if (!chatWindow) return;
 
-        // Highlight selected student
         document.querySelectorAll('.coach-chat-student-item').forEach(item => {
             item.classList.toggle('active', (item as HTMLElement).dataset.username === studentUsername);
         });
@@ -1674,9 +1666,7 @@ const renderChatTab = (currentUser: string) => {
                 </div>
             </div>
             <div id="coach-chat-messages-container" class="p-4 flex-grow overflow-y-auto message-container flex flex-col">
-                <div class="space-y-4">
-                    <!-- Messages will be injected here -->
-                </div>
+                <div class="space-y-4"></div>
             </div>
             <div class="p-4 border-t border-border-primary">
                 <div id="coach-quick-replies" class="flex items-center gap-2 mb-2 flex-wrap"></div>
@@ -1713,39 +1703,9 @@ const renderChatTab = (currentUser: string) => {
             const replies = ['برنامه شما در حال آماده سازی است.', 'چطور پیش میره؟', 'عالیه! ادامه بده.'];
             quickRepliesContainer.innerHTML = replies.map(reply => `<button class="quick-reply-btn secondary-button !text-xs !py-1 !px-3">${reply}</button>`).join('');
         }
-
-        // Attach form listener
-        const chatForm = document.getElementById('coach-chat-form-main');
-        chatForm?.addEventListener('submit', e => {
-            e.preventDefault();
-            const input = document.getElementById('coach-chat-input-main') as HTMLInputElement;
-            const message = input.value.trim();
-            const targetUsername = (e.currentTarget as HTMLElement).dataset.username;
-
-            if (message && targetUsername) {
-                const targetData = getUserData(targetUsername);
-                if (!targetData.chatHistory) targetData.chatHistory = [];
-                targetData.chatHistory.push({
-                    sender: 'coach',
-                    message: message,
-                    timestamp: new Date().toISOString()
-                });
-                saveUserData(targetUsername, targetData);
-                setNotification(targetUsername, 'chat-content', '💬');
-                input.value = '';
-                renderMessages();
-                
-                const studentListItem = studentListContainer?.querySelector(`[data-username="${targetUsername}"]`);
-                if(studentListItem) {
-                    (studentListItem.querySelector('.last-message-snippet') as HTMLElement).textContent = message;
-                    (studentListItem.querySelector('.last-message-time') as HTMLElement).textContent = 'همین الان';
-                }
-            }
-        });
     };
 
-    // Attach listeners to student list
-    studentListContainer?.addEventListener('click', e => {
+    studentListContainer.addEventListener('click', e => {
         const target = e.target as HTMLElement;
         const studentItem = target.closest<HTMLButtonElement>('.coach-chat-student-item');
         if (studentItem && studentItem.dataset.username) {
@@ -1754,19 +1714,65 @@ const renderChatTab = (currentUser: string) => {
     });
 
     const chatWindow = document.getElementById('coach-chat-window');
-// FIX: Define chatWindow to attach event listener for quick replies
-    chatWindow?.addEventListener('click', e => {
-        const target = e.target as HTMLElement;
-        if (target.classList.contains('quick-reply-btn')) {
-            const input = document.getElementById('coach-chat-input-main') as HTMLInputElement;
-            if (input) {
-                input.value = target.textContent || '';
-                input.focus();
+    if (chatWindow && !chatWindow.dataset.listenersAttached) {
+        chatWindow.dataset.listenersAttached = 'true';
+        
+        chatWindow.addEventListener('click', e => {
+            const target = e.target as HTMLElement;
+            if (target.classList.contains('quick-reply-btn')) {
+                const input = document.getElementById('coach-chat-input-main') as HTMLInputElement;
+                if (input) {
+                    input.value = target.textContent || '';
+                    input.focus();
+                }
             }
-        }
-    });
-    
-    if(students.length > 0) {
+        });
+
+        chatWindow.addEventListener('submit', e => {
+            const form = e.target as HTMLElement;
+            if (form.id === 'coach-chat-form-main') {
+                e.preventDefault();
+                const input = document.getElementById('coach-chat-input-main') as HTMLInputElement;
+                const message = input.value.trim();
+                const targetUsername = form.dataset.username;
+
+                if (message && targetUsername) {
+                    const targetData = getUserData(targetUsername);
+                    if (!targetData.chatHistory) targetData.chatHistory = [];
+                    targetData.chatHistory.push({
+                        sender: 'coach',
+                        message: message,
+                        timestamp: new Date().toISOString()
+                    });
+                    saveUserData(targetUsername, targetData);
+                    setNotification(targetUsername, 'chat-content', '💬');
+                    input.value = '';
+                    
+                    const messagesContainer = chatWindow.querySelector('#coach-chat-messages-container');
+                    const messagesInnerContainer = messagesContainer?.querySelector('div');
+                    if(messagesContainer && messagesInnerContainer){
+                         messagesInnerContainer.innerHTML += `
+                            <div class="flex justify-end">
+                                <div class="message-bubble message-sent">
+                                    <div class="message-content">${sanitizeHTML(message)}</div>
+                                    <div class="message-timestamp">همین الان</div>
+                                </div>
+                            </div>
+                         `;
+                         messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }
+                    
+                    const studentListItem = studentListContainer.querySelector(`[data-username="${targetUsername}"]`);
+                    if (studentListItem) {
+                        (studentListItem.querySelector('.last-message-snippet') as HTMLElement).textContent = message;
+                        (studentListItem.querySelector('.last-message-time') as HTMLElement).textContent = 'همین الان';
+                    }
+                }
+            }
+        });
+    }
+
+    if (students.length > 0) {
         loadConversation(students[0].username);
     }
 };

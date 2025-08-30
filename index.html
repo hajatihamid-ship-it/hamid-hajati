@@ -32,23 +32,23 @@
     <!-- Custom Styles -->
     <style>
         :root, html[data-theme='light'] {
-            --bg-primary: #f4f5f9;
+            --bg-primary: #f0f9ff;
             --bg-secondary: #ffffff;
-            --bg-tertiary: #eef0f4;
-            --text-primary: #1a202c;
-            --text-secondary: #718096;
-            --border-primary: #e2e8f0;
-            --border-secondary: #cbd5e0;
-            --accent: #a3e635;
+            --bg-tertiary: #e0f2fe;
+            --text-primary: #172554;
+            --text-secondary: #334155;
+            --border-primary: rgba(59, 130, 246, 0.2);
+            --border-secondary: rgba(59, 130, 246, 0.5);
+            --accent: #a3e635; /* Lime Green */
             --accent-hover: #84cc16;
-            --green-accent: #a3e635;
-            --green-accent-hover: #84cc16;
+            --green-accent: #10b981; /* Green */
+            --green-accent-hover: #059669; /* Darker Green */
             --red-accent: #e53e3e;
             --radius-card: 1rem;
             --radius-btn: 0.75rem;
             --radius-input: 0.75rem;
             --range-track-bg: #e2e8f0;
-            --shadow-card: 0 8px 16px -4px rgba(26, 32, 44, 0.08);
+            --shadow-card: 0 8px 16px -4px rgba(23, 37, 84, 0.08);
             
             /* Transparent Colors for html2canvas compatibility */
             --accent-transparent-8: rgba(163, 230, 53, 0.08);
@@ -57,16 +57,16 @@
             --accent-transparent-20: rgba(163, 230, 53, 0.20);
             --accent-transparent-30: rgba(163, 230, 53, 0.30);
             --accent-transparent-40: rgba(163, 230, 53, 0.40);
-            --text-primary-transparent-30: rgba(26, 32, 44, 0.3);
+            --text-primary-transparent-30: rgba(23, 37, 84, 0.3);
             --admin-accent-green-transparent-15: rgba(16, 185, 129, 0.15);
-            --admin-accent-yellow-transparent-30: rgba(245, 158, 11, 0.3);
+            --admin-accent-yellow-transparent-30: rgba(163, 230, 53, 0.3);
 
             /* Admin & Status Colors */
             --admin-accent-green: #10b981;
             --admin-accent-pink: #ec4899;
             --admin-accent-blue: #3b82f6;
             --admin-accent-orange: #f97316;
-            --admin-accent-yellow: #f59e0b;
+            --admin-accent-yellow: #a3e635;
             --admin-accent-red: #ef4444;
             --admin-accent-gray: #64748b;
             --status-verified-bg: #dcfce7;
@@ -77,14 +77,16 @@
             --status-revoked-text: #991b1b;
         }
         html[data-theme='dark'] {
-            --bg-primary: #121828;
-            --bg-secondary: #1a2234;
-            --bg-tertiary: #252f44;
-            --text-primary: #f7fafc;
-            --text-secondary: #a0aec0;
-            --border-primary: #2d3748;
-            --border-secondary: #4a5568;
-            --range-track-bg: #2d3748;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-primary: rgba(59, 130, 246, 0.4);
+            --border-secondary: rgba(59, 130, 246, 0.6);
+            --accent: #a3e635;
+            --accent-hover: #84cc16;
+            --range-track-bg: rgba(59, 130, 246, 0.3);
             --shadow-card: 0 8px 16px -4px rgba(0, 0, 0, 0.2);
 
             /* Transparent Colors for html2canvas compatibility */
@@ -94,16 +96,16 @@
             --accent-transparent-20: rgba(163, 230, 53, 0.20);
             --accent-transparent-30: rgba(163, 230, 53, 0.30);
             --accent-transparent-40: rgba(163, 230, 53, 0.40);
-            --text-primary-transparent-30: rgba(247, 250, 252, 0.3);
+            --text-primary-transparent-30: rgba(241, 245, 249, 0.3);
             --admin-accent-green-transparent-15: rgba(16, 185, 129, 0.15);
-            --admin-accent-yellow-transparent-30: rgba(245, 158, 11, 0.3);
+            --admin-accent-yellow-transparent-30: rgba(163, 230, 53, 0.3);
 
              /* Admin & Status Colors */
             --admin-accent-green: #10b981;
             --admin-accent-pink: #ec4899;
             --admin-accent-blue: #3b82f6;
             --admin-accent-orange: #f97316;
-            --admin-accent-yellow: #f59e0b;
+            --admin-accent-yellow: #a3e635;
             --admin-accent-red: #ef4444;
             --admin-accent-gray: #94a3b8;
             --status-verified-bg: #14532d;
@@ -121,9 +123,9 @@
             --text-secondary: #78716c;
             --border-primary: #e7e5e4;
             --border-secondary: #d6d3d1;
-            --accent: #84cc16;
-            --accent-hover: #65a30d;
-            --green-accent: #84cc16;
+            --accent: #a3e635;
+            --accent-hover: #84cc16;
+            --green-accent: #84cc16; /* Keep green for contrast if needed */
             --green-accent-hover: #65a30d;
             --red-accent: #ef4444;
             --radius-card: 1rem;
@@ -133,22 +135,22 @@
             --shadow-card: 0 8px 16px -4px rgba(28, 25, 23, 0.08);
 
             /* Transparent Colors for html2canvas compatibility */
-            --accent-transparent-8: rgba(132, 204, 22, 0.08);
-            --accent-transparent-10: rgba(132, 204, 22, 0.10);
-            --accent-transparent-15: rgba(132, 204, 22, 0.15);
-            --accent-transparent-20: rgba(132, 204, 22, 0.20);
-            --accent-transparent-30: rgba(132, 204, 22, 0.30);
-            --accent-transparent-40: rgba(132, 204, 22, 0.40);
+            --accent-transparent-8: rgba(163, 230, 53, 0.08);
+            --accent-transparent-10: rgba(163, 230, 53, 0.10);
+            --accent-transparent-15: rgba(163, 230, 53, 0.15);
+            --accent-transparent-20: rgba(163, 230, 53, 0.20);
+            --accent-transparent-30: rgba(163, 230, 53, 0.30);
+            --accent-transparent-40: rgba(163, 230, 53, 0.40);
             --text-primary-transparent-30: rgba(28, 25, 23, 0.3);
             --admin-accent-green-transparent-15: rgba(34, 197, 94, 0.15);
-            --admin-accent-yellow-transparent-30: rgba(234, 179, 8, 0.3);
+            --admin-accent-yellow-transparent-30: rgba(163, 230, 53, 0.3);
 
              /* Admin & Status Colors */
             --admin-accent-green: #22c55e;
             --admin-accent-pink: #ec4899;
             --admin-accent-blue: #3b82f6;
             --admin-accent-orange: #f97316;
-            --admin-accent-yellow: #eab308;
+            --admin-accent-yellow: #a3e635;
             --admin-accent-red: #ef4444;
             --admin-accent-gray: #64748b;
             --status-verified-bg: #dcfce7;
@@ -247,11 +249,11 @@
         .stepper-item { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); cursor: pointer; transition: color 0.3s; }
         .stepper-item .border-2 { border-color: var(--border-secondary); transition: all 0.3s; }
         .stepper-item.active { color: var(--text-primary); font-weight: 700; }
-        .stepper-item.active .border-2 { border-color: var(--accent); background-color: var(--accent); color: var(--bg-secondary); }
-        .stepper-item.completed .border-2 { border-color: var(--green-accent); background-color: var(--green-accent); color: white; }
+        .stepper-item.active .border-2 { border-color: var(--accent); background-color: var(--accent); color: #1a202c; }
+        .stepper-item.completed .border-2 { border-color: var(--admin-accent-green); background-color: var(--admin-accent-green); color: white; }
         
         .is-superset { background-color: var(--accent-transparent-8); border-left: 4px solid var(--accent); }
-        .superset-btn.active { background-color: var(--accent) !important; color: var(--bg-secondary); }
+        .superset-btn.active { background-color: var(--accent) !important; color: #1a202c; }
 
         .program-page { 
             background-color: var(--bg-secondary); 
@@ -357,16 +359,14 @@
         .landing-page-container { min-height: 100vh; overflow: hidden; position: relative; }
         .landing-bg { position: absolute; inset: 0; background-image: url('https://images.unsplash.com/photo-1581009137042-c552e485697a?q=80&w=2070&auto=format&fit=crop'); background-size: cover; background-position: center; }
         .landing-bg::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(18, 24, 40, 0.6) 0%, rgba(18, 24, 40, 0.9) 80%); }
-        .glass-nav { background-color: rgba(26, 34, 52, 0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(45, 55, 72, 0.5); }
+        .glass-nav { background-color: #1e293b; border: 1px solid rgba(45, 55, 72, 0.5); }
         .hero-cta-btn { position: relative; overflow: hidden; }
         .glow-circle { position: absolute; width: 200px; height: 200px; background: radial-gradient(circle, var(--accent) 0%, transparent 70%); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: pulse 4s infinite; opacity: 0.3; transition: all 0.4s ease; }
         @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.3; } 50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.5; } 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.3; } }
         .hero-cta-btn:hover .glow-circle { animation-play-state: paused; transform: translate(-50%, -50%) scale(1.4); opacity: 0.6; }
         
         .motivational-card {
-            background-color: rgba(26, 34, 52, 0.5); 
-            backdrop-filter: blur(10px); 
-            -webkit-backdrop-filter: blur(10px); 
+            background-color: #1e293b; 
             border: 1px solid rgba(45, 55, 72, 0.5);
             border-radius: var(--radius-card);
             padding: 1.25rem;
@@ -450,10 +450,10 @@
         }
         .strength-weak { background-color: var(--red-accent); width: 33.33%; }
         .strength-medium { background-color: var(--admin-accent-yellow); width: 66.66%; }
-        .strength-strong { background-color: var(--green-accent); width: 100%; }
+        .strength-strong { background-color: var(--admin-accent-green); width: 100%; }
         .text-weak { color: var(--red-accent); }
         .text-medium { color: var(--admin-accent-yellow); }
-        .text-strong { color: var(--green-accent); }
+        .text-strong { color: var(--admin-accent-green); }
 
         /* Forgot Password Confirmation */
         #forgot-password-confirmation .icon-container {
@@ -536,7 +536,7 @@
         }
         .option-card-input:checked + .option-card-content {
             background-color: var(--accent);
-            color: var(--bg-secondary);
+            color: #1a202c;
             font-weight: 700;
             border-color: var(--accent);
             transform: translateY(-2px);
@@ -568,7 +568,7 @@
             left: 0.5rem; /* RTL friendly */
             width: 20px;
             height: 20px;
-            background-color: white;
+            background-color: #1a202c;
             -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
             mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
             -webkit-mask-repeat: no-repeat;
@@ -780,12 +780,13 @@
 
         /* Landing Page Widgets */
         .calculator-card {
-            background-color: rgba(26, 34, 52, 0.75); /* Darker glass */
-            backdrop-filter: blur(20px); 
-            -webkit-backdrop-filter: blur(20px); 
-            border: 1px solid rgba(163, 230, 53, 0.3); /* Accent border */
+            background-color: #141a28; /* Darker matte */
+            border: 1px solid var(--accent-transparent-30); /* Accent border */
             box-shadow: 0 8px 32px rgba(0,0,0,0.3);
             border-radius: var(--radius-card);
+        }
+        #calculator-widget .text-yellow-400 {
+            color: var(--accent);
         }
         .result-display {
             transition: transform 0.3s ease;
@@ -797,14 +798,12 @@
             padding: 2rem;
             border-radius: var(--radius-card);
             transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
-            background-color: rgba(26, 34, 52, 0.7);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            background-color: #1a2234;
             border: 1px solid rgba(45, 55, 72, 0.6);
         }
         .coach-card:hover {
             transform: translateY(-8px);
-            background-color: rgba(45, 55, 72, 0.8);
+            background-color: #334155;
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
         }
         .coach-card img {
@@ -842,7 +841,7 @@
         .message-sent {
             align-self: flex-end;
             background-color: var(--accent);
-            color: var(--bg-secondary);
+            color: #1a202c;
             border-bottom-right-radius: 0.5rem;
         }
         html[data-theme='lemon'] .message-sent {
