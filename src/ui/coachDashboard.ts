@@ -1545,7 +1545,7 @@ const renderProgramBuilderTab = () => {
                     <div class="flex items-center gap-2">
                          <button id="ai-draft-btn" class="secondary-button hidden"><i data-lucide="sparkles" class="w-4 h-4 ml-2"></i>ساخت پیش‌نویس با AI</button>
                          <button id="next-step-btn" class="primary-button">بعدی</button>
-                         <button id="finish-program-btn" class="primary-button" style="display: none;">ثبت و ارسال برنامه</button>
+                         <button id="finish-program-btn" class="green-button" style="display: none;">ثبت و ارسال برنامه</button>
                     </div>
                 </div>
             </div>
@@ -2110,9 +2110,79 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             return;
         }
         if (target.closest('#prev-step-btn')) {
-            if (currentStep > 1) changeStep(currentStep + 1);
+            if (currentStep > 1) changeStep(currentStep - 1);
             return;
         }
+
+        const finishBtn = target.closest<HTMLButtonElement>('#finish-program-btn');
+        if (finishBtn) {
+            if (!activeStudentUsername) {
+                showToast("خطا: شاگردی انتخاب نشده است.", "error");
+                return;
+            }
+
+            const planData = gatherPlanData();
+            if (!planData || !planData.workout || planData.workout.days.every((d:any) => d.exercises.length === 0)) {
+                showToast("برنامه تمرینی خالی است. لطفا حداقل یک حرکت اضافه کنید.", "error");
+                return;
+            }
+
+            finishBtn.classList.add('is-loading');
+            finishBtn.disabled = true;
+
+            setTimeout(() => {
+                const studentData = getUserData(activeStudentUsername!);
+                
+                const newProgram = {
+                    date: new Date().toISOString(),
+                    step2: {
+                        days: planData.workout.days,
+                        notes: planData.workout.notes
+                    },
+                    supplements: planData.supplements.items,
+                    nutritionPlan: planData.nutritionPlan
+                };
+
+                if (!studentData.programHistory) {
+                    studentData.programHistory = [];
+                }
+                studentData.programHistory.unshift(newProgram);
+
+                const latestPurchase = getLatestPurchase(studentData);
+                if (latestPurchase && !latestPurchase.fulfilled) {
+                    if (studentData.subscriptions && studentData.subscriptions.length > 0) {
+                        const subIndex = studentData.subscriptions.findIndex((s: any) => s.purchaseDate === latestPurchase.purchaseDate);
+                        if (subIndex > -1) {
+                            studentData.subscriptions[subIndex].fulfilled = true;
+                        }
+                    }
+                }
+                
+                if (!studentData.chatHistory) studentData.chatHistory = [];
+                studentData.chatHistory.push({
+                    sender: 'coach',
+                    message: 'سلام! برنامه جدید شما آماده است. می‌توانید از بخش "برنامه من" آن را مشاهده کنید.',
+                    timestamp: new Date().toISOString()
+                });
+
+                saveUserData(activeStudentUsername!, studentData);
+
+                setNotification(activeStudentUsername!, 'program-content', '✨');
+                setNotification(activeStudentUsername!, 'chat-content', '💬');
+
+                showToast(`برنامه با موفقیت برای ${planData.student.clientName} ارسال شد.`, 'success');
+
+                finishBtn.classList.remove('is-loading');
+                finishBtn.disabled = false;
+                
+                resetProgramBuilder();
+                const studentsTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="students-content"]');
+                if (studentsTab) switchTab(studentsTab);
+
+            }, 500);
+            return;
+        }
+        
         const stepperItem = target.closest<HTMLElement>('.stepper-item');
         if (stepperItem) {
             const step = parseInt(stepperItem.dataset.step || '1', 10);
@@ -2121,6 +2191,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             } else if (step > 1 && !activeStudentUsername) {
                  showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
             }
+            return;
         }
         
         // AI Buttons

@@ -26,6 +26,58 @@ export const getLatestPurchase = (userData: any) => {
     return unfulfilled || sortedSubs[0];
 };
 
+export const getLatestSubscription = (userData: any) => {
+    if (!userData.subscriptions || userData.subscriptions.length === 0) {
+        return null;
+    }
+    const sortedSubs = [...userData.subscriptions].sort((a: any, b: any) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
+    return sortedSubs[0];
+};
+
+export const getUserAccessPermissions = (userData: any): Set<string> => {
+    const permissions = new Set<string>();
+    if (userData.subscriptions && userData.subscriptions.length > 0) {
+        userData.subscriptions.forEach((sub: any) => {
+            if (sub.access && Array.isArray(sub.access)) {
+                sub.access.forEach((p: string) => permissions.add(p));
+            }
+        });
+    }
+    return permissions;
+};
+
+export const canUserChat = (userData: any): { canChat: boolean; reason: string } => {
+    const basePermissions = getUserAccessPermissions(userData);
+    if (!basePermissions.has('chat')) {
+        return { canChat: false, reason: 'برای دسترسی به این بخش، لطفا یک پلن دارای پشتیبانی خریداری کنید.' };
+    }
+
+    const latestProgram = (userData.programHistory && userData.programHistory.length > 0)
+        ? userData.programHistory[0]
+        : null;
+    
+    // If they have a plan with chat but no program yet, chat should be active while waiting.
+    if (!latestProgram) {
+        const latestPurchase = getLatestPurchase(userData);
+        if (latestPurchase && !latestPurchase.fulfilled && latestPurchase.access?.includes('chat')) {
+             return { canChat: true, reason: 'Chat is active while waiting for program.' };
+        }
+        return { canChat: false, reason: 'گفتگو با مربی پس از ارسال اولین برنامه شما توسط مربی فعال خواهد شد.' };
+    }
+    
+    // If a program has been sent
+    const programSentDate = new Date(latestProgram.date);
+    const now = new Date();
+    const hoursPassed = (now.getTime() - programSentDate.getTime()) / (1000 * 60 * 60);
+
+    if (hoursPassed <= 48) {
+        const hoursLeft = (48 - hoursPassed).toFixed(0);
+        return { canChat: true, reason: `Chat is active for ${hoursLeft} more hours.` };
+    } else {
+        return { canChat: false, reason: 'پشتیبانی ۴۸ ساعته شما پس از دریافت برنامه به پایان رسیده است. برای ارتباط مجدد با مربی، لطفاً پلن خود را تمدید کنید.' };
+    }
+};
+
 export const getLastActivity = (userData: any): string => {
     const workoutDates = (userData.workoutHistory || []).map((h: any) => new Date(h.date).getTime());
     const weightDates = (userData.weightHistory || []).map((h: any) => new Date(h.date).getTime());

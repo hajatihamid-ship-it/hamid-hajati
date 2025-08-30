@@ -3,10 +3,8 @@ import { getTodayWorkoutData, calculateBodyMetrics, calculateWorkoutStreak, perf
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement } from '../utils/dom';
 import { generateNutritionPlan } from '../services/gemini';
 import { sanitizeHTML } from '../utils/dom';
-import { formatPrice, timeAgo } from '../utils/helpers';
+import { formatPrice, timeAgo, getLatestSubscription, getUserAccessPermissions, canUserChat } from '../utils/helpers';
 
-let weightChartInstance: any = null;
-let volumeChartInstance: any = null;
 let selectedCoachInModal: string | null = null;
 
 export function renderUserDashboard(currentUser: string, userData: any) {
@@ -17,13 +15,17 @@ export function renderUserDashboard(currentUser: string, userData: any) {
     const navItems = [
         { target: 'dashboard-content', icon: 'layout-dashboard', label: 'داشبورد' },
         { target: 'program-content', icon: 'clipboard-list', label: 'برنامه من' },
-        { target: 'progress-content', icon: 'bar-chart-3', label: 'روند پیشرفت' },
+        { target: 'nutrition-content', icon: 'utensils-crossed', label: 'برنامه تغذیه' },
         { target: 'chat-content', icon: 'message-square', label: 'گفتگو با مربی' },
         { target: 'store-content', icon: 'shopping-cart', label: 'فروشگاه' },
-        { target: 'profile-content', icon: 'user', label: 'پروفایل' }
+        { target: 'profile-content', icon: 'user', label: 'پروفایل' },
+        { target: 'help-content', icon: 'help-circle', label: 'راهنما' }
     ];
 
     const hasAccess = (permission: string) => {
+        if (permission === 'chat') {
+            return canUserChat(userData).canChat;
+        }
         const permissions = getUserAccessPermissions(userData);
         return permissions.has(permission);
     };
@@ -37,12 +39,24 @@ export function renderUserDashboard(currentUser: string, userData: any) {
             </div>
             <nav class="space-y-2 flex-grow">
                 ${navItems.map(item => {
-                    const isStoreOrProfile = item.target === 'store-content' || item.target === 'profile-content';
+                    const requiresWorkoutPlan = item.target === 'program-content';
+                    const requiresNutrition = item.target === 'nutrition-content';
                     const requiresChat = item.target === 'chat-content';
-                    
+
                     let isLocked = false;
+                    if (requiresWorkoutPlan && !hasAccess('workout_plan')) {
+                        isLocked = true;
+                    }
+                    if (requiresNutrition && !hasAccess('nutrition_plan')) {
+                        isLocked = true;
+                    }
                     if (requiresChat && !hasAccess('chat')) {
                         isLocked = true;
+                    }
+
+                    // The help section is never locked
+                    if (item.target === 'help-content') {
+                        isLocked = false;
                     }
 
                     return `
@@ -66,6 +80,7 @@ export function renderUserDashboard(currentUser: string, userData: any) {
         </aside>
 
         <main class="flex-1 p-6 lg:p-8 overflow-y-auto">
+            <div id="global-user-notification-placeholder"></div>
             <div id="impersonation-banner-placeholder"></div>
             <header class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
                 <div id="user-page-title-container">
@@ -85,10 +100,11 @@ export function renderUserDashboard(currentUser: string, userData: any) {
 
             <div id="dashboard-content" class="user-tab-content hidden"></div>
             <div id="program-content" class="user-tab-content hidden"></div>
-            <div id="progress-content" class="user-tab-content hidden"></div>
+            <div id="nutrition-content" class="user-tab-content hidden"></div>
             <div id="chat-content" class="user-tab-content hidden"></div>
             <div id="store-content" class="user-tab-content hidden"></div>
             <div id="profile-content" class="user-tab-content hidden"></div>
+            <div id="help-content" class="user-tab-content hidden"></div>
         </main>
         
         <div id="user-dashboard-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
@@ -127,18 +143,6 @@ export const updateUserNotifications = (currentUser: string) => {
     });
 };
 
-const getUserAccessPermissions = (userData: any): Set<string> => {
-    const permissions = new Set<string>();
-    if (userData.subscriptions && userData.subscriptions.length > 0) {
-        userData.subscriptions.forEach((sub: any) => {
-            if (sub.access && Array.isArray(sub.access)) {
-                sub.access.forEach((p: string) => permissions.add(p));
-            }
-        });
-    }
-    return permissions;
-};
-
 const renderUnifiedProgramView = (userData: any) => {
     const container = document.getElementById('program-content');
     if (!container) return;
@@ -175,7 +179,6 @@ const renderUnifiedProgramView = (userData: any) => {
                     <div><span>سن:</span> <strong>${student.age || 'N/A'}</strong></div>
                     <div><span>قد:</span> <strong>${student.height || 'N/A'} cm</strong></div>
                     <div><span>وزن:</span> <strong>${student.weight || 'N/A'} kg</strong></div>
-                    {/* FIX: Use stored TDEE from user data instead of trying to recalculate from a non-existent form. */}
                     <div><span>TDEE:</span> <strong>${student.tdee ? Math.round(student.tdee) : 'N/A'} kcal</strong></div>
                 </div>
 
@@ -277,6 +280,41 @@ const getWorkoutsThisWeek = (history: any[] = []): number => {
     return uniqueDays.size;
 };
 
+const getPlanStatus = (userData: any) => {
+    const latestSub = getLatestSubscription(userData);
+    if (!latestSub) {
+        return null;
+    }
+
+    const planId = latestSub.planId;
+    const purchaseDate = new Date(latestSub.purchaseDate);
+    
+    let durationInMonths = 0;
+    if (planId.includes('-1m')) durationInMonths = 1;
+    else if (planId.includes('-3m')) durationInMonths = 3;
+    else if (planId.includes('-6m')) durationInMonths = 6;
+    
+    if (durationInMonths === 0) return null;
+
+    const totalDurationInDays = durationInMonths * 30;
+    const endDate = new Date(purchaseDate);
+    endDate.setDate(purchaseDate.getDate() + totalDurationInDays);
+
+    const today = new Date();
+    const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysRemaining < 0) return null;
+
+    const daysPassed = totalDurationInDays - daysRemaining;
+    const progressPercentage = Math.min(100, Math.max(0, (daysPassed / totalDurationInDays) * 100));
+
+    return {
+        planName: latestSub.planName,
+        daysRemaining,
+        progressPercentage,
+    };
+};
+
 const renderDashboardTab = (currentUser: string, userData: any) => {
     const dashboardContentEl = document.getElementById('dashboard-content');
     if (!dashboardContentEl) return;
@@ -321,6 +359,30 @@ const renderDashboardTab = (currentUser: string, userData: any) => {
         `;
     }
 
+    const planStatus = getPlanStatus(userData);
+    let planStatusHtml = '';
+    if (planStatus) {
+        planStatusHtml = `
+            <div class="card p-6 flex flex-col animate-fade-in-up" style="animation-delay: 500ms;">
+                <h3 class="font-bold text-lg mb-4 w-full">وضعیت پلن شما</h3>
+                <p class="text-sm text-text-secondary font-semibold">${planStatus.planName}</p>
+                <div class="w-full my-4">
+                    <div class="flex justify-between text-xs text-text-secondary mb-1">
+                        <span>شروع</span>
+                        <span>پایان</span>
+                    </div>
+                    <div class="w-full bg-bg-tertiary rounded-full h-2.5">
+                        <div class="bg-accent h-2.5 rounded-full transition-all duration-500" style="width: ${planStatus.progressPercentage}%"></div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <p class="font-bold text-2xl">${planStatus.daysRemaining} <span class="text-base font-normal text-text-secondary">روز باقی مانده</span></p>
+                </div>
+                <button data-action="go-to-store" class="primary-button w-full mt-6">تمدید یا ارتقا پلن</button>
+            </div>
+        `;
+    }
+
     dashboardContentEl.innerHTML = `
         <div class="space-y-8 animate-fade-in-up">
             <div class="divi-welcome-header">
@@ -356,18 +418,21 @@ const renderDashboardTab = (currentUser: string, userData: any) => {
                 <div class="lg:col-span-2">
                     ${todayWorkoutHtml}
                 </div>
-                <div class="card p-6 flex flex-col items-center justify-center animate-fade-in-up" style="animation-delay: 400ms;">
-                    <h3 class="font-bold text-lg mb-4">پیشرفت هفتگی</h3>
-                    <div class="gauge relative" style="width: 150px; height: 150px;">
-                        <svg class="gauge-svg absolute inset-0" viewBox="0 0 120 120">
-                            <circle class="gauge-track" r="55" cx="60" cy="60" stroke-width="10"></circle>
-                            <circle class="gauge-value" r="55" cx="60" cy="60" stroke-width="10" style="stroke:var(--accent); stroke-dasharray: ${circumference}; stroke-dashoffset: ${initialDashoffset};"></circle>
-                        </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span class="font-bold text-3xl weekly-progress-value">${weeklyProgress.toFixed(0)}%</span>
-                            <span class="text-xs text-text-secondary">${workoutsThisWeek} / ${weeklyGoal} تمرین</span>
+                <div class="space-y-6">
+                    <div class="card p-6 flex flex-col items-center justify-center animate-fade-in-up" style="animation-delay: 400ms;">
+                        <h3 class="font-bold text-lg mb-4">پیشرفت هفتگی</h3>
+                        <div class="gauge relative" style="width: 150px; height: 150px;">
+                            <svg class="gauge-svg absolute inset-0" viewBox="0 0 120 120">
+                                <circle class="gauge-track" r="55" cx="60" cy="60" stroke-width="10"></circle>
+                                <circle class="gauge-value" r="55" cx="60" cy="60" stroke-width="10" style="stroke:var(--accent); stroke-dasharray: ${circumference}; stroke-dashoffset: ${initialDashoffset};"></circle>
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span class="font-bold text-3xl weekly-progress-value">${weeklyProgress.toFixed(0)}%</span>
+                                <span class="text-xs text-text-secondary">${workoutsThisWeek} / ${weeklyGoal} تمرین</span>
+                            </div>
                         </div>
                     </div>
+                    ${planStatusHtml}
                 </div>
             </div>
         </div>
@@ -446,13 +511,26 @@ const renderStoreTab = (currentUser: string) => {
     const container = document.getElementById('store-content');
     if (!container) return;
     const plans = getStorePlans();
+    const hasCoach = !!getUserData(currentUser).step1?.coachName;
     
     container.innerHTML = `
+        ${!hasCoach ? `
+            <div class="info-card !bg-admin-accent-yellow/10 !border-admin-accent-yellow p-4 mb-6 flex items-center gap-3">
+                <i data-lucide="alert-triangle" class="w-6 h-6 text-admin-accent-yellow"></i>
+                <div>
+                    <h4 class="font-bold text-admin-accent-yellow">پروفایل شما ناقص است</h4>
+                    <p class="text-sm text-yellow-700 dark:text-yellow-300">برای خرید پلن، ابتدا باید مربی خود را از بخش <button class="font-bold underline" id="go-to-profile-from-store">پروفایل</button> انتخاب کنید.</p>
+                </div>
+            </div>
+        ` : ''}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2">
                 <h3 class="font-bold text-xl mb-4">پلن‌های موجود</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    ${plans.map((plan: any) => `
+                    ${plans.map((plan: any) => {
+                        const buttonState = hasCoach ? '' : 'disabled';
+                        const buttonClasses = hasCoach ? '' : 'opacity-50 cursor-not-allowed';
+                        return `
                         <div class="card p-6 flex flex-col border-2 transition-all hover:shadow-xl hover:-translate-y-1" style="border-color: ${plan.color || 'var(--border-primary)'};">
                             <h4 class="text-lg font-bold text-text-primary">${plan.emoji || ''} ${plan.planName}</h4>
                             <p class="text-sm text-text-secondary mt-1 flex-grow">${plan.description}</p>
@@ -468,9 +546,10 @@ const renderStoreTab = (currentUser: string) => {
                                     </li>
                                 `).join('')}
                             </ul>
-                            <button class="add-to-cart-btn primary-button mt-auto w-full" data-plan-id='${plan.planId}'>افزودن به سبد خرید</button>
+                            <button class="add-to-cart-btn primary-button mt-auto w-full ${buttonClasses}" data-plan-id='${plan.planId}' ${buttonState} title="${!hasCoach ? 'ابتدا مربی خود را انتخاب کنید' : 'افزودن به سبد خرید'}">افزودن به سبد خرید</button>
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             </div>
             <div class="lg:col-span-1">
@@ -499,10 +578,27 @@ const renderChatTab = (currentUser: string, userData: any) => {
     const coachName = coachData?.step1?.clientName || userData.step1?.coachName || 'بدون مربی';
     const coachAvatar = coachData?.profile?.avatar;
 
-    if (!userData.step1?.coachName) {
-        container.innerHTML = `<div class="card p-8 text-center text-text-secondary"><i data-lucide="message-square-off" class="w-12 h-12 mx-auto mb-4"></i><p>شما در حال حاضر مربی ندارید. برای فعال شدن بخش گفتگو، لطفا از فروشگاه یک پلن دارای پشتیبانی خریداری کنید.</p></div>`;
+    const chatAccess = canUserChat(userData);
+    if (!chatAccess.canChat) {
+        container.innerHTML = `<div class="card p-8 text-center text-text-secondary"><i data-lucide="message-square-off" class="w-12 h-12 mx-auto mb-4"></i><p>${chatAccess.reason}</p></div>`;
         window.lucide?.createIcons();
         return;
+    }
+
+    const latestProgram = (userData.programHistory && userData.programHistory.length > 0) ? userData.programHistory[0] : null;
+    let timerHtml = '';
+    if (latestProgram) {
+        const programSentDate = new Date(latestProgram.date);
+        const now = new Date();
+        const hoursPassed = (now.getTime() - programSentDate.getTime()) / (1000 * 60 * 60);
+        if (hoursPassed >= 0 && hoursPassed <= 48) {
+            const hoursLeft = Math.floor(48 - hoursPassed);
+            const minutesLeft = Math.floor(((48 - hoursPassed) * 60) % 60);
+            timerHtml = `
+            <div class="p-2 text-center text-sm bg-accent/10 text-accent font-semibold flex-shrink-0">
+                زمان باقی‌مانده برای گفتگو: ${hoursLeft} ساعت و ${minutesLeft} دقیقه
+            </div>`;
+        }
     }
 
     container.innerHTML = `
@@ -517,6 +613,7 @@ const renderChatTab = (currentUser: string, userData: any) => {
                     <p class="text-xs text-text-secondary">مربی شما</p>
                 </div>
             </div>
+            ${timerHtml}
             <div id="user-chat-messages-container" class="p-4 flex-grow overflow-y-auto message-container flex flex-col-reverse">
                 <div class="space-y-4">
                     <!-- Messages will be injected here in reverse order -->
@@ -549,128 +646,70 @@ const renderChatTab = (currentUser: string, userData: any) => {
     window.lucide?.createIcons();
 };
 
-const initWeightChart = (history: any[]) => {
-    const ctx = document.getElementById('weight-chart') as HTMLCanvasElement;
-    if (!ctx || !window.Chart) return;
-    if (weightChartInstance) weightChartInstance.destroy();
-
-    const labels = history.map(entry => new Date(entry.date).toLocaleDateString('fa-IR'));
-    const data = history.map(entry => entry.weight);
-    
-    weightChartInstance = new window.Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Weight (kg)',
-                data: data,
-                borderColor: 'var(--accent)',
-                backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)',
-                fill: true,
-                tension: 0.3,
-                pointBackgroundColor: 'var(--accent)',
-                pointRadius: 4,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: false } }
-        }
-    });
-};
-
-const initProgressCharts = (userData: any) => {
-    initWeightChart(userData.weightHistory || []);
-
-    const volumeCtx = document.getElementById('volume-chart') as HTMLCanvasElement;
-    if (volumeCtx && window.Chart) {
-        if (volumeChartInstance) volumeChartInstance.destroy();
-        
-        const { labels, volumes } = calculateWeeklyMetrics(userData.workoutHistory || []);
-        
-        volumeChartInstance = new window.Chart(volumeCtx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Total Volume (kg)',
-                    data: volumes,
-                    backgroundColor: 'color-mix(in srgb, var(--accent) 70%, transparent)',
-                    borderColor: 'var(--accent)',
-                    borderWidth: 2,
-                    borderRadius: 8,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { 
-                    y: { 
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value: string | number) {
-                                return value + ' kg';
-                            }
-                        }
-                    } 
-                }
-            }
-        });
-    }
-};
-
-const renderProgressTab = (userData: any) => {
-    const container = document.getElementById('progress-content');
+const renderNutritionTab = (currentUser: string, userData: any) => {
+    const container = document.getElementById('nutrition-content');
     if (!container) return;
 
-    const targetExercises = ["پرس سینه هالتر", "اسکوات با هالتر", "ددلیفت"];
-    const bestLifts = findBestLifts(userData.workoutHistory || [], targetExercises);
-
-    const bestLiftsHtml = bestLifts.map(lift => {
-        if (!lift.weight) {
-            return `
-            <div class="divi-kpi-card">
-                <div class="icon-container" style="--icon-bg: var(--bg-tertiary);">
-                    <i data-lucide="dumbbell" class="w-6 h-6 text-text-secondary"></i>
-                </div>
-                <div>
-                    <p class="kpi-value text-base text-text-secondary">بدون رکورد</p>
-                    <p class="kpi-label">${lift.exerciseName}</p>
-                </div>
+    const hasAccess = getUserAccessPermissions(userData).has('nutrition_plan');
+    if (!hasAccess) {
+        container.innerHTML = `
+            <div class="card p-8 text-center text-text-secondary flex flex-col items-center justify-center">
+                <i data-lucide="lock" class="w-12 h-12 mx-auto mb-4 text-accent"></i>
+                <h3 class="font-bold text-xl">دسترسی به این بخش محدود است</h3>
+                <p class="mt-2">برای مشاهده و دریافت برنامه‌های غذایی، لطفا پلن عضویت خود را از فروشگاه ارتقا دهید.</p>
+                <button id="go-to-store-from-nutrition" class="primary-button mt-6">مشاهده پلن‌ها</button>
             </div>
-            `;
-        }
-        return `
-        <div class="divi-kpi-card">
-            <div class="icon-container" style="--icon-bg: var(--admin-accent-orange);">
-                <i data-lucide="award" class="w-6 h-6 text-white"></i>
-            </div>
-            <div>
-                <p class="kpi-value">${lift.weight}kg x ${lift.reps}</p>
-                <p class="kpi-label">${lift.exerciseName}</p>
-                <p class="text-xs text-text-secondary mt-1">${new Date(lift.date).toLocaleDateString('fa-IR')}</p>
-            </div>
-        </div>
         `;
-    }).join('');
+        window.lucide?.createIcons();
+        return;
+    }
+
+    const latestProgram = (userData.programHistory && userData.programHistory.length > 0)
+        ? userData.programHistory[0]
+        : null;
+
+    const nutritionPlan = latestProgram?.nutritionPlan;
+
+    if (!nutritionPlan || !nutritionPlan.weeklyPlan) {
+        container.innerHTML = `<div class="card p-8 text-center text-text-secondary"><i data-lucide="folder-x" class="w-12 h-12 mx-auto mb-4"></i><p>هنوز برنامه غذایی برای شما ثبت نشده است. مربی شما به زودی برنامه را ارسال خواهد کرد.</p></div>`;
+        window.lucide?.createIcons();
+        return;
+    }
 
     container.innerHTML = `
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
-            <div class="lg:col-span-1 space-y-4">
-                <h3 class="font-bold text-lg">رکوردهای شخصی</h3>
-                ${bestLiftsHtml}
+        <div class="card p-6 max-w-4xl mx-auto animate-fade-in-up">
+            <h2 class="text-2xl font-bold mb-4">برنامه غذایی هفتگی</h2>
+            <p class="text-text-secondary mb-6">این یک برنامه غذایی نمونه است که می‌توانید آن را به صورت هفتگی تکرار کنید. برای تنوع، از گزینه‌های مختلف در هر وعده استفاده نمایید.</p>
+            <div class="space-y-4">
+                ${(nutritionPlan.weeklyPlan || []).map((day: any) => `
+                    <details class="bg-bg-tertiary rounded-lg">
+                        <summary class="p-3 font-semibold cursor-pointer flex justify-between items-center">
+                            <span>${day.dayName}</span>
+                            <i data-lucide="chevron-down" class="details-arrow transition-transform"></i>
+                        </summary>
+                        <div class="p-4 border-t border-border-primary bg-bg-secondary rounded-b-lg nutrition-plan-text">
+                            <ul class="space-y-4">
+                            ${(day.meals || []).map((meal: any) => `
+                                <li>
+                                    <strong class="font-bold">${meal.mealName}:</strong>
+                                    <ul class="list-disc pr-5 mt-1 text-text-secondary space-y-1">
+                                        ${(meal.options || []).map((opt: string) => `<li>${sanitizeHTML(opt)}</li>`).join('')}
+                                    </ul>
+                                </li>
+                            `).join('')}
+                            </ul>
+                        </div>
+                    </details>
+                `).join('')}
             </div>
-            <div class="lg:col-span-2 card p-4 md:p-6 h-96">
-                <h3 class="font-bold text-lg mb-4">نمودار وزن</h3>
-                <canvas id="weight-chart"></canvas>
+            ${nutritionPlan.generalTips && nutritionPlan.generalTips.length > 0 ? `
+            <div class="mt-6">
+                <h3 class="font-bold text-lg mb-3">نکات عمومی</h3>
+                <ul class="list-disc pr-5 text-text-secondary space-y-1">
+                    ${nutritionPlan.generalTips.map((tip: string) => `<li>${sanitizeHTML(tip)}</li>`).join('')}
+                </ul>
             </div>
-            <div class="lg:col-span-3 card p-4 md:p-6 h-96">
-                <h3 class="font-bold text-lg mb-4">حجم تمرین هفتگی (کیلوگرم)</h3>
-                <canvas id="volume-chart"></canvas>
-            </div>
+            ` : ''}
         </div>
     `;
     window.lucide?.createIcons();
@@ -1029,7 +1068,7 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                                     </label>
                                 `).join('')}
                              </div>
-                        </div>
+                         </div>
                          <div>
                              <p class="text-sm font-semibold mb-2">سطح فعالیت روزانه</p>
                              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
@@ -1113,10 +1152,68 @@ const openCoachSelectionModal = (currentUser: string) => {
     openModal(modal);
 };
 
+const renderHelpTab = () => {
+    const container = document.getElementById('help-content');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="space-y-4 max-w-4xl mx-auto">
+            <details class="card p-0 overflow-hidden" open>
+                <summary class="p-4 cursor-pointer flex justify-between items-center font-bold text-lg">
+                    <span><i data-lucide="play-circle" class="inline-block w-5 h-5 -mt-1 ml-2 text-accent"></i>شروع به کار</span>
+                    <i data-lucide="chevron-down" class="details-arrow"></i>
+                </summary>
+                <div class="p-6 border-t border-border-primary bg-bg-tertiary/50">
+                    <p class="mb-2">به FitGym Pro خوش آمدید! برای شروع سفر تناسب اندام خود، این مراحل را دنبال کنید:</p>
+                    <ol class="list-decimal pr-5 space-y-2">
+                        <li><strong>تکمیل پروفایل:</strong> به بخش «پروفایل» بروید و تمام اطلاعات خود را با دقت وارد کنید. این اطلاعات به مربی شما کمک می‌کند تا بهترین برنامه را برای شما طراحی کند.</li>
+                        <li><strong>انتخاب مربی:</strong> مهم‌ترین قدم، انتخاب یک مربی از لیست مربیان تایید شده ما در بخش «پروفایل» است. تا زمانی که مربی انتخاب نکنید، نمی‌توانید پلن‌های تمرینی را خریداری کنید.</li>
+                        <li><strong>خرید پلن:</strong> به بخش «فروشگاه» بروید و پلنی را که با اهداف شما مطابقت دارد، انتخاب و خریداری کنید.</li>
+                        <li><strong>دریافت برنامه:</strong> پس از خرید، مربی شما مطلع می‌شود و برنامه اختصاصی شما را آماده و ارسال می‌کند. شما از طریق نوتیفیکیشن مطلع خواهید شد.</li>
+                        <li><strong>شروع تمرین:</strong> برنامه خود را در بخش «برنامه من» مشاهده کرده و تمرینات خود را از داشبورد ثبت کنید!</li>
+                    </ol>
+                </div>
+            </details>
+            <details class="card p-0 overflow-hidden">
+                <summary class="p-4 cursor-pointer flex justify-between items-center font-bold text-lg">
+                    <span><i data-lucide="book-open" class="inline-block w-5 h-5 -mt-1 ml-2 text-accent"></i>درک برنامه شما</span>
+                    <i data-lucide="chevron-down" class="details-arrow"></i>
+                </summary>
+                <div class="p-6 border-t border-border-primary bg-bg-tertiary/50">
+                    <p>برنامه شما در بخش «برنامه من» به چند بخش تقسیم می‌شود:</p>
+                    <ul class="list-disc pr-5 mt-2 space-y-2">
+                        <li><strong>اطلاعات شما:</strong> خلاصه‌ای از مشخصات فیزیکی و اهداف شما که برنامه بر اساس آن طراحی شده است.</li>
+                        <li><strong>برنامه تمرینی:</strong> شامل روزهای تمرینی، حرکات، تعداد ست، تکرار و زمان استراحت. حرکاتی که به صورت «سوپرست» مشخص شده‌اند، باید پشت سر هم و بدون استراحت انجام شوند.</li>
+                        <li><strong>برنامه مکمل:</strong> لیست مکمل‌های پیشنهادی مربی با دوز و زمان مصرف مشخص.</li>
+                        <li><strong>یادداشت مربی:</strong> توصیه‌های کلی مربی برای شما در این بخش قرار دارد. حتما آن را مطالعه کنید.</li>
+                    </ul>
+                </div>
+            </details>
+        </div>
+    `;
+
+    window.lucide?.createIcons();
+};
+
 
 export function initUserDashboard(currentUser: string, userData: any, handleLogout: () => void, handleGoToHome: () => void) {
     const mainContainer = document.getElementById('user-dashboard-container');
     if (!mainContainer) return;
+
+    // Show a persistent banner if coach is not selected
+    const globalNotificationPlaceholder = document.getElementById('global-user-notification-placeholder');
+    const hasCoach = userData.step1?.coachName;
+    if (globalNotificationPlaceholder && !hasCoach) {
+        globalNotificationPlaceholder.innerHTML = `
+            <div class="bg-black text-yellow-400 rounded-lg p-4 mb-6 flex items-center gap-3 animate-fade-in-down">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                <div>
+                    <h4 class="font-bold">پروفایل شما ناقص است!</h4>
+                    <p class="text-sm">برای استفاده از تمام امکانات و دریافت برنامه، لطفاً ابتدا از بخش <button class="font-bold underline" data-action="go-to-profile">پروفایل</button> مربی خود را انتخاب کنید.</p>
+                </div>
+            </div>
+        `;
+    }
 
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
     document.getElementById('go-to-home-btn')?.addEventListener('click', handleGoToHome);
@@ -1124,10 +1221,11 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
     const pageTitles: Record<string, { title: string, subtitle: string }> = {
         'dashboard-content': { title: 'داشبورد', subtitle: 'خلاصه فعالیت‌ها و پیشرفت شما.' },
         'program-content': { title: 'برنامه من', subtitle: 'برنامه تمرینی، مکمل‌ها و غذایی شما.' },
-        'progress-content': { title: 'روند پیشرفت', subtitle: 'نمودارها و معیارهای بدنی شما.' },
+        'nutrition-content': { title: 'برنامه تغذیه', subtitle: 'برنامه غذایی اختصاصی شما.' },
         'chat-content': { title: 'گفتگو با مربی', subtitle: 'ارتباط مستقیم با مربی شما.' },
         'store-content': { title: 'فروشگاه', subtitle: 'پلن‌های عضویت خود را ارتقا دهید.' },
-        'profile-content': { title: 'پروفایل', subtitle: 'اطلاعات فردی و اهداف خود را ویرایش کنید.' }
+        'profile-content': { title: 'پروفایل', subtitle: 'اطلاعات فردی و اهداف خود را ویرایش کنید.' },
+        'help-content': { title: 'راهنما', subtitle: 'پاسخ به سوالات متداول و راهنمایی‌ها.' }
     };
 
     const switchTab = (activeTab: Element) => {
@@ -1164,9 +1262,8 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             case 'program-content':
                 renderUnifiedProgramView(freshUserData);
                 break;
-            case 'progress-content':
-                renderProgressTab(freshUserData);
-                initProgressCharts(freshUserData);
+            case 'nutrition-content':
+                renderNutritionTab(currentUser, freshUserData);
                 break;
             case 'chat-content':
                  renderChatTab(currentUser, freshUserData);
@@ -1176,6 +1273,9 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 break;
             case 'profile-content':
                 renderProfileTab(currentUser, freshUserData);
+                break;
+            case 'help-content':
+                renderHelpTab();
                 break;
         }
     };
@@ -1199,6 +1299,12 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             return;
         }
 
+        if (target.dataset.action === 'go-to-profile') {
+            const profileTab = mainContainer.querySelector('.coach-nav-link[data-target="profile-content"]');
+            if (profileTab) switchTab(profileTab);
+            return;
+        }
+
         const actionBtn = target.closest<HTMLButtonElement>('button[data-action]');
         if (actionBtn) {
             const action = actionBtn.dataset.action;
@@ -1209,6 +1315,11 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                     openWorkoutLogModal(todayData.day, todayData.dayIndex, currentUser);
                 }
             }
+            if (action === 'go-to-store') {
+                const storeTab = mainContainer.querySelector('.coach-nav-link[data-target="store-content"]');
+                if (storeTab) switchTab(storeTab);
+                return;
+            }
         }
 
         if (target.closest('#save-program-pdf-btn')) {
@@ -1218,8 +1329,9 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             exportElement('#unified-program-view', 'png', `FitGymPro-Program.png`, target.closest('button') as HTMLButtonElement);
         }
         
-        if (target.closest('.add-to-cart-btn')) {
-            const planId = (target.closest('.add-to-cart-btn') as HTMLElement).dataset.planId;
+        const addToCartBtn = target.closest('.add-to-cart-btn');
+        if (addToCartBtn && !(addToCartBtn as HTMLButtonElement).disabled) {
+            const planId = (addToCartBtn as HTMLElement).dataset.planId;
             const plans = getStorePlans();
             const planToAdd = plans.find((p:any) => p.planId === planId);
             if (planToAdd) {
@@ -1287,6 +1399,12 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             openCoachSelectionModal(currentUser);
         }
 
+        if (target.id === 'go-to-store-from-nutrition' || target.id === 'go-to-profile-from-store') {
+             const targetTab = target.id === 'go-to-store-from-nutrition' ? 'store-content' : 'profile-content';
+             const tabButton = mainContainer.querySelector(`.coach-nav-link[data-target="${targetTab}"]`);
+             if (tabButton) switchTab(tabButton);
+        }
+
         const coachCard = target.closest('.coach-selection-card');
         if (coachCard) {
             selectedCoachInModal = (coachCard as HTMLElement).dataset.username || null;
@@ -1306,6 +1424,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
 
                 showToast('مربی شما با موفقیت تغییر کرد.', 'success');
                 renderProfileTab(currentUser, freshUserData);
+                renderStoreTab(currentUser); // Re-render store to enable buttons
                 
                 const coachData = getUserData(selectedCoachInModal);
                 const coachName = coachData?.step1?.clientName || selectedCoachInModal;
@@ -1376,10 +1495,14 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             freshUserData.lastProfileUpdate = new Date().toISOString();
             saveUserData(currentUser, freshUserData);
         
+            let toastMessage = 'پروفایل شما با موفقیت به‌روزرسانی شد.';
             if (freshUserData.step1.coachName) {
                 setNotification(freshUserData.step1.coachName, 'students-content', '📝');
+                toastMessage = 'مشخصات شما با موفقیت برای مربی ارسال شد.';
+                 const globalNotificationPlaceholder = document.getElementById('global-user-notification-placeholder');
+                if(globalNotificationPlaceholder) globalNotificationPlaceholder.innerHTML = '';
             }
-            showToast('پروفایل شما با موفقیت به‌روزرسانی شد.', 'success');
+            showToast(toastMessage, 'success');
             renderProfileTab(currentUser, freshUserData);
         }
         
@@ -1435,7 +1558,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 });
                 saveUserData(currentUser, freshUserData);
                 
-                addActivityLog(`${currentUser} a workout.`);
+                addActivityLog(`${currentUser} یک تمرین ثبت کرد.`);
                 if (freshUserData.step1.coachName) {
                     setNotification(freshUserData.step1.coachName, 'students-content', '💪');
                 }

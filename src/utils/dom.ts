@@ -7,15 +7,29 @@ export const sanitizeHTML = (str: string): string => {
     return temp.innerHTML;
 };
 
-export const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+export const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
     const container = document.getElementById("toast-container");
     if (!container) return;
 
     const toast = document.createElement("div");
-    const icon = type === "success" ? "check-circle" : "alert-triangle";
-    const colors = type === "success" ? "bg-green-500 border-green-600" : "bg-red-500 border-red-600";
+    let icon, colors;
+
+    switch (type) {
+        case 'success':
+            icon = "check-circle";
+            colors = "bg-green-500 border-green-600 text-white";
+            break;
+        case 'error':
+            icon = "alert-triangle";
+            colors = "bg-red-500 border-red-600 text-white";
+            break;
+        case 'warning':
+            icon = "alert-triangle";
+            colors = "bg-yellow-400 border-yellow-500 text-black";
+            break;
+    }
     
-    toast.className = `flex items-center gap-3 ${colors} text-white py-3 px-5 rounded-lg shadow-xl border-b-4 transform opacity-0 translate-x-full`;
+    toast.className = `flex items-center gap-3 ${colors} py-3 px-5 rounded-lg shadow-xl border-b-4 transform opacity-0 translate-x-full`;
     toast.style.transition = "transform 0.5s ease, opacity 0.5s ease";
     toast.innerHTML = `
         <i data-lucide="${icon}" class="w-6 h-6"></i>
@@ -33,7 +47,7 @@ export const showToast = (message: string, type: 'success' | 'error' = 'success'
         toast.classList.add("opacity-0");
         toast.style.transform = "translateX(120%)";
         toast.addEventListener("transitionend", () => toast.remove(), { once: true });
-    }, 2000);
+    }, 4000); // Increased duration for warnings
 };
 
 export const updateSliderTrack = (slider: HTMLInputElement) => {
