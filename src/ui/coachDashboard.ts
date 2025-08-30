@@ -2,8 +2,12 @@
 
 
 
+
+
+
+
 import { getTemplates, saveTemplate, deleteTemplate, getUsers, getUserData, saveUserData, getNotifications, setNotification, clearNotification, getExercisesDB, getSupplementsDB } from '../services/storage';
-import { showToast, updateSliderTrack, openModal, closeModal, exportElement, sanitizeHTML } from '../utils/dom';
+import { showToast, updateSliderTrack, openModal, closeModal, exportElement, sanitizeHTML, hexToRgba } from '../utils/dom';
 import { getLatestPurchase, timeAgo, getLastActivity } from '../utils/helpers';
 import { generateWorkoutPlan, generateSupplementPlan, generateNutritionPlan } from '../services/gemini';
 import { calculateWorkoutStreak } from '../utils/calculations';
@@ -29,8 +33,8 @@ export function renderCoachDashboard(currentUser: string, userData: any) {
     ];
     
     return `
-    <div id="coach-dashboard-container" class="flex h-screen bg-bg-primary transition-opacity duration-500 opacity-0">
-        <aside class="w-64 bg-bg-secondary p-4 flex flex-col flex-shrink-0 border-l border-border-primary">
+    <div id="coach-dashboard-container" class="lg:flex h-screen bg-bg-primary transition-opacity duration-500 opacity-0">
+        <aside class="fixed inset-y-0 right-0 z-40 w-64 bg-bg-secondary p-4 flex flex-col flex-shrink-0 border-l border-border-primary transform translate-x-full transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0">
             <div class="flex items-center gap-3 p-2 mb-6">
                 <i data-lucide="dumbbell" class="w-8 h-8 text-accent"></i>
                 <h1 class="text-xl font-bold">FitGym Pro</h1>
@@ -58,9 +62,14 @@ export function renderCoachDashboard(currentUser: string, userData: any) {
         <main class="flex-1 p-6 lg:p-8 overflow-y-auto">
             <div id="impersonation-banner-placeholder"></div>
             <header class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
-                <div>
-                    <h1 id="coach-page-title" class="text-3xl font-bold">داشبورد</h1>
-                    <p id="coach-page-subtitle" class="text-text-secondary">خلاصه فعالیت‌ها و آمار شما.</p>
+                <div class="flex items-center gap-2">
+                    <button id="sidebar-toggle" class="lg:hidden p-2 -mr-2 text-text-secondary hover:text-text-primary">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                    <div>
+                        <h1 id="coach-page-title" class="text-3xl font-bold">داشبورد</h1>
+                        <p id="coach-page-subtitle" class="text-text-secondary">خلاصه فعالیت‌ها و آمار شما.</p>
+                    </div>
                 </div>
                 <div class="flex items-center gap-3 bg-bg-secondary p-2 rounded-lg">
                     <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-bg-secondary" style="background-color: var(--accent);">
@@ -489,7 +498,7 @@ const _renderStudentProgram = (programData: any) => {
         const dayColor = dayColors[index % dayColors.length];
         return `
         <details class="day-card card !shadow-none !border mb-2">
-            <summary class="font-bold cursor-pointer flex justify-between items-center p-3 rounded-md" style="border-right: 4px solid ${dayColor}; background-color: color-mix(in srgb, ${dayColor} 10%, transparent);">
+            <summary class="font-bold cursor-pointer flex justify-between items-center p-3 rounded-md" style="border-right: 4px solid ${dayColor}; background-color: ${hexToRgba(dayColor, 0.1)};">
                 <span>${day.name}</span>
                 <i data-lucide="chevron-down" class="details-arrow"></i>
             </summary>
@@ -829,7 +838,7 @@ const renderProgramPreview = () => {
             <div class="space-y-4">
             ${workout.days.filter((d: any) => d.exercises.length > 0).map((day: any, index: number) => `
                 <div>
-                    <h4 class="font-bold mb-2 p-2 rounded-md" style="border-right: 4px solid ${dayColors[index % dayColors.length]}; background-color: color-mix(in srgb, ${dayColors[index % dayColors.length]} 10%, transparent);">${day.name}</h4>
+                    <h4 class="font-bold mb-2 p-2 rounded-md" style="border-right: 4px solid ${dayColors[index % dayColors.length]}; background-color: ${hexToRgba(dayColors[index % dayColors.length], 0.1)};">${day.name}</h4>
                     <table class="preview-table-pro">
                         <thead><tr><th>حرکت</th><th>ست</th><th>تکرار</th><th>استراحت</th></tr></thead>
                         <tbody>
@@ -2198,7 +2207,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             return;
         }
         if (target.closest('#prev-step-btn')) {
-            if (currentStep > 1) changeStep(currentStep - 1);
+            if (currentStep > 1) changeStep(currentStep + 1);
             return;
         }
 
@@ -2398,6 +2407,18 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                     }
                 })
                 .finally(() => { aiNutritionBtn.classList.remove('is-loading'); aiNutritionBtn.disabled = false; });
+            return;
+        }
+
+        const savePdfBtnBuilder = target.closest('#save-program-pdf-btn-builder');
+        if (savePdfBtnBuilder) {
+            exportElement('#program-preview-for-export', 'pdf', 'FitGymPro-Program.pdf', savePdfBtnBuilder as HTMLButtonElement);
+            return;
+        }
+
+        const saveImgBtnBuilder = target.closest('#save-program-img-btn-builder');
+        if (saveImgBtnBuilder) {
+            exportElement('#program-preview-for-export', 'png', 'FitGymPro-Program.png', saveImgBtnBuilder as HTMLButtonElement);
             return;
         }
     });

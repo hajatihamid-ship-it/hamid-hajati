@@ -1,4 +1,5 @@
 
+
 import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans, getExercisesDB, saveExercisesDB, getSupplementsDB, saveSupplementsDB, saveDiscounts, getSiteSettings, saveSiteSettings } from '../services/storage';
 import { formatPrice, timeAgo } from '../utils/helpers';
 import { openModal, closeModal, showToast } from '../utils/dom';
@@ -511,8 +512,8 @@ export function renderAdminDashboard() {
     ];
 
     return `
-    <div class="admin-dashboard-container flex h-screen bg-bg-primary transition-opacity duration-500 opacity-0">
-        <aside class="w-64 bg-bg-secondary p-4 flex flex-col flex-shrink-0 border-l border-border-primary">
+    <div class="admin-dashboard-container lg:flex h-screen bg-bg-primary transition-opacity duration-500 opacity-0">
+        <aside class="fixed inset-y-0 right-0 z-40 w-64 bg-bg-secondary p-4 flex flex-col flex-shrink-0 border-l border-border-primary transform translate-x-full transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0">
              <div class="flex items-center gap-3 p-2 mb-6">
                 <i data-lucide="shield-check" class="w-8 h-8 text-accent"></i>
                 <h1 class="text-xl font-bold">Admin Panel</h1>
@@ -539,8 +540,13 @@ export function renderAdminDashboard() {
         <main class="flex-1 p-6 lg:p-8 overflow-y-auto">
             <div id="impersonation-banner-placeholder"></div>
             <header class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
-                <div>
-                    <h1 id="admin-page-title" class="text-3xl font-bold">داشبورد</h1>
+                <div class="flex items-center gap-2">
+                    <button id="sidebar-toggle" class="lg:hidden p-2 -mr-2 text-text-secondary hover:text-text-primary">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                    <div>
+                        <h1 id="admin-page-title" class="text-3xl font-bold">داشبورد</h1>
+                    </div>
                 </div>
                  <div class="flex items-center gap-3 bg-bg-secondary p-2 rounded-lg">
                     <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-bg-secondary" style="background-color: var(--accent);">

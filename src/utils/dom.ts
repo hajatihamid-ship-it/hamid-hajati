@@ -1,5 +1,27 @@
 // This file contains helper functions for DOM manipulation and UI interactions.
 
+/**
+ * Converts a hex color string to an rgba string.
+ * @param hex The hex color string (e.g., '#RRGGBB' or '#RGB').
+ * @param alpha The alpha transparency value (0 to 1).
+ * @returns The rgba color string.
+ */
+export const hexToRgba = (hex: string, alpha: number): string => {
+    let r = 0, g = 0, b = 0;
+    // 3 digits
+    if (hex.length === 4) {
+        r = parseInt(hex[1] + hex[1], 16);
+        g = parseInt(hex[2] + hex[2], 16);
+        b = parseInt(hex[3] + hex[3], 16);
+    // 6 digits
+    } else if (hex.length === 7) {
+        r = parseInt(hex.substring(1, 3), 16);
+        g = parseInt(hex.substring(3, 5), 16);
+        b = parseInt(hex.substring(5, 7), 16);
+    }
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 export const sanitizeHTML = (str: string): string => {
     if (typeof str !== 'string') return '';
     const temp = document.createElement("div");
@@ -105,12 +127,32 @@ export const exportElement = async (elementToExportSelector: string, format: 'pd
         const exportContainer = document.createElement('div');
         exportContainer.className = 'program-page';
         exportContainer.innerHTML = elementToExport.innerHTML;
+
+        // Apply theme variables to ensure correct colors in export
+        const computedStyles = getComputedStyle(document.documentElement);
+        let cssVariables = '';
+        for (let i = 0; i < computedStyles.length; i++) {
+            const prop = computedStyles[i];
+            if (prop.startsWith('--')) {
+                cssVariables += `${prop}: ${computedStyles.getPropertyValue(prop)}; `;
+            }
+        }
+        exportContainer.style.cssText += cssVariables;
+        
+        // Position off-screen and set width for correct rendering
+        exportContainer.style.position = 'absolute';
+        exportContainer.style.left = '-9999px';
+        exportContainer.style.top = '0px';
+        exportContainer.style.width = `${elementToExport.offsetWidth}px`;
+
         document.body.appendChild(exportContainer);
+        
+        const bgColor = computedStyles.getPropertyValue('--bg-secondary').trim();
 
         const canvas = await html2canvas(exportContainer, {
             scale: 2,
             useCORS: true,
-            backgroundColor: '#ffffff'
+            backgroundColor: bgColor,
         });
 
         document.body.removeChild(exportContainer);

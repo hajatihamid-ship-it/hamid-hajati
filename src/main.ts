@@ -1,3 +1,4 @@
+
 import { renderLandingPage, initLandingPageListeners } from './ui/landing';
 import { renderAuthModal, initAuthListeners } from './ui/authModal';
 import { renderCoachDashboard, initCoachDashboard, updateCoachNotifications } from './ui/coachDashboard';
@@ -379,7 +380,7 @@ const initTheme = () => {
     const themes = ['dark', 'lemon'];
     
     const updateThemeUI = (theme: string) => {
-        const validTheme = themes.includes(theme) ? theme : 'lemon';
+        const validTheme = themes.includes(theme) ? theme : 'dark';
         docElement.setAttribute("data-theme", validTheme);
         localStorage.setItem("fitgympro_theme", validTheme);
         
@@ -409,7 +410,7 @@ const initTheme = () => {
         }
     };
 
-    const currentTheme = localStorage.getItem("fitgympro_theme") || "lemon";
+    const currentTheme = localStorage.getItem("fitgympro_theme") || "dark";
     updateThemeUI(currentTheme);
 
     if (!themeListenerAttached) {

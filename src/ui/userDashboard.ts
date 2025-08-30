@@ -1,6 +1,6 @@
 import { getUserData, saveUserData, addActivityLog, getCart, saveCart, getDiscounts, getNotifications, clearNotification, setNotification, getStorePlans, getUsers } from '../services/storage';
 import { getTodayWorkoutData, calculateBodyMetrics, calculateWorkoutStreak, performMetricCalculations, findBestLifts, calculateWeeklyMetrics } from '../utils/calculations';
-import { showToast, updateSliderTrack, openModal, closeModal, exportElement } from '../utils/dom';
+import { showToast, updateSliderTrack, openModal, closeModal, exportElement, hexToRgba } from '../utils/dom';
 import { generateNutritionPlan } from '../services/gemini';
 import { sanitizeHTML } from '../utils/dom';
 import { formatPrice, timeAgo, getLatestSubscription, getUserAccessPermissions, canUserChat } from '../utils/helpers';
@@ -38,8 +38,8 @@ export function renderUserDashboard(currentUser: string, userData: any) {
            </div>`;
 
     return `
-    <div id="user-dashboard-container" class="flex h-screen bg-bg-primary transition-opacity duration-500 opacity-0">
-        <aside class="w-64 bg-bg-secondary p-4 flex flex-col flex-shrink-0 border-l border-border-primary">
+    <div id="user-dashboard-container" class="lg:flex h-screen bg-bg-primary transition-opacity duration-500 opacity-0">
+        <aside class="fixed inset-y-0 right-0 z-40 w-64 bg-bg-secondary p-4 flex flex-col flex-shrink-0 border-l border-border-primary transform translate-x-full transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0">
             <div class="flex items-center gap-3 p-2 mb-6">
                 <i data-lucide="dumbbell" class="w-8 h-8 text-accent"></i>
                 <h1 class="text-xl font-bold">FitGym Pro</h1>
@@ -90,9 +90,14 @@ export function renderUserDashboard(currentUser: string, userData: any) {
             <div id="global-user-notification-placeholder"></div>
             <div id="impersonation-banner-placeholder"></div>
             <header class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
-                <div id="user-page-title-container">
-                    <h1 id="user-page-title" class="text-3xl font-bold">داشبورد</h1>
-                    <p id="user-page-subtitle" class="text-text-secondary">خلاصه فعالیت‌ها و پیشرفت شما.</p>
+                <div class="flex items-center gap-2">
+                     <button id="sidebar-toggle" class="lg:hidden p-2 -mr-2 text-text-secondary hover:text-text-primary">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                    <div id="user-page-title-container">
+                        <h1 id="user-page-title" class="text-3xl font-bold">داشبورد</h1>
+                        <p id="user-page-subtitle" class="text-text-secondary">خلاصه فعالیت‌ها و پیشرفت شما.</p>
+                    </div>
                 </div>
                  <div class="flex items-center gap-3 bg-bg-secondary p-2 rounded-lg">
                     ${avatarHtml}
@@ -191,7 +196,7 @@ const renderUnifiedProgramView = (userData: any) => {
                 <div class="space-y-4">
                 ${(workout.days || []).filter((d: any) => d.exercises && d.exercises.length > 0).map((day: any, index: number) => `
                     <div>
-                         <h4 class="font-bold mb-2 p-2 rounded-md" style="border-right: 4px solid ${dayColors[index % dayColors.length]}; background-color: color-mix(in srgb, ${dayColors[index % dayColors.length]} 10%, transparent);">${day.name}</h4>
+                         <h4 class="font-bold mb-2 p-2 rounded-md" style="border-right: 4px solid ${dayColors[index % dayColors.length]}; background-color: ${hexToRgba(dayColors[index % dayColors.length], 0.1)};">${day.name}</h4>
                         <table class="preview-table-pro">
                             <thead><tr><th>حرکت</th><th>ست</th><th>تکرار</th><th>استراحت</th></tr></thead>
                             <tbody>
@@ -1035,19 +1040,23 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                                     <span class="font-bold text-lg bodyfat-output"></span>
                                 </h4>
                                  <div class="relative h-6">
-                                    <div class="chart-placeholder absolute inset-0 bg-bg-tertiary rounded-full flex items-center justify-center text-xs text-text-secondary px-2"></div>
-                                    <div class="body-composition-chart w-full bg-bg-tertiary rounded-full h-6 flex overflow-hidden text-white text-xs items-center font-bold hidden">
-                                        <div class="lbm-bar bg-admin-accent-green h-full flex items-center justify-center transition-all duration-500">
-                                            <span class="lbm-value-output"></span>
+                                    <div class="chart-placeholder hidden absolute inset-0 text-xs text-text-secondary bg-bg-tertiary rounded-md p-2 flex items-center justify-center"></div>
+                                    <div class="body-composition-chart flex h-full rounded-md overflow-hidden">
+                                        <div class="lbm-bar bg-green-500 transition-all duration-500 relative flex items-center justify-center text-white text-xs font-bold">
+                                            <div class="absolute inset-0 flex items-center justify-center">
+                                                <span class="lbm-value-output"></span>
+                                            </div>
                                         </div>
-                                        <div class="fat-mass-bar bg-admin-accent-yellow h-full flex items-center justify-center transition-all duration-500">
-                                            <span class="fat-mass-value-output"></span>
+                                        <div class="fat-mass-bar bg-red-500 transition-all duration-500 relative flex items-center justify-center text-white text-xs font-bold">
+                                                <div class="absolute inset-0 flex items-center justify-center">
+                                                <span class="fat-mass-value-output"></span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center text-xs text-text-secondary mt-1">
-                                    <span>توده بدون چربی (LBM)</span>
-                                    <span>چربی</span>
+                                <div class="flex justify-between text-xs text-text-secondary mt-1">
+                                    <span>توده بدون چربی</span>
+                                    <span>توده چربی</span>
                                 </div>
                             </div>
 
@@ -1055,230 +1064,111 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                             <div class="tdee-container">
                                 <h4 class="font-semibold text-sm mb-2 flex justify-between items-center">
                                     <span>کالری روزانه (TDEE)</span>
-                                    <span class="font-bold text-lg text-accent tdee-value-output"></span>
+                                    <span class="font-bold text-lg tdee-value-output"></span>
                                 </h4>
                                 <div class="relative h-6">
-                                    <div class="chart-placeholder absolute inset-0 bg-bg-tertiary rounded-full flex items-center justify-center text-xs text-text-secondary px-2"></div>
-                                    <div class="tdee-chart w-full bg-bg-tertiary rounded-full h-6 flex overflow-hidden text-white text-xs items-center font-bold hidden">
-                                        <div class="bmr-bar bg-admin-accent-blue h-full flex items-center justify-center transition-all duration-500">
-                                            <span class="bmr-value-output"></span>
+                                    <div class="chart-placeholder hidden absolute inset-0 text-xs text-text-secondary bg-bg-tertiary rounded-md p-2 flex items-center justify-center"></div>
+                                    <div class="tdee-chart flex h-full rounded-md overflow-hidden">
+                                        <div class="bmr-bar bg-blue-500 transition-all duration-500 relative flex items-center justify-center text-white text-xs font-bold">
+                                            <div class="absolute inset-0 flex items-center justify-center">
+                                                <span class="bmr-value-output"></span>
+                                            </div>
                                         </div>
-                                        <div class="activity-calories-bar bg-admin-accent-pink h-full flex items-center justify-center transition-all duration-500">
-                                            <span class="activity-calories-value-output"></span>
+                                        <div class="activity-calories-bar bg-orange-500 transition-all duration-500 relative flex items-center justify-center text-white text-xs font-bold">
+                                            <div class="absolute inset-0 flex items-center justify-center">
+                                                <span class="activity-calories-value-output"></span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center text-xs text-text-secondary mt-1">
-                                    <span>متابولیسم پایه (BMR)</span>
+                                <div class="flex justify-between text-xs text-text-secondary mt-1">
+                                    <span>متابولیسم پایه</span>
                                     <span>کالری فعالیت</span>
                                 </div>
                             </div>
-                            
+
                             <!-- Ideal Weight -->
-                            <div class="bg-bg-tertiary rounded-lg p-3 text-center">
-                                <span class="text-sm">محدوده وزن ایده‌آل: </span>
-                                <strong class="font-semibold text-sm ideal-weight-output"></strong>
+                            <div class="ideal-weight-container">
+                                <h4 class="font-semibold text-sm mb-2 flex justify-between items-center">
+                                    <span>محدوده وزن ایده‌آل</span>
+                                    <span class="font-bold text-lg ideal-weight-output"></span>
+                                </h4>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Goals & Activity Card -->
-                <div class="card p-6 mb-6">
-                    <h3 class="text-lg font-bold mb-6 flex items-center gap-2 text-text-primary"><i data-lucide="target" class="w-5 h-5 text-accent"></i>اهداف و سطح فعالیت</h3>
-                    <div class="space-y-6">
+
+                <!-- Goals & Activity -->
+                <div class="card p-6">
+                     <h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-text-primary"><i data-lucide="target" class="w-5 h-5 text-accent"></i>اهداف و سطح فعالیت</h3>
+                     <div class="space-y-6">
                         <div>
-                             <p class="text-sm font-semibold mb-2">هدف اصلی تمرین</p>
-                             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                             <p class="text-sm font-semibold mb-2">هدف اصلی شما</p>
+                             <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
                                 ${trainingGoals.map(goal => `
-                                     <label class="option-card-label">
+                                    <label class="option-card-label">
                                         <input type="radio" name="training_goal_user" value="${goal}" class="option-card-input" ${step1?.trainingGoal === goal ? 'checked data-is-checked="true"' : ''}>
                                         <span class="option-card-content">${goal}</span>
                                     </label>
                                 `).join('')}
-                             </div>
-                             <div class="validation-message"></div>
+                            </div>
+                            <div class="validation-message"></div>
                         </div>
-                         <div>
-                             <p class="text-sm font-semibold mb-2">روزهای تمرین در هفته</p>
-                             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                                ${[2,3,4,5,6].map(day => `
+                        <div>
+                            <p class="text-sm font-semibold mb-2">روزهای تمرین در هفته</p>
+                            <div class="grid grid-cols-4 gap-2">
+                                ${[3, 4, 5, 6].map(day => `
                                      <label class="option-card-label">
-                                        <input type="radio" name="training_days_user" value="${day}" class="option-card-input" ${step1?.trainingDays == day ? 'checked data-is-checked="true"' : ''}>
+                                        <input type="radio" name="training_days_user" value="${day}" class="option-card-input" ${step1?.trainingDays === day ? 'checked data-is-checked="true"' : ''}>
                                         <span class="option-card-content">${day} روز</span>
                                     </label>
                                 `).join('')}
-                             </div>
-                             <div class="validation-message"></div>
-                         </div>
-                         <div>
-                             <p class="text-sm font-semibold mb-2">سطح فعالیت روزانه</p>
-                             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                            </div>
+                            <div class="validation-message"></div>
+                        </div>
+                        <div>
+                             <p class="text-sm font-semibold mb-2">سطح فعالیت روزانه (خارج از باشگاه)</p>
+                             <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));">
                                 ${activityLevels.map(level => `
                                     <label class="option-card-label">
-                                        <input type="radio" name="activity_level_user" value="${level.value}" class="option-card-input" ${step1?.activityLevel == level.value ? 'checked data-is-checked="true"' : ''}>
+                                        <input type="radio" name="activity_level_user" value="${level.value}" class="option-card-input" ${step1?.activityLevel === level.value ? 'checked data-is-checked="true"' : ''}>
                                         <span class="option-card-content">${level.label}</span>
                                     </label>
                                 `).join('')}
-                             </div>
-                             <div class="validation-message"></div>
-                         </div>
-                    </div>
+                            </div>
+                            <div class="validation-message"></div>
+                        </div>
+                     </div>
                 </div>
-                
-                <!-- Save Button -->
-                <div class="card p-4 sticky bottom-4 z-10 shadow-lg">
-                     <button type="submit" class="primary-button w-full !py-3">ذخیره و محاسبه مجدد</button>
+
+                <div class="flex justify-center">
+                    <button type="submit" class="primary-button !py-3 !px-8">ذخیره تغییرات</button>
                 </div>
             </form>
         </div>
     `;
-
-    container.querySelectorAll('.range-slider').forEach(slider => updateSliderTrack(slider as HTMLInputElement));
-    updateProfileMetricsDisplay(container);
 };
-
-const openCoachSelectionModal = (currentUser: string) => {
-    const modal = document.getElementById('user-dashboard-modal');
-    const titleEl = document.getElementById('user-modal-title');
-    const bodyEl = document.getElementById('user-modal-body');
-    if (!modal || !titleEl || !bodyEl) return;
-
-    const allUsers = getUsers();
-    const verifiedCoaches = allUsers.filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
-    const currentUserData = getUserData(currentUser);
-    selectedCoachInModal = currentUserData.step1?.coachName || null;
-
-    titleEl.textContent = 'انتخاب مربی';
-
-    const template = document.getElementById('coach-selection-option-template') as HTMLTemplateElement;
-
-    if (!template) {
-        bodyEl.innerHTML = '<p>خطا: قالب انتخاب مربی یافت نشد.</p>';
-        openModal(modal);
-        return;
-    }
-
-    bodyEl.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            ${verifiedCoaches.map((coach: any) => {
-                const coachData = getUserData(coach.username);
-                const name = coachData.step1?.clientName || coach.username;
-                const specialization = coachData.profile?.specialization || 'مربی رسمی';
-                const avatar = coachData.profile?.avatar;
-
-                const clone = template.content.cloneNode(true) as DocumentFragment;
-                const button = clone.querySelector('button')!;
-                button.dataset.username = coach.username;
-                if (coach.username === selectedCoachInModal) {
-                    button.classList.add('selected-card');
-                }
-
-                const avatarEl = button.querySelector('.coach-avatar')!;
-                if (avatar) {
-                    avatarEl.innerHTML = `<img src="${avatar}" alt="${name}" class="w-full h-full object-cover">`;
-                } else {
-                    avatarEl.innerHTML = `<span class="text-3xl font-bold text-text-secondary">${name.charAt(0)}</span>`;
-                }
-                
-                (button.querySelector('.coach-name') as HTMLElement).textContent = name;
-                (button.querySelector('.coach-specialization') as HTMLElement).textContent = specialization;
-
-                const tempDiv = document.createElement('div');
-                tempDiv.appendChild(clone);
-                return tempDiv.innerHTML;
-            }).join('')}
-        </div>
-        <button id="confirm-coach-selection" class="primary-button w-full mt-6">تایید انتخاب</button>
-    `;
-    
-    openModal(modal);
-};
-
-const renderHelpTab = () => {
-    const container = document.getElementById('help-content');
-    if (!container) return;
-
-    container.innerHTML = `
-        <div class="space-y-4 max-w-4xl mx-auto">
-            <details class="card p-0 overflow-hidden" open>
-                <summary class="p-4 cursor-pointer flex justify-between items-center font-bold text-lg">
-                    <span><i data-lucide="play-circle" class="inline-block w-5 h-5 -mt-1 ml-2 text-accent"></i>شروع به کار</span>
-                    <i data-lucide="chevron-down" class="details-arrow"></i>
-                </summary>
-                <div class="p-6 border-t border-border-primary bg-bg-tertiary/50">
-                    <p class="mb-2">به FitGym Pro خوش آمدید! برای شروع سفر تناسب اندام خود، این مراحل را دنبال کنید:</p>
-                    <ol class="list-decimal pr-5 space-y-2">
-                        <li><strong>تکمیل پروفایل:</strong> به بخش «پروفایل» بروید و تمام اطلاعات خود را با دقت وارد کنید. این اطلاعات به مربی شما کمک می‌کند تا بهترین برنامه را برای شما طراحی کند.</li>
-                        <li><strong>انتخاب مربی:</strong> مهم‌ترین قدم، انتخاب یک مربی از لیست مربیان تایید شده ما در بخش «پروفایل» است. تا زمانی که مربی انتخاب نکنید، نمی‌توانید پلن‌های تمرینی را خریداری کنید.</li>
-                        <li><strong>خرید پلن:</strong> به بخش «فروشگاه» بروید و پلنی را که با اهداف شما مطابقت دارد، انتخاب و خریداری کنید.</li>
-                        <li><strong>دریافت برنامه:</strong> پس از خرید، مربی شما مطلع می‌شود و برنامه اختصاصی شما را آماده و ارسال می‌کند. شما از طریق نوتیفیکیشن مطلع خواهید شد.</li>
-                        <li><strong>شروع تمرین:</strong> برنامه خود را در بخش «برنامه من» مشاهده کرده و تمرینات خود را از داشبورد ثبت کنید!</li>
-                    </ol>
-                </div>
-            </details>
-            <details class="card p-0 overflow-hidden">
-                <summary class="p-4 cursor-pointer flex justify-between items-center font-bold text-lg">
-                    <span><i data-lucide="book-open" class="inline-block w-5 h-5 -mt-1 ml-2 text-accent"></i>درک برنامه شما</span>
-                    <i data-lucide="chevron-down" class="details-arrow"></i>
-                </summary>
-                <div class="p-6 border-t border-border-primary bg-bg-tertiary/50">
-                    <p>برنامه شما در بخش «برنامه من» به چند بخش تقسیم می‌شود:</p>
-                    <ul class="list-disc pr-5 mt-2 space-y-2">
-                        <li><strong>اطلاعات شما:</strong> خلاصه‌ای از مشخصات فیزیکی و اهداف شما که برنامه بر اساس آن طراحی شده است.</li>
-                        <li><strong>برنامه تمرینی:</strong> شامل روزهای تمرینی، حرکات، تعداد ست، تکرار و زمان استراحت. حرکاتی که به صورت «سوپرست» مشخص شده‌اند، باید پشت سر هم و بدون استراحت انجام شوند.</li>
-                        <li><strong>برنامه مکمل:</strong> لیست مکمل‌های پیشنهادی مربی با دوز و زمان مصرف مشخص.</li>
-                        <li><strong>یادداشت مربی:</strong> توصیه‌های کلی مربی برای شما در این بخش قرار دارد. حتما آن را مطالعه کنید.</li>
-                    </ul>
-                </div>
-            </details>
-        </div>
-    `;
-
-    window.lucide?.createIcons();
-};
-
 
 export function initUserDashboard(currentUser: string, userData: any, handleLogout: () => void, handleGoToHome: () => void) {
     const mainContainer = document.getElementById('user-dashboard-container');
     if (!mainContainer) return;
-
-    // Show a persistent banner if coach is not selected
-    const globalNotificationPlaceholder = document.getElementById('global-user-notification-placeholder');
-    const hasCoach = userData.step1?.coachName;
-    if (globalNotificationPlaceholder && !hasCoach) {
-        globalNotificationPlaceholder.innerHTML = `
-            <div class="bg-black text-yellow-400 rounded-lg p-4 mb-6 flex items-center gap-3 animate-fade-in-down">
-                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
-                <div>
-                    <h4 class="font-bold">پروفایل شما ناقص است!</h4>
-                    <p class="text-sm">برای استفاده از تمام امکانات و دریافت برنامه، لطفاً ابتدا از بخش <button class="font-bold underline" data-action="go-to-profile">پروفایل</button> مربی خود را انتخاب کنید.</p>
-                </div>
-            </div>
-        `;
-    }
 
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
     document.getElementById('go-to-home-btn')?.addEventListener('click', handleGoToHome);
 
     const pageTitles: Record<string, { title: string, subtitle: string }> = {
         'dashboard-content': { title: 'داشبورد', subtitle: 'خلاصه فعالیت‌ها و پیشرفت شما.' },
-        'program-content': { title: 'برنامه من', subtitle: 'برنامه تمرینی، مکمل‌ها و غذایی شما.' },
+        'program-content': { title: 'برنامه من', subtitle: 'برنامه تمرینی و مکمل‌های شما.' },
         'nutrition-content': { title: 'برنامه تغذیه', subtitle: 'برنامه غذایی اختصاصی شما.' },
-        'chat-content': { title: 'گفتگو با مربی', subtitle: 'ارتباط مستقیم با مربی شما.' },
-        'store-content': { title: 'فروشگاه', subtitle: 'پلن‌های عضویت خود را ارتقا دهید.' },
-        'profile-content': { title: 'پروفایل', subtitle: 'اطلاعات فردی و اهداف خود را ویرایش کنید.' },
-        'help-content': { title: 'راهنما', subtitle: 'پاسخ به سوالات متداول و راهنمایی‌ها.' }
+        'chat-content': { title: 'گفتگو با مربی', subtitle: 'با مربی خود در ارتباط باشید.' },
+        'store-content': { title: 'فروشگاه', subtitle: 'پلن‌های عضویت را مشاهده و خریداری کنید.' },
+        'profile-content': { title: 'پروفایل', subtitle: 'اطلاعات فردی و فیزیکی خود را مدیریت کنید.' },
+        'help-content': { title: 'راهنما', subtitle: 'پاسخ به سوالات متداول.' }
     };
 
-    const switchTab = (activeTab: Element) => {
+    const switchTab = (activeTab: HTMLElement) => {
         const targetId = activeTab.getAttribute('data-target');
         if (!targetId) return;
-
-        if (activeTab.classList.contains('locked-feature')) {
-            showToast('برای دسترسی به این بخش، لطفا پلن خود را ارتقا دهید.', 'error');
-            return;
-        }
 
         mainContainer.querySelectorAll('.coach-nav-link').forEach(t => t.classList.remove('active-nav-link'));
         activeTab.classList.add('active-nav-link');
@@ -1293,87 +1183,125 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             titleEl.textContent = targetData.title;
             subtitleEl.textContent = targetData.subtitle;
         }
-        
-        const freshUserData = getUserData(currentUser);
+
         clearNotification(currentUser, targetId);
         updateUserNotifications(currentUser);
-        
+
+        const currentData = getUserData(currentUser);
         switch (targetId) {
             case 'dashboard-content':
-                renderDashboardTab(currentUser, freshUserData);
+                renderDashboardTab(currentUser, currentData);
                 break;
             case 'program-content':
-                renderUnifiedProgramView(freshUserData);
+                renderUnifiedProgramView(currentData);
                 break;
             case 'nutrition-content':
-                renderNutritionTab(currentUser, freshUserData);
+                renderNutritionTab(currentUser, currentData);
                 break;
             case 'chat-content':
-                 renderChatTab(currentUser, freshUserData);
+                renderChatTab(currentUser, currentData);
                 break;
             case 'store-content':
                 renderStoreTab(currentUser);
                 break;
             case 'profile-content':
-                renderProfileTab(currentUser, freshUserData);
+                renderProfileTab(currentUser, currentData);
                 break;
             case 'help-content':
-                renderHelpTab();
+                const helpContainer = document.getElementById('help-content');
+                if (helpContainer) helpContainer.innerHTML = `<div class="card p-6">محتوای راهنما در حال آماده سازی است.</div>`;
                 break;
         }
     };
     
-    // Redirect logic from auth modal
-    const redirectToTab = sessionStorage.getItem('fitgympro_redirect_to_tab');
-    if (redirectToTab) {
-        const tabButton = mainContainer.querySelector(`.coach-nav-link[data-target="${redirectToTab}"]`);
-        if (tabButton) switchTab(tabButton);
-        sessionStorage.removeItem('fitgympro_redirect_to_tab');
-    } else {
-        const defaultTab = mainContainer.querySelector('.coach-nav-link[data-target="dashboard-content"]');
-        if(defaultTab) switchTab(defaultTab);
+    const defaultTab = mainContainer.querySelector<HTMLElement>('.coach-nav-link');
+    if (defaultTab) {
+        if (sessionStorage.getItem('fitgympro_redirect_to_tab') === 'store-content') {
+            const storeTab = mainContainer.querySelector<HTMLElement>('.coach-nav-link[data-target="store-content"]');
+            switchTab(storeTab || defaultTab);
+            sessionStorage.removeItem('fitgympro_redirect_to_tab');
+        } else if (sessionStorage.getItem('fromProfileSave') === 'true') {
+            const profileTab = mainContainer.querySelector<HTMLElement>('.coach-nav-link[data-target="profile-content"]');
+            switchTab(profileTab || defaultTab);
+            sessionStorage.removeItem('fromProfileSave');
+        } else {
+            switchTab(defaultTab);
+        }
+    }
+
+    mainContainer.querySelectorAll('.coach-nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            if (!(e.currentTarget as HTMLElement).classList.contains('locked-feature')) {
+                switchTab(e.currentTarget as HTMLElement)
+            } else {
+                showToast('برای دسترسی به این بخش، لطفا یک پلن مناسب از فروشگاه تهیه کنید.', 'warning');
+            }
+        });
+    });
+
+    document.getElementById('close-user-modal-btn')?.addEventListener('click', () => {
+        closeModal(document.getElementById('user-dashboard-modal'));
+    });
+
+    const openCoachSelectionModal = (coaches: any[]) => {
+        const modal = document.getElementById('user-dashboard-modal');
+        const titleEl = document.getElementById('user-modal-title');
+        const bodyEl = document.getElementById('user-modal-body');
+        if (!modal || !titleEl || !bodyEl) return;
+    
+        titleEl.textContent = 'انتخاب مربی';
+        bodyEl.innerHTML = `
+            <p class="text-text-secondary mb-4">لطفا مربی مورد نظر خود را برای دریافت برنامه انتخاب کنید.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${coaches.map(coach => {
+                    const coachData = getUserData(coach.username);
+                    const name = coachData.step1?.clientName || coach.username;
+                    const specialization = coachData.profile?.specialization || 'مربی بدنسازی';
+                    const avatar = coachData.profile?.avatar;
+                    return `
+                        <button class="coach-selection-card text-center p-4 border rounded-lg hover:bg-bg-tertiary hover:border-accent transition-colors" data-coach-username="${coach.username}" data-coach-name="${name}">
+                            ${avatar ? `<img src="${avatar}" class="w-20 h-20 rounded-full mx-auto mb-3 object-cover">` : `<div class="w-20 h-20 rounded-full mx-auto mb-3 bg-bg-tertiary flex items-center justify-center font-bold text-2xl">${name.charAt(0)}</div>`}
+                            <p class="font-bold">${name}</p>
+                            <p class="text-xs text-text-secondary">${specialization}</p>
+                        </button>
+                    `;
+                }).join('')}
+            </div>
+        `;
+        openModal(modal);
     }
     
     mainContainer.addEventListener('click', e => {
-        const target = e.target as HTMLElement;
-        const navLink = target.closest('.coach-nav-link');
-        if (navLink) {
-            switchTab(navLink);
-            return;
-        }
-
-        if (target.dataset.action === 'go-to-profile') {
-            const profileTab = mainContainer.querySelector('.coach-nav-link[data-target="profile-content"]');
-            if (profileTab) switchTab(profileTab);
-            return;
-        }
-
+        if (!(e.target instanceof HTMLElement)) return;
+        const target = e.target;
+        
         const actionBtn = target.closest<HTMLButtonElement>('button[data-action]');
         if (actionBtn) {
             const action = actionBtn.dataset.action;
-            if (action === 'log-workout') {
-                const dayIndex = parseInt(actionBtn.dataset.dayIndex || '-1', 10);
+            const dayIndex = parseInt(actionBtn.dataset.dayIndex || '-1', 10);
+            
+            if (action === 'log-workout' && dayIndex !== -1) {
                 const todayData = getTodayWorkoutData(getUserData(currentUser));
-                if (todayData && dayIndex === todayData.dayIndex) {
-                    openWorkoutLogModal(todayData.day, todayData.dayIndex, currentUser);
+                if (todayData && todayData.dayIndex === dayIndex) {
+                    openWorkoutLogModal(todayData.day, dayIndex, currentUser);
                 }
-            }
-            if (action === 'go-to-store') {
-                const storeTab = mainContainer.querySelector('.coach-nav-link[data-target="store-content"]');
+            } else if (action === 'go-to-store') {
+                const storeTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="store-content"]');
                 if (storeTab) switchTab(storeTab);
-                return;
             }
         }
 
-        if (target.closest('#save-program-pdf-btn')) {
-            exportElement('#unified-program-view', 'pdf', `FitGymPro-Program.pdf`, target.closest('button') as HTMLButtonElement);
+        const savePdfBtn = target.closest('#save-program-pdf-btn');
+        if (savePdfBtn) {
+            exportElement('#unified-program-view', 'pdf', 'FitGymPro-Program.pdf', savePdfBtn as HTMLButtonElement);
         }
-        if (target.closest('#save-program-img-btn')) {
-            exportElement('#unified-program-view', 'png', `FitGymPro-Program.png`, target.closest('button') as HTMLButtonElement);
+        const saveImgBtn = target.closest('#save-program-img-btn');
+        if (saveImgBtn) {
+            exportElement('#unified-program-view', 'png', 'FitGymPro-Program.png', saveImgBtn as HTMLButtonElement);
         }
-        
+
         const addToCartBtn = target.closest('.add-to-cart-btn');
-        if (addToCartBtn && !(addToCartBtn as HTMLButtonElement).disabled) {
+        if (addToCartBtn) {
             const planId = (addToCartBtn as HTMLElement).dataset.planId;
             const plans = getStorePlans();
             const planToAdd = plans.find((p:any) => p.planId === planId);
@@ -1385,21 +1313,24 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                     showToast(`${planToAdd.planName} به سبد خرید اضافه شد.`, 'success');
                     updateCartSummary(currentUser);
                 } else {
-                    showToast('این پلن قبلا به سبد خرید اضافه شده.', 'error');
+                    showToast('این پلن قبلا به سبد خرید اضافه شده است.', 'warning');
                 }
             }
         }
-        
-        if (target.closest('.remove-from-cart-btn')) {
-            const planId = (target.closest('.remove-from-cart-btn') as HTMLElement).dataset.planId;
-            const cart = getCart(currentUser);
+
+        const removeFromCartBtn = target.closest('.remove-from-cart-btn');
+        if (removeFromCartBtn) {
+            const planId = (removeFromCartBtn as HTMLElement).dataset.planId;
+            let cart = getCart(currentUser);
             cart.items = cart.items.filter((item: any) => item.planId !== planId);
             saveCart(currentUser, cart);
             updateCartSummary(currentUser);
         }
 
-        if (target.closest('#apply-discount-btn')) {
-            const code = (document.getElementById('discount-code-input') as HTMLInputElement).value.toUpperCase();
+        const applyDiscountBtn = target.closest('#apply-discount-btn');
+        if (applyDiscountBtn) {
+            const input = document.getElementById('discount-code-input') as HTMLInputElement;
+            const code = input.value.trim().toUpperCase();
             const discounts = getDiscounts();
             if (discounts[code]) {
                 const cart = getCart(currentUser);
@@ -1411,269 +1342,202 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 showToast('کد تخفیف نامعتبر است.', 'error');
             }
         }
-        
-        if (target.closest('#checkout-btn')) {
-             const cart = getCart(currentUser);
-             if (cart.items.length === 0) return;
 
-             const freshUserData = getUserData(currentUser);
-             if (!freshUserData.subscriptions) freshUserData.subscriptions = [];
+        const checkoutBtn = target.closest('#checkout-btn');
+        if (checkoutBtn) {
+            const cart = getCart(currentUser);
+            if(cart.items.length === 0) return;
 
-             cart.items.forEach((item: any) => {
-                 freshUserData.subscriptions.push({
-                     ...item,
-                     purchaseDate: new Date().toISOString(),
-                     fulfilled: false
-                 });
-             });
-             
-             saveUserData(currentUser, freshUserData);
-             
-             if (freshUserData.step1?.coachName) {
-                setNotification(freshUserData.step1.coachName, 'students-content', '💰');
-             }
+            const freshUserData = getUserData(currentUser);
+            if (!freshUserData.subscriptions) freshUserData.subscriptions = [];
+            
+            const newSubscriptions = cart.items.map((item: any) => ({
+                ...item,
+                purchaseDate: new Date().toISOString(),
+                fulfilled: false,
+            }));
+            
+            freshUserData.subscriptions.push(...newSubscriptions);
+            saveUserData(currentUser, freshUserData);
+            
+            saveCart(currentUser, { items: [], discountCode: null });
+            
+            showToast('خرید شما با موفقیت انجام شد! مربی به زودی برنامه شما را ارسال خواهد کرد.', 'success');
+            
+            const coachUsername = freshUserData.step1?.coachName;
+            if (coachUsername) {
+                setNotification(coachUsername, 'students-content', '🔔');
+            }
 
-             saveCart(currentUser, { items: [], discountCode: null });
-             showToast('خرید شما با موفقیت انجام شد!', 'success');
-             updateCartSummary(currentUser);
+            const dashboardTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="dashboard-content"]');
+            if (dashboardTab) switchTab(dashboardTab);
         }
 
-        if (target.closest('#select-coach-btn')) {
-            openCoachSelectionModal(currentUser);
+        const goToProfileBtn = target.closest('#go-to-profile-from-store') || target.closest('#go-to-profile-from-nutrition');
+        if (goToProfileBtn) {
+            const profileTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="profile-content"]');
+            if (profileTab) switchTab(profileTab);
         }
 
-        if (target.id === 'go-to-store-from-nutrition' || target.id === 'go-to-profile-from-store') {
-             const targetTab = target.id === 'go-to-store-from-nutrition' ? 'store-content' : 'profile-content';
-             const tabButton = mainContainer.querySelector(`.coach-nav-link[data-target="${targetTab}"]`);
-             if (tabButton) switchTab(tabButton);
+        const selectCoachBtn = target.closest('#select-coach-btn');
+        if (selectCoachBtn) {
+            const coaches = getUsers().filter((u:any) => u.role === 'coach' && u.coachStatus === 'verified');
+            openCoachSelectionModal(coaches);
         }
 
         const coachCard = target.closest('.coach-selection-card');
         if (coachCard) {
-            selectedCoachInModal = (coachCard as HTMLElement).dataset.username || null;
-            document.querySelectorAll('.coach-selection-card').forEach(c => c.classList.remove('selected-card'));
-            coachCard.classList.add('selected-card');
-        }
+            selectedCoachInModal = (coachCard as HTMLElement).dataset.coachUsername || null;
+            const coachName = (coachCard as HTMLElement).dataset.coachName || 'انتخاب کنید';
 
-        if (target.closest('#confirm-coach-selection')) {
-            const freshUserData = getUserData(currentUser);
-            const oldCoach = freshUserData.step1?.coachName;
-            
-            if (selectedCoachInModal && oldCoach !== selectedCoachInModal) {
-                freshUserData.step1.coachName = selectedCoachInModal;
-                saveUserData(currentUser, freshUserData);
-                
-                setNotification(selectedCoachInModal, 'students-content', '👋');
-
-                showToast('مربی شما با موفقیت تغییر کرد.', 'success');
-                renderProfileTab(currentUser, freshUserData);
-                renderStoreTab(currentUser); // Re-render store to enable buttons
-                
-                const coachData = getUserData(selectedCoachInModal);
-                const coachName = coachData?.step1?.clientName || selectedCoachInModal;
-                const coachNameEl = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary .text-xs.text-text-secondary');
-                if(coachNameEl) coachNameEl.textContent = `مربی: ${coachName}`;
+            const btn = document.getElementById('select-coach-btn');
+            const nameEl = document.getElementById('current-coach-name');
+            if (btn && nameEl) {
+                nameEl.textContent = coachName;
+                btn.classList.remove('highlight-coach-selection');
+                const warning = btn.parentElement?.querySelector('.validation-message');
+                if (warning) warning.innerHTML = '';
             }
             closeModal(document.getElementById('user-dashboard-modal'));
-            return;
         }
     });
 
-    const handleProfileFormUpdate = (e: Event) => {
+    mainContainer.addEventListener('input', e => {
         const target = e.target as HTMLInputElement;
-        const form = target.closest<HTMLFormElement>('#user-profile-form');
-        if (form) {
-            if (target.matches('.range-slider')) {
-                const labelSpan = target.previousElementSibling?.querySelector('span');
-                if (labelSpan) labelSpan.textContent = target.value;
-                updateSliderTrack(target);
+        if (target.matches('.range-slider')) {
+            const labelSpan = target.previousElementSibling?.querySelector('span');
+            if (labelSpan) labelSpan.textContent = target.value;
+            updateSliderTrack(target);
+            if (target.closest('#user-profile-form')) {
+                updateProfileMetricsDisplay(target.closest('#user-profile-form') as HTMLElement);
             }
-            updateProfileMetricsDisplay(form);
         }
-    };
-    
-    mainContainer.addEventListener('input', handleProfileFormUpdate);
-    mainContainer.addEventListener('change', handleProfileFormUpdate);
+    });
+
+    mainContainer.addEventListener('change', e => {
+        const target = e.target as HTMLInputElement;
+        if (target.matches('input[type="radio"]') && target.closest('#user-profile-form')) {
+            updateProfileMetricsDisplay(target.closest('#user-profile-form') as HTMLElement);
+        }
+    });
 
     mainContainer.addEventListener('submit', e => {
-        const form = e.target as HTMLFormElement;
         e.preventDefault();
+        const target = e.target as HTMLFormElement;
 
-        if (form.id === 'user-profile-form') {
-            form.querySelectorAll('.validation-message').forEach(el => el.textContent = '');
-            form.querySelectorAll('.input-field.input-error').forEach(el => el.classList.remove('input-error'));
-            let isValid = true;
-            
-            const clientNameInput = form.querySelector('#user-profile-name') as HTMLInputElement;
-            if (!clientNameInput.value.trim()) {
-                isValid = false;
-                const validationEl = clientNameInput.closest('.input-group-with-icon')?.parentElement.querySelector('.validation-message');
-                if(validationEl) validationEl.textContent = 'نام الزامی است.';
-                clientNameInput.classList.add('input-error');
-            }
-            
-            const freshUserData = getUserData(currentUser);
-            if (!freshUserData.step1?.coachName) {
-                isValid = false;
-                const validationEl = form.querySelector('#select-coach-btn')?.nextElementSibling;
-                if (validationEl && validationEl.classList.contains('validation-message')) {
-                    validationEl.innerHTML = `<div class="coach-selection-warning"><i data-lucide="alert-triangle" class="w-4 h-4"></i><span>انتخاب مربی الزامی است.</span></div>`;
-                    window.lucide?.createIcons();
-                }
-            }
-
-            const checkRadioGroup = (name: string, message: string) => {
-                const group = form.querySelector(`input[name="${name}"]`)?.closest('.option-card-label')?.parentElement?.parentElement;
-                if (!group) return;
-                const value = (group.querySelector(`input[name="${name}"]:checked`) as HTMLInputElement)?.value;
-                if (!value) {
-                    isValid = false;
-                    const validationEl = group.querySelector('.validation-message');
-                    if (validationEl) validationEl.textContent = message;
-                }
-            };
-            
-            checkRadioGroup('gender_user', 'انتخاب جنسیت الزامی است.');
-            checkRadioGroup('training_goal_user', 'انتخاب هدف الزامی است.');
-            checkRadioGroup('training_days_user', 'انتخاب روزهای تمرین الزامی است.');
-            checkRadioGroup('activity_level_user', 'انتخاب سطح فعالیت الزامی است.');
-            
-            if (!isValid) {
-                showToast('لطفا تمام فیلدهای الزامی را کامل کنید.', 'error');
-                return;
-            }
-
-            if (!freshUserData.profile) freshUserData.profile = {};
-            freshUserData.profile.avatar = (form.querySelector('#user-profile-avatar') as HTMLInputElement).value.trim();
-
-            const getFloatOrUndefined = (value: string): number | undefined => {
-                const num = parseFloat(value);
-                return isNaN(num) || num <= 0 ? undefined : num;
-            };
-        
-            const formData = {
-                clientName: (form.querySelector('#user-profile-name') as HTMLInputElement).value,
-                mobile: (form.querySelector('#user-profile-mobile') as HTMLInputElement).value,
-                gender: (form.querySelector('input[name="gender_user"]:checked') as HTMLInputElement)?.value,
-                age: parseInt((form.querySelector('input[name="age"]') as HTMLInputElement).value, 10),
-                height: parseInt((form.querySelector('input[name="height"]') as HTMLInputElement).value, 10),
-                weight: parseFloat((form.querySelector('input[name="weight"]') as HTMLInputElement).value),
-                neck: getFloatOrUndefined((form.querySelector('.neck-input') as HTMLInputElement).value),
-                waist: getFloatOrUndefined((form.querySelector('.waist-input') as HTMLInputElement).value),
-                hip: getFloatOrUndefined((form.querySelector('.hip-input') as HTMLInputElement).value),
-                trainingGoal: (form.querySelector('input[name="training_goal_user"]:checked') as HTMLInputElement)?.value,
-                trainingDays: parseInt((form.querySelector('input[name="training_days_user"]:checked') as HTMLInputElement)?.value, 10),
-                activityLevel: parseFloat((form.querySelector('input[name="activity_level_user"]:checked') as HTMLInputElement)?.value),
-            };
-        
-            const metrics = performMetricCalculations({
-                ...formData,
-                gender: formData.gender || 'مرد', 
-                activityLevel: formData.activityLevel || 1.55, 
-            });
-        
-            const newStep1Data = {
-                ...freshUserData.step1,
-                ...formData,
-                tdee: metrics ? metrics.tdee : null,
-            };
-        
-            freshUserData.step1 = newStep1Data;
-            freshUserData.lastProfileUpdate = new Date().toISOString();
-            saveUserData(currentUser, freshUserData);
-        
-            let toastMessage = 'پروفایل شما با موفقیت به‌روزرسانی شد.';
-            if (freshUserData.step1.coachName) {
-                setNotification(freshUserData.step1.coachName, 'students-content', '📝');
-                toastMessage = 'مشخصات شما با موفقیت برای مربی ارسال شد.';
-                 const globalNotificationPlaceholder = document.getElementById('global-user-notification-placeholder');
-                if(globalNotificationPlaceholder) globalNotificationPlaceholder.innerHTML = '';
-            }
-            showToast(toastMessage, 'success');
-            renderProfileTab(currentUser, freshUserData); // Re-render to show updated state
-            // Also re-render the header
-            const headerNameEl = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary .font-bold.text-sm');
-            if(headerNameEl) headerNameEl.textContent = newStep1Data.clientName;
-            const headerAvatarContainer = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary')?.firstElementChild;
-            if(headerAvatarContainer) {
-                 const avatarUrl = freshUserData.profile?.avatar;
-                 const name = newStep1Data.clientName || currentUser;
-                 const avatarHtml = avatarUrl
-                    ? `<img src="${avatarUrl}" alt="${name}" class="w-10 h-10 rounded-full object-cover">`
-                    : `<div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-bg-secondary" style="background-color: var(--accent);">
-                           ${name.substring(0, 1).toUpperCase()}
-                       </div>`;
-                headerAvatarContainer.outerHTML = avatarHtml;
-            }
-        }
-        
-        if (form.id === 'user-chat-form') {
-            const input = form.querySelector('#user-chat-input') as HTMLInputElement;
+        if (target.id === 'user-chat-form') {
+            const input = document.getElementById('user-chat-input') as HTMLInputElement;
             const message = input.value.trim();
             if (message) {
                 const freshUserData = getUserData(currentUser);
                 if (!freshUserData.chatHistory) freshUserData.chatHistory = [];
                 freshUserData.chatHistory.push({
                     sender: 'user',
-                    message: message,
+                    message,
                     timestamp: new Date().toISOString()
                 });
                 saveUserData(currentUser, freshUserData);
+                input.value = '';
+                renderChatTab(currentUser, freshUserData);
                 
-                const coachUsername = freshUserData.step1.coachName;
+                const coachUsername = freshUserData.step1?.coachName;
                 if(coachUsername) {
                     setNotification(coachUsername, 'chat-content', '💬');
                 }
-                
-                input.value = '';
-                renderChatTab(currentUser, freshUserData);
             }
         }
-        if (form.id === 'workout-log-form') {
-            const dayIndex = parseInt(form.dataset.dayIndex || '-1', 10);
+        
+        if (target.id === 'workout-log-form') {
+            const dayIndex = parseInt(target.dataset.dayIndex || '-1', 10);
             if (dayIndex === -1) return;
 
-            const exercisesLog: any[] = [];
-            form.querySelectorAll('.exercise-log-item').forEach(exItem => {
-                const exerciseName = (exItem.querySelector('h4') as HTMLElement).textContent;
-                const setsLog: any[] = [];
+            const exercises: any[] = [];
+            target.querySelectorAll('.exercise-log-item').forEach(exItem => {
+                const name = (exItem.querySelector('h4') as HTMLElement).textContent || '';
+                const sets: any[] = [];
                 exItem.querySelectorAll('.set-log-row').forEach(setRow => {
                     const weight = (setRow.querySelector('.weight-log-input') as HTMLInputElement).value;
                     const reps = (setRow.querySelector('.reps-log-input') as HTMLInputElement).value;
-                    if(weight && reps) { // Only log completed sets
-                        setsLog.push({ weight, reps });
+                    if(weight && reps) {
+                        sets.push({ weight: parseFloat(weight), reps: parseInt(reps, 10) });
                     }
                 });
-                if (setsLog.length > 0) {
-                    exercisesLog.push({ name: exerciseName, sets: setsLog });
+                if (sets.length > 0) {
+                    exercises.push({ name, sets });
                 }
             });
 
-            if (exercisesLog.length > 0) {
-                const freshUserData = getUserData(currentUser);
-                if (!freshUserData.workoutHistory) freshUserData.workoutHistory = [];
-                freshUserData.workoutHistory.push({
-                    date: new Date().toISOString(),
-                    dayIndex,
-                    exercises: exercisesLog
-                });
-                saveUserData(currentUser, freshUserData);
-                
-                addActivityLog(`${currentUser} یک تمرین ثبت کرد.`);
-                if (freshUserData.step1.coachName) {
-                    setNotification(freshUserData.step1.coachName, 'students-content', '💪');
-                }
+            const freshUserData = getUserData(currentUser);
+            if (!freshUserData.workoutHistory) freshUserData.workoutHistory = [];
+            freshUserData.workoutHistory.push({
+                date: new Date().toISOString(),
+                dayIndex: dayIndex,
+                exercises: exercises
+            });
+            saveUserData(currentUser, freshUserData);
+            addActivityLog(`${currentUser} logged a workout.`);
+            showToast('تمرین با موفقیت ثبت شد!', 'success');
+            closeModal(document.getElementById('user-dashboard-modal'));
+            renderDashboardTab(currentUser, freshUserData);
+        }
 
-                showToast('تمرین شما با موفقیت ثبت شد!', 'success');
-                closeModal(document.getElementById('user-dashboard-modal'));
-                renderDashboardTab(currentUser, freshUserData); // Re-render dashboard
-            } else {
-                showToast('لطفا حداقل یک ست را ثبت کنید.', 'error');
+        if (target.id === 'user-profile-form') {
+            const form = target;
+            let hasError = false;
+            const nameInput = form.querySelector('#user-profile-name') as HTMLInputElement;
+            if (nameInput.value.trim().length < 3) {
+                showToast('نام و نام خانوادگی باید حداقل ۳ کاراکتر باشد.', 'error');
+                hasError = true;
             }
+            if (!selectedCoachInModal && !getUserData(currentUser).step1?.coachName) {
+                 showToast('لطفا مربی خود را انتخاب کنید.', 'error');
+                 hasError = true;
+            }
+
+            if (hasError) return;
+
+            const freshUserData = getUserData(currentUser);
+            if (!freshUserData.step1) freshUserData.step1 = {};
+            if (!freshUserData.profile) freshUserData.profile = {};
+
+            freshUserData.step1.clientName = nameInput.value.trim();
+            freshUserData.step1.mobile = (form.querySelector('#user-profile-mobile') as HTMLInputElement).value.trim();
+            freshUserData.profile.avatar = (form.querySelector('#user-profile-avatar') as HTMLInputElement).value.trim();
+            freshUserData.step1.coachName = selectedCoachInModal || freshUserData.step1.coachName;
+            
+            freshUserData.step1.gender = (form.querySelector('input[name="gender_user"]:checked') as HTMLInputElement)?.value;
+            freshUserData.step1.age = parseInt((form.querySelector('input[name="age"]') as HTMLInputElement).value, 10);
+            freshUserData.step1.height = parseInt((form.querySelector('input[name="height"]') as HTMLInputElement).value, 10);
+            freshUserData.step1.weight = parseFloat((form.querySelector('input[name="weight"]') as HTMLInputElement).value);
+            
+            freshUserData.step1.neck = parseFloat((form.querySelector('.neck-input') as HTMLInputElement).value);
+            freshUserData.step1.waist = parseFloat((form.querySelector('.waist-input') as HTMLInputElement).value);
+            freshUserData.step1.hip = parseFloat((form.querySelector('.hip-input') as HTMLInputElement).value);
+
+            freshUserData.step1.trainingGoal = (form.querySelector('input[name="training_goal_user"]:checked') as HTMLInputElement)?.value;
+            freshUserData.step1.trainingDays = parseInt((form.querySelector('input[name="training_days_user"]:checked') as HTMLInputElement)?.value, 10);
+            freshUserData.step1.activityLevel = parseFloat((form.querySelector('input[name="activity_level_user"]:checked') as HTMLInputElement)?.value);
+            
+            const metrics = performMetricCalculations(freshUserData.step1);
+            if (metrics) {
+                freshUserData.step1.tdee = metrics.tdee;
+            }
+            freshUserData.lastProfileUpdate = new Date().toISOString();
+
+            saveUserData(currentUser, freshUserData);
+            addActivityLog(`${currentUser} updated their profile.`);
+            showToast('پروفایل با موفقیت ذخیره شد.', 'success');
+            
+            const name = freshUserData.step1.clientName || currentUser;
+            const coachData = getUserData(freshUserData.step1.coachName);
+            const coachName = coachData?.step1?.clientName || freshUserData.step1.coachName || 'بدون مربی';
+            
+            const headerNameEl = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary .font-bold.text-sm');
+            if(headerNameEl) headerNameEl.textContent = name;
+            const headerCoachEl = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary .text-xs.text-text-secondary');
+            if(headerCoachEl) headerCoachEl.textContent = `مربی: ${coachName}`;
+            
+            renderProfileTab(currentUser, freshUserData);
         }
     });
-
-    const modal = document.getElementById('user-dashboard-modal');
-    modal?.addEventListener('click', e => { if ((e.target as HTMLElement).id === 'user-dashboard-modal') closeModal(modal); });
-    document.getElementById('close-user-modal-btn')?.addEventListener('click', () => closeModal(modal));
 }
