@@ -1,3 +1,4 @@
+
 import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans, getExercisesDB, saveExercisesDB, getSupplementsDB, saveSupplementsDB, saveDiscounts, getSiteSettings, saveSiteSettings } from '../services/storage';
 import { formatPrice, timeAgo } from '../utils/helpers';
 import { openModal, closeModal, showToast } from '../utils/dom';
@@ -7,7 +8,6 @@ import { sanitizeHTML } from '../utils/dom';
 let activityModalChartInstance: any = null;
 let coachAnalyticsSort = { key: 'rating', order: 'desc' };
 
-// FIX: Added missing getStatusBadge function
 const getStatusBadge = (status: string, role: string, coachStatus: string | null): string => {
     if (role === 'coach') {
         switch (coachStatus) {
@@ -122,7 +122,6 @@ const renderDiscountsAdminHtml = () => {
         </div>
     `;
 };
-
 
 const initCharts = () => {
     const revenueCtx = document.getElementById('revenueChart') as HTMLCanvasElement;
@@ -278,7 +277,6 @@ const renderUserRowsHtml = () => {
     return { allUsersHtml, coachesHtml };
 };
 
-
 const refreshUserTables = () => {
     const { allUsersHtml, coachesHtml } = renderUserRowsHtml();
     const allUsersTbody = document.getElementById('all-users-tbody');
@@ -314,7 +312,7 @@ const renderPlansAdminHtml = () => {
                     <h3 class="font-bold text-lg">مدیریت پلن‌ها</h3>
                     <p class="text-text-secondary text-sm">پلن‌های اشتراک را ایجاد، ویرایش یا حذف کنید.</p>
                 </div>
-                <button id="add-plan-btn" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن پلن</button>
+                <button id="add-plan-btn" data-action="add-plan" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن پلن</button>
             </div>
             <div id="admin-plans-list" class="space-y-2">
                 ${plansListHtml}
@@ -326,7 +324,7 @@ const renderPlansAdminHtml = () => {
                 <h4 class="text-lg font-bold text-text-primary">🚀 پکیج کامل ۳ ماهه</h4>
                 <p class="text-sm text-text-secondary mt-1 flex-grow">بهترین گزینه برای نتایج پایدار و جامع.</p>
                 <div class="my-6">
-                    <span class="text-3xl font-black">${formatPrice(750000).split(' ')[0]}</span>
+                    <span class="text-3xl font-black">${formatPrice(400000).split(' ')[0]}</span>
                     <span class="text-text-secondary"> تومان</span>
                 </div>
                 <ul class="space-y-3 text-sm mb-6">
@@ -498,7 +496,6 @@ const renderCommissionsHtml = () => {
     `;
 };
 
-// FIX: Added missing renderAdminDashboard function
 export function renderAdminDashboard() {
     const name = "Admin";
     const navItems = [
@@ -594,8 +591,226 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
     document.getElementById('go-to-home-btn')?.addEventListener('click', handleGoToHome);
     
-    const navLinks = document.querySelectorAll('.admin-dashboard-container .nav-link');
-    const pages = document.querySelectorAll('.admin-dashboard-container .page');
+    const mainContainer = document.querySelector('.admin-dashboard-container');
+    if (!mainContainer) return;
+
+    const navLinks = mainContainer.querySelectorAll('.nav-link');
+    const pages = mainContainer.querySelectorAll('.page');
     const adminTitleEl = document.getElementById('admin-page-title');
 
     const pageTitles: Record<string, string> = {
+        'dashboard': 'داشبورد',
+        'users': 'مدیریت کاربران',
+        'coaches': 'مدیریت مربیان',
+        'store': 'فروشگاه',
+        'analytics': 'آنالیتیکس',
+        'commissions': 'کمیسیون‌ها',
+        'cms': 'مدیریت محتوا',
+        'settings': 'تنظیمات سایت',
+        'activity-log': 'گزارش فعالیت'
+    };
+
+    const switchTab = (activeTab: HTMLElement) => {
+        const page = activeTab.dataset.page;
+        if (!page) return;
+
+        navLinks.forEach(link => link.classList.remove('active-link'));
+        activeTab.classList.add('active-link');
+
+        pages.forEach(p => p.classList.toggle('hidden', p.id !== `admin-${page}-page`));
+
+        if (adminTitleEl) {
+            adminTitleEl.textContent = pageTitles[page] || 'داشبورد';
+        }
+
+        const pageContainer = document.getElementById(`admin-${page}-page`);
+        if (!pageContainer) return;
+        
+        switch (page) {
+            case 'dashboard':
+                const users = getUsers();
+                const coaches = users.filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
+                const pendingCoaches = users.filter((u: any) => u.role === 'coach' && u.coachStatus === 'pending');
+                const kpis = [
+                    { title: 'کل کاربران', value: users.length, icon: 'users', color: 'admin-accent-blue' },
+                    { title: 'مربیان تایید شده', value: coaches.length, icon: 'award', color: 'admin-accent-green' },
+                    { title: 'درآمد کل', value: '۱۲,۵۰۰,۰۰۰', icon: 'trending-up', color: 'admin-accent-pink' },
+                    { title: 'درخواست‌های در انتظار', value: pendingCoaches.length, icon: 'alert-circle', color: 'admin-accent-orange' }
+                ];
+                pageContainer.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                        ${kpis.map(kpi => `
+                            <div class="admin-kpi-card">
+                                <div class="icon-container" style="background-color: var(--${kpi.color});">
+                                    <i data-lucide="${kpi.icon}" class="w-6 h-6 text-white"></i>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-bold">${kpi.value}</p>
+                                    <p class="text-sm text-text-secondary">${kpi.title}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                        <div class="lg:col-span-3 admin-chart-container h-96">
+                            <h3 class="font-bold mb-4">گزارش درآمد ماهانه</h3>
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                        <div class="lg:col-span-2 admin-chart-container h-96">
+                            <h3 class="font-bold mb-4">محبوبیت پلن‌ها</h3>
+                            <canvas id="plansChart"></canvas>
+                        </div>
+                    </div>
+                `;
+                initCharts();
+                break;
+            case 'users':
+                const { allUsersHtml } = renderUserRowsHtml();
+                 pageContainer.innerHTML = `
+                    <div class="card overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-right min-w-[800px]">
+                                <thead><tr class="font-semibold"><th class="p-4">نام</th><th class="p-4">ایمیل</th><th class="p-4">نقش</th><th class="p-4">تاریخ عضویت</th><th class="p-4">وضعیت</th><th class="p-4">عملیات</th></tr></thead>
+                                <tbody id="all-users-tbody">${allUsersHtml}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                break;
+            case 'coaches':
+                 const { coachesHtml } = renderUserRowsHtml();
+                 pageContainer.innerHTML = `
+                    <div class="card overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-right min-w-[700px]">
+                                <thead><tr class="font-semibold"><th class="p-4">نام مربی</th><th class="p-4">تعداد شاگردان</th><th class="p-4">تاریخ عضویت</th><th class="p-4">وضعیت</th><th class="p-4">عملیات</th></tr></thead>
+                                <tbody id="coaches-tbody">${coachesHtml}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                break;
+            case 'store':
+                pageContainer.innerHTML = `
+                    <div class="space-y-6">
+                        <div class="card p-4">${renderPlansAdminHtml()}</div>
+                        <div class="card p-4">${renderDiscountsAdminHtml()}</div>
+                    </div>
+                `;
+                break;
+             case 'analytics':
+                renderAnalyticsPage();
+                break;
+            case 'commissions':
+                pageContainer.innerHTML = renderCommissionsHtml();
+                break;
+            case 'cms':
+                pageContainer.innerHTML = `<p>بخش مدیریت محتوا در حال ساخت است.</p>`;
+                break;
+            case 'settings':
+                pageContainer.innerHTML = `<p>بخش تنظیمات سایت در حال ساخت است.</p>`;
+                break;
+            case 'activity-log':
+                const logs = getActivityLog();
+                pageContainer.innerHTML = `
+                    <div class="card p-4">
+                        <div class="space-y-2">
+                            ${logs.map((log: any) => `
+                                <div class="p-2 bg-bg-tertiary rounded-md text-sm">
+                                    <span class="text-text-secondary">${timeAgo(log.date)}:</span>
+                                    <span>${log.message}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                break;
+        }
+        window.lucide?.createIcons();
+    };
+
+    const initialTab = mainContainer.querySelector('.nav-link[data-page="dashboard"]');
+    if (initialTab) {
+        switchTab(initialTab as HTMLElement);
+    }
+    
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => switchTab(e.currentTarget as HTMLElement));
+    });
+    
+    mainContainer.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const actionButton = target.closest<HTMLButtonElement>('[data-action]');
+        if (actionButton) {
+            const action = actionButton.dataset.action;
+            const username = actionButton.dataset.username;
+            const users = getUsers();
+            const userIndex = users.findIndex((u: any) => u.username === username);
+
+            if (userIndex !== -1) {
+                switch(action) {
+                    case 'suspend':
+                        users[userIndex].status = 'suspended';
+                        saveUsers(users);
+                        addActivityLog(`کاربر ${username} مسدود شد.`);
+                        refreshUserTables();
+                        break;
+                    case 'activate':
+                        users[userIndex].status = 'active';
+                        saveUsers(users);
+                        addActivityLog(`کاربر ${username} فعال شد.`);
+                        refreshUserTables();
+                        break;
+                    case 'approve':
+                        users[userIndex].coachStatus = 'verified';
+                        saveUsers(users);
+                        addActivityLog(`مربی ${username} تایید شد.`);
+                        refreshUserTables();
+                        break;
+                    case 'revoke':
+                    case 'reject':
+                         users[userIndex].coachStatus = 'revoked';
+                         saveUsers(users);
+                         addActivityLog(`همکاری با مربی ${username} لغو شد.`);
+                         refreshUserTables();
+                         break;
+                    case 'reapprove':
+                        users[userIndex].coachStatus = 'verified';
+                        saveUsers(users);
+                        addActivityLog(`مربی ${username} مجددا تایید شد.`);
+                        refreshUserTables();
+                        break;
+                    case 'impersonate':
+                        const adminUser = getCurrentUser();
+                        if (adminUser) {
+                            sessionStorage.setItem("impersonating_admin", adminUser);
+                            addActivityLog(`ادمین وارد حساب ${username} شد.`);
+                            handleLoginSuccess(username!);
+                        }
+                        break;
+                     case 'view-activity':
+                        openUserActivityModal(username!);
+                        break;
+                }
+            }
+        }
+        
+        const sortHeader = target.closest<HTMLElement>('.sortable-header');
+        if (sortHeader && sortHeader.dataset.sortKey) {
+            const key = sortHeader.dataset.sortKey;
+            if (coachAnalyticsSort.key === key) {
+                coachAnalyticsSort.order = coachAnalyticsSort.order === 'asc' ? 'desc' : 'asc';
+            } else {
+                coachAnalyticsSort.key = key;
+                coachAnalyticsSort.order = 'desc';
+            }
+            renderAnalyticsPage();
+        }
+    });
+
+    document.querySelectorAll('.close-modal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            closeModal(btn.closest('.modal') as HTMLElement);
+        });
+    });
+}
