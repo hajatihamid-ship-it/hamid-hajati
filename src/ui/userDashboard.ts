@@ -11,6 +11,7 @@ export function renderUserDashboard(currentUser: string, userData: any) {
     const name = userData.step1?.clientName || currentUser;
     const coachData = userData.step1?.coachName ? getUserData(userData.step1.coachName) : null;
     const coachName = coachData?.step1?.clientName || userData.step1?.coachName || 'بدون مربی';
+    const avatarUrl = userData.profile?.avatar;
 
     const navItems = [
         { target: 'dashboard-content', icon: 'layout-dashboard', label: 'داشبورد' },
@@ -29,6 +30,12 @@ export function renderUserDashboard(currentUser: string, userData: any) {
         const permissions = getUserAccessPermissions(userData);
         return permissions.has(permission);
     };
+
+    const avatarHtml = avatarUrl
+        ? `<img src="${avatarUrl}" alt="${name}" class="w-10 h-10 rounded-full object-cover">`
+        : `<div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-bg-secondary" style="background-color: var(--accent);">
+               ${name.substring(0, 1).toUpperCase()}
+           </div>`;
 
     return `
     <div id="user-dashboard-container" class="flex h-screen bg-bg-primary transition-opacity duration-500 opacity-0">
@@ -88,9 +95,7 @@ export function renderUserDashboard(currentUser: string, userData: any) {
                     <p id="user-page-subtitle" class="text-text-secondary">خلاصه فعالیت‌ها و پیشرفت شما.</p>
                 </div>
                  <div class="flex items-center gap-3 bg-bg-secondary p-2 rounded-lg">
-                    <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-bg-secondary" style="background-color: var(--accent);">
-                        ${name.substring(0, 1).toUpperCase()}
-                    </div>
+                    ${avatarHtml}
                     <div>
                         <p class="font-bold text-sm">${name}</p>
                         <p class="text-xs text-text-secondary">مربی: ${coachName}</p>
@@ -867,7 +872,7 @@ const updateProfileMetricsDisplay = (container: HTMLElement) => {
 const renderProfileTab = (currentUser: string, userData: any) => {
     const container = document.getElementById('profile-content');
     if (!container) return;
-    const { step1 } = userData;
+    const { step1, profile } = userData;
 
     const name = step1?.clientName || currentUser;
     const email = step1?.clientEmail || 'ایمیل ثبت نشده';
@@ -890,9 +895,12 @@ const renderProfileTab = (currentUser: string, userData: any) => {
         <div class="max-w-4xl mx-auto space-y-6 animate-fade-in-up">
             <!-- Profile Header -->
             <div class="card p-6 flex items-center gap-6">
-                <div class="w-20 h-20 rounded-full bg-accent text-bg-secondary flex-shrink-0 flex items-center justify-center text-3xl font-bold">
-                    ${initials}
-                </div>
+                 ${profile?.avatar ? 
+                    `<img src="${profile.avatar}" alt="${name}" class="w-20 h-20 rounded-full object-cover flex-shrink-0">` :
+                    `<div class="w-20 h-20 rounded-full bg-accent text-bg-secondary flex-shrink-0 flex items-center justify-center text-3xl font-bold">
+                        ${initials}
+                    </div>`
+                }
                 <div>
                     <h2 class="text-2xl font-bold">${name}</h2>
                     <p class="text-text-secondary">${email}</p>
@@ -903,11 +911,14 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                 <!-- Personal Info Card -->
                 <div class="card p-6 mb-6">
                     <h3 class="text-lg font-bold mb-6 flex items-center gap-2 text-text-primary"><i data-lucide="user-round" class="w-5 h-5 text-accent"></i>اطلاعات فردی</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
-                        <div class="input-group input-group-with-icon">
-                            <input type="text" id="user-profile-name" class="input-field w-full" value="${step1?.clientName || ''}" placeholder=" ">
-                            <label for="user-profile-name" class="input-label">نام و نام خانوادگی</label>
-                            <i data-lucide="user" class="input-icon w-5 h-5"></i>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                        <div>
+                            <div class="input-group input-group-with-icon">
+                                <input type="text" id="user-profile-name" class="input-field w-full" value="${step1?.clientName || ''}" placeholder=" ">
+                                <label for="user-profile-name" class="input-label">نام و نام خانوادگی</label>
+                                <i data-lucide="user" class="input-icon w-5 h-5"></i>
+                            </div>
+                            <div class="validation-message"></div>
                         </div>
                         <div class="input-group input-group-with-icon">
                             <input type="email" id="user-profile-email" class="input-field w-full" value="${step1?.clientEmail || ''}" placeholder=" " readonly>
@@ -919,18 +930,25 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                             <label for="user-profile-mobile" class="input-label">شماره موبایل</label>
                              <i data-lucide="phone" class="input-icon w-5 h-5"></i>
                         </div>
-                        <div>
+                        <div class="input-group input-group-with-icon">
+                            <input type="url" id="user-profile-avatar" class="input-field w-full" value="${profile?.avatar || ''}" placeholder=" ">
+                            <label for="user-profile-avatar" class="input-label">لینک عکس پروفایل</label>
+                            <i data-lucide="image" class="input-icon w-5 h-5"></i>
+                        </div>
+                        <div class="md:col-span-2">
                             <label class="block text-sm font-semibold mb-2">مربی</label>
                             <button type="button" id="select-coach-btn" class="input-field w-full text-right flex justify-between items-center ${coachNotSelected ? 'highlight-coach-selection' : ''}">
                                 <span id="current-coach-name">${coachName}</span>
                                 <i data-lucide="chevron-down" class="w-4 h-4 text-text-secondary"></i>
                             </button>
-                            ${coachNotSelected ? `
-                                <div class="coach-selection-warning">
-                                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-                                    <span>لطفا مربی خود را انتخاب کنید.</span>
-                                </div>
-                            ` : ''}
+                            <div class="validation-message">
+                                ${coachNotSelected ? `
+                                    <div class="coach-selection-warning">
+                                        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                                        <span>لطفا مربی خود را انتخاب کنید.</span>
+                                    </div>
+                                ` : ''}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -952,6 +970,7 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                                         <span class="option-card-content">زن</span>
                                     </label>
                                 </div>
+                                <div class="validation-message"></div>
                             </div>
                             <div class="space-y-1 slider-container-blue">
                                 <label class="font-semibold text-sm">سن: <span>${step1?.age || 25}</span></label>
@@ -1078,6 +1097,7 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                                     </label>
                                 `).join('')}
                              </div>
+                             <div class="validation-message"></div>
                         </div>
                          <div>
                              <p class="text-sm font-semibold mb-2">روزهای تمرین در هفته</p>
@@ -1089,6 +1109,7 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                                     </label>
                                 `).join('')}
                              </div>
+                             <div class="validation-message"></div>
                          </div>
                          <div>
                              <p class="text-sm font-semibold mb-2">سطح فعالیت روزانه</p>
@@ -1100,6 +1121,7 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                                     </label>
                                 `).join('')}
                              </div>
+                             <div class="validation-message"></div>
                          </div>
                     </div>
                 </div>
@@ -1478,8 +1500,52 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         e.preventDefault();
 
         if (form.id === 'user-profile-form') {
+            form.querySelectorAll('.validation-message').forEach(el => el.textContent = '');
+            form.querySelectorAll('.input-field.input-error').forEach(el => el.classList.remove('input-error'));
+            let isValid = true;
+            
+            const clientNameInput = form.querySelector('#user-profile-name') as HTMLInputElement;
+            if (!clientNameInput.value.trim()) {
+                isValid = false;
+                const validationEl = clientNameInput.closest('.input-group-with-icon')?.parentElement.querySelector('.validation-message');
+                if(validationEl) validationEl.textContent = 'نام الزامی است.';
+                clientNameInput.classList.add('input-error');
+            }
+            
             const freshUserData = getUserData(currentUser);
-        
+            if (!freshUserData.step1?.coachName) {
+                isValid = false;
+                const validationEl = form.querySelector('#select-coach-btn')?.nextElementSibling;
+                if (validationEl && validationEl.classList.contains('validation-message')) {
+                    validationEl.innerHTML = `<div class="coach-selection-warning"><i data-lucide="alert-triangle" class="w-4 h-4"></i><span>انتخاب مربی الزامی است.</span></div>`;
+                    window.lucide?.createIcons();
+                }
+            }
+
+            const checkRadioGroup = (name: string, message: string) => {
+                const group = form.querySelector(`input[name="${name}"]`)?.closest('.option-card-label')?.parentElement?.parentElement;
+                if (!group) return;
+                const value = (group.querySelector(`input[name="${name}"]:checked`) as HTMLInputElement)?.value;
+                if (!value) {
+                    isValid = false;
+                    const validationEl = group.querySelector('.validation-message');
+                    if (validationEl) validationEl.textContent = message;
+                }
+            };
+            
+            checkRadioGroup('gender_user', 'انتخاب جنسیت الزامی است.');
+            checkRadioGroup('training_goal_user', 'انتخاب هدف الزامی است.');
+            checkRadioGroup('training_days_user', 'انتخاب روزهای تمرین الزامی است.');
+            checkRadioGroup('activity_level_user', 'انتخاب سطح فعالیت الزامی است.');
+            
+            if (!isValid) {
+                showToast('لطفا تمام فیلدهای الزامی را کامل کنید.', 'error');
+                return;
+            }
+
+            if (!freshUserData.profile) freshUserData.profile = {};
+            freshUserData.profile.avatar = (form.querySelector('#user-profile-avatar') as HTMLInputElement).value.trim();
+
             const getFloatOrUndefined = (value: string): number | undefined => {
                 const num = parseFloat(value);
                 return isNaN(num) || num <= 0 ? undefined : num;
@@ -1524,7 +1590,21 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 if(globalNotificationPlaceholder) globalNotificationPlaceholder.innerHTML = '';
             }
             showToast(toastMessage, 'success');
-            renderProfileTab(currentUser, freshUserData);
+            renderProfileTab(currentUser, freshUserData); // Re-render to show updated state
+            // Also re-render the header
+            const headerNameEl = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary .font-bold.text-sm');
+            if(headerNameEl) headerNameEl.textContent = newStep1Data.clientName;
+            const headerAvatarContainer = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary')?.firstElementChild;
+            if(headerAvatarContainer) {
+                 const avatarUrl = freshUserData.profile?.avatar;
+                 const name = newStep1Data.clientName || currentUser;
+                 const avatarHtml = avatarUrl
+                    ? `<img src="${avatarUrl}" alt="${name}" class="w-10 h-10 rounded-full object-cover">`
+                    : `<div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-bg-secondary" style="background-color: var(--accent);">
+                           ${name.substring(0, 1).toUpperCase()}
+                       </div>`;
+                headerAvatarContainer.outerHTML = avatarHtml;
+            }
         }
         
         if (form.id === 'user-chat-form') {

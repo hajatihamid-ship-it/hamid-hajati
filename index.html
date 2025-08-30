@@ -1000,6 +1000,20 @@
             color: var(--admin-accent-gray);
         }
         
+        /* Mobile Responsiveness */
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 39;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .sidebar-overlay.is-visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
     </style>
 <script type="importmap">
 {
@@ -1010,6 +1024,7 @@
 </script>
 </head>
 <body>
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
     <div id="app-root"></div>
     <div id="toast-container"></div>
 

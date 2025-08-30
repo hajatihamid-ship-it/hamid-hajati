@@ -1,6 +1,3 @@
-
-
-
 import { renderLandingPage, initLandingPageListeners } from './ui/landing';
 import { renderAuthModal, initAuthListeners } from './ui/authModal';
 import { renderCoachDashboard, initCoachDashboard, updateCoachNotifications } from './ui/coachDashboard';
@@ -430,6 +427,39 @@ const initTheme = () => {
     }
 };
 
+const initSidebarToggle = () => {
+    const overlay = document.getElementById('sidebar-overlay');
+
+    const closeSidebar = () => {
+        const sidebar = document.querySelector<HTMLElement>('aside.z-40');
+        if (sidebar && overlay) {
+            sidebar.classList.remove('!translate-x-0');
+            overlay.classList.remove('is-visible');
+        }
+    };
+
+    document.body.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+        const sidebarToggle = target.closest('#sidebar-toggle');
+        const currentSidebar = document.querySelector<HTMLElement>('aside.z-40');
+
+        if (sidebarToggle && currentSidebar) {
+            if (currentSidebar.classList.contains('!translate-x-0')) {
+                closeSidebar();
+            } else {
+                currentSidebar.classList.add('!translate-x-0');
+                overlay?.classList.add('is-visible');
+            }
+        } else if (target.id === 'sidebar-overlay') {
+            closeSidebar();
+        } else if (target.closest('aside.z-40 nav > button')) {
+            if (window.innerWidth < 1024) { // lg breakpoint
+                closeSidebar();
+            }
+        }
+    });
+};
+
 const initCommonListeners = () => {
     document.body.addEventListener('click', e => {
         if (!(e.target instanceof HTMLElement)) return;
@@ -463,6 +493,8 @@ const initCommonListeners = () => {
             }
         }
     });
+
+    initSidebarToggle();
 };
 
 export const initApp = () => {
