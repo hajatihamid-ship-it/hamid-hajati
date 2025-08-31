@@ -845,6 +845,14 @@ const renderProfileTab = (currentUser: string, userData: any) => {
     const coachNotSelected = !step1?.coachName;
 
     const trainingGoals = ['کاهش وزن', 'افزایش حجم', 'بهبود ترکیب بدنی', 'تناسب اندام عمومی', 'افزایش قدرت'];
+    const specializedSports = [
+        { value: 'bodybuilding', label: '💪 بدنسازی' },
+        { value: 'martial_arts', label: '🥋 رزمی' },
+        { value: 'general_fitness', label: '🤸 آمادگی جسمانی' },
+        { value: 'health_wellness', label: '❤️ سلامتی' },
+        { value: 'pro_athlete', label: '🏆 حرفه‌ای' },
+        { value: 'other', label: '⚪️ سایر' }
+    ];
     const activityLevels = [
         { value: 1.2, label: 'نشسته' },
         { value: 1.375, label: 'کم' },
@@ -852,6 +860,7 @@ const renderProfileTab = (currentUser: string, userData: any) => {
         { value: 1.725, label: 'زیاد' },
         { value: 1.9, label: 'خیلی زیاد' }
     ];
+    const showSpecificSportInput = step1?.specializedSport && ['martial_arts', 'pro_athlete', 'other'].includes(step1.specializedSport);
 
     container.innerHTML = `
         <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in-up">
@@ -918,6 +927,18 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                                 <p class="text-sm font-semibold mb-2">هدف اصلی شما</p>
                                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                                     ${trainingGoals.map(goal => `<label class="option-card-label"><input type="radio" name="training_goal_user" value="${goal}" class="option-card-input" ${step1?.trainingGoal === goal ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">${goal}</span></label>`).join('')}
+                                </div>
+                            </div>
+                             <div>
+                                <p class="text-sm font-semibold mb-2">ورزش تخصصی</p>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    ${specializedSports.map(sport => `<label class="option-card-label"><input type="radio" name="specialized_sport_user" value="${sport.value}" class="option-card-input" ${step1?.specializedSport === sport.value ? 'checked data-is-checked="true"' : ''}><span class="option-card-content !text-xs sm:!text-sm">${sport.label}</span></label>`).join('')}
+                                </div>
+                            </div>
+                            <div id="specific-sport-container" class="mt-4 ${!showSpecificSportInput ? 'hidden' : ''}">
+                                <div class="input-group">
+                                    <input type="text" id="specific_sport_name_user" name="specific_sport_name_user" class="input-field w-full" value="${step1?.specificSportName || ''}" placeholder=" ">
+                                    <label for="specific_sport_name_user" class="input-label">نام دقیق رشته (مثلا: جودو)</label>
                                 </div>
                             </div>
                             <div>
@@ -1256,6 +1277,17 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         if (target.matches('input[type="radio"]') && profileForm) {
             updateProfileMetricsDisplay(profileForm as HTMLElement);
         }
+        if (target.name === 'specialized_sport_user' && profileForm) {
+            const specificSportContainer = profileForm.querySelector('#specific-sport-container');
+            const showFor = ['martial_arts', 'pro_athlete', 'other'];
+            if (showFor.includes(target.value)) {
+                specificSportContainer?.classList.remove('hidden');
+            } else {
+                specificSportContainer?.classList.add('hidden');
+                const input = specificSportContainer?.querySelector('input');
+                if(input) input.value = '';
+            }
+        }
     });
 
     mainContainer.addEventListener('submit', e => {
@@ -1378,6 +1410,18 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
 
             const trainingGoal = getRadio("training_goal_user");
             if (trainingGoal) dataToUpdate.step1.trainingGoal = trainingGoal;
+            
+            const specializedSport = getRadio("specialized_sport_user");
+            if (specializedSport) {
+                dataToUpdate.step1.specializedSport = specializedSport;
+                const specificSportName = getVal('input[name="specific_sport_name_user"]');
+                const showFor = ['martial_arts', 'pro_athlete', 'other'];
+                if (showFor.includes(specializedSport)) {
+                    dataToUpdate.step1.specificSportName = specificSportName;
+                } else {
+                    dataToUpdate.step1.specificSportName = ''; // Clear it if not applicable
+                }
+            }
 
             const trainingDays = getRadio("training_days_user");
             if (trainingDays) dataToUpdate.step1.trainingDays = parseInt(trainingDays, 10);
