@@ -1,8 +1,9 @@
+
 import { getTemplates, saveTemplate, deleteTemplate, getUsers, getUserData, saveUserData, getNotifications, setNotification, clearNotification, getExercisesDB, getSupplementsDB } from '../services/storage';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement, sanitizeHTML, hexToRgba } from '../utils/dom';
 import { getLatestPurchase, timeAgo, getLastActivity } from '../utils/helpers';
 import { generateWorkoutPlan, generateSupplementPlan, generateNutritionPlan } from '../services/gemini';
-import { calculateWorkoutStreak } from '../utils/calculations';
+import { calculateWorkoutStreak, performMetricCalculations } from '../utils/calculations';
 
 let currentStep = 1;
 const totalSteps = 4;
@@ -156,16 +157,95 @@ export function renderCoachDashboard(currentUser: string, userData: any) {
             </div>
         </div>
     </div>
+     <div id="local-client-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <form id="local-client-form" class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
+             <div class="flex justify-between items-center p-4 border-b border-border-primary">
+                <h2 id="local-client-modal-title" class="font-bold text-xl">افزودن شاگرد حضوری</h2>
+                <button type="button" class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                <div>
+                    <h3 class="font-bold text-md mb-3 border-b border-border-primary pb-2 text-accent">اطلاعات پایه</h3>
+                    <div class="space-y-4 pt-2">
+                        <div class="input-group"><input type="text" name="clientName" class="input-field w-full" placeholder=" " required><label class="input-label">نام و نام خانوادگی *</label></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="input-group"><input type="number" name="age" class="input-field w-full" placeholder=" "><label class="input-label">سن</label></div>
+                            <div class="input-group"><input type="number" name="height" class="input-field w-full" placeholder=" "><label class="input-label">قد (cm)</label></div>
+                        </div>
+                        <div class="input-group"><input type="number" step="0.5" name="weight" class="input-field w-full" placeholder=" "><label class="input-label">وزن (kg)</label></div>
+                        <div>
+                            <p class="text-sm font-semibold mb-2">جنسیت</p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="option-card-label"><input type="radio" name="gender" value="مرد" class="option-card-input" checked><span class="option-card-content">مرد</span></label>
+                                <label class="option-card-label"><input type="radio" name="gender" value="زن" class="option-card-input"><span class="option-card-content">زن</span></label>
+                            </div>
+                        </div>
+                         <div class="input-group"><input type="text" name="contact" class="input-field w-full" placeholder=" "><label class="input-label">اطلاعات تماس (اختیاری)</label></div>
+                    </div>
+                </div>
+
+                 <div>
+                    <h3 class="font-bold text-md mb-3 border-b border-border-primary pb-2 text-accent">جزئیات تمرینی</h3>
+                    <div class="space-y-4 pt-2">
+                        <div class="input-group"><input type="text" name="trainingGoal" class="input-field w-full" placeholder="مثلا: کاهش وزن، افزایش حجم"><label class="input-label">هدف تمرینی</label></div>
+                        <div class="input-group"><input type="number" name="trainingDays" class="input-field w-full" placeholder=" "><label class="input-label">روزهای تمرین در هفته</label></div>
+                        <div>
+                            <p class="text-sm font-semibold mb-2">سطح فعالیت روزانه</p>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                <label class="option-card-label"><input type="radio" name="activityLevel" value="1.2" class="option-card-input"><span class="option-card-content">نشسته</span></label>
+                                <label class="option-card-label"><input type="radio" name="activityLevel" value="1.375" class="option-card-input"><span class="option-card-content">کم</span></label>
+                                <label class="option-card-label"><input type="radio" name="activityLevel" value="1.55" class="option-card-input" checked><span class="option-card-content">متوسط</span></label>
+                                <label class="option-card-label"><input type="radio" name="activityLevel" value="1.725" class="option-card-input"><span class="option-card-content">زیاد</span></label>
+                                <label class="option-card-label"><input type="radio" name="activityLevel" value="1.9" class="option-card-input"><span class="option-card-content">خیلی زیاد</span></label>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold mb-2">سطح تجربه</p>
+                            <div class="grid grid-cols-3 gap-2">
+                                <label class="option-card-label"><input type="radio" name="experienceLevel" value="مبتدی" class="option-card-input" checked><span class="option-card-content">مبتدی</span></label>
+                                <label class="option-card-label"><input type="radio" name="experienceLevel" value="متوسط" class="option-card-input"><span class="option-card-content">متوسط</span></label>
+                                <label class="option-card-label"><input type="radio" name="experienceLevel" value="پیشرفته" class="option-card-input"><span class="option-card-content">پیشرفته</span></label>
+                            </div>
+                        </div>
+                        <div class="input-group"><textarea name="limitations" class="input-field w-full min-h-[80px]" placeholder=" "></textarea><label class="input-label">آسیب دیدگی یا محدودیت‌ها</label></div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-md mb-3 border-b border-border-primary pb-2 text-accent">سایر اطلاعات</h3>
+                    <div class="space-y-4 pt-2">
+                        <div class="input-group"><textarea name="coachNotes" class="input-field w-full min-h-[80px]" placeholder=" "></textarea><label class="input-label">یادداشت‌های مربی (محرمانه)</label></div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-border-primary"><button type="submit" class="primary-button w-full">ذخیره شاگرد</button></div>
+        </form>
+    </div>
     `;
 }
 
-const getCoachStudents = (coachUsername: string) => {
-    return getUsers().filter((u: any) => {
-        if (u.role !== 'user') return false;
-        const studentData = getUserData(u.username);
-        return studentData.step1?.coachName === coachUsername;
-    });
+const getCoachAllStudents = (coachUsername: string) => {
+    // 1. Get registered students
+    const registeredStudents = getUsers()
+        .filter((u: any) => {
+            if (u.role !== 'user') return false;
+            const studentData = getUserData(u.username);
+            return studentData.step1?.coachName === coachUsername;
+        })
+        .map((u: any) => ({ ...u, isLocal: false, id: u.username }));
+
+    // 2. Get local students from coach's data
+    const coachData = getUserData(coachUsername);
+    const localStudents = (coachData.localStudents || []).map((s: any) => ({
+        ...s, // Contains id and step1
+        username: s.id, // Use ID as the unique identifier
+        isLocal: true,
+        joinDate: s.joinDate || new Date().toISOString(), // Fallback join date
+    }));
+
+    return [...registeredStudents, ...localStudents];
 };
+
 
 const getColorForName = (name: string) => {
     const colors = [
@@ -559,15 +639,27 @@ const initStudentWeightChartInModal = (userData: any) => {
     });
 };
 
-const openStudentProfileModal = (username: string) => {
+const openStudentProfileModal = (studentId: string, coachUsername: string) => {
     const modal = document.getElementById('student-profile-modal');
     if (!modal) return;
     
-    activeStudentUsername = username;
-    const userData = getUserData(username);
-    const user = getUsers().find((u:any) => u.username === username);
+    activeStudentUsername = studentId;
+    const isLocal = studentId.startsWith('local_');
+    let userData: any;
+    let user: any;
 
-    (modal.querySelector('#student-modal-name') as HTMLElement).textContent = userData.step1?.clientName || username;
+    if (isLocal) {
+        const coachData = getUserData(coachUsername);
+        userData = (coachData.localStudents || []).find((s: any) => s.id === studentId);
+        if (!userData) return;
+        user = { email: userData.step1?.contact || 'شاگرد حضوری', ...userData };
+    } else {
+        userData = getUserData(studentId);
+        user = getUsers().find((u:any) => u.username === studentId);
+    }
+
+
+    (modal.querySelector('#student-modal-name') as HTMLElement).textContent = userData.step1?.clientName || studentId;
     
     const infoSidebar = modal.querySelector('.w-full.md\\:w-1\\/3') as HTMLElement;
     const lastWeight = (userData.weightHistory?.slice(-1)[0]?.weight || userData.step1?.weight || null);
@@ -576,61 +668,40 @@ const openStudentProfileModal = (username: string) => {
 
     if (infoSidebar) {
         const latestProgram = (userData.programHistory && userData.programHistory.length > 0) ? userData.programHistory[0] : null;
-        const isEditable = latestProgram && (Date.now() - new Date(latestProgram.date).getTime()) < 48 * 60 * 60 * 1000;
-        let buttonHtml = `<button data-action="create-program" data-username="${username}" class="primary-button w-full mt-4 !text-sm">ارسال برنامه جدید</button>`;
+        const isEditable = !isLocal && latestProgram && (Date.now() - new Date(latestProgram.date).getTime()) < 48 * 60 * 60 * 1000;
+        let buttonHtml = `<button data-action="create-program" data-username="${studentId}" class="primary-button w-full mt-4 !text-sm">ارسال برنامه جدید</button>`;
         if (isEditable) {
             const hoursLeft = Math.round(48 - (Date.now() - new Date(latestProgram.date).getTime()) / (1000*60*60));
-            buttonHtml = `<button data-action="edit-recent-program" data-username="${username}" class="primary-button w-full mt-4 !text-sm !bg-yellow-500 hover:!bg-yellow-600">ویرایش آخرین برنامه (${hoursLeft} ساعت مانده)</button>`;
+            buttonHtml = `<button data-action="edit-recent-program" data-username="${studentId}" class="primary-button w-full mt-4 !text-sm !bg-yellow-500 hover:!bg-yellow-600">ویرایش آخرین برنامه (${hoursLeft} ساعت مانده)</button>`;
         }
 
         infoSidebar.innerHTML = `
             <div class="p-4 h-full flex flex-col">
-                <h4 class="font-bold mb-3">اطلاعات کلی</h4>
-                <div class="space-y-2 text-sm flex-grow">
-                    <div class="flex justify-between"><span>هدف:</span> <strong class="font-semibold">${userData.step1?.trainingGoal || 'تعیین نشده'}</strong></div>
-                    <div class="flex justify-between"><span>ایمیل:</span> <strong>${user.email}</strong></div>
-                    <div class="flex justify-between"><span>سن:</span> <strong>${(userData.step1?.age || 'N/A')}</strong></div>
-                    <div class="flex justify-between"><span>قد (cm):</span> <strong>${(userData.step1?.height || 'N/A')}</strong></div>
-                    <div class="flex justify-between"><span>وزن (kg):</span> <strong>${(lastWeight ? lastWeight.toFixed(1) : 'N/A')}</strong></div>
-                    <div class="flex justify-between"><span>TDEE:</span> <strong>${(Math.round(userData.step1?.tdee) || 'N/A')}</strong></div>
-                    ${bmi ? `
-                        <div class="mt-4 pt-4 border-t border-border-primary">
-                            <div class="flex justify-between items-center mb-1">
-                                <h3 class="font-semibold text-sm">شاخص توده بدنی (BMI)</h3>
-                                <span class="font-bold text-sm">${bmi.toFixed(1)}</span>
-                            </div>
-                            <div class="w-full bg-bg-tertiary rounded-full h-2.5 relative" title="آبی: کمبود وزن, سبز: نرمال, زرد: اضافه وزن, قرمز: چاقی">
-                                <div class="absolute top-0 left-0 h-full rounded-l-full bg-blue-500" style="width: 14%;"></div>
-                                <div class="absolute top-0 h-full bg-green-500" style="left: 14%; width: 26%;"></div>
-                                <div class="absolute top-0 h-full bg-yellow-500" style="left: 40%; width: 20%;"></div>
-                                <div class="absolute top-0 h-full rounded-r-full bg-red-500" style="left: 60%; width: 40%;"></div>
-                                <div id="bmi-indicator-coach" class="absolute -top-1 w-4 h-4 rounded-full bg-white border-2 border-accent shadow-lg transition-all duration-500 ease-out" style="left: -8px;"></div>
-                            </div>
-                            <div class="flex justify-between text-xs text-text-secondary mt-1 px-1">
-                                <span>۱۸.۵</span>
-                                <span>۲۵</span>
-                                <span>۳۰</span>
-                            </div>
-                        </div>
-                    ` : ''}
+                <div class="flex-grow">
+                    <h4 class="font-bold mb-3">اطلاعات کلی</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span>هدف:</span> <strong class="font-semibold">${userData.step1?.trainingGoal || 'تعیین نشده'}</strong></div>
+                        <div class="flex justify-between"><span>ایمیل/تماس:</span> <strong>${user.email}</strong></div>
+                        <div class="flex justify-between"><span>سن:</span> <strong>${(userData.step1?.age || 'N/A')}</strong></div>
+                        <div class="flex justify-between"><span>قد (cm):</span> <strong>${(userData.step1?.height || 'N/A')}</strong></div>
+                        <div class="flex justify-between"><span>وزن (kg):</span> <strong>${(lastWeight ? lastWeight.toFixed(1) : 'N/A')}</strong></div>
+                        <div class="flex justify-between"><span>سطح تجربه:</span> <strong class="font-semibold">${userData.step1?.experienceLevel || 'تعیین نشده'}</strong></div>
+                        <div class="flex justify-between"><span>TDEE:</span> <strong>${(Math.round(userData.step1?.tdee) || 'N/A')}</strong></div>
+                    </div>
+                    ${userData.step1?.limitations ? `
+                    <div class="mt-4 pt-4 border-t border-border-primary">
+                        <h5 class="font-semibold text-sm mb-1">محدودیت‌ها</h5>
+                        <p class="text-xs text-text-secondary whitespace-pre-wrap">${sanitizeHTML(userData.step1.limitations)}</p>
+                    </div>` : ''}
+                    ${userData.step1?.coachNotes ? `
+                    <div class="mt-4 pt-4 border-t border-border-primary">
+                        <h5 class="font-semibold text-sm mb-1">یادداشت‌های شما</h5>
+                        <p class="text-xs text-text-secondary whitespace-pre-wrap">${sanitizeHTML(userData.step1.coachNotes)}</p>
+                    </div>` : ''}
                 </div>
                 ${buttonHtml}
             </div>
         `;
-
-        if (bmi) {
-            const bmiIndicator = document.getElementById('bmi-indicator-coach');
-            if (bmiIndicator) {
-                const minBmi = 15;
-                const maxBmi = 40;
-                let percentage = (bmi - minBmi) / (maxBmi - minBmi) * 100;
-                percentage = Math.max(0, Math.min(100, percentage));
-                setTimeout(() => {
-                    const offset = bmiIndicator.offsetWidth / 2;
-                    bmiIndicator.style.left = `calc(${percentage}% - ${offset}px)`;
-                }, 100);
-            }
-        }
     }
 
 
@@ -681,6 +752,16 @@ const openStudentProfileModal = (username: string) => {
         initStudentWeightChartInModal(userData);
     }
 
+    const chatTab = modal.querySelector('.student-modal-tab[data-target="student-chat-content"]') as HTMLButtonElement;
+    const chatContent = modal.querySelector('#student-chat-content');
+
+    if (isLocal) {
+        chatTab.style.display = 'none';
+        chatContent.innerHTML = '';
+    } else {
+        chatTab.style.display = 'block';
+    }
+
 
     const modalTabs = modal.querySelectorAll('.student-modal-tab');
     const modalContents = modal.querySelectorAll('.student-modal-content');
@@ -695,13 +776,8 @@ const openStudentProfileModal = (username: string) => {
     if (modalTabs.length > 0) (modalTabs[0] as HTMLElement).click();
     
     // --- Chat Logic ---
-    const chatContent = modal.querySelector('#student-chat-content');
-    const messagesContainer = chatContent?.querySelector('#coach-chat-messages-container > div') as HTMLElement;
-    const chatForm = chatContent?.querySelector('#coach-chat-form') as HTMLFormElement;
-    const chatInput = chatContent?.querySelector('#coach-chat-input') as HTMLInputElement;
-
     const renderChat = () => {
-        const chatUserData = getUserData(username);
+        const chatUserData = getUserData(studentId);
         const messagesContainer = chatContent?.querySelector('#coach-chat-messages-container');
         const messagesInnerContainer = messagesContainer?.querySelector('div');
 
@@ -719,27 +795,32 @@ const openStudentProfileModal = (username: string) => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     };
 
-    renderChat();
+    if (!isLocal) {
+        renderChat();
 
-    if (chatForm && !chatForm.dataset.listenerAttached) {
-        chatForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const message = chatInput.value.trim();
-            if (!message || !activeStudentUsername) return;
+        const chatForm = chatContent?.querySelector('#coach-chat-form') as HTMLFormElement;
+        const chatInput = chatContent?.querySelector('#coach-chat-input') as HTMLInputElement;
 
-            const chatUserData = getUserData(activeStudentUsername);
-            if (!chatUserData.chatHistory) chatUserData.chatHistory = [];
-            chatUserData.chatHistory.push({
-                sender: 'coach',
-                message: message,
-                timestamp: new Date().toISOString()
+        if (chatForm && !chatForm.dataset.listenerAttached) {
+            chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const message = chatInput.value.trim();
+                if (!message || !activeStudentUsername) return;
+
+                const chatUserData = getUserData(activeStudentUsername);
+                if (!chatUserData.chatHistory) chatUserData.chatHistory = [];
+                chatUserData.chatHistory.push({
+                    sender: 'coach',
+                    message: message,
+                    timestamp: new Date().toISOString()
+                });
+                saveUserData(activeStudentUsername, chatUserData);
+                setNotification(activeStudentUsername, 'chat-content', '💬');
+                chatInput.value = '';
+                renderChat();
             });
-            saveUserData(activeStudentUsername, chatUserData);
-            setNotification(activeStudentUsername, 'chat-content', '💬');
-            chatInput.value = '';
-            renderChat();
-        });
-        chatForm.dataset.listenerAttached = 'true';
+            chatForm.dataset.listenerAttached = 'true';
+        }
     }
 
 
@@ -749,8 +830,20 @@ const openStudentProfileModal = (username: string) => {
 
 const gatherPlanData = () => {
     if (!activeStudentUsername) return null;
+    
+    const isLocal = activeStudentUsername.startsWith('local_');
+    let studentData: any;
+    
+    if (isLocal) {
+        const coachUsername = (document.querySelector('#logout-btn') as HTMLElement).closest('aside')?.parentElement?.id.replace('coach-dashboard-container', '') || '';
+        const coachData = getUserData(coachUsername);
+        studentData = (coachData.localStudents || []).find((s: any) => s.id === activeStudentUsername);
+    } else {
+        studentData = getUserData(activeStudentUsername);
+    }
 
-    const studentData = getUserData(activeStudentUsername);
+    if (!studentData) return null;
+
     const plan: any = {
         student: studentData.step1,
         workout: { days: [] as any[], notes: '' },
@@ -915,7 +1008,7 @@ const calculateMetricsFromData = (data: any) => {
     };
 };
 
-const renderStudentInfoForBuilder = (username: string) => {
+const renderStudentInfoForBuilder = (studentId: string, coachUsername: string) => {
     const selectionPrompt = document.getElementById('student-selection-prompt');
     const builderMain = document.getElementById('program-builder-main');
     const infoDisplay = document.getElementById('student-info-display');
@@ -924,7 +1017,7 @@ const renderStudentInfoForBuilder = (username: string) => {
 
     if (!selectionPrompt || !builderMain || !infoDisplay || !builderStudentName || !aiDraftBtn) return;
 
-    if (!username) {
+    if (!studentId) {
         selectionPrompt.classList.remove('hidden');
         builderMain.classList.add('hidden');
         activeStudentUsername = null;
@@ -936,8 +1029,17 @@ const renderStudentInfoForBuilder = (username: string) => {
     builderMain.classList.remove('hidden');
     builderMain.classList.add('animate-fade-in');
 
-    activeStudentUsername = username;
-    const studentData = getUserData(username);
+    activeStudentUsername = studentId;
+    
+    const isLocal = studentId.startsWith('local_');
+    let studentData: any;
+    if (isLocal) {
+        const coachData = getUserData(coachUsername);
+        studentData = (coachData.localStudents || []).find((s:any) => s.id === studentId);
+    } else {
+        studentData = getUserData(studentId);
+    }
+
     const { step1 } = studentData;
 
     if (!step1) {
@@ -961,7 +1063,7 @@ const renderStudentInfoForBuilder = (username: string) => {
     };
 
     const latestPurchase = getLatestPurchase(studentData);
-    let purchaseHtml = `
+    let purchaseHtml = isLocal ? '' : `
         <div class="mt-8">
             <h4 class="font-bold text-xl border-b border-border-primary pb-2 mb-4"><i data-lucide="shopping-cart" class="inline-block w-5 h-5 -mt-1"></i> وضعیت خرید</h4>
             <p class="text-lg text-text-secondary">این شاگرد خرید فعالی ندارد.</p>
@@ -1039,7 +1141,7 @@ const renderStudentInfoForBuilder = (username: string) => {
 
     infoDisplay.classList.remove('hidden');
 
-    if(builderStudentName) builderStudentName.textContent = step1?.clientName || username;
+    if(builderStudentName) builderStudentName.textContent = step1?.clientName || studentId;
     
     aiDraftBtn.disabled = false;
     window.lucide?.createIcons();
@@ -1048,7 +1150,7 @@ const renderStudentInfoForBuilder = (username: string) => {
 const resetProgramBuilder = () => {
     isEditingRecentProgram = false;
     changeStep(1);
-    renderStudentInfoForBuilder(''); 
+    renderStudentInfoForBuilder('', ''); 
 
     const dayCards = document.querySelectorAll('#step-content-2 .day-card');
     dayCards.forEach(card => {
@@ -1114,7 +1216,7 @@ const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) =
     (filterChipsContainer?.querySelector('.filter-chip[data-filter="all"]') as HTMLElement)?.classList.add('active');
     (sortSelect as HTMLSelectElement).value = 'name';
 
-    const allStudents = getCoachStudents(coachUsername);
+    const allStudents = getCoachAllStudents(coachUsername);
 
     const renderOptions = () => {
         const filter = (filterChipsContainer?.querySelector('.filter-chip.active') as HTMLElement)?.dataset.filter || 'all';
@@ -1122,7 +1224,7 @@ const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) =
         const searchTerm = searchInput.value.toLowerCase();
 
         const studentDataWithDetails = allStudents.map((s: any) => {
-            const userData = getUserData(s.username);
+            const userData = s.isLocal ? s : getUserData(s.username);
             const lastActivityDate = (userData.workoutHistory && userData.workoutHistory.length > 0) 
                 ? userData.workoutHistory[userData.workoutHistory.length - 1].date 
                 : (userData.weightHistory && userData.weightHistory.length > 0)
@@ -1144,6 +1246,7 @@ const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) =
             }
 
             if (filter === 'needs_plan') {
+                if (s.isLocal) return false;
                 const latestPurchase = getLatestPurchase(s.details);
                 return latestPurchase && !latestPurchase.fulfilled;
             }
@@ -1187,14 +1290,16 @@ const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) =
             
             const optionNode = optionTemplate.content.cloneNode(true) as DocumentFragment;
             const button = optionNode.querySelector('.student-option-btn') as HTMLButtonElement;
-            button.dataset.username = s.username;
+            button.dataset.username = s.id;
             
             const avatar = button.querySelector('.student-avatar') as HTMLElement;
             avatar.textContent = name.substring(0, 1).toUpperCase();
             
             (button.querySelector('.student-name') as HTMLElement).textContent = name;
             const planStatusEl = button.querySelector('.student-plan-status') as HTMLElement;
-             if (latestPurchase) {
+             if (s.isLocal) {
+                planStatusEl.innerHTML = `<span class="status-badge !bg-blue-500/20 !text-blue-500 !text-xs !py-0.5 !px-2">حضوری</span>`;
+             } else if (latestPurchase) {
                  if (latestPurchase.fulfilled === false) {
                     planStatusEl.innerHTML = `<span class="status-badge pending !text-xs !py-0.5 !px-2">در انتظار برنامه</span>`;
                     button.classList.add('needs-attention-highlight');
@@ -1346,6 +1451,7 @@ const populateBuilderWithAI = (planData: any) => {
 
 const getStudentsNeedingAttention = (students: any[]) => {
     return students.filter(student => {
+        if (student.isLocal) return false;
         const studentData = getUserData(student.username);
         const latestPurchase = getLatestPurchase(studentData);
         return latestPurchase && latestPurchase.fulfilled === false;
@@ -1368,7 +1474,7 @@ const getLastActivityDate = (userData: any): string => {
 };
 // Helper function to render the coach dashboard tab
 const renderDashboardTab = (currentUser: string) => {
-    const students = getCoachStudents(currentUser);
+    const students = getCoachAllStudents(currentUser);
     const needsPlanStudents = getStudentsNeedingAttention(students);
 
     const kpiCards = [
@@ -1605,10 +1711,10 @@ const renderChatTab = (currentUser: string) => {
     const studentListContainer = document.getElementById('coach-chat-student-list');
     if (!studentListContainer) return;
 
-    const students = getCoachStudents(currentUser);
+    const students = getCoachAllStudents(currentUser).filter(s => !s.isLocal);
 
     if (students.length === 0) {
-        studentListContainer.innerHTML = `<p class="p-4 text-center text-text-secondary">شما هنوز شاگردی ندارید.</p>`;
+        studentListContainer.innerHTML = `<p class="p-4 text-center text-text-secondary">شما هنوز شاگرد آنلاینی ندارید.</p>`;
         return;
     }
 
@@ -1791,14 +1897,14 @@ const renderStudentCards = (students: any[], containerId: string) => {
     }
 
     container.innerHTML = students.map(student => {
-        const studentData = getUserData(student.username);
+        const studentData = student.isLocal ? student : getUserData(student.username);
         const name = studentData.step1?.clientName || student.username;
         const goal = studentData.step1?.trainingGoal || 'بدون هدف';
-        const latestPurchase = getLatestPurchase(studentData);
+        const latestPurchase = student.isLocal ? null : getLatestPurchase(studentData);
 
         const streak = calculateWorkoutStreak(studentData.workoutHistory);
         const weightChange = getWeightChange(studentData);
-        const needsPlan = latestPurchase && latestPurchase.fulfilled === false;
+        const needsPlan = !student.isLocal && latestPurchase && latestPurchase.fulfilled === false;
 
         const trendIcon = weightChange.trend === 'up' ? 'trending-up' : 'trending-down';
         const trendColor = weightChange.trend === 'up' ? 'text-green-500' : 'text-red-500';
@@ -1807,12 +1913,13 @@ const renderStudentCards = (students: any[], containerId: string) => {
             needsPlan ? 'bg-accent/30 border-accent/50 needs-attention-highlight' : 'bg-bg-secondary'
         }`;
         
-        let purchaseInfoHtml = `
-            <div class="info-card !bg-bg-secondary !border-dashed p-3 text-center">
-                 <p class="text-sm text-text-secondary">خریدی ثبت نشده است.</p>
-            </div>
-        `;
-        if (latestPurchase) {
+        let purchaseInfoHtml = ``;
+        if (student.isLocal) {
+            purchaseInfoHtml = `
+                <div class="info-card !bg-blue-500/10 !border-dashed p-3 text-center">
+                    <p class="text-sm text-blue-500 font-semibold">شاگرد حضوری</p>
+                </div>`;
+        } else if (latestPurchase) {
              purchaseInfoHtml = `
                 <div class="info-card p-3 ${needsPlan ? '!bg-accent/10' : ''}">
                     <div class="flex justify-between items-center">
@@ -1828,6 +1935,11 @@ const renderStudentCards = (students: any[], containerId: string) => {
                     </div>
                 </div>
             `;
+        } else {
+            purchaseInfoHtml = `
+            <div class="info-card !bg-bg-secondary !border-dashed p-3 text-center">
+                 <p class="text-sm text-text-secondary">خریدی ثبت نشده است.</p>
+            </div>`;
         }
 
 
@@ -1868,11 +1980,11 @@ const renderStudentCards = (students: any[], containerId: string) => {
                 
                 <!-- Actions -->
                 <div class="mt-auto flex items-center gap-3">
-                    <button data-action="create-program" data-username="${student.username}" class="${needsPlan ? 'primary-button' : 'secondary-button'} !py-2.5 !px-4 !text-sm flex-grow">
+                    <button data-action="create-program" data-username="${student.id}" class="${needsPlan ? 'primary-button' : 'secondary-button'} !py-2.5 !px-4 !text-sm flex-grow">
                         <i data-lucide="${needsPlan ? 'plus-circle' : 'edit'}" class="w-4 h-4 mr-2"></i>
                         ${needsPlan ? 'ساخت برنامه' : 'ویرایش برنامه'}
                     </button>
-                    <button data-action="view-student" data-username="${student.username}" class="secondary-button !py-2.5 !px-4 !text-sm"><i data-lucide="user" class="w-4 h-4 pointer-events-none"></i></button>
+                    <button data-action="view-student" data-username="${student.id}" class="secondary-button !py-2.5 !px-4 !text-sm"><i data-lucide="user" class="w-4 h-4 pointer-events-none"></i></button>
                 </div>
             </div>
         `;
@@ -1977,9 +2089,13 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 break;
             case 'students-content':
                  mainContainer.querySelector('#students-content')!.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-lg">لیست شاگردان</h3>
+                        <button id="add-local-client-btn" class="primary-button flex items-center gap-2"><i data-lucide="user-plus"></i>افزودن شاگرد حضوری</button>
+                    </div>
                     <div id="all-students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
                  `;
-                const allStudents = getCoachStudents(currentUser);
+                const allStudents = getCoachAllStudents(currentUser);
                 renderStudentCards(allStudents, 'all-students-grid');
                 break;
             case 'chat-content':
@@ -2016,7 +2132,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
     
         const programTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="program-builder-content"]');
         if (programTab) switchTab(programTab);
-        renderStudentInfoForBuilder(studentUsername);
+        renderStudentInfoForBuilder(studentUsername, currentUser);
     
         changeStep(2);
     
@@ -2087,9 +2203,9 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             if (action === 'create-program') {
                 const programTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="program-builder-content"]');
                 if (programTab) switchTab(programTab);
-                if (username) renderStudentInfoForBuilder(username);
+                if (username) renderStudentInfoForBuilder(username, currentUser);
             } else if (action === 'view-student' && username) {
-                openStudentProfileModal(username);
+                openStudentProfileModal(username, currentUser);
             } else if (action === 'edit-recent-program' && username) {
                 const studentData = getUserData(username);
                 const latestProgram = studentData.programHistory[0];
@@ -2223,68 +2339,71 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 showToast("خطا: شاگردی انتخاب نشده است.", "error");
                 return;
             }
-
+        
             const planData = gatherPlanData();
-            if (!planData || !planData.workout || planData.workout.days.every((d:any) => d.exercises.length === 0)) {
+            if (!planData || !planData.workout || planData.workout.days.every((d: any) => d.exercises.length === 0)) {
                 showToast("برنامه تمرینی خالی است. لطفا حداقل یک حرکت اضافه کنید.", "error");
                 return;
             }
-
+        
             finishBtn.classList.add('is-loading');
             finishBtn.disabled = true;
-
+        
             setTimeout(() => {
-                const studentData = getUserData(activeStudentUsername!);
-                
                 const newProgram = {
                     date: new Date().toISOString(),
-                    step2: {
-                        days: planData.workout.days,
-                        notes: planData.workout.notes
-                    },
+                    step2: { days: planData.workout.days, notes: planData.workout.notes },
                     supplements: planData.supplements.items,
                     nutritionPlan: planData.nutritionPlan
                 };
-
-                if (!studentData.programHistory) studentData.programHistory = [];
-                
-                if (isEditingRecentProgram) {
-                    studentData.programHistory[0] = newProgram;
+        
+                const isLocal = activeStudentUsername!.startsWith('local_');
+                if (isLocal) {
+                    const coachData = getUserData(currentUser);
+                    const studentIndex = (coachData.localStudents || []).findIndex((s: any) => s.id === activeStudentUsername);
+                    if (studentIndex > -1) {
+                        if (!coachData.localStudents[studentIndex].programHistory) {
+                            coachData.localStudents[studentIndex].programHistory = [];
+                        }
+                        coachData.localStudents[studentIndex].programHistory.unshift(newProgram);
+                        saveUserData(currentUser, coachData);
+                        showToast(`برنامه با موفقیت برای شاگرد حضوری ${planData.student.clientName} ذخیره شد.`, 'success');
+                    }
                 } else {
-                    studentData.programHistory.unshift(newProgram);
-                }
-
-                const latestPurchase = getLatestPurchase(studentData);
-                if (latestPurchase && !latestPurchase.fulfilled) {
-                    if (studentData.subscriptions && studentData.subscriptions.length > 0) {
-                        const subIndex = studentData.subscriptions.findIndex((s: any) => s.purchaseDate === latestPurchase.purchaseDate);
-                        if (subIndex > -1) {
-                            studentData.subscriptions[subIndex].fulfilled = true;
+                    const studentData = getUserData(activeStudentUsername!);
+                    if (!studentData.programHistory) studentData.programHistory = [];
+                    if (isEditingRecentProgram) {
+                        studentData.programHistory[0] = newProgram;
+                    } else {
+                        studentData.programHistory.unshift(newProgram);
+                    }
+        
+                    const latestPurchase = getLatestPurchase(studentData);
+                    if (latestPurchase && !latestPurchase.fulfilled) {
+                        if (studentData.subscriptions && studentData.subscriptions.length > 0) {
+                            const subIndex = studentData.subscriptions.findIndex((s: any) => s.purchaseDate === latestPurchase.purchaseDate);
+                            if (subIndex > -1) studentData.subscriptions[subIndex].fulfilled = true;
                         }
                     }
+        
+                    if (!studentData.chatHistory) studentData.chatHistory = [];
+                    studentData.chatHistory.push({
+                        sender: 'coach',
+                        message: 'سلام! برنامه جدید شما آماده است. می‌توانید از بخش "برنامه من" آن را مشاهده کنید.',
+                        timestamp: new Date().toISOString()
+                    });
+        
+                    saveUserData(activeStudentUsername!, studentData);
+                    setNotification(activeStudentUsername!, 'program-content', '✨');
+                    setNotification(activeStudentUsername!, 'chat-content', '💬');
+                    showToast(`برنامه با موفقیت برای ${planData.student.clientName} ارسال شد.`, 'success');
                 }
-                
-                if (!studentData.chatHistory) studentData.chatHistory = [];
-                studentData.chatHistory.push({
-                    sender: 'coach',
-                    message: 'سلام! برنامه جدید شما آماده است. می‌توانید از بخش "برنامه من" آن را مشاهده کنید.',
-                    timestamp: new Date().toISOString()
-                });
-
-                saveUserData(activeStudentUsername!, studentData);
-
-                setNotification(activeStudentUsername!, 'program-content', '✨');
-                setNotification(activeStudentUsername!, 'chat-content', '💬');
-
-                showToast(`برنامه با موفقیت برای ${planData.student.clientName} ارسال شد.`, 'success');
-
+        
                 finishBtn.classList.remove('is-loading');
                 finishBtn.disabled = false;
-                
                 resetProgramBuilder();
                 const studentsTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="students-content"]');
                 if (studentsTab) switchTab(studentsTab);
-
             }, 500);
             return;
         }
@@ -2307,7 +2426,15 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
                 return;
             }
-            const studentData = getUserData(activeStudentUsername);
+             const isLocal = activeStudentUsername.startsWith('local_');
+            let studentData: any;
+            if (isLocal) {
+                const coachData = getUserData(currentUser);
+                studentData = (coachData.localStudents || []).find((s:any) => s.id === activeStudentUsername);
+            } else {
+                studentData = getUserData(activeStudentUsername);
+            }
+
             if (!studentData.step1) {
                 showToast('اطلاعات پروفایل این شاگرد کامل نیست.', 'error');
                 return;
@@ -2327,15 +2454,24 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
                 return;
             }
-            const studentData = getUserData(activeStudentUsername).step1;
-            const goal = studentData?.trainingGoal;
-            if (!studentData || !goal) {
+            const isLocal = activeStudentUsername.startsWith('local_');
+            let studentStep1: any;
+            if (isLocal) {
+                const coachData = getUserData(currentUser);
+                const localStudent = (coachData.localStudents || []).find((s:any) => s.id === activeStudentUsername);
+                studentStep1 = localStudent?.step1;
+            } else {
+                studentStep1 = getUserData(activeStudentUsername).step1;
+            }
+            
+            const goal = studentStep1?.trainingGoal;
+            if (!studentStep1 || !goal) {
                 showToast('هدف تمرینی شاگرد برای پیشنهاد مکمل مشخص نیست.', 'error');
                 return;
             }
             aiSupplementBtn.classList.add('is-loading');
             aiSupplementBtn.disabled = true;
-            generateSupplementPlan(studentData, goal)
+            generateSupplementPlan(studentStep1, goal)
                 .then(supplements => {
                     if (supplements) {
                         const container = document.getElementById('added-supplements-container');
@@ -2361,7 +2497,14 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
                 return;
             }
-            const userData = getUserData(activeStudentUsername);
+            const isLocal = activeStudentUsername.startsWith('local_');
+            let userData: any;
+            if (isLocal) {
+                 const coachData = getUserData(currentUser);
+                 userData = (coachData.localStudents || []).find((s:any) => s.id === activeStudentUsername);
+            } else {
+                 userData = getUserData(activeStudentUsername);
+            }
              if (!userData.step1 || !userData.step1.tdee) {
                 showToast('اطلاعات شاگرد (مخصوصا TDEE) برای تولید برنامه غذایی کامل نیست.', 'error');
                 return;
@@ -2427,6 +2570,15 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             exportElement('#program-preview-for-export', 'png', 'FitGymPro-Program.png', saveImgBtnBuilder as HTMLButtonElement);
             return;
         }
+
+        if (target.closest('#add-local-client-btn')) {
+            const modal = document.getElementById('local-client-modal');
+            const form = document.getElementById('local-client-form') as HTMLFormElement;
+            form.reset();
+            form.removeAttribute('data-editing-id');
+            (modal.querySelector('#local-client-modal-title') as HTMLElement).textContent = 'افزودن شاگرد حضوری';
+            openModal(modal);
+        }
     });
 
     const selectionModal = document.getElementById('selection-modal');
@@ -2438,7 +2590,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         if (studentOptionBtn) {
             const username = (studentOptionBtn as HTMLElement).dataset.username;
             if (username) {
-                renderStudentInfoForBuilder(username);
+                renderStudentInfoForBuilder(username, currentUser);
                 closeModal(selectionModal);
                 changeStep(2);
             }
@@ -2500,6 +2652,48 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             const name = freshData.step1.coachName || currentUser;
             const headerNameEl = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary .font-bold.text-sm');
             if (headerNameEl) headerNameEl.textContent = name;
+        }
+         if (e.target && (e.target as HTMLElement).id === 'local-client-form') {
+            e.preventDefault();
+            const form = e.target as HTMLFormElement;
+            const formData = new FormData(form);
+            const clientData: any = {
+                clientName: formData.get('clientName') as string,
+                age: parseInt(formData.get('age') as string, 10),
+                height: parseInt(formData.get('height') as string, 10),
+                weight: parseFloat(formData.get('weight') as string),
+                gender: formData.get('gender') as string,
+                contact: formData.get('contact') as string,
+                trainingGoal: formData.get('trainingGoal') as string,
+                trainingDays: parseInt(formData.get('trainingDays') as string, 10),
+                activityLevel: parseFloat(formData.get('activityLevel') as string),
+                experienceLevel: formData.get('experienceLevel') as string,
+                limitations: formData.get('limitations') as string,
+                coachNotes: formData.get('coachNotes') as string,
+            };
+
+            if (!clientData.clientName) {
+                showToast('نام شاگرد الزامی است.', 'error');
+                return;
+            }
+
+            const metrics = performMetricCalculations(clientData);
+            if (metrics && metrics.tdee) {
+                clientData.tdee = metrics.tdee;
+            }
+
+            const coachData = getUserData(currentUser);
+            if (!coachData.localStudents) coachData.localStudents = [];
+            
+            const newClient = { id: `local_${Date.now()}`, joinDate: new Date().toISOString(), step1: clientData };
+            coachData.localStudents.push(newClient);
+            saveUserData(currentUser, coachData);
+            
+            showToast(`شاگرد حضوری "${clientData.clientName}" با موفقیت اضافه شد.`, 'success');
+            closeModal(document.getElementById('local-client-modal'));
+            
+            const studentsTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="students-content"]');
+            if(studentsTab) switchTab(studentsTab);
         }
     });
 }
