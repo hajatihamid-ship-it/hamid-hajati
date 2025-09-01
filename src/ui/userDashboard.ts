@@ -7,6 +7,24 @@ import { formatPrice, timeAgo, getLatestSubscription, getUserAccessPermissions, 
 
 let selectedCoachInModal: string | null = null;
 
+const checkProfileFormValidity = (currentUser: string) => {
+    const form = document.getElementById('user-profile-form');
+    const submitBtn = document.getElementById('profile-submit-btn');
+    if (!form || !submitBtn) return;
+
+    const name = (form.querySelector('#user-profile-name') as HTMLInputElement)?.value.trim();
+    const coachIsSelected = !!(getUserData(currentUser).step1?.coachName || selectedCoachInModal);
+    const gender = (form.querySelector('input[name="gender_user"]:checked') as HTMLInputElement)?.value;
+    const goal = (form.querySelector('input[name="training_goal_user"]:checked') as HTMLInputElement)?.value;
+    const days = (form.querySelector('input[name="training_days_user"]:checked') as HTMLInputElement)?.value;
+    const activity = (form.querySelector('input[name="activity_level_user"]:checked') as HTMLInputElement)?.value;
+
+    const isValid = !!(name && name.length > 0 && coachIsSelected && gender && goal && days && activity);
+
+    (submitBtn as HTMLButtonElement).disabled = !isValid;
+};
+
+
 export function renderUserDashboard(currentUser: string, userData: any) {
     const name = userData.step1?.clientName || currentUser;
     const coachData = userData.step1?.coachName ? getUserData(userData.step1.coachName) : null;
@@ -99,11 +117,17 @@ export function renderUserDashboard(currentUser: string, userData: any) {
                         <p id="user-page-subtitle" class="text-text-secondary">خلاصه فعالیت‌ها و پیشرفت شما.</p>
                     </div>
                 </div>
-                 <div class="flex items-center gap-3 bg-bg-secondary p-2 rounded-lg">
-                    ${avatarHtml}
-                    <div>
-                        <p class="font-bold text-sm">${name}</p>
-                        <p class="text-xs text-text-secondary">مربی: ${coachName}</p>
+                 <div class="flex items-center gap-3">
+                    <button id="header-cart-btn" class="relative secondary-button !p-2 rounded-full mr-2">
+                        <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                        <span id="header-cart-badge" class="notification-badge -top-1 -right-1 !w-5 !h-5 !text-xs hidden">0</span>
+                    </button>
+                    <div class="flex items-center gap-3 bg-bg-secondary p-2 rounded-lg">
+                        ${avatarHtml}
+                        <div>
+                            <p class="font-bold text-sm">${name}</p>
+                            <p class="text-xs text-text-secondary">مربی: ${coachName}</p>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -125,6 +149,24 @@ export function renderUserDashboard(currentUser: string, userData: any) {
                 </div>
                 <div id="user-modal-body" class="p-6 overflow-y-auto">
                     <!-- Content injected by JS -->
+                </div>
+            </div>
+        </div>
+         <div id="cart-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+            <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
+                <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
+                    <h2 class="font-bold text-xl">سبد خرید</h2>
+                    <button id="close-cart-modal-btn" class="secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+                </div>
+                <div id="cart-modal-body" class="p-6 overflow-y-auto flex-grow">
+                    <!-- Cart content injected by JS -->
+                </div>
+                <div class="p-4 border-t border-border-primary bg-bg-tertiary/50 rounded-b-xl flex-shrink-0">
+                    <div class="flex items-center gap-2 mb-4">
+                        <input type="text" id="discount-code-input-modal" class="input-field flex-grow !text-sm" placeholder="کد تخفیف">
+                        <button id="apply-discount-btn-modal" class="secondary-button !text-sm">اعمال</button>
+                    </div>
+                    <button id="checkout-btn-modal" class="primary-button w-full">پرداخت</button>
                 </div>
             </div>
         </div>
@@ -458,14 +500,27 @@ const renderDashboardTab = (currentUser: string, userData: any) => {
     }
 };
 
-const updateCartSummary = (currentUser: string) => {
+const renderCartModalContentAndBadge = (currentUser: string) => {
+    // 1. Update Badge
     const cart = getCart(currentUser);
-    const cartContainer = document.getElementById('cart-summary-container');
-    if (!cartContainer) return;
+    const badge = document.getElementById('header-cart-badge');
+    if (badge) {
+        if (cart.items.length > 0) {
+            badge.textContent = String(cart.items.length);
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+
+    // 2. Update Modal Content
+    const cartContainer = document.getElementById('cart-modal-body');
+    const checkoutBtn = document.getElementById('checkout-btn-modal');
+    if (!cartContainer || !checkoutBtn) return;
 
     if (cart.items.length === 0) {
-        cartContainer.innerHTML = '<p class="text-text-secondary">سبد خرید شما خالی است.</p>';
-        document.getElementById('checkout-btn')?.setAttribute('disabled', 'true');
+        cartContainer.innerHTML = '<p class="text-text-secondary text-center py-8">سبد خرید شما خالی است.</p>';
+        checkoutBtn.setAttribute('disabled', 'true');
         return;
     }
 
@@ -487,12 +542,12 @@ const updateCartSummary = (currentUser: string) => {
     cartContainer.innerHTML = `
         <div class="space-y-3">
             ${cart.items.map((item: any) => `
-                <div class="flex justify-between items-center text-sm">
-                    <p>${item.planName}</p>
-                    <div class="flex items-center gap-2">
-                        <span class="font-semibold">${formatPrice(item.price)}</span>
-                        <button class="remove-from-cart-btn text-red-accent hover:text-red-500" data-plan-id="${item.planId}"><i class="w-4 h-4 pointer-events-none" data-lucide="trash-2"></i></button>
+                <div class="flex justify-between items-center text-sm p-2 bg-bg-tertiary rounded-md">
+                    <div>
+                        <p class="font-semibold">${item.planName}</p>
+                        <span class="font-bold text-accent">${formatPrice(item.price)}</span>
                     </div>
+                    <button class="remove-from-cart-btn text-red-accent hover:text-red-500" data-plan-id="${item.planId}"><i class="w-4 h-4 pointer-events-none" data-lucide="trash-2"></i></button>
                 </div>
             `).join('')}
         </div>
@@ -513,9 +568,10 @@ const updateCartSummary = (currentUser: string) => {
             </div>
         </div>
     `;
-    document.getElementById('checkout-btn')?.removeAttribute('disabled');
+    checkoutBtn.removeAttribute('disabled');
     window.lucide?.createIcons();
 };
+
 
 const renderStoreTab = (currentUser: string) => {
     const container = document.getElementById('store-content');
@@ -533,10 +589,10 @@ const renderStoreTab = (currentUser: string) => {
                 </div>
             </div>
         ` : ''}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2">
+        <div class="space-y-6">
+            <div>
                 <h3 class="font-bold text-xl mb-4">پلن‌های موجود</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     ${plans.map((plan: any) => {
                         const buttonState = hasCoach ? '' : 'disabled';
                         const buttonClasses = hasCoach ? '' : 'opacity-50 cursor-not-allowed';
@@ -562,22 +618,8 @@ const renderStoreTab = (currentUser: string) => {
                     }).join('')}
                 </div>
             </div>
-            <div class="lg:col-span-1">
-                 <div class="card p-6 sticky top-6">
-                    <h3 class="font-bold text-xl mb-4">سبد خرید</h3>
-                    <div id="cart-summary-container" class="mb-4">
-                        <!-- Cart summary will be rendered here -->
-                    </div>
-                    <div class="flex items-center gap-2 mb-4">
-                        <input type="text" id="discount-code-input" class="input-field flex-grow !text-sm" placeholder="کد تخفیف">
-                        <button id="apply-discount-btn" class="secondary-button !text-sm">اعمال</button>
-                    </div>
-                    <button id="checkout-btn" class="primary-button w-full">پرداخت</button>
-                 </div>
-            </div>
         </div>
     `;
-    updateCartSummary(currentUser);
     window.lucide?.createIcons();
 };
 
@@ -955,7 +997,7 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                             </div>
                         </div>
                     </div>
-                    <div class="flex justify-center"><button type="submit" class="primary-button !py-3 !px-8">ذخیره تغییرات</button></div>
+                    <div class="flex justify-center"><button type="submit" id="profile-submit-btn" class="primary-button !py-3 !px-8" disabled>ارسال برای مربی</button></div>
                 </form>
             </div>
             
@@ -1056,9 +1098,14 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 break;
             case 'profile-content':
                 renderProfileTab(currentUser, currentData);
-                // Initial calculation for metrics panel
-                const form = document.getElementById('user-profile-form');
-                if (form) updateProfileMetricsDisplay(form as HTMLElement);
+                const profileForm = document.getElementById('user-profile-form');
+                if (profileForm) {
+                    const checkValidity = () => checkProfileFormValidity(currentUser);
+                    profileForm.addEventListener('input', checkValidity);
+                    profileForm.addEventListener('change', checkValidity);
+                    checkValidity();
+                    updateProfileMetricsDisplay(profileForm as HTMLElement);
+                }
                 break;
             case 'help-content':
                 const helpContainer = document.getElementById('help-content');
@@ -1073,6 +1120,12 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             const storeTab = mainContainer.querySelector<HTMLElement>('.coach-nav-link[data-target="store-content"]');
             switchTab(storeTab || defaultTab);
             sessionStorage.removeItem('fitgympro_redirect_to_tab');
+             if (sessionStorage.getItem('fitgympro_open_cart') === 'true') {
+                setTimeout(() => {
+                    openModal(document.getElementById('cart-modal'));
+                    sessionStorage.removeItem('fitgympro_open_cart');
+                }, 100);
+            }
         } else if (sessionStorage.getItem('fromProfileSave') === 'true') {
             const profileTab = mainContainer.querySelector<HTMLElement>('.coach-nav-link[data-target="profile-content"]');
             switchTab(profileTab || defaultTab);
@@ -1092,8 +1145,17 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         });
     });
 
+    // Initial cart render
+    renderCartModalContentAndBadge(currentUser);
+
     document.getElementById('close-user-modal-btn')?.addEventListener('click', () => {
         closeModal(document.getElementById('user-dashboard-modal'));
+    });
+    document.getElementById('close-cart-modal-btn')?.addEventListener('click', () => {
+        closeModal(document.getElementById('cart-modal'));
+    });
+     document.getElementById('header-cart-btn')?.addEventListener('click', () => {
+        openModal(document.getElementById('cart-modal'));
     });
 
     const openCoachSelectionModal = (coaches: any[]) => {
@@ -1164,7 +1226,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                     cart.items.push(planToAdd);
                     saveCart(currentUser, cart);
                     showToast(`${planToAdd.planName} به سبد خرید اضافه شد.`, 'success');
-                    updateCartSummary(currentUser);
+                    renderCartModalContentAndBadge(currentUser);
                 } else {
                     showToast('این پلن قبلا به سبد خرید اضافه شده است.', 'warning');
                 }
@@ -1177,12 +1239,12 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             let cart = getCart(currentUser);
             cart.items = cart.items.filter((item: any) => item.planId !== planId);
             saveCart(currentUser, cart);
-            updateCartSummary(currentUser);
+            renderCartModalContentAndBadge(currentUser);
         }
 
-        const applyDiscountBtn = target.closest('#apply-discount-btn');
+        const applyDiscountBtn = target.closest('#apply-discount-btn-modal');
         if (applyDiscountBtn) {
-            const input = document.getElementById('discount-code-input') as HTMLInputElement;
+            const input = document.getElementById('discount-code-input-modal') as HTMLInputElement;
             const code = input.value.trim().toUpperCase();
             const discounts = getDiscounts();
             if (discounts[code]) {
@@ -1190,13 +1252,13 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 cart.discountCode = code;
                 saveCart(currentUser, cart);
                 showToast(`کد تخفیف ${code} اعمال شد.`, 'success');
-                updateCartSummary(currentUser);
+                renderCartModalContentAndBadge(currentUser);
             } else {
                 showToast('کد تخفیف نامعتبر است.', 'error');
             }
         }
 
-        const checkoutBtn = target.closest('#checkout-btn');
+        const checkoutBtn = target.closest('#checkout-btn-modal');
         if (checkoutBtn) {
             const cart = getCart(currentUser);
             if(cart.items.length === 0) return;
@@ -1221,6 +1283,9 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             if (coachUsername) {
                 setNotification(coachUsername, 'students-content', '🔔');
             }
+
+            renderCartModalContentAndBadge(currentUser);
+            closeModal(document.getElementById('cart-modal'));
 
             const dashboardTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="dashboard-content"]');
             if (dashboardTab) switchTab(dashboardTab);
@@ -1252,6 +1317,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 if (warning) warning.innerHTML = '';
             }
             closeModal(document.getElementById('user-dashboard-modal'));
+            checkProfileFormValidity(currentUser);
         }
     });
 
@@ -1352,19 +1418,6 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
 
         if (target.id === 'user-profile-form') {
             const form = target;
-            let hasError = false;
-            const nameInput = form.querySelector('#user-profile-name') as HTMLInputElement;
-            if (nameInput.value.trim().length < 3) {
-                showToast('نام و نام خانوادگی باید حداقل ۳ کاراکتر باشد.', 'error');
-                hasError = true;
-            }
-            if (!selectedCoachInModal && !getUserData(currentUser).step1?.coachName) {
-                 showToast('لطفا مربی خود را انتخاب کنید.', 'error');
-                 hasError = true;
-            }
-
-            if (hasError) return;
-
             const freshUserData = getUserData(currentUser);
             const dataToUpdate: any = {
                 step1: { ...freshUserData.step1 },
@@ -1438,7 +1491,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             saveUserData(currentUser, { ...freshUserData, ...dataToUpdate });
             
             addActivityLog(`${currentUser} updated their profile.`);
-            showToast('پروفایل با موفقیت ذخیره شد.', 'success');
+            showToast('اطلاعات با موفقیت برای مربی ارسال شد.', 'success');
             
             const name = dataToUpdate.step1.clientName || currentUser;
             const coachData = getUserData(dataToUpdate.step1.coachName);
@@ -1452,7 +1505,10 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             // Re-render tab to show updated info
             renderProfileTab(currentUser, getUserData(currentUser));
             const profileForm = document.getElementById('user-profile-form');
-            if (profileForm) updateProfileMetricsDisplay(profileForm as HTMLElement);
+            if (profileForm) {
+                updateProfileMetricsDisplay(profileForm as HTMLElement);
+                checkProfileFormValidity(currentUser);
+            }
         }
     });
 }
