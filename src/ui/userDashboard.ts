@@ -1109,7 +1109,101 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 break;
             case 'help-content':
                 const helpContainer = document.getElementById('help-content');
-                if (helpContainer) helpContainer.innerHTML = `<div class="card p-6">محتوای راهنما در حال آماده سازی است.</div>`;
+                if (helpContainer) {
+                    helpContainer.innerHTML = `
+                        <div class="card p-6 max-w-4xl mx-auto space-y-4 animate-fade-in-up">
+                            <div class="text-center mb-6">
+                                <i data-lucide="help-circle" class="w-12 h-12 mx-auto text-accent"></i>
+                                <h2 class="text-2xl font-bold mt-4">مرکز راهنما</h2>
+                                <p class="text-text-secondary mt-2">پاسخ به سوالات متداول شما در مورد استفاده از اپلیکیشن.</p>
+                            </div>
+                            
+                            <details class="bg-bg-tertiary rounded-lg">
+                                <summary class="p-4 font-semibold cursor-pointer flex justify-between items-center">
+                                    <span>داشبورد اصلی چه اطلاعاتی را نشان می‌دهد؟</span>
+                                    <i data-lucide="chevron-down" class="details-arrow transition-transform"></i>
+                                </summary>
+                                <div class="p-4 border-t border-border-primary text-text-secondary text-sm leading-relaxed">
+                                    <p>داشبورد اصلی خلاصه‌ای از وضعیت و پیشرفت شماست. در این بخش می‌توانید موارد زیر را مشاهده کنید:</p>
+                                    <ul class="list-disc pr-5 mt-2 space-y-1">
+                                        <li><strong>زنجیره تمرین:</strong> تعداد روزهای متوالی که تمرین خود را ثبت کرده‌اید.</li>
+                                        <li><strong>کل تمرینات:</strong> مجموع تعداد تمریناتی که از ابتدا ثبت کرده‌اید.</li>
+                                        <li><strong>آخرین وزن:</strong> آخرین وزنی که در پروفایل خود ثبت کرده‌اید.</li>
+                                        <li><strong>پیشرفت هفتگی:</strong> نموداری که نشان می‌دهد چند درصد از تمرینات هفته را طبق برنامه انجام داده‌اید.</li>
+                                        <li><strong>تمرین امروز:</strong> اگر برای امروز برنامه‌ای داشته باشید، در این بخش نمایش داده می‌شود تا به راحتی به آن دسترسی داشته و آن را ثبت کنید.</li>
+                                    </ul>
+                                </div>
+                            </details>
+
+                            <details class="bg-bg-tertiary rounded-lg">
+                                <summary class="p-4 font-semibold cursor-pointer flex justify-between items-center">
+                                    <span>چگونه برنامه تمرینی خود را مشاهده و ثبت کنم؟</span>
+                                    <i data-lucide="chevron-down" class="details-arrow transition-transform"></i>
+                                </summary>
+                                <div class="p-4 border-t border-border-primary text-text-secondary text-sm leading-relaxed">
+                                    <p><strong>برای مشاهده برنامه:</strong> به تب <strong>"برنامه من"</strong> بروید. در این بخش، برنامه کامل تمرینی و مکمل‌های شما که توسط مربی ارسال شده، قابل مشاهده است.</p>
+                                    <p class="mt-2"><strong>برای ثبت تمرین:</strong> در روزی که برنامه تمرینی دارید، به <strong>داشبورد اصلی</strong> مراجعه کنید. کارت "تمرین امروز" نمایش داده می‌شود. با کلیک روی دکمه "ثبت تمرین امروز"، می‌توانید وزنه‌ها و تکرارهای انجام شده برای هر ست را وارد کرده و در انتها تمرین خود را ذخیره کنید.</p>
+                                </div>
+                            </details>
+
+                            <details class="bg-bg-tertiary rounded-lg">
+                                <summary class="p-4 font-semibold cursor-pointer flex justify-between items-center">
+                                    <span>پروفایل من چه اهمیتی دارد؟</span>
+                                    <i data-lucide="chevron-down" class="details-arrow transition-transform"></i>
+                                </summary>
+                                <div class="p-4 border-t border-border-primary text-text-secondary text-sm leading-relaxed">
+                                    <p>اطلاعاتی که در بخش <strong>"پروفایل"</strong> وارد می‌کنید (مانند سن، قد، وزن، هدف تمرینی و سطح فعالیت) برای مربی شما بسیار حیاتی است. مربی بر اساس این اطلاعات، یک برنامه دقیق، مؤثر و ایمن برای شما طراحی می‌کند.</p>
+                                    <p class="mt-2">توصیه می‌کنیم این اطلاعات را همیشه به‌روز نگه دارید، به خصوص وزن خود را به صورت منظم وارد کنید تا مربی بتواند پیشرفت شما را به درستی تحلیل کرده و در صورت نیاز برنامه را اصلاح کند.</p>
+                                </div>
+                            </details>
+
+                            <details class="bg-bg-tertiary rounded-lg">
+                                <summary class="p-4 font-semibold cursor-pointer flex justify-between items-center">
+                                    <span>گفتگوی با مربی چگونه کار می‌کند؟</span>
+                                    <i data-lucide="chevron-down" class="details-arrow transition-transform"></i>
+                                </summary>
+                                <div class="p-4 border-t border-border-primary text-text-secondary text-sm leading-relaxed">
+                                    <p>بخش <strong>"گفتگو با مربی"</strong> یک ابزار قدرتمند برای پشتیبانی است. این ویژگی به صورت هوشمند مدیریت می‌شود:</p>
+                                    <ul class="list-disc pr-5 mt-2 space-y-1">
+                                        <li>پس از اینکه مربی یک برنامه جدید برای شما ارسال می‌کند، یک پنجره <strong>۴۸ ساعته</strong> برای گفتگو باز می‌شود.</li>
+                                        <li>در این مدت می‌توانید تمام سوالات خود را در مورد برنامه جدید بپرسید و ابهامات را برطرف کنید.</li>
+                                        <li>پس از اتمام ۴۸ ساعت، گفتگو به صورت خودکار قفل می‌شود تا تمرکز شما روی اجرای برنامه باشد.</li>
+                                        <li>با خرید یا تمدید پلن و دریافت برنامه جدید، این پنجره گفتگو مجدداً برای ۴۸ ساعت فعال خواهد شد.</li>
+                                    </ul>
+                                </div>
+                            </details>
+
+                            <details class="bg-bg-tertiary rounded-lg">
+                                <summary class="p-4 font-semibold cursor-pointer flex justify-between items-center">
+                                    <span>چگونه می‌توانم یک پلن جدید خریداری یا پلن فعلی را تمدید کنم؟</span>
+                                    <i data-lucide="chevron-down" class="details-arrow transition-transform"></i>
+                                </summary>
+                                <div class="p-4 border-t border-border-primary text-text-secondary text-sm leading-relaxed">
+                                    <p>به تب <strong>"فروشگاه"</strong> بروید. در این بخش می‌توانید تمام پلن‌های عضویت موجود را با ویژگی‌ها و قیمت‌هایشان مشاهده کنید. پلن مورد نظر خود را انتخاب کرده و به سبد خرید اضافه کنید. سپس می‌توانید فرآیند پرداخت را تکمیل نمایید.</p>
+                                    <p class="mt-2">اگر پروفایل شما ناقص باشد (مثلاً مربی خود را انتخاب نکرده باشید)، امکان خرید پلن وجود نخواهد داشت. ابتدا پروفایل خود را کامل کنید.</p>
+                                </div>
+                            </details>
+
+                            <details class="bg-bg-tertiary rounded-lg">
+                                <summary class="p-4 font-semibold cursor-pointer flex justify-between items-center">
+                                    <span>برنامه غذایی را از کجا ببینم؟</span>
+                                    <i data-lucide="chevron-down" class="details-arrow transition-transform"></i>
+                                </summary>
+                                <div class="p-4 border-t border-border-primary text-text-secondary text-sm leading-relaxed">
+                                    <p>اگر پلن خریداری شده شما شامل "برنامه غذایی" باشد، می‌توانید آن را در تب <strong>"برنامه تغذیه"</strong> مشاهده کنید. این بخش به صورت جداگانه طراحی شده تا دسترسی به رژیم غذایی شما آسان باشد.</p>
+                                    <p class="mt-2">در صورتی که این تب برای شما قفل است، به این معنی است که پلن فعلی شما شامل برنامه غذایی نمی‌شود. برای دسترسی به این ویژگی می‌توانید پلن خود را از فروشگاه ارتقا دهید.</p>
+                                </div>
+                            </details>
+
+                            <div class="pt-6 mt-6 border-t border-border-primary text-center">
+                                <h3 class="font-semibold">پاسخ خود را پیدا نکردید؟</h3>
+                                <p class="text-text-secondary text-sm mt-2">مشکلی نیست. تیم پشتیبانی ما آماده کمک به شماست. با ما از طریق ایمیل زیر در ارتباط باشید:</p>
+                                <a href="mailto:support@fitgympro.com" class="font-bold text-accent mt-3 inline-block">support@fitgympro.com</a>
+                            </div>
+                        </div>
+                    `;
+                    window.lucide?.createIcons();
+                }
                 break;
         }
     };
