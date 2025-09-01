@@ -66,7 +66,11 @@ const getPricingHTML = () => {
 `;
 };
 
-const getContactHTML = () => `
+const getContactHTML = () => {
+    const settings = getSiteSettings();
+    const { email, phone } = settings.contactInfo;
+    const { instagram, telegram, youtube } = settings.socialMedia;
+    return `
     <div class="grid md:grid-cols-2 gap-8">
         <div>
             <h3 class="font-bold text-xl text-accent">با ما در ارتباط باشید</h3>
@@ -92,24 +96,25 @@ const getContactHTML = () => `
             <div class="space-y-4">
                 <div class="flex items-center gap-3">
                     <i data-lucide="mail" class="w-5 h-5 text-accent"></i>
-                    <a href="mailto:support@fitgympro.com" class="text-text-secondary hover:text-accent">support@fitgympro.com</a>
+                    <a href="mailto:${email}" class="text-text-secondary hover:text-accent">${email}</a>
                 </div>
                 <div class="flex items-center gap-3">
                     <i data-lucide="phone" class="w-5 h-5 text-accent"></i>
-                    <span class="text-text-secondary" dir="ltr">۰۲۱-۱۲۳۴۵۶۷۸</span>
+                    <span class="text-text-secondary" dir="ltr">${phone}</span>
                 </div>
             </div>
              <div class="mt-8 pt-6 border-t border-border-primary">
                  <h4 class="font-semibold mb-4 text-text-primary">ما را دنبال کنید</h4>
                  <div class="flex items-center gap-5">
-                    <a href="#" class="social-icon-link text-2xl"><i class="fab fa-instagram"></i></a>
-                    <a href="#" class="social-icon-link text-2xl"><i class="fab fa-telegram"></i></a>
-                    <a href="#" class="social-icon-link text-2xl"><i class="fab fa-youtube"></i></a>
+                    <a href="${instagram}" target="_blank" rel="noopener" class="social-icon-link text-2xl"><i class="fab fa-instagram"></i></a>
+                    <a href="${telegram}" target="_blank" rel="noopener" class="social-icon-link text-2xl"><i class="fab fa-telegram"></i></a>
+                    <a href="${youtube}" target="_blank" rel="noopener" class="social-icon-link text-2xl"><i class="fab fa-youtube"></i></a>
                  </div>
              </div>
         </div>
     </div>
 `;
+};
 
 const getCoachesHTML = () => `
 <div>
@@ -629,7 +634,7 @@ export function renderLandingPage() {
             <header class="p-4">
                 <nav class="container mx-auto flex justify-between items-center glass-nav p-3 rounded-2xl">
                     <div class="flex items-center">
-                        <span class="text-yellow-400 font-bold text-2xl tracking-wider">FITGYMPRO.IR</span>
+                        <span class="text-yellow-400 font-bold text-2xl tracking-wider">${settings.siteName}</span>
                     </div>
                     <div class="hidden md:flex items-center gap-6">
                         <button data-section="features" class="landing-nav-link">ویژگی‌ها</button>
@@ -665,12 +670,12 @@ export function renderLandingPage() {
              <footer class="text-center p-6 text-text-secondary text-sm bg-bg-primary">
                 <div class="flex justify-center gap-6 mb-4">
                      ${socialIcons.map(social => 
-                        (social.link && social.link.trim() !== '' && social.link.trim() !== '#') 
+                        (social.link && social.link.trim() !== '') 
                         ? `<a href="${social.link}" target="_blank" rel="noopener noreferrer" class="social-icon-link"><i class="fab ${social.icon} fa-lg"></i></a>` 
                         : ''
                     ).join('')}
                 </div>
-                <p class="text-white">&copy; 2024 FitGym Pro. تمامی حقوق محفوظ است.</p>
+                <p class="text-white">&copy; 2024 ${settings.siteName}. تمامی حقوق محفوظ است.</p>
             </footer>
         </div>
     </div>

@@ -235,21 +235,80 @@ export const seedCMSData = () => {
 // --- Site Settings ---
 export const getSiteSettings = () => {
     const defaults = {
+        siteName: 'FitGym Pro',
+        logoUrl: '',
+        accentColor: '#a3e635',
+        maintenanceMode: false,
+        allowCoachRegistration: true,
         socialMedia: {
-            instagram: 'https://instagram.com',
-            telegram: 'https://telegram.org',
-            youtube: 'https://youtube.com'
+            instagram: 'https://instagram.com/fitgympro',
+            telegram: 'https://t.me/fitgympro',
+            youtube: 'https://youtube.com/fitgympro'
+        },
+        contactInfo: {
+            email: 'support@fitgympro.com',
+            phone: '021-12345678',
+            address: 'تهران، خیابان آزادی، پلاک ۱۰۱'
+        },
+        financial: {
+            commissionRate: 30, // As a percentage
+            activeGateway: 'zarinpal'
+        },
+        content: {
+            terms: 'لطفا قوانین و مقررات را در اینجا وارد کنید.',
+            privacyPolicy: 'لطفا سیاست حریم خصوصی را در اینجا وارد کنید.'
+        },
+        integrations: {
+            paymentGateways: {
+                zarinpal: '',
+                idpay: ''
+            },
+            webhooks: []
+        },
+        monetization: {
+            affiliateSystem: {
+                enabled: false,
+                commissionRate: 15
+            }
         }
     };
     try {
         const settings = JSON.parse(localStorage.getItem("fitgympro_site_settings") || "{}");
-        // Deep merge to ensure new settings properties are added
+        // Deep merge to ensure new settings properties are added and defaults are kept
         return {
             ...defaults,
             ...settings,
             socialMedia: {
                 ...defaults.socialMedia,
                 ...(settings.socialMedia || {})
+            },
+            contactInfo: {
+                ...defaults.contactInfo,
+                ...(settings.contactInfo || {})
+            },
+            financial: {
+                ...defaults.financial,
+                ...(settings.financial || {})
+            },
+            content: {
+                ...defaults.content,
+                ...(settings.content || {})
+            },
+            integrations: {
+                ...defaults.integrations,
+                ...(settings.integrations || {}),
+                paymentGateways: {
+                    ...defaults.integrations.paymentGateways,
+                    ...((settings.integrations || {}).paymentGateways || {})
+                }
+            },
+            monetization: {
+                ...defaults.monetization,
+                ...(settings.monetization || {}),
+                affiliateSystem: {
+                     ...defaults.monetization.affiliateSystem,
+                    ...((settings.monetization || {}).affiliateSystem || {})
+                }
             }
         };
     } catch (e) {

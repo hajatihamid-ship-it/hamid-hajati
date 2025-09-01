@@ -1,12 +1,13 @@
 
+
 import { renderLandingPage, initLandingPageListeners } from './ui/landing';
 import { renderAuthModal, initAuthListeners } from './ui/authModal';
 import { renderCoachDashboard, initCoachDashboard, updateCoachNotifications } from './ui/coachDashboard';
 import { renderUserDashboard, initUserDashboard, updateUserNotifications } from './ui/userDashboard';
 import { renderAdminDashboard, initAdminDashboard } from './ui/adminDashboard';
-import { getUsers, getUserData, saveUsers, saveUserData, addActivityLog, saveDiscounts, getStorePlans, saveStorePlans, seedCMSData } from './services/storage';
+import { getUsers, getUserData, saveUsers, saveUserData, addActivityLog, saveDiscounts, getStorePlans, saveStorePlans, seedCMSData, getSiteSettings } from './services/storage';
 import { setCurrentUser, getCurrentUser } from './state';
-import { sanitizeHTML } from './utils/dom';
+import { sanitizeHTML, applySiteSettings } from './utils/dom';
 import { STORE_PLANS as APP_STORE_PLANS } from './config';
 
 let notificationInterval: number | null = null;
@@ -499,6 +500,7 @@ const initCommonListeners = () => {
 };
 
 export const initApp = () => {
+    applySiteSettings(getSiteSettings());
     seedInitialUsers();
     seedCMSData();
     renderApp();

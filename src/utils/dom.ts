@@ -184,3 +184,27 @@ export const exportElement = async (elementToExportSelector: string, format: 'pd
         button.disabled = false;
     }
 };
+
+export const applySiteSettings = (settings: { accentColor: string }) => {
+    const accent = settings.accentColor || '#a3e635';
+    
+    let settingsStyle = document.getElementById('site-settings-style');
+    if (!settingsStyle) {
+        settingsStyle = document.createElement('style');
+        settingsStyle.id = 'site-settings-style';
+        document.head.appendChild(settingsStyle);
+    }
+    
+    settingsStyle.innerHTML = `
+        :root, html[data-theme='light'], html[data-theme='dark'], html[data-theme='lemon'] {
+            --accent: ${accent};
+            --accent-hover: color-mix(in srgb, ${accent} 85%, black);
+            --accent-transparent-8: color-mix(in srgb, ${accent} 8%, transparent);
+            --accent-transparent-10: color-mix(in srgb, ${accent} 10%, transparent);
+            --accent-transparent-15: color-mix(in srgb, ${accent} 15%, transparent);
+            --accent-transparent-20: color-mix(in srgb, ${accent} 20%, transparent);
+            --accent-transparent-30: color-mix(in srgb, ${accent} 30%, transparent);
+            --accent-transparent-40: color-mix(in srgb, ${accent} 40%, transparent);
+        }
+    `;
+};

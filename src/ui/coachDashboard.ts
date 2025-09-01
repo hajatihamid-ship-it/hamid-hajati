@@ -1,4 +1,5 @@
 
+
 import { getTemplates, saveTemplate, deleteTemplate, getUsers, getUserData, saveUserData, getNotifications, setNotification, clearNotification, getExercisesDB, getSupplementsDB } from '../services/storage';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement, sanitizeHTML, hexToRgba } from '../utils/dom';
 import { getLatestPurchase, timeAgo, getLastActivity } from '../utils/helpers';
@@ -834,8 +835,8 @@ const gatherPlanData = () => {
     const isLocal = activeStudentUsername.startsWith('local_');
     let studentData: any;
     
+    const coachUsername = document.querySelector<HTMLElement>('#coach-dashboard-container')?.id.replace('coach-dashboard-container', '') || '';
     if (isLocal) {
-        const coachUsername = (document.querySelector('#logout-btn') as HTMLElement).closest('aside')?.parentElement?.id.replace('coach-dashboard-container', '') || '';
         const coachData = getUserData(coachUsername);
         studentData = (coachData.localStudents || []).find((s: any) => s.id === activeStudentUsername);
     } else {
@@ -848,7 +849,7 @@ const gatherPlanData = () => {
         student: studentData.step1,
         workout: { days: [] as any[], notes: '' },
         supplements: { items: [] as any[], notes: '' },
-        nutritionPlan: currentNutritionPlanObject,
+        nutritionPlan: null,
     };
 
     // Gather workout data
@@ -883,6 +884,33 @@ const gatherPlanData = () => {
     });
     
     plan.workout.notes = (document.getElementById('coach-notes-final') as HTMLTextAreaElement)?.value || '';
+
+    // Gather nutrition data
+    const manualNutritionBuilder = document.getElementById('manual-nutrition-builder');
+    if (manualNutritionBuilder && !manualNutritionBuilder.classList.contains('hidden')) {
+        const meals: any[] = [];
+        manualNutritionBuilder.querySelectorAll('.meal-card').forEach(card => {
+            const mealName = (card as HTMLElement).dataset.mealName || '';
+            const options = Array.from(card.querySelectorAll('.food-item-text')).map(span => span.textContent || '');
+            if (options.length > 0) {
+                meals.push({ mealName, options });
+            }
+        });
+
+        const generalTips = (manualNutritionBuilder.querySelector('#manual-nutrition-tips') as HTMLTextAreaElement).value.split('\n').filter(Boolean);
+        
+        if(meals.length > 0) {
+            plan.nutritionPlan = {
+                weeklyPlan: [{
+                    dayName: "برنامه غذایی روزانه",
+                    meals
+                }],
+                generalTips
+            };
+        }
+    } else {
+        plan.nutritionPlan = currentNutritionPlanObject;
+    }
 
     return plan;
 };
@@ -945,13 +973,28 @@ const renderProgramPreview = () => {
             ` : ''}
 
             ${nutritionPlan && nutritionPlan.weeklyPlan ? `
-            <h3 class="preview-section-header mt-6"><i data-lucide="utensils-crossed"></i> برنامه غذایی نمونه</h3>
-            <div class="preview-notes-pro">
-                <p>این یک برنامه غذایی نمونه برای یک هفته است که می‌توانید آن را تکرار کنید. برای تنوع بیشتر می‌توانید از گزینه‌های مختلف در هر وعده استفاده نمایید.</p>
-                <ul class="list-disc pr-4 mt-2 text-sm">
-                    ${(nutritionPlan.generalTips || []).slice(0, 2).map((tip: string) => `<li>${tip}</li>`).join('')}
-                </ul>
-            </div>
+            <h3 class="preview-section-header mt-6"><i data-lucide="utensils-crossed"></i> برنامه غذایی</h3>
+            ${nutritionPlan.weeklyPlan.map((day: any) => `
+                <div class="mb-4">
+                    <h4 class="font-bold mb-2">${day.dayName}</h4>
+                    ${day.meals.map((meal: any) => `
+                        <div class="mb-2">
+                            <strong>${meal.mealName}:</strong>
+                            <ul class="list-disc pr-5 text-sm text-text-secondary">
+                                ${meal.options.map((opt: string) => `<li>${opt}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('')}
+            ${nutritionPlan.generalTips && nutritionPlan.generalTips.length > 0 ? `
+                <div class="preview-notes-pro mt-4">
+                    <h4 class="font-semibold mb-2">نکات عمومی</h4>
+                    <ul class="list-disc pr-4 text-sm">
+                        ${nutritionPlan.generalTips.map((tip: string) => `<li>${tip}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
             ` : ''}
 
             ${workout.notes ? `
@@ -1174,14 +1217,27 @@ const resetProgramBuilder = () => {
         (supNameBtn as HTMLButtonElement).disabled = true;
     }
 
-    const nutritionPlaceholder = document.getElementById('nutrition-plan-placeholder');
+    // Reset Nutrition section
+    const nutritionChoiceAI = document.getElementById('nutrition-choice-ai') as HTMLInputElement;
+    if (nutritionChoiceAI) nutritionChoiceAI.checked = true;
+    
+    const aiContainer = document.getElementById('ai-nutrition-container');
+    const manualContainer = document.getElementById('manual-nutrition-builder');
+    if (aiContainer) aiContainer.classList.remove('hidden');
+    if (manualContainer) {
+        manualContainer.classList.add('hidden');
+        // Clear manual inputs
+        manualContainer.querySelectorAll('input[type="text"]').forEach(input => (input as HTMLInputElement).value = '');
+        manualContainer.querySelectorAll('.food-item-list').forEach(list => list.innerHTML = '');
+        (manualContainer.querySelector('#manual-nutrition-tips') as HTMLTextAreaElement).value = '';
+    }
+
+    currentNutritionPlanObject = null;
     const nutritionDisplay = document.getElementById('nutrition-plan-display');
-    if (nutritionPlaceholder) nutritionPlaceholder.classList.remove('hidden');
-    if (nutritionDisplay) {
+    if(nutritionDisplay) {
         nutritionDisplay.classList.add('hidden');
         nutritionDisplay.innerHTML = '';
     }
-    currentNutritionPlanObject = null;
 
 
     const notesTextarea = document.getElementById('coach-notes-final') as HTMLTextAreaElement;
@@ -1563,6 +1619,8 @@ const renderProgramBuilderTab = () => {
     const container = document.getElementById('program-builder-content');
     if (!container) return;
     const daysOfWeek = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
+    const mealNames = ["صبحانه", "میان‌وعده صبح", "ناهار", "میان‌وعده عصر", "شام"];
+
     container.innerHTML = `
         <div id="student-selection-prompt" class="text-center card p-8 animate-fade-in">
             <i data-lucide="users" class="w-12 h-12 mx-auto mb-4 text-accent"></i>
@@ -1641,12 +1699,38 @@ const renderProgramBuilderTab = () => {
                         </div>
                         <div>
                             <h3 class="font-bold text-lg mb-4">برنامه غذایی</h3>
-                            <div class="card p-4">
-                                <div id="nutrition-plan-placeholder">
-                                    <p class="text-text-secondary mb-4">یک برنامه غذایی نمونه و هوشمند بر اساس اطلاعات و هدف شاگرد خود ایجاد کنید.</p>
-                                    <button id="ai-nutrition-btn" class="primary-button w-full"><i data-lucide="sparkles" class="w-4 h-4 ml-2"></i>تولید برنامه غذایی با AI</button>
+                            <div class="card p-4 space-y-4">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <label class="option-card-label">
+                                        <input type="radio" id="nutrition-choice-ai" name="nutrition_choice" value="ai" class="option-card-input" checked>
+                                        <span class="option-card-content !py-2"><i data-lucide="sparkles" class="w-4 h-4 inline-block ml-1"></i> تولید با AI</span>
+                                    </label>
+                                    <label class="option-card-label">
+                                        <input type="radio" name="nutrition_choice" value="manual" class="option-card-input">
+                                        <span class="option-card-content !py-2"><i data-lucide="pencil" class="w-4 h-4 inline-block ml-1"></i> طراحی دستی</span>
+                                    </label>
                                 </div>
-                                <div id="nutrition-plan-display" class="hidden max-h-96 overflow-y-auto relative"></div>
+                                <div id="ai-nutrition-container">
+                                    <p class="text-text-secondary mb-4 text-sm">یک برنامه غذایی نمونه و هوشمند بر اساس اطلاعات و هدف شاگرد خود ایجاد کنید.</p>
+                                    <button id="ai-nutrition-btn" class="primary-button w-full"><i data-lucide="sparkles" class="w-4 h-4 ml-2"></i>تولید برنامه غذایی با AI</button>
+                                    <div id="nutrition-plan-display" class="hidden mt-4 max-h-96 overflow-y-auto relative"></div>
+                                </div>
+                                <div id="manual-nutrition-builder" class="hidden space-y-3">
+                                    ${mealNames.map(meal => `
+                                    <div class="meal-card card !shadow-none !border p-3" data-meal-name="${meal}">
+                                        <p class="font-semibold text-md mb-2">${meal}</p>
+                                        <ul class="food-item-list space-y-1 text-sm mb-2"></ul>
+                                        <div class="flex items-center gap-2">
+                                            <input type="text" class="input-field !text-sm flex-grow" placeholder="افزودن آیتم غذایی...">
+                                            <button type="button" class="add-food-item-btn primary-button !p-2"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                                        </div>
+                                    </div>
+                                    `).join('')}
+                                     <div class="input-group pt-2">
+                                        <textarea id="manual-nutrition-tips" class="input-field w-full min-h-[80px]" placeholder=" "></textarea>
+                                        <label for="manual-nutrition-tips" class="input-label">نکات عمومی تغذیه</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2329,7 +2413,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             return;
         }
         if (target.closest('#prev-step-btn')) {
-            if (currentStep > 1) changeStep(currentStep + 1);
+            if (currentStep > 1) changeStep(currentStep - 1); // Fix: go to previous step
             return;
         }
 
@@ -2515,10 +2599,8 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 .then(plan => {
                     if (plan) {
                         currentNutritionPlanObject = plan;
-                        const placeholder = document.getElementById('nutrition-plan-placeholder');
                         const display = document.getElementById('nutrition-plan-display');
-                        if (placeholder && display) {
-                            placeholder.classList.add('hidden');
+                        if (display) {
                             display.classList.remove('hidden');
                             
                             const renderInteractivePlan = () => {
@@ -2533,13 +2615,15 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
 
                             renderInteractivePlan();
 
+                            display.addEventListener('renderPlan', renderInteractivePlan);
+
                             display.addEventListener('click', (e) => {
                                 const target = e.target as HTMLElement;
                                 const clearBtn = target.closest('#clear-nutrition-plan');
                                 if (clearBtn) {
                                     currentNutritionPlanObject = null;
                                     display.classList.add('hidden');
-                                    placeholder.classList.remove('hidden');
+                                    display.innerHTML = '';
                                     return;
                                 }
                                 const removeBtn = target.closest('.remove-food-option');
@@ -2550,7 +2634,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                                     currentNutritionPlanObject.weeklyPlan[dayIndex].meals[mealIndex].options.splice(optIndex, 1);
                                     renderInteractivePlan();
                                 }
-                            }, { once: true }); // Use once to avoid multiple listeners
+                            });
                         }
                         showToast('برنامه غذایی با موفقیت ایجاد شد.', 'success');
                     }
@@ -2579,6 +2663,46 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             (modal.querySelector('#local-client-modal-title') as HTMLElement).textContent = 'افزودن شاگرد حضوری';
             openModal(modal);
         }
+
+        const nutritionChoice = target.closest('input[name="nutrition_choice"]');
+        if (nutritionChoice) {
+            const choice = (nutritionChoice as HTMLInputElement).value;
+            const aiContainer = document.getElementById('ai-nutrition-container');
+            const manualContainer = document.getElementById('manual-nutrition-builder');
+            if (aiContainer && manualContainer) {
+                aiContainer.classList.toggle('hidden', choice !== 'ai');
+                manualContainer.classList.toggle('hidden', choice !== 'manual');
+            }
+            return;
+        }
+
+        const addFoodItemBtn = target.closest('.add-food-item-btn');
+        if (addFoodItemBtn) {
+            const input = addFoodItemBtn.previousElementSibling as HTMLInputElement;
+            const foodText = input.value.trim();
+            if (foodText) {
+                const list = addFoodItemBtn.closest('.meal-card')?.querySelector('.food-item-list');
+                if (list) {
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center bg-bg-secondary p-1.5 rounded';
+                    li.innerHTML = `
+                        <span class="food-item-text">${sanitizeHTML(foodText)}</span>
+                        <button type="button" class="remove-food-item-btn text-red-accent/70 hover:text-red-accent"><i data-lucide="x" class="w-4 h-4 pointer-events-none"></i></button>
+                    `;
+                    list.appendChild(li);
+                    input.value = '';
+                    window.lucide.createIcons();
+                }
+            }
+            return;
+        }
+
+        const removeFoodItemBtn = target.closest('.remove-food-item-btn');
+        if (removeFoodItemBtn) {
+            removeFoodItemBtn.parentElement?.remove();
+            return;
+        }
+
     });
 
     const selectionModal = document.getElementById('selection-modal');

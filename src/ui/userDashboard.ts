@@ -1277,6 +1277,13 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             
             saveCart(currentUser, { items: [], discountCode: null });
             
+            // Re-render the entire dashboard to reflect new permissions
+            const appRoot = document.getElementById('app-root');
+            if (appRoot) {
+                appRoot.innerHTML = renderUserDashboard(currentUser, freshUserData);
+                initUserDashboard(currentUser, freshUserData, handleLogout, handleGoToHome);
+            }
+
             showToast('خرید شما با موفقیت انجام شد! مربی به زودی برنامه شما را ارسال خواهد کرد.', 'success');
             
             const coachUsername = freshUserData.step1?.coachName;
@@ -1284,11 +1291,8 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 setNotification(coachUsername, 'students-content', '🔔');
             }
 
-            renderCartModalContentAndBadge(currentUser);
             closeModal(document.getElementById('cart-modal'));
-
-            const dashboardTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="dashboard-content"]');
-            if (dashboardTab) switchTab(dashboardTab);
+            return; // Important to stop execution here after re-render
         }
 
         const goToProfileBtn = target.closest('#go-to-profile-from-store') || target.closest('#go-to-profile-from-nutrition');

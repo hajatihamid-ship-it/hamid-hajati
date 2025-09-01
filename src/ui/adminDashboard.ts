@@ -1,8 +1,7 @@
 
-
 import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans, getExercisesDB, saveExercisesDB, getSupplementsDB, saveSupplementsDB, saveDiscounts, getSiteSettings, saveSiteSettings } from '../services/storage';
 import { formatPrice, timeAgo } from '../utils/helpers';
-import { openModal, closeModal, showToast } from '../utils/dom';
+import { openModal, closeModal, showToast, applySiteSettings } from '../utils/dom';
 import { getCurrentUser } from '../state';
 import { sanitizeHTML } from '../utils/dom';
 
@@ -105,7 +104,7 @@ const renderDiscountsAdminHtml = () => {
                 <h3 class="font-bold text-lg">مدیریت کدهای تخفیف</h3>
                 <p class="text-text-secondary text-sm">کدهای تخفیف را برای کمپین‌های بازاریابی مدیریت کنید.</p>
             </div>
-            <button id="add-discount-btn" data-action="add-discount" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن کد</button>
+            <button data-action="add-discount" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن کد</button>
         </div>
         <div id="admin-discounts-list" class="space-y-2">
             ${Object.keys(discounts).length > 0 ? Object.entries(discounts).map(([code, details]: [string, any]) => `
@@ -313,7 +312,7 @@ const renderPlansAdminHtml = () => {
                     <h3 class="font-bold text-lg">مدیریت پلن‌ها</h3>
                     <p class="text-text-secondary text-sm">پلن‌های اشتراک را ایجاد، ویرایش یا حذف کنید.</p>
                 </div>
-                <button id="add-plan-btn" data-action="add-plan" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن پلن</button>
+                <button data-action="add-plan" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن پلن</button>
             </div>
             <div id="admin-plans-list" class="space-y-2">
                 ${plansListHtml}
@@ -445,8 +444,9 @@ const renderCommissionsHtml = () => {
             coachSales[coachName].totalSales += userSales;
         }
     });
-
-    const commissionRate = 0.30; // 30%
+    
+    const settings = getSiteSettings();
+    const commissionRate = (settings.financial.commissionRate || 0) / 100;
 
     return `
         <div class="card p-4">
@@ -456,7 +456,7 @@ const renderCommissionsHtml = () => {
                     <p class="text-text-secondary text-sm">درآمد و کمیسیون قابل پرداخت به مربیان را مدیریت کنید.</p>
                 </div>
                  <div class="bg-bg-tertiary p-2 rounded-lg">
-                    <span class="text-sm font-semibold">نرخ کمیسیون: <strong>${commissionRate * 100}%</strong></span>
+                    <span class="text-sm font-semibold">نرخ کمیسیون سایت: <strong>${commissionRate * 100}%</strong></span>
                 </div>
             </div>
             <div class="card overflow-hidden border border-border-primary">
@@ -466,7 +466,7 @@ const renderCommissionsHtml = () => {
                             <tr class="font-semibold">
                                 <th class="p-4">نام مربی</th>
                                 <th class="p-4">کل فروش</th>
-                                <th class="p-4">کمیسیون قابل پرداخت</th>
+                                <th class="p-4">کمیسیون قابل پرداخت (سهم مربی)</th>
                                 <th class="p-4">وضعیت</th>
                                 <th class="p-4">عملیات</th>
                             </tr>
@@ -474,17 +474,17 @@ const renderCommissionsHtml = () => {
                         <tbody>
                             ${coaches.length > 0 ? coaches.map(coach => {
                                 const sales = coachSales[coach.username]?.totalSales || 0;
-                                const commission = sales * commissionRate;
+                                const coachShare = sales * (1 - commissionRate);
                                 return `
                                     <tr class="hover:bg-bg-tertiary transition-colors">
-                                        <td class="p-4 font-semibold">${coach.username}</td>
+                                        <td class="p-4 font-semibold">${getUserData(coach.username).step1?.clientName || coach.username}</td>
                                         <td class="p-4">${formatPrice(sales)}</td>
-                                        <td class="p-4 font-bold text-admin-accent-green">${formatPrice(commission)}</td>
+                                        <td class="p-4 font-bold text-admin-accent-green">${formatPrice(coachShare)}</td>
                                         <td class="p-4">
-                                            ${commission > 0 ? '<span class="status-badge pending">پرداخت نشده</span>' : '<span class="status-badge verified">تسویه شده</span>'}
+                                            ${coachShare > 0 ? '<span class="status-badge pending">پرداخت نشده</span>' : '<span class="status-badge verified">تسویه شده</span>'}
                                         </td>
                                         <td class="p-4">
-                                            <button class="primary-button !py-1 !px-2 !text-xs" ${commission === 0 ? 'disabled' : ''}>ثبت پرداخت</button>
+                                            <button class="primary-button !py-1 !px-2 !text-xs" ${coachShare === 0 ? 'disabled' : ''}>ثبت پرداخت</button>
                                         </td>
                                     </tr>
                                 `;
@@ -494,6 +494,150 @@ const renderCommissionsHtml = () => {
                 </div>
             </div>
         </div>
+    `;
+};
+
+const renderSettingsPageHTML = () => {
+    const settings = getSiteSettings();
+
+    return `
+    <div class="flex items-center gap-2 border-b border-border-primary mb-6 flex-wrap">
+        <button class="admin-tab-button active-tab" data-tab="branding">برندینگ</button>
+        <button class="admin-tab-button" data-tab="contact">اطلاعات تماس</button>
+        <button class="admin-tab-button" data-tab="features">ویژگی‌ها</button>
+        <button class="admin-tab-button" data-tab="integrations">یکپارچه‌سازی و فروش</button>
+        <button class="admin-tab-button" data-tab="content">مدیریت محتوا</button>
+    </div>
+
+    <form id="site-settings-form" class="space-y-6">
+        <!-- Branding Tab -->
+        <div id="branding-tab-content" class="admin-tab-content animate-fade-in">
+            <div class="card p-6">
+                <h3 class="font-bold text-lg mb-4">برندینگ و ظاهر</h3>
+                <div class="space-y-4">
+                    <div class="input-group">
+                        <input type="text" id="setting-site-name" class="input-field w-full" value="${settings.siteName}" placeholder=" ">
+                        <label for="setting-site-name" class="input-label">نام سایت</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="setting-logo-url" class="input-field w-full" value="${settings.logoUrl}" placeholder=" ">
+                        <label for="setting-logo-url" class="input-label">URL لوگو (اختیاری)</label>
+                    </div>
+                    <div>
+                        <label for="setting-accent-color" class="block text-sm font-semibold mb-2">رنگ اصلی (Accent)</label>
+                        <div class="flex items-center gap-3">
+                            <input type="color" id="setting-accent-color" class="p-1 h-10 w-14 block bg-bg-tertiary border border-border-primary cursor-pointer rounded-lg" value="${settings.accentColor}">
+                            <span class="font-mono text-text-secondary">${settings.accentColor}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Contact Tab -->
+        <div id="contact-tab-content" class="admin-tab-content hidden animate-fade-in">
+             <div class="card p-6">
+                <h3 class="font-bold text-lg mb-4">اطلاعات تماس و شبکه‌های اجتماعی</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <div class="input-group"><input type="email" id="setting-contact-email" class="input-field w-full" value="${settings.contactInfo.email}" placeholder=" "><label for="setting-contact-email" class="input-label">ایمیل پشتیبانی</label></div>
+                        <div class="input-group"><input type="tel" id="setting-contact-phone" class="input-field w-full" value="${settings.contactInfo.phone}" placeholder=" "><label for="setting-contact-phone" class="input-label">شماره تماس</label></div>
+                        <div class="input-group md:col-span-2"><input type="text" id="setting-contact-address" class="input-field w-full" value="${settings.contactInfo.address}" placeholder=" "><label for="setting-contact-address" class="input-label">آدرس</label></div>
+                    </div>
+                     <div class="space-y-4">
+                        <div class="input-group"><input type="url" id="setting-social-instagram" class="input-field w-full" value="${settings.socialMedia.instagram}" placeholder=" "><label for="setting-social-instagram" class="input-label">لینک اینستاگرام</label></div>
+                        <div class="input-group"><input type="url" id="setting-social-telegram" class="input-field w-full" value="${settings.socialMedia.telegram}" placeholder=" "><label for="setting-social-telegram" class="input-label">لینک تلگرام</label></div>
+                        <div class="input-group"><input type="url" id="setting-social-youtube" class="input-field w-full" value="${settings.socialMedia.youtube}" placeholder=" "><label for="setting-social-youtube" class="input-label">لینک یوتیوب</label></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Features Tab -->
+        <div id="features-tab-content" class="admin-tab-content hidden animate-fade-in">
+            <div class="card p-6">
+                 <h3 class="font-bold text-lg mb-4">مدیریت ویژگی‌های سایت</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between"><label for="setting-maintenance-mode" class="font-semibold cursor-pointer">حالت تعمیرات</label><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="setting-maintenance-mode" class="sr-only peer" ${settings.maintenanceMode ? 'checked' : ''}><div class="w-11 h-6 bg-bg-tertiary rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div></label></div>
+                    <div class="flex items-center justify-between"><label for="setting-allow-coach-reg" class="font-semibold cursor-pointer">اجازه ثبت‌نام مربی جدید</label><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="setting-allow-coach-reg" class="sr-only peer" ${settings.allowCoachRegistration ? 'checked' : ''}><div class="w-11 h-6 bg-bg-tertiary rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div></label></div>
+                </div>
+            </div>
+        </div>
+        <!-- Integrations & Sales Tab -->
+        <div id="integrations-tab-content" class="admin-tab-content hidden animate-fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card p-6">
+                    <h3 class="font-bold text-lg mb-4">درگاه‌های پرداخت</h3>
+                    <div class="space-y-4">
+                        <div class="input-group">
+                            <input type="text" id="setting-gateway-zarinpal" class="input-field w-full" value="${settings.integrations.paymentGateways.zarinpal}" placeholder=" ">
+                            <label for="setting-gateway-zarinpal" class="input-label">کد مرچنت زرین‌پال</label>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="setting-gateway-idpay" class="input-field w-full" value="${settings.integrations.paymentGateways.idpay}" placeholder=" ">
+                            <label for="setting-gateway-idpay" class="input-label">API Key درگاه IDPay</label>
+                        </div>
+                        <div>
+                            <label for="setting-active-gateway" class="block text-sm font-semibold mb-2">درگاه پرداخت فعال</label>
+                            <select id="setting-active-gateway" class="input-field w-full">
+                                <option value="zarinpal" ${settings.financial.activeGateway === 'zarinpal' ? 'selected' : ''}>زرین‌پال</option>
+                                <option value="idpay" ${settings.financial.activeGateway === 'idpay' ? 'selected' : ''}>IDPay</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-6">
+                    <div class="card p-6">
+                        <h3 class="font-bold text-lg mb-4">سیستم همکاری در فروش</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <label for="setting-affiliate-enabled" class="font-semibold cursor-pointer">فعال‌سازی سیستم</label>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="setting-affiliate-enabled" class="sr-only peer" ${settings.monetization.affiliateSystem.enabled ? 'checked' : ''}>
+                                    <div class="w-11 h-6 bg-bg-tertiary rounded-full peer peer-checked:after:translate-x-full after:content[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <input type="number" id="setting-affiliate-commission" class="input-field w-full" value="${settings.monetization.affiliateSystem.commissionRate}" placeholder=" " min="0" max="100">
+                                <label for="setting-affiliate-commission" class="input-label">نرخ کمیسیون معرف (%)</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card p-6">
+                        <h3 class="font-bold text-lg mb-4">مالی</h3>
+                        <div class="input-group">
+                            <input type="number" id="setting-commission-rate" class="input-field w-full" value="${settings.financial.commissionRate}" placeholder=" " min="0" max="100">
+                            <label for="setting-commission-rate" class="input-label">نرخ کمیسیون سایت (%)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card p-6 mt-6">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="font-bold text-lg">وب‌هوک‌ها (Webhooks)</h3>
+                        <p class="text-text-secondary text-sm">ارسال خودکار رویدادها به سرویس‌های دیگر.</p>
+                    </div>
+                    <button type="button" id="add-webhook-btn" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن وب‌هوک</button>
+                </div>
+                <div id="webhooks-list-container" class="space-y-2">
+                    <!-- Webhooks will be rendered here by JS -->
+                </div>
+            </div>
+        </div>
+        <!-- Content Management Tab -->
+        <div id="content-tab-content" class="admin-tab-content hidden animate-fade-in">
+             <div class="card p-6">
+                <h3 class="font-bold text-lg mb-4">مدیریت محتوای متنی</h3>
+                <div class="space-y-4">
+                     <div class="input-group"><textarea id="setting-content-terms" class="input-field w-full min-h-[150px]" placeholder=" ">${settings.content.terms}</textarea><label for="setting-content-terms" class="input-label">قوانین و مقررات</label></div>
+                     <div class="input-group"><textarea id="setting-content-privacy" class="input-field w-full min-h-[150px]" placeholder=" ">${settings.content.privacyPolicy}</textarea><label for="setting-content-privacy" class="input-label">سیاست حریم خصوصی</label></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 text-right border-t border-border-primary pt-4">
+            <button type="submit" class="primary-button">ذخیره تمام تغییرات</button>
+        </div>
+    </form>
     `;
 };
 
@@ -590,6 +734,98 @@ export function renderAdminDashboard() {
             <div id="view-activity-modal-body" class="p-6 overflow-y-auto"></div>
         </div>
     </div>
+    <div id="webhook-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <form id="webhook-form" class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
+             <div class="flex justify-between items-center p-4 border-b border-border-primary">
+                <h2 id="webhook-modal-title" class="font-bold text-xl">افزودن وب‌هوک</h2>
+                <button type="button" class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="input-group">
+                    <input type="url" id="webhook-url" class="input-field w-full" placeholder=" " required>
+                    <label for="webhook-url" class="input-label">URL مقصد</label>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-sm mb-2">رویدادها (Events)</h4>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <label class="custom-checkbox-label"><input type="checkbox" name="webhook_events" value="user.created" class="custom-checkbox"><span>ثبت نام کاربر جدید</span></label>
+                        <label class="custom-checkbox-label"><input type="checkbox" name="webhook_events" value="plan.purchased" class="custom-checkbox"><span>خرید پلن جدید</span></label>
+                        <label class="custom-checkbox-label"><input type="checkbox" name="webhook_events" value="program.sent" class="custom-checkbox"><span>ارسال برنامه توسط مربی</span></label>
+                        <label class="custom-checkbox-label"><input type="checkbox" name="webhook_events" value="coach.approved" class="custom-checkbox"><span>تایید مربی جدید</span></label>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-border-primary">
+                <button type="submit" class="primary-button w-full">ذخیره وب‌هوک</button>
+            </div>
+        </form>
+    </div>
+    <div id="plan-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <form id="plan-form" class="card w-full max-w-2xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
+             <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
+                <h2 id="plan-modal-title" class="font-bold text-xl">افزودن پلن</h2>
+                <button type="button" class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-6 space-y-4 overflow-y-auto">
+                <div class="input-group"><input type="text" name="planName" class="input-field w-full" placeholder=" " required><label class="input-label">نام پلن</label></div>
+                <div class="input-group"><input type="text" name="description" class="input-field w-full" placeholder=" " required><label class="input-label">توضیحات</label></div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="input-group"><input type="number" name="price" class="input-field w-full" placeholder=" " required><label class="input-label">قیمت (تومان)</label></div>
+                    <div class="input-group"><input type="text" name="emoji" class="input-field w-full" placeholder=" "><label class="input-label">ایموجی</label></div>
+                </div>
+                <div class="input-group"><textarea name="features" class="input-field w-full min-h-[100px]" placeholder=" " required></textarea><label class="input-label">ویژگی‌ها (هر کدام در یک خط)</label></div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">رنگ پلن</label>
+                    <input type="color" name="color" class="p-1 h-10 w-14 block bg-bg-tertiary border border-border-primary cursor-pointer rounded-lg" value="#3b82f6">
+                </div>
+                <div>
+                    <h4 class="font-semibold text-sm mb-2">دسترسی‌ها</h4>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <label class="custom-checkbox-label"><input type="checkbox" name="access" value="workout_plan" class="custom-checkbox"><span>برنامه تمرینی</span></label>
+                        <label class="custom-checkbox-label"><input type="checkbox" name="access" value="nutrition_plan" class="custom-checkbox"><span>برنامه غذایی</span></label>
+                        <label class="custom-checkbox-label"><input type="checkbox" name="access" value="chat" class="custom-checkbox"><span>گفتگو با مربی</span></label>
+                    </div>
+                </div>
+                <label class="custom-checkbox-label"><input type="checkbox" name="recommended" class="custom-checkbox"><span>این پلن پیشنهاد شود؟</span></label>
+            </div>
+            <div class="p-4 border-t border-border-primary flex-shrink-0"><button type="submit" class="primary-button w-full">ذخیره پلن</button></div>
+        </form>
+    </div>
+    <div id="discount-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <form id="discount-form" class="card w-full max-w-md transform scale-95 transition-transform duration-300 relative">
+             <div class="flex justify-between items-center p-4 border-b border-border-primary">
+                <h2 id="discount-modal-title" class="font-bold text-xl">افزودن کد تخفیف</h2>
+                <button type="button" class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="input-group"><input type="text" name="code" class="input-field w-full" placeholder=" " required><label class="input-label">کد تخفیف</label></div>
+                <div>
+                    <p class="text-sm font-semibold mb-2">نوع تخفیف</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="option-card-label"><input type="radio" name="type" value="percentage" class="option-card-input" checked><span class="option-card-content">درصدی</span></label>
+                        <label class="option-card-label"><input type="radio" name="type" value="fixed" class="option-card-input"><span class="option-card-content">مبلغ ثابت</span></label>
+                    </div>
+                </div>
+                <div class="input-group"><input type="number" name="value" class="input-field w-full" placeholder=" " required><label class="input-label">مقدار (درصد یا تومان)</label></div>
+            </div>
+            <div class="p-4 border-t border-border-primary"><button type="submit" class="primary-button w-full">ذخیره کد</button></div>
+        </form>
+    </div>
+     <div id="supplement-cms-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <form id="supplement-cms-form" class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
+             <div class="flex justify-between items-center p-4 border-b border-border-primary">
+                <h2 id="supplement-cms-modal-title" class="font-bold text-xl">افزودن مکمل</h2>
+                <button type="button" class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="input-group"><input type="text" name="name" class="input-field w-full" placeholder=" " required><label class="input-label">نام مکمل</label></div>
+                <div class="input-group"><textarea name="dosageOptions" class="input-field w-full" placeholder=" " required></textarea><label class="input-label">گزینه‌های دوز (با کاما جدا کنید)</label></div>
+                <div class="input-group"><textarea name="timingOptions" class="input-field w-full" placeholder=" " required></textarea><label class="input-label">گزینه‌های زمان مصرف (با کاما جدا کنید)</label></div>
+                <div class="input-group"><textarea name="note" class="input-field w-full" placeholder=" "></textarea><label class="input-label">یادداشت کوتاه (اختیاری)</label></div>
+            </div>
+            <div class="p-4 border-t border-border-primary"><button type="submit" class="primary-button w-full">ذخیره مکمل</button></div>
+        </form>
+    </div>
     `;
 }
 
@@ -615,6 +851,35 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         'settings': 'تنظیمات سایت',
         'activity-log': 'گزارش فعالیت'
     };
+    
+    const renderWebhooksList = () => {
+        const container = document.getElementById('webhooks-list-container');
+        if (!container) return;
+        const settings = getSiteSettings();
+        const webhooks = settings.integrations.webhooks || [];
+        
+        if (webhooks.length === 0) {
+            container.innerHTML = `<p class="text-text-secondary text-center p-4">هیچ وب‌هوکی ثبت نشده است.</p>`;
+            return;
+        }
+
+        container.innerHTML = webhooks.map((hook: any) => `
+            <div class="p-3 bg-bg-tertiary rounded-lg flex items-center justify-between">
+                <div>
+                    <p class="font-mono text-sm font-semibold truncate max-w-xs md:max-w-md">${hook.url}</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        ${hook.events.map((event: string) => `<span class="text-xs bg-bg-secondary px-2 py-0.5 rounded-full">${event}</span>`).join('')}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="secondary-button !p-2" data-action="edit-webhook" data-id="${hook.id}"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
+                    <button class="secondary-button !p-2 text-red-accent" data-action="delete-webhook" data-id="${hook.id}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                </div>
+            </div>
+        `).join('');
+        window.lucide?.createIcons();
+    };
+
 
     const switchTab = (activeTab: HTMLElement) => {
         const page = activeTab.dataset.page;
@@ -699,8 +964,8 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             case 'store':
                 pageContainer.innerHTML = `
                     <div class="space-y-6">
-                        <div class="card p-4">${renderPlansAdminHtml()}</div>
-                        <div class="card p-4">${renderDiscountsAdminHtml()}</div>
+                        <div id="plans-admin-container" class="card p-4">${renderPlansAdminHtml()}</div>
+                        <div id="discounts-admin-container" class="card p-4">${renderDiscountsAdminHtml()}</div>
                     </div>
                 `;
                 break;
@@ -711,10 +976,11 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 pageContainer.innerHTML = renderCommissionsHtml();
                 break;
             case 'cms':
-                pageContainer.innerHTML = `<p>بخش مدیریت محتوا در حال ساخت است.</p>`;
+                renderCMSPage();
                 break;
             case 'settings':
-                pageContainer.innerHTML = `<p>بخش تنظیمات سایت در حال ساخت است.</p>`;
+                pageContainer.innerHTML = renderSettingsPageHTML();
+                renderWebhooksList();
                 break;
             case 'activity-log':
                 const logs = getActivityLog();
@@ -746,46 +1012,50 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
     
     mainContainer.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
+
+        const tabButton = target.closest<HTMLElement>('.admin-tab-button');
+        if (tabButton) {
+            if (tabButton.closest('#admin-settings-page')) {
+                 const tabId = tabButton.dataset.tab;
+                if (!tabId) return;
+    
+                mainContainer.querySelectorAll('#admin-settings-page .admin-tab-button').forEach(btn => btn.classList.remove('active-tab'));
+                tabButton.classList.add('active-tab');
+    
+                mainContainer.querySelectorAll('#admin-settings-page .admin-tab-content').forEach(content => {
+                    content.classList.toggle('hidden', content.id !== `${tabId}-tab-content`);
+                });
+                return;
+            }
+            if(tabButton.closest('#admin-cms-page')) {
+                const tabId = tabButton.dataset.tab;
+                if (!tabId) return;
+
+                mainContainer.querySelectorAll('#admin-cms-page .admin-tab-button').forEach(btn => btn.classList.remove('active-tab'));
+                tabButton.classList.add('active-tab');
+
+                mainContainer.querySelectorAll('#admin-cms-page .cms-tab-content').forEach(content => {
+                    content.classList.toggle('hidden', content.id !== `cms-${tabId}-content`);
+                });
+                return;
+            }
+        }
+
         const actionButton = target.closest<HTMLButtonElement>('[data-action]');
         if (actionButton) {
             const action = actionButton.dataset.action;
             const username = actionButton.dataset.username;
-            const users = getUsers();
+            let users = getUsers();
             const userIndex = users.findIndex((u: any) => u.username === username);
 
             if (userIndex !== -1) {
                 switch(action) {
-                    case 'suspend':
-                        users[userIndex].status = 'suspended';
-                        saveUsers(users);
-                        addActivityLog(`کاربر ${username} مسدود شد.`);
-                        refreshUserTables();
-                        break;
-                    case 'activate':
-                        users[userIndex].status = 'active';
-                        saveUsers(users);
-                        addActivityLog(`کاربر ${username} فعال شد.`);
-                        refreshUserTables();
-                        break;
-                    case 'approve':
-                        users[userIndex].coachStatus = 'verified';
-                        saveUsers(users);
-                        addActivityLog(`مربی ${username} تایید شد.`);
-                        refreshUserTables();
-                        break;
+                    case 'suspend': users[userIndex].status = 'suspended'; saveUsers(users); addActivityLog(`کاربر ${username} مسدود شد.`); refreshUserTables(); break;
+                    case 'activate': users[userIndex].status = 'active'; saveUsers(users); addActivityLog(`کاربر ${username} فعال شد.`); refreshUserTables(); break;
+                    case 'approve': users[userIndex].coachStatus = 'verified'; saveUsers(users); addActivityLog(`مربی ${username} تایید شد.`); refreshUserTables(); break;
                     case 'revoke':
-                    case 'reject':
-                         users[userIndex].coachStatus = 'revoked';
-                         saveUsers(users);
-                         addActivityLog(`همکاری با مربی ${username} لغو شد.`);
-                         refreshUserTables();
-                         break;
-                    case 'reapprove':
-                        users[userIndex].coachStatus = 'verified';
-                        saveUsers(users);
-                        addActivityLog(`مربی ${username} مجددا تایید شد.`);
-                        refreshUserTables();
-                        break;
+                    case 'reject': users[userIndex].coachStatus = 'revoked'; saveUsers(users); addActivityLog(`همکاری با مربی ${username} لغو شد.`); refreshUserTables(); break;
+                    case 'reapprove': users[userIndex].coachStatus = 'verified'; saveUsers(users); addActivityLog(`مربی ${username} مجددا تایید شد.`); refreshUserTables(); break;
                     case 'impersonate':
                         const adminUser = getCurrentUser();
                         if (adminUser) {
@@ -794,10 +1064,38 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                             handleLoginSuccess(username!);
                         }
                         break;
-                     case 'view-activity':
-                        openUserActivityModal(username!);
-                        break;
+                     case 'view-activity': openUserActivityModal(username!); break;
                 }
+            }
+
+            const planId = actionButton.dataset.planId;
+            const discountCode = actionButton.dataset.code;
+
+            switch(action) {
+                case 'add-plan': openPlanModal(); break;
+                case 'edit-plan': if(planId) openPlanModal(planId); break;
+                case 'delete-plan':
+                    if (planId && confirm('آیا از حذف این پلن مطمئن هستید؟')) {
+                        let plans = getStorePlans();
+                        plans = plans.filter(p => p.planId !== planId);
+                        saveStorePlans(plans);
+                        document.getElementById('plans-admin-container')!.innerHTML = renderPlansAdminHtml();
+                        window.lucide.createIcons();
+                        showToast('پلن با موفقیت حذف شد.', 'success');
+                    }
+                    break;
+                case 'add-discount': openDiscountModal(); break;
+                case 'edit-discount': if(discountCode) openDiscountModal(discountCode); break;
+                case 'delete-discount':
+                    if (discountCode && confirm('آیا از حذف این کد تخفیف مطمئن هستید؟')) {
+                        let discounts = getDiscounts();
+                        delete discounts[discountCode];
+                        saveDiscounts(discounts);
+                        document.getElementById('discounts-admin-container')!.innerHTML = renderDiscountsAdminHtml();
+                        window.lucide.createIcons();
+                        showToast('کد تخفیف حذف شد.', 'success');
+                    }
+                    break;
             }
         }
         
@@ -812,6 +1110,225 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             }
             renderAnalyticsPage();
         }
+
+        if (target.closest('#add-webhook-btn')) {
+            const modal = document.getElementById('webhook-modal');
+            const form = document.getElementById('webhook-form') as HTMLFormElement;
+            form.reset();
+            form.removeAttribute('data-editing-id');
+            (modal!.querySelector('#webhook-modal-title') as HTMLElement).textContent = 'افزودن وب‌هوک';
+            openModal(modal);
+        }
+
+        const webhookActionButton = target.closest('[data-action^="edit-webhook"], [data-action^="delete-webhook"]');
+        if (webhookActionButton) {
+            const id = webhookActionButton.getAttribute('data-id');
+            const action = webhookActionButton.getAttribute('data-action');
+            let settings = getSiteSettings();
+            
+            if (action === 'delete-webhook') {
+                if (confirm('آیا از حذف این وب‌هوک مطمئن هستید؟')) {
+                    settings.integrations.webhooks = settings.integrations.webhooks.filter((h: any) => h.id !== id);
+                    saveSiteSettings(settings);
+                    renderWebhooksList();
+                    showToast('وب‌هوک با موفقیت حذف شد.', 'success');
+                }
+            } else if (action === 'edit-webhook') {
+                const hook = settings.integrations.webhooks.find((h: any) => h.id === id);
+                if (hook) {
+                    const modal = document.getElementById('webhook-modal');
+                    const form = document.getElementById('webhook-form') as HTMLFormElement;
+                    form.reset();
+                    form.setAttribute('data-editing-id', hook.id);
+                    (modal!.querySelector('#webhook-modal-title') as HTMLElement).textContent = 'ویرایش وب‌هوک';
+                    (form.querySelector('#webhook-url') as HTMLInputElement).value = hook.url;
+                    form.querySelectorAll<HTMLInputElement>('input[name="webhook_events"]').forEach(checkbox => {
+                        checkbox.checked = hook.events.includes(checkbox.value);
+                    });
+                    openModal(modal);
+                }
+            }
+        }
+        
+        const cmsActionButton = target.closest('[data-cms-action]');
+        if (cmsActionButton) {
+            handleCMSActions(cmsActionButton as HTMLElement);
+        }
+    });
+
+    mainContainer.addEventListener('submit', (e) => {
+        const form = e.target as HTMLFormElement;
+        if (form.id === 'site-settings-form') {
+            e.preventDefault();
+            const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+            button?.classList.add('is-loading');
+
+            const newSettings = {
+                siteName: (form.querySelector('#setting-site-name') as HTMLInputElement).value,
+                logoUrl: (form.querySelector('#setting-logo-url') as HTMLInputElement).value,
+                accentColor: (form.querySelector('#setting-accent-color') as HTMLInputElement).value,
+                maintenanceMode: (form.querySelector('#setting-maintenance-mode') as HTMLInputElement).checked,
+                allowCoachRegistration: (form.querySelector('#setting-allow-coach-reg') as HTMLInputElement).checked,
+                socialMedia: {
+                    instagram: (form.querySelector('#setting-social-instagram') as HTMLInputElement).value,
+                    telegram: (form.querySelector('#setting-social-telegram') as HTMLInputElement).value,
+                    youtube: (form.querySelector('#setting-social-youtube') as HTMLInputElement).value,
+                },
+                 contactInfo: {
+                    email: (form.querySelector('#setting-contact-email') as HTMLInputElement).value,
+                    phone: (form.querySelector('#setting-contact-phone') as HTMLInputElement).value,
+                    address: (form.querySelector('#setting-contact-address') as HTMLInputElement).value,
+                },
+                financial: {
+                    commissionRate: parseInt((form.querySelector('#setting-commission-rate') as HTMLInputElement).value, 10) || 0,
+                    activeGateway: (form.querySelector('#setting-active-gateway') as HTMLSelectElement).value,
+                },
+                content: {
+                    terms: (form.querySelector('#setting-content-terms') as HTMLTextAreaElement).value,
+                    privacyPolicy: (form.querySelector('#setting-content-privacy') as HTMLTextAreaElement).value,
+                },
+                integrations: {
+                    ...getSiteSettings().integrations, // Preserve webhooks
+                    paymentGateways: {
+                        zarinpal: (form.querySelector('#setting-gateway-zarinpal') as HTMLInputElement).value,
+                        idpay: (form.querySelector('#setting-gateway-idpay') as HTMLInputElement).value,
+                    },
+                },
+                monetization: {
+                    affiliateSystem: {
+                        enabled: (form.querySelector('#setting-affiliate-enabled') as HTMLInputElement).checked,
+                        commissionRate: parseInt((form.querySelector('#setting-affiliate-commission') as HTMLInputElement).value, 10) || 0,
+                    }
+                }
+            };
+
+            saveSiteSettings(newSettings);
+            addActivityLog('تنظیمات سایت به‌روزرسانی شد.');
+            applySiteSettings(newSettings);
+            
+            setTimeout(() => {
+                button?.classList.remove('is-loading');
+                showToast('تنظیمات با موفقیت ذخیره شد.', 'success');
+                if (document.getElementById('admin-commissions-page')?.offsetParent !== null) {
+                    document.getElementById('admin-commissions-page')!.innerHTML = renderCommissionsHtml();
+                }
+            }, 500);
+        }
+
+        if (form.id === 'webhook-form') {
+            e.preventDefault();
+            const url = (form.querySelector('#webhook-url') as HTMLInputElement).value;
+            const events = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="webhook_events"]:checked')).map(cb => cb.value);
+            
+            if (!url || events.length === 0) {
+                showToast('URL و حداقل یک رویداد الزامی است.', 'error');
+                return;
+            }
+
+            let settings = getSiteSettings();
+            const editingId = form.getAttribute('data-editing-id');
+
+            if (editingId) {
+                const hookIndex = settings.integrations.webhooks.findIndex((h: any) => h.id === editingId);
+                if (hookIndex > -1) {
+                    settings.integrations.webhooks[hookIndex] = { ...settings.integrations.webhooks[hookIndex], url, events };
+                }
+            } else {
+                const newHook = { id: `wh_${Date.now()}`, url, events };
+                settings.integrations.webhooks.push(newHook);
+            }
+
+            saveSiteSettings(settings);
+            renderWebhooksList();
+            showToast('وب‌هوک با موفقیت ذخیره شد.', 'success');
+            closeModal(document.getElementById('webhook-modal'));
+        }
+        
+        if (form.id === 'plan-form') {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const planId = form.getAttribute('data-editing-id') || `plan_${Date.now()}`;
+            
+            const newPlan = {
+                planId,
+                planName: formData.get('planName') as string,
+                description: formData.get('description') as string,
+                price: parseInt(formData.get('price') as string, 10),
+                features: (formData.get('features') as string).split('\n').filter(f => f.trim()),
+                emoji: formData.get('emoji') as string,
+                color: formData.get('color') as string,
+                recommended: formData.get('recommended') === 'on',
+                access: formData.getAll('access') as string[]
+            };
+
+            let plans = getStorePlans();
+            if (form.getAttribute('data-editing-id')) {
+                const index = plans.findIndex(p => p.planId === planId);
+                if (index > -1) plans[index] = newPlan;
+            } else {
+                plans.push(newPlan);
+            }
+            saveStorePlans(plans);
+            document.getElementById('plans-admin-container')!.innerHTML = renderPlansAdminHtml();
+            window.lucide.createIcons();
+            showToast('پلن با موفقیت ذخیره شد.', 'success');
+            closeModal(document.getElementById('plan-modal'));
+        }
+        
+        if (form.id === 'discount-form') {
+             e.preventDefault();
+            const formData = new FormData(form);
+            const code = (formData.get('code') as string).toUpperCase();
+            
+            const newDiscount = {
+                type: formData.get('type') as string,
+                value: parseInt(formData.get('value') as string, 10),
+            };
+
+            let discounts = getDiscounts();
+            discounts[code] = newDiscount;
+            
+            saveDiscounts(discounts);
+            document.getElementById('discounts-admin-container')!.innerHTML = renderDiscountsAdminHtml();
+            window.lucide.createIcons();
+            showToast('کد تخفیف با موفقیت ذخیره شد.', 'success');
+            closeModal(document.getElementById('discount-modal'));
+        }
+        if (form.id === 'supplement-cms-form') {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const category = form.dataset.category!;
+            const originalName = form.dataset.originalName;
+            
+            const newSupp = {
+                name: formData.get('name') as string,
+                dosageOptions: (formData.get('dosageOptions') as string).split(',').map(s => s.trim()).filter(Boolean),
+                timingOptions: (formData.get('timingOptions') as string).split(',').map(s => s.trim()).filter(Boolean),
+                note: formData.get('note') as string,
+            };
+
+            if (!newSupp.name || newSupp.dosageOptions.length === 0 || newSupp.timingOptions.length === 0) {
+                showToast("لطفا تمام فیلدهای الزامی را پر کنید.", "error");
+                return;
+            }
+
+            const db = getSupplementsDB();
+            if (!db[category]) db[category] = [];
+
+            if (originalName) { // Editing
+                const index = db[category].findIndex(s => s.name === originalName);
+                if (index > -1) {
+                    db[category][index] = newSupp;
+                }
+            } else { // Adding
+                db[category].push(newSupp);
+            }
+            
+            saveSupplementsDB(db);
+            showToast('مکمل با موفقیت ذخیره شد.', 'success');
+            renderSupplementsCMS();
+            closeModal(document.getElementById('supplement-cms-modal'));
+        }
     });
 
     document.querySelectorAll('.close-modal-btn').forEach(btn => {
@@ -819,4 +1336,280 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             closeModal(btn.closest('.modal') as HTMLElement);
         });
     });
+
+    const openPlanModal = (planId: string | null = null) => {
+        const modal = document.getElementById('plan-modal');
+        const form = document.getElementById('plan-form') as HTMLFormElement;
+        const title = document.getElementById('plan-modal-title');
+        if (!modal || !form || !title) return;
+
+        form.reset();
+        form.removeAttribute('data-editing-id');
+        (form.elements.namedItem('color') as HTMLInputElement).value = '#3b82f6';
+        form.querySelectorAll<HTMLInputElement>('input[name="access"]').forEach(cb => cb.checked = false);
+
+        if (planId) {
+            const plan = getStorePlans().find(p => p.planId === planId);
+            if (plan) {
+                title.textContent = 'ویرایش پلن';
+                form.setAttribute('data-editing-id', planId);
+                (form.elements.namedItem('planName') as HTMLInputElement).value = plan.planName;
+                (form.elements.namedItem('description') as HTMLInputElement).value = plan.description;
+                // Fix: Convert number to string for input value
+                (form.elements.namedItem('price') as HTMLInputElement).value = String(plan.price);
+                (form.elements.namedItem('features') as HTMLTextAreaElement).value = plan.features.join('\n');
+                (form.elements.namedItem('emoji') as HTMLInputElement).value = plan.emoji;
+                (form.elements.namedItem('color') as HTMLInputElement).value = plan.color;
+                (form.elements.namedItem('recommended') as HTMLInputElement).checked = plan.recommended;
+                plan.access.forEach((acc: string) => {
+                    const cb = form.querySelector<HTMLInputElement>(`input[name="access"][value="${acc}"]`);
+                    if (cb) cb.checked = true;
+                });
+            }
+        } else {
+            title.textContent = 'افزودن پلن';
+        }
+        openModal(modal);
+    };
+
+    const openDiscountModal = (code: string | null = null) => {
+        const modal = document.getElementById('discount-modal');
+        const form = document.getElementById('discount-form') as HTMLFormElement;
+        const title = document.getElementById('discount-modal-title');
+        if (!modal || !form || !title) return;
+
+        form.reset();
+        const codeInput = form.elements.namedItem('code') as HTMLInputElement;
+        codeInput.readOnly = false;
+
+        if (code) {
+            const discount = getDiscounts()[code];
+            if (discount) {
+                title.textContent = 'ویرایش کد تخفیف';
+                codeInput.value = code;
+                codeInput.readOnly = true;
+                (form.querySelector(`input[name="type"][value="${discount.type}"]`) as HTMLInputElement).checked = true;
+                // Fix: Convert number to string for input value
+                (form.elements.namedItem('value') as HTMLInputElement).value = String(discount.value);
+            }
+        } else {
+            title.textContent = 'افزودن کد تخفیف';
+        }
+        openModal(modal);
+    };
 }
+
+
+// --- CMS Specific Functions ---
+const renderCMSPage = () => {
+    const pageContainer = document.getElementById('admin-cms-page');
+    if (!pageContainer) return;
+    pageContainer.innerHTML = `
+        <div class="flex items-center gap-2 border-b border-border-primary mb-6 flex-wrap">
+            <button class="cms-tab-button admin-tab-button active-tab" data-tab="exercises">تمرینات</button>
+            <button class="cms-tab-button admin-tab-button" data-tab="supplements">مکمل‌ها</button>
+        </div>
+        <div id="cms-exercises-content" class="cms-tab-content animate-fade-in"></div>
+        <div id="cms-supplements-content" class="cms-tab-content animate-fade-in hidden"></div>
+    `;
+    renderExercisesCMS();
+    renderSupplementsCMS();
+    window.lucide?.createIcons();
+};
+
+const renderExercisesCMS = () => {
+    const container = document.getElementById('cms-exercises-content');
+    if (!container) return;
+    const db = getExercisesDB();
+    const sortedGroups = Object.keys(db).sort((a,b) => a.localeCompare(b, 'fa'));
+
+    container.innerHTML = `
+        <div class="card p-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg">پایگاه داده تمرینات</h3>
+                <button class="primary-button flex items-center gap-2" data-cms-action="add-muscle-group"><i data-lucide="plus"></i>افزودن گروه عضلانی</button>
+            </div>
+            <div class="space-y-3">
+                ${sortedGroups.map(group => `
+                    <details class="bg-bg-tertiary rounded-lg">
+                        <summary class="p-3 font-semibold cursor-pointer flex justify-between items-center">
+                            <span>${group}</span>
+                            <div class="flex items-center gap-2">
+                                <button class="secondary-button !py-1 !px-2 !text-xs" data-cms-action="add-exercise" data-group="${group}">افزودن حرکت</button>
+                                <button class="secondary-button !py-1 !px-2 !text-xs !text-red-500" data-cms-action="delete-muscle-group" data-group="${group}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                                <i data-lucide="chevron-down" class="details-arrow transition-transform"></i>
+                            </div>
+                        </summary>
+                        <div class="p-4 border-t border-border-primary bg-bg-secondary rounded-b-lg">
+                            <ul class="space-y-2">
+                                ${db[group].map(ex => `
+                                    <li class="flex justify-between items-center p-2 rounded-md hover:bg-bg-tertiary">
+                                        <span>${ex}</span>
+                                        <div class="flex items-center gap-2">
+                                            <button class="secondary-button !p-1.5" data-cms-action="edit-exercise" data-group="${group}" data-exercise="${ex}"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
+                                            <button class="secondary-button !p-1.5 !text-red-500" data-cms-action="delete-exercise" data-group="${group}" data-exercise="${ex}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </details>
+                `).join('')}
+            </div>
+        </div>
+    `;
+};
+
+const renderSupplementsCMS = () => {
+    const container = document.getElementById('cms-supplements-content');
+    if (!container) return;
+    const db = getSupplementsDB();
+    const sortedCategories = Object.keys(db).sort((a,b) => a.localeCompare(b, 'fa'));
+
+     container.innerHTML = `
+        <div class="card p-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg">پایگاه داده مکمل‌ها</h3>
+                <button class="primary-button flex items-center gap-2" data-cms-action="add-supplement-category"><i data-lucide="plus"></i>افزودن دسته</button>
+            </div>
+            <div class="space-y-3">
+                 ${sortedCategories.map(cat => `
+                    <details class="bg-bg-tertiary rounded-lg">
+                        <summary class="p-3 font-semibold cursor-pointer flex justify-between items-center">
+                            <span>${cat}</span>
+                            <div class="flex items-center gap-2">
+                                <button class="secondary-button !py-1 !px-2 !text-xs" data-cms-action="add-supplement" data-category="${cat}">افزودن مکمل</button>
+                                <button class="secondary-button !py-1 !px-2 !text-xs !text-red-500" data-cms-action="delete-supplement-category" data-category="${cat}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                                <i data-lucide="chevron-down" class="details-arrow transition-transform"></i>
+                            </div>
+                        </summary>
+                        <div class="p-4 border-t border-border-primary bg-bg-secondary rounded-b-lg">
+                            <ul class="space-y-2">
+                                ${db[cat].map(sup => `
+                                    <li class="flex justify-between items-center p-2 rounded-md hover:bg-bg-tertiary">
+                                        <div>
+                                            <p>${sup.name}</p>
+                                            <p class="text-xs text-text-secondary">${sup.note}</p>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <button class="secondary-button !p-1.5" data-cms-action="edit-supplement" data-category="${cat}" data-supplement-name="${sup.name}"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
+                                            <button class="secondary-button !p-1.5 !text-red-500" data-cms-action="delete-supplement" data-category="${cat}" data-supplement-name="${sup.name}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </details>
+                `).join('')}
+            </div>
+        </div>
+    `;
+};
+
+const openSupplementModal = (category: string, supplementName: string | null = null) => {
+    const modal = document.getElementById('supplement-cms-modal');
+    const form = document.getElementById('supplement-cms-form') as HTMLFormElement;
+    const title = document.getElementById('supplement-cms-modal-title');
+    if (!modal || !form || !title) return;
+    
+    form.reset();
+    form.dataset.category = category;
+    form.removeAttribute('data-original-name');
+
+    if (supplementName) { // Editing
+        title.textContent = `ویرایش مکمل: ${supplementName}`;
+        const db = getSupplementsDB();
+        const supplement = db[category]?.find(s => s.name === supplementName);
+        if (supplement) {
+            form.dataset.originalName = supplementName;
+            (form.elements.namedItem('name') as HTMLInputElement).value = supplement.name;
+            (form.elements.namedItem('dosageOptions') as HTMLTextAreaElement).value = supplement.dosageOptions.join(', ');
+            (form.elements.namedItem('timingOptions') as HTMLTextAreaElement).value = supplement.timingOptions.join(', ');
+            (form.elements.namedItem('note') as HTMLTextAreaElement).value = supplement.note;
+        }
+    } else { // Adding
+        title.textContent = `افزودن مکمل به دسته "${category}"`;
+    }
+    openModal(modal);
+};
+
+const handleCMSActions = (target: HTMLElement) => {
+    const action = target.dataset.cmsAction;
+    const group = target.dataset.group;
+    const exercise = target.dataset.exercise;
+    const category = target.dataset.category;
+    const supplementName = target.dataset.supplementName;
+
+    // Exercises
+    if (action === 'add-muscle-group') {
+        const newGroup = prompt("نام گروه عضلانی جدید را وارد کنید:");
+        if (newGroup) {
+            const db = getExercisesDB();
+            if (!db[newGroup]) {
+                db[newGroup] = [];
+                saveExercisesDB(db);
+                renderExercisesCMS();
+            } else {
+                showToast("این گروه قبلا وجود داشته است.", "error");
+            }
+        }
+    } else if (action === 'delete-muscle-group' && group && confirm(`آیا از حذف گروه "${group}" و تمام حرکات آن مطمئن هستید؟`)) {
+        const db = getExercisesDB();
+        delete db[group];
+        saveExercisesDB(db);
+        renderExercisesCMS();
+    } else if (action === 'add-exercise' && group) {
+        const newExercise = prompt(`نام حرکت جدید برای گروه "${group}" را وارد کنید:`);
+        if (newExercise) {
+            const db = getExercisesDB();
+            db[group].push(newExercise);
+            saveExercisesDB(db);
+            renderExercisesCMS();
+        }
+    } else if (action === 'edit-exercise' && group && exercise) {
+        const updatedExercise = prompt(`نام جدید برای "${exercise}" را وارد کنید:`, exercise);
+        if (updatedExercise && updatedExercise !== exercise) {
+            const db = getExercisesDB();
+            const index = db[group].indexOf(exercise);
+            if (index > -1) {
+                db[group][index] = updatedExercise;
+                saveExercisesDB(db);
+                renderExercisesCMS();
+            }
+        }
+    } else if (action === 'delete-exercise' && group && exercise && confirm(`آیا از حذف حرکت "${exercise}" مطمئن هستید؟`)) {
+        const db = getExercisesDB();
+        db[group] = db[group].filter(ex => ex !== exercise);
+        saveExercisesDB(db);
+        renderExercisesCMS();
+    }
+
+    // Supplements
+    else if (action === 'add-supplement-category') {
+        const newCategory = prompt("نام دسته جدید مکمل را وارد کنید:");
+        if (newCategory) {
+            const db = getSupplementsDB();
+            if (!db[newCategory]) {
+                db[newCategory] = [];
+                saveSupplementsDB(db);
+                renderSupplementsCMS();
+            } else {
+                showToast("این دسته قبلا وجود داشته است.", "error");
+            }
+        }
+    } else if (action === 'delete-supplement-category' && category && confirm(`آیا از حذف دسته "${category}" و تمام مکمل‌های آن مطمئن هستید؟`)) {
+        const db = getSupplementsDB();
+        delete db[category];
+        saveSupplementsDB(db);
+        renderSupplementsCMS();
+    } else if (action === 'add-supplement' && category) {
+        openSupplementModal(category);
+    } else if (action === 'edit-supplement' && category && supplementName) {
+        openSupplementModal(category, supplementName);
+    } else if (action === 'delete-supplement' && category && supplementName && confirm(`آیا از حذف مکمل "${supplementName}" مطمئن هستید؟`)) {
+        const db = getSupplementsDB();
+        db[category] = db[category].filter(sup => sup.name !== supplementName);
+        saveSupplementsDB(db);
+        renderSupplementsCMS();
+    }
+};
