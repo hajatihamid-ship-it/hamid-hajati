@@ -1,5 +1,5 @@
 import { openModal, closeModal, updateSliderTrack } from '../utils/dom';
-import { getStorePlans, getUsers, getUserData, getSiteSettings } from '../services/storage';
+import { getStorePlans, getUsers, getUserData, getSiteSettings, getMagazineArticles } from '../services/storage';
 import { formatPrice } from '../utils/helpers';
 import { calculateBodyMetrics } from '../utils/calculations';
 import { getCurrentUser } from '../state';
@@ -364,6 +364,35 @@ const getCoachesShowcaseHTML = () => {
     `;
 };
 
+const getMagazineHTML = () => {
+    const articles = getMagazineArticles().sort((a,b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime());
+
+    if (articles.length === 0) {
+        return `<div class="text-center py-12 text-text-secondary">
+            <i data-lucide="newspaper" class="w-12 h-12 mx-auto mb-4"></i>
+            <p>محتوای مجله به زودی در اینجا قرار خواهد گرفت.</p>
+        </div>`;
+    }
+
+    return `
+        <div class="space-y-8">
+            ${articles.map((article, index) => `
+                <div class="grid md:grid-cols-3 gap-6 items-center animate-fade-in-up" style="animation-delay: ${index * 150}ms;">
+                    <div class="md:col-span-1">
+                        <img src="${article.imageUrl || 'https://via.placeholder.com/400x300'}" alt="${article.title}" class="rounded-lg w-full h-48 object-cover">
+                    </div>
+                    <div class="md:col-span-2">
+                        <p class="text-sm font-semibold text-accent">${article.category}</p>
+                        <h3 class="font-bold text-xl my-2 text-text-primary">${article.title}</h3>
+                        <p class="text-sm text-text-secondary line-clamp-3">${article.content}</p>
+                        <a href="#" class="text-accent font-semibold text-sm mt-3 inline-block">ادامه مطلب...</a>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+};
+
 const openInfoModal = (section: string) => {
     const modal = document.getElementById('info-modal');
     const titleEl = document.getElementById('info-modal-title');
@@ -374,7 +403,8 @@ const openInfoModal = (section: string) => {
         features: { title: 'ویژگی‌ها', content: getFeaturesHTML() },
         pricing: { title: 'تعرفه‌ها', content: getPricingHTML() },
         contact: { title: 'تماس با ما', content: getContactHTML() },
-        coaches: { title: 'مربیان', content: getCoachesHTML() }
+        coaches: { title: 'مربیان', content: getCoachesHTML() },
+        magazine: { title: 'مجله FitGymPro', content: getMagazineHTML() }
     };
 
     const sectionData = contentMap[section];
@@ -640,6 +670,7 @@ export function renderLandingPage() {
                         <button data-section="features" class="landing-nav-link">ویژگی‌ها</button>
                         <button data-section="pricing" class="landing-nav-link">تعرفه‌ها</button>
                         <button data-section="coaches" class="landing-nav-link">مربیان</button>
+                        <button data-section="magazine" class="landing-nav-link">مجله FitGymPro</button>
                         <button data-section="contact" class="landing-nav-link">تماس با ما</button>
                     </div>
                     <div>

@@ -220,6 +220,26 @@ export const saveSupplementsDB = (db: Record<string, any[]>) => {
     }
 };
 
+// --- MAGAZINE ---
+export const getMagazineArticles = (): any[] => {
+    try {
+        return JSON.parse(localStorage.getItem("fitgympro_magazine_articles") || "[]");
+    } catch (e) {
+        console.error("Error parsing magazine articles from localStorage:", e);
+        return [];
+    }
+};
+
+export const saveMagazineArticles = (articles: any[]) => {
+    try {
+        localStorage.setItem("fitgympro_magazine_articles", JSON.stringify(articles));
+    } catch (t) {
+        console.error("Error saving magazine articles to localStorage:", t);
+        showToast("خطا در ذخیره‌سازی مقالات", "error");
+    }
+};
+
+
 export const seedCMSData = () => {
     if (!localStorage.getItem("fitgympro_exercises")) {
         saveExercisesDB(initialExerciseDB);
@@ -228,6 +248,28 @@ export const seedCMSData = () => {
     if (!localStorage.getItem("fitgympro_supplements")) {
         saveSupplementsDB(initialSupplementsDB);
         addActivityLog("Initial supplement database was seeded.");
+    }
+    if (getMagazineArticles().length === 0) {
+        const seedArticles = [
+            {
+                id: `article_${Date.now()}_1`,
+                title: "۵ نکته کلیدی برای افزایش حجم عضلانی",
+                category: "تغذیه و عضله‌سازی",
+                imageUrl: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop",
+                content: "برای عضله‌سازی موثر، باید روی چند اصل کلیدی تمرکز کنید. اول، دریافت پروتئین کافی. پروتئین واحد سازنده عضلات است و باید روزانه حدود ۱.۶ تا ۲.۲ گرم به ازای هر کیلوگرم وزن بدن مصرف کنید. دوم، مازاد کالری کنترل شده. برای ساخت عضله به انرژی نیاز دارید، اما مازاد بیش از حد منجر به افزایش چربی می‌شود. حدود ۳۰۰-۵۰۰ کالری بیشتر از کالری نگهداری روزانه خود هدف‌گذاری کنید...",
+                publishDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+            },
+            {
+                id: `article_${Date.now()}_2`,
+                title: "چگونه بهترین برنامه کاردیو را برای چربی‌سوزی انتخاب کنیم؟",
+                category: "هوازی و کاهش وزن",
+                imageUrl: "https://images.unsplash.com/photo-1549060279-7e168fcee0c2?q=80&w=2070&auto=format&fit=crop",
+                content: "تمرینات هوازی یا کاردیو بخش مهمی از هر برنامه کاهش وزن هستند. اما کدام نوع بهتر است؟ تمرینات اینتروال با شدت بالا (HIIT) مانند دویدن‌های سرعتی کوتاه، در زمان کمتر کالری بیشتری می‌سوزانند و متابولیسم را تا ساعت‌ها بالا نگه می‌دارند. از طرف دیگر، تمرینات با شدت یکنواخت و طولانی (LISS) مانند پیاده‌روی سریع یا دوچرخه‌سواری، فشار کمتری به مفاصل وارد کرده و برای ریکاوری بهتر هستند. بهترین رویکرد، ترکیبی از هر دو است.",
+                publishDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+            }
+        ];
+        saveMagazineArticles(seedArticles);
+        addActivityLog("Initial magazine articles were seeded.");
     }
 };
 

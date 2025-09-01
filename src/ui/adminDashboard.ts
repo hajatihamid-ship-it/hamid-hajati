@@ -1,5 +1,7 @@
 
-import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans, getExercisesDB, saveExercisesDB, getSupplementsDB, saveSupplementsDB, saveDiscounts, getSiteSettings, saveSiteSettings } from '../services/storage';
+
+
+import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans, getExercisesDB, saveExercisesDB, getSupplementsDB, saveSupplementsDB, saveDiscounts, getSiteSettings, saveSiteSettings, getMagazineArticles, saveMagazineArticles } from '../services/storage';
 import { formatPrice, timeAgo } from '../utils/helpers';
 import { openModal, closeModal, showToast, applySiteSettings } from '../utils/dom';
 import { getCurrentUser } from '../state';
@@ -641,6 +643,71 @@ const renderSettingsPageHTML = () => {
     `;
 };
 
+// FIX: Define openArticleModal to handle adding/editing magazine articles.
+const openArticleModal = (articleId: string | null = null) => {
+    const modal = document.getElementById('magazine-article-modal');
+    const form = document.getElementById('magazine-article-form') as HTMLFormElement;
+    const title = document.getElementById('magazine-article-modal-title');
+    if (!modal || !form || !title) return;
+
+    form.reset();
+    form.removeAttribute('data-editing-id');
+
+    if (articleId) {
+        const articles = getMagazineArticles();
+        const article = articles.find(a => a.id === articleId);
+        if (article) {
+            title.textContent = 'ویرایش مقاله';
+            form.setAttribute('data-editing-id', articleId);
+            (form.elements.namedItem('title') as HTMLInputElement).value = article.title;
+            (form.elements.namedItem('category') as HTMLInputElement).value = article.category;
+            (form.elements.namedItem('imageUrl') as HTMLInputElement).value = article.imageUrl;
+            (form.elements.namedItem('content') as HTMLTextAreaElement).value = article.content;
+        }
+    } else {
+        title.textContent = 'افزودن مقاله جدید';
+    }
+    openModal(modal);
+};
+
+// FIX: Define renderMagazineAdminPage to display the magazine management UI.
+const renderMagazineAdminPage = () => {
+    const pageContainer = document.getElementById('admin-magazine-page');
+    if (!pageContainer) return;
+
+    const articles = getMagazineArticles();
+
+    pageContainer.innerHTML = `
+        <div class="card p-4">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="font-bold text-lg">مدیریت مجله</h3>
+                    <p class="text-text-secondary text-sm">مقالات آموزشی و خبری را برای کاربران منتشر کنید.</p>
+                </div>
+                <button data-action="add-article" class="primary-button flex items-center gap-2"><i data-lucide="plus"></i> افزودن مقاله</button>
+            </div>
+            <div id="admin-articles-list" class="space-y-3">
+                ${articles.length > 0 ? articles.map((article: any) => `
+                    <div class="p-4 border border-border-primary rounded-lg flex items-center justify-between gap-4">
+                       <div class="flex-shrink-0">
+                            <img src="${article.imageUrl || 'https://via.placeholder.com/100x80'}" alt="${article.title}" class="w-24 h-20 object-cover rounded-md">
+                       </div>
+                       <div class="flex-grow">
+                         <p class="font-bold">${article.title}</p>
+                         <p class="text-sm text-text-secondary">${article.category} - منتشر شده در: ${new Date(article.publishDate).toLocaleDateString('fa-IR')}</p>
+                       </div>
+                       <div class="flex items-center gap-2 flex-shrink-0">
+                            <button class="secondary-button !p-2" data-action="edit-article" data-id="${article.id}"><i data-lucide="edit-3" class="w-4 h-4 pointer-events-none"></i></button>
+                            <button class="secondary-button !p-2 text-red-accent" data-action="delete-article" data-id="${article.id}"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button>
+                       </div>
+                    </div>
+                `).join('') : '<p class="text-text-secondary text-center p-8">هیچ مقاله‌ای ثبت نشده است.</p>'}
+            </div>
+        </div>
+    `;
+    window.lucide?.createIcons();
+};
+
 export function renderAdminDashboard() {
     const name = "Admin";
     const navItems = [
@@ -651,6 +718,7 @@ export function renderAdminDashboard() {
         { page: 'analytics', icon: 'activity', label: 'آنالیتیکس' },
         { page: 'commissions', icon: 'dollar-sign', label: 'کمیسیون‌ها' },
         { page: 'cms', icon: 'database', label: 'مدیریت محتوا' },
+        { page: 'magazine', icon: 'book-open-text', label: 'مجله' },
         { page: 'settings', icon: 'settings', label: 'تنظیمات سایت' },
         { page: 'activity-log', icon: 'history', label: 'گزارش فعالیت' }
     ];
@@ -710,6 +778,7 @@ export function renderAdminDashboard() {
             <div id="admin-analytics-page" class="page hidden"></div>
             <div id="admin-commissions-page" class="page hidden"></div>
             <div id="admin-cms-page" class="page hidden"></div>
+            <div id="admin-magazine-page" class="page hidden"></div>
             <div id="admin-settings-page" class="page hidden"></div>
             <div id="admin-activity-log-page" class="page hidden"></div>
         </main>
@@ -826,6 +895,23 @@ export function renderAdminDashboard() {
             <div class="p-4 border-t border-border-primary"><button type="submit" class="primary-button w-full">ذخیره مکمل</button></div>
         </form>
     </div>
+    <div id="magazine-article-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <form id="magazine-article-form" class="card w-full max-w-2xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
+             <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
+                <h2 id="magazine-article-modal-title" class="font-bold text-xl">افزودن مقاله جدید</h2>
+                <button type="button" class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-6 space-y-4 overflow-y-auto">
+                <div class="input-group"><input type="text" name="title" class="input-field w-full" placeholder=" " required><label class="input-label">عنوان مقاله</label></div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="input-group"><input type="text" name="category" class="input-field w-full" placeholder=" " required><label class="input-label">دسته بندی</label></div>
+                    <div class="input-group"><input type="url" name="imageUrl" class="input-field w-full" placeholder=" "><label class="input-label">URL تصویر</label></div>
+                </div>
+                <div class="input-group"><textarea name="content" class="input-field w-full min-h-[200px]" placeholder=" " required></textarea><label class="input-label">محتوای مقاله</label></div>
+            </div>
+            <div class="p-4 border-t border-border-primary flex-shrink-0"><button type="submit" class="primary-button w-full">ذخیره مقاله</button></div>
+        </form>
+    </div>
     `;
 }
 
@@ -848,6 +934,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         'analytics': 'آنالیتیکس',
         'commissions': 'کمیسیون‌ها',
         'cms': 'مدیریت محتوا',
+        'magazine': 'مدیریت مجله',
         'settings': 'تنظیمات سایت',
         'activity-log': 'گزارش فعالیت'
     };
@@ -978,6 +1065,9 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             case 'cms':
                 renderCMSPage();
                 break;
+            case 'magazine':
+                renderMagazineAdminPage();
+                break;
             case 'settings':
                 pageContainer.innerHTML = renderSettingsPageHTML();
                 renderWebhooksList();
@@ -1070,6 +1160,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
 
             const planId = actionButton.dataset.planId;
             const discountCode = actionButton.dataset.code;
+            const articleId = actionButton.dataset.id;
 
             switch(action) {
                 case 'add-plan': openPlanModal(); break;
@@ -1094,6 +1185,17 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                         document.getElementById('discounts-admin-container')!.innerHTML = renderDiscountsAdminHtml();
                         window.lucide.createIcons();
                         showToast('کد تخفیف حذف شد.', 'success');
+                    }
+                    break;
+                case 'add-article': openArticleModal(); break;
+                case 'edit-article': if (articleId) openArticleModal(articleId); break;
+                case 'delete-article':
+                    if (articleId && confirm('آیا از حذف این مقاله مطمئن هستید؟')) {
+                        let articles = getMagazineArticles();
+                        articles = articles.filter(a => a.id !== articleId);
+                        saveMagazineArticles(articles);
+                        renderMagazineAdminPage();
+                        showToast('مقاله با موفقیت حذف شد.', 'success');
                     }
                     break;
             }
@@ -1328,6 +1430,33 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             showToast('مکمل با موفقیت ذخیره شد.', 'success');
             renderSupplementsCMS();
             closeModal(document.getElementById('supplement-cms-modal'));
+        }
+        if (form.id === 'magazine-article-form') {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const editingId = form.getAttribute('data-editing-id');
+            const articleData = {
+                id: editingId || `article_${Date.now()}`,
+                title: formData.get('title') as string,
+                category: formData.get('category') as string,
+                imageUrl: formData.get('imageUrl') as string,
+                content: formData.get('content') as string,
+                publishDate: new Date().toISOString()
+            };
+            
+            let articles = getMagazineArticles();
+            if (editingId) {
+                const index = articles.findIndex(a => a.id === editingId);
+                if (index > -1) {
+                    articles[index] = { ...articles[index], ...articleData };
+                }
+            } else {
+                articles.push(articleData);
+            }
+            saveMagazineArticles(articles);
+            renderMagazineAdminPage();
+            showToast('مقاله با موفقیت ذخیره شد.', 'success');
+            closeModal(document.getElementById('magazine-article-modal'));
         }
     });
 
