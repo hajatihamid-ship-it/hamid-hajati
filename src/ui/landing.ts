@@ -694,7 +694,7 @@ export function renderLandingPage() {
                     </div>
                 </div>
             </main>
-             <div class="bg-bg-primary/80 backdrop-blur-xl -webkit-backdrop-filter: blur(20px); pb-8">
+             <div class="bg-bg-primary/80 pb-8">
                 <div class="container mx-auto px-4">
                     ${getCalculatorHTML()}
                     ${getCoachesShowcaseHTML()}
