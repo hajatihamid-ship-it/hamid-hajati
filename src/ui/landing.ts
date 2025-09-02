@@ -533,6 +533,9 @@ export function initLandingPageListeners(onGoToDashboard?: () => void) {
             const bodyfatOutput = calculator.querySelector('.bodyfat-output');
             const idealWeightOutput = calculator.querySelector('.ideal-weight-output');
             const bmiIndicatorBar = calculator.querySelector('#landing-bmi-indicator-bar');
+            
+            const bmiValueParent = bmiOutput?.closest('.value') as HTMLElement | null;
+            const bodyfatValueParent = bodyfatOutput?.closest('.value') as HTMLElement | null;
 
             const clearOutputs = () => {
                 if(tdeeOutput) tdeeOutput.textContent = '–';
@@ -540,6 +543,8 @@ export function initLandingPageListeners(onGoToDashboard?: () => void) {
                 if(bodyfatOutput) bodyfatOutput.textContent = '–';
                 if(idealWeightOutput) idealWeightOutput.textContent = '–';
                 if(bmiIndicatorBar) (bmiIndicatorBar as HTMLElement).style.width = `0%`;
+                if(bmiValueParent) bmiValueParent.style.color = 'var(--accent)';
+                if(bodyfatValueParent) bodyfatValueParent.style.color = 'var(--accent)';
             };
 
             if (metrics) {
@@ -548,26 +553,59 @@ export function initLandingPageListeners(onGoToDashboard?: () => void) {
                 if (bodyfatOutput) bodyfatOutput.textContent = metrics.bodyFat ? `${metrics.bodyFat}%` : '–';
                 if (idealWeightOutput) idealWeightOutput.textContent = metrics.idealWeight || '–';
 
-                if (bmiIndicatorBar && metrics.bmi) {
+                if (bmiIndicatorBar && bmiValueParent && metrics.bmi) {
                     const bmi = metrics.bmi;
                     const minBmi = 15;
                     const maxBmi = 40;
                     let percentage = (bmi - minBmi) / (maxBmi - minBmi) * 100;
                     percentage = Math.max(0, Math.min(100, percentage));
 
-                    let barColor = 'var(--admin-accent-green)'; // Normal
-                    if (bmi < 18.5) barColor = 'var(--admin-accent-blue)'; // Underweight
-                    else if (bmi >= 25 && bmi < 30) barColor = 'var(--admin-accent-yellow)'; // Overweight
-                    else if (bmi >= 30) barColor = 'var(--admin-accent-red)'; // Obese
+                    let color = 'var(--admin-accent-green)'; // Normal
+                    if (bmi < 18.5) color = 'var(--admin-accent-blue)'; // Underweight
+                    else if (bmi >= 25 && bmi < 30) color = 'var(--admin-accent-orange)'; // Overweight
+                    else if (bmi >= 30) color = 'var(--admin-accent-red)'; // Obese
+                    
+                    bmiValueParent.style.color = color;
                     
                     setTimeout(() => {
                         (bmiIndicatorBar as HTMLElement).style.width = `${percentage}%`;
-                        (bmiIndicatorBar as HTMLElement).style.backgroundColor = barColor;
+                        (bmiIndicatorBar as HTMLElement).style.backgroundColor = color;
                     }, 100);
 
-                } else if (bmiIndicatorBar) {
-                     (bmiIndicatorBar as HTMLElement).style.width = '0%';
+                } else {
+                     if (bmiIndicatorBar) (bmiIndicatorBar as HTMLElement).style.width = '0%';
+                     if (bmiValueParent) bmiValueParent.style.color = 'var(--accent)';
                 }
+
+                if (bodyfatValueParent && metrics.bodyFat) {
+                    const genderRadios = calculator.querySelectorAll('input[name="gender"]');
+                    let gender = 'مرد'; // default
+                    for (const radio of Array.from(genderRadios)) {
+                        if ((radio as HTMLInputElement).checked) {
+                            gender = (radio as HTMLInputElement).value;
+                            break;
+                        }
+                    }
+                    
+                    const bf = metrics.bodyFat;
+                    let bfColor = 'var(--admin-accent-green)'; // Default to healthy
+            
+                    if (gender === 'مرد') {
+                        if (bf < 6) bfColor = 'var(--admin-accent-blue)'; // Low
+                        else if (bf <= 17) bfColor = 'var(--admin-accent-green)'; // Healthy/Fit
+                        else if (bf <= 24) bfColor = 'var(--admin-accent-orange)'; // Average/High
+                        else bfColor = 'var(--admin-accent-red)'; // Obese
+                    } else { // زن
+                        if (bf < 14) bfColor = 'var(--admin-accent-blue)'; // Low
+                        else if (bf <= 24) bfColor = 'var(--admin-accent-green)'; // Healthy/Fit
+                        else if (bf <= 31) bfColor = 'var(--admin-accent-orange)'; // Average/High
+                        else bfColor = 'var(--admin-accent-red)'; // Obese
+                    }
+                    bodyfatValueParent.style.color = bfColor;
+                } else if (bodyfatValueParent) {
+                    bodyfatValueParent.style.color = 'var(--accent)';
+                }
+
             } else {
                 clearOutputs();
             }

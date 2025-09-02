@@ -357,17 +357,22 @@
 
         /* Landing Page & Auth Modal */
         .landing-page-container { min-height: 100vh; overflow: hidden; position: relative; }
-        .landing-bg { 
-            position: absolute; 
-            inset: 0; 
-            background-color: #0c101d;
+        .landing-bg {
+            position: absolute;
+            inset: 0;
+            background-image: url('https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center top;
             overflow: hidden;
         }
-        .landing-bg::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(18, 24, 40, 0.4) 0%, rgba(12, 16, 29, 0.95) 80%); }
+        .landing-bg::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(15, 23, 42, 1) 5%, rgba(15, 23, 42, 0.7) 40%, rgba(15, 23, 42, 0.8) 100%);
+        }
         .glass-nav { 
-            background-color: rgba(30, 41, 59, 0.5);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background-color: rgba(15, 23, 42, 0.8);
             border: 1px solid rgba(51, 65, 85, 0.6);
         }
         .hero-cta-btn { position: relative; overflow: hidden; }
@@ -1087,9 +1092,7 @@
         .hero-headline-accent { position: relative; display: inline-block; color: var(--accent); }
         .hero-headline-accent::after { content: ''; position: absolute; left: 0; right: 0; bottom: -5px; height: 4px; background: var(--accent); filter: blur(8px); }
         .calculator-card {
-            background: linear-gradient(145deg, rgba(30, 41, 59, 0.5), rgba(15, 23, 42, 0.5));
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
             border: 1px solid rgba(51, 65, 85, 0.7);
             box-shadow: 0 16px 40px rgba(0,0,0,0.4);
         }
@@ -1105,11 +1108,10 @@
         #landing-bmi-indicator-track { background-color: var(--bg-tertiary); height: 8px; border-radius: 4px; position: relative; overflow: hidden; }
         #landing-bmi-indicator-bar { position: absolute; top: 0; left: 0; height: 100%; border-radius: 4px; transition: width 0.5s ease-out, background-color 0.5s ease-out; }
         #coaches-showcase .coach-card {
-            background: linear-gradient(145deg, rgba(30, 41, 59, 0.3), rgba(15, 23, 42, 0.3));
-            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
             border: 1px solid var(--border-primary);
         }
-        #coaches-showcase .coach-card:hover { background-color: rgba(51, 65, 85, 0.5); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        #coaches-showcase .coach-card:hover { background-color: rgba(51, 65, 85, 0.8); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
         .coach-card .avatar-container { width: 128px; height: 128px; border-radius: 50%; margin: 0 auto; border: 4px solid transparent; background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box, linear-gradient(45deg, var(--accent), var(--admin-accent-blue)) border-box; transition: transform 0.3s ease; }
         .coach-card:hover .avatar-container { transform: scale(1.05); }
         #coaches-showcase .coach-card .coach-name { color: var(--text-primary); }
