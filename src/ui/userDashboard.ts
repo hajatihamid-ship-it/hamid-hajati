@@ -374,18 +374,21 @@ const renderDashboardTab = (currentUser: string, userData: any) => {
     const name = userData.step1?.clientName || currentUser;
     const streak = calculateWorkoutStreak(userData.workoutHistory);
     const totalWorkouts = (userData.workoutHistory || []).length;
-    const lastWeight = (userData.weightHistory && userData.weightHistory.length > 0) ? userData.weightHistory.slice(-1)[0].weight : (userData.step1?.weight || 0);
     
+    const weightHistory = userData.weightHistory || [];
+    const lastWeight = weightHistory.length > 0 ? weightHistory.slice(-1)[0].weight : (userData.step1?.weight || 0);
+    const firstWeight = weightHistory.length > 0 ? weightHistory[0].weight : null;
+    const weightChange = (lastWeight && firstWeight) ? (lastWeight - firstWeight).toFixed(1) : 0;
+
     const workoutsThisWeek = getWorkoutsThisWeek(userData.workoutHistory);
     const weeklyGoal = userData.step1?.trainingDays || 4;
     const weeklyProgress = weeklyGoal > 0 ? Math.min(100, (workoutsThisWeek / weeklyGoal) * 100) : 0;
-
-    const circumference = 2 * Math.PI * 55;
-    const initialDashoffset = circumference;
+    const weeklyRingCircumference = 2 * Math.PI * 28;
+    const weeklyRingOffset = weeklyRingCircumference * (1 - (weeklyProgress / 100));
 
     const todayData = getTodayWorkoutData(userData);
     let todayWorkoutHtml = `
-        <div class="divi-today-workout card p-6 text-center h-full flex flex-col justify-center items-center">
+        <div class="card p-6 text-center h-full flex flex-col justify-center items-center">
             <div class="w-20 h-20 bg-bg-tertiary rounded-full mx-auto flex items-center justify-center mb-4">
                  <i data-lucide="coffee" class="w-10 h-10 text-accent"></i>
             </div>
@@ -395,12 +398,12 @@ const renderDashboardTab = (currentUser: string, userData: any) => {
     `;
     if (todayData && todayData.day.exercises.length > 0) {
         todayWorkoutHtml = `
-             <div class="divi-today-workout card p-6 h-full flex flex-col">
+            <div class="card p-6 h-full flex flex-col">
                 <h3 class="font-bold text-lg mb-4">تمرین امروز: <span class="text-accent">${todayData.day.name.split(':')[1]?.trim() || ''}</span></h3>
                 <div class="p-4 rounded-xl bg-bg-tertiary flex-grow">
                     <ul class="space-y-2 text-sm">
-                    ${todayData.day.exercises.slice(0, 3).map((ex: any) => `<li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-accent"></i> ${ex.name}</li>`).join('')}
-                    ${todayData.day.exercises.length > 3 ? `<li class="text-text-secondary mt-2">+ ${todayData.day.exercises.length - 3} حرکت دیگر...</li>` : ''}
+                    ${todayData.day.exercises.slice(0, 4).map((ex: any) => `<li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-accent"></i> ${ex.name}</li>`).join('')}
+                    ${todayData.day.exercises.length > 4 ? `<li class="text-text-secondary mt-2">+ ${todayData.day.exercises.length - 4} حرکت دیگر...</li>` : ''}
                     </ul>
                 </div>
                 <button class="primary-button w-full mt-6" data-action="log-workout" data-day-index="${todayData.dayIndex}">
@@ -411,92 +414,129 @@ const renderDashboardTab = (currentUser: string, userData: any) => {
         `;
     }
 
-    const planStatus = getPlanStatus(userData);
-    let planStatusHtml = '';
-    if (planStatus) {
-        planStatusHtml = `
-            <div class="card p-6 flex flex-col animate-fade-in-up" style="animation-delay: 500ms;">
-                <h3 class="font-bold text-lg mb-4 w-full">وضعیت پلن شما</h3>
-                <p class="text-sm text-text-secondary font-semibold">${planStatus.planName}</p>
-                <div class="w-full my-4">
-                    <div class="flex justify-between text-xs text-text-secondary mb-1">
-                        <span>شروع</span>
-                        <span>پایان</span>
-                    </div>
-                    <div class="w-full bg-bg-tertiary rounded-full h-2.5">
-                        <div class="bg-accent h-2.5 rounded-full transition-all duration-500" style="width: ${planStatus.progressPercentage}%"></div>
-                    </div>
-                </div>
-                <div class="text-center">
-                    <p class="font-bold text-2xl">${planStatus.daysRemaining} <span class="text-base font-normal text-text-secondary">روز باقی مانده</span></p>
-                </div>
-                <button data-action="go-to-store" class="primary-button w-full mt-6">تمدید یا ارتقا پلن</button>
-            </div>
-        `;
-    }
+    const bestLifts = findBestLifts(userData.workoutHistory, ["اسکوات با هالتر", "پرس سینه هالتر", "ددلیفت"]);
 
     dashboardContentEl.innerHTML = `
-        <div class="space-y-8 animate-fade-in-up">
-            <div class="divi-welcome-header">
+        <div class="space-y-6">
+            <div class="today-focus-card">
                 <h2 class="text-3xl font-bold text-white">سلام، ${name}!</h2>
                 <p class="text-white/80">خوش آمدید! بیایید روز خود را با قدرت شروع کنیم.</p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="divi-kpi-card animate-fade-in-up" style="animation-delay: 100ms;">
-                    <div class="icon-container" style="--icon-bg: var(--admin-accent-pink);"><i data-lucide="flame" class="w-6 h-6 text-white"></i></div>
-                    <div>
-                        <p class="kpi-value">${streak}</p>
-                        <p class="kpi-label">زنجیره تمرین</p>
+            <div class="dashboard-grid">
+                <div class="dashboard-main-col space-y-6">
+                    <div class="animate-fade-in-up" style="animation-delay: 200ms;">
+                        ${todayWorkoutHtml}
+                    </div>
+
+                    <div class="card p-6 animate-fade-in-up" style="animation-delay: 400ms;">
+                        <h3 class="font-bold text-lg mb-4">گزارش پیشرفت</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="chart-container"><canvas id="user-weight-chart"></canvas></div>
+                            <div class="chart-container"><canvas id="user-volume-chart"></canvas></div>
+                        </div>
                     </div>
                 </div>
-                <div class="divi-kpi-card animate-fade-in-up" style="animation-delay: 200ms;">
-                     <div class="icon-container" style="--icon-bg: var(--admin-accent-blue);"><i data-lucide="dumbbell" class="w-6 h-6 text-white"></i></div>
-                    <div>
-                        <p class="kpi-value">${totalWorkouts}</p>
-                        <p class="kpi-label">کل تمرینات</p>
-                    </div>
-                </div>
-                 <div class="divi-kpi-card animate-fade-in-up" style="animation-delay: 300ms;">
-                     <div class="icon-container" style="--icon-bg: var(--admin-accent-green);"><i data-lucide="weight" class="w-6 h-6 text-white"></i></div>
-                    <div>
-                        <p class="kpi-value">${lastWeight} <span class="text-base font-normal">kg</span></p>
-                        <p class="kpi-label">آخرین وزن ثبت شده</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2">
-                    ${todayWorkoutHtml}
-                </div>
-                <div class="space-y-6">
-                    <div class="card p-6 flex flex-col items-center justify-center animate-fade-in-up" style="animation-delay: 400ms;">
-                        <h3 class="font-bold text-lg mb-4">پیشرفت هفتگی</h3>
-                        <div class="gauge relative" style="width: 150px; height: 150px;">
-                            <svg class="gauge-svg absolute inset-0" viewBox="0 0 120 120">
-                                <circle class="gauge-track" r="55" cx="60" cy="60" stroke-width="10"></circle>
-                                <circle class="gauge-value" r="55" cx="60" cy="60" stroke-width="10" style="stroke:var(--accent); stroke-dasharray: ${circumference}; stroke-dashoffset: ${initialDashoffset};"></circle>
-                            </svg>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span class="font-bold text-3xl weekly-progress-value">${weeklyProgress.toFixed(0)}%</span>
-                                <span class="text-xs text-text-secondary">${workoutsThisWeek} / ${weeklyGoal} تمرین</span>
+                <div class="dashboard-side-col space-y-6">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="stat-card animate-fade-in-up" style="animation-delay: 300ms;">
+                            <div class="icon-container" style="--icon-bg: var(--admin-accent-pink);"><i data-lucide="flame" class="w-6 h-6 text-white"></i></div>
+                            <div>
+                                <p class="stat-value">${streak}</p>
+                                <p class="stat-label">زنجیره تمرین</p>
+                            </div>
+                        </div>
+                         <div class="stat-card animate-fade-in-up" style="animation-delay: 400ms;">
+                             <div class="icon-container" style="--icon-bg: var(--admin-accent-blue);"><i data-lucide="dumbbell" class="w-6 h-6 text-white"></i></div>
+                            <div>
+                                <p class="stat-value">${totalWorkouts}</p>
+                                <p class="stat-label">کل تمرینات</p>
                             </div>
                         </div>
                     </div>
-                    ${planStatusHtml}
+                    <div class="stat-card animate-fade-in-up" style="animation-delay: 500ms;">
+                        <div class="progress-ring" style="width: 70px; height: 70px;">
+                            <svg class="progress-ring-svg" viewBox="0 0 64 64">
+                                <circle class="progress-ring-track" r="28" cx="32" cy="32" stroke-width="8"></circle>
+                                <circle class="progress-ring-value" r="28" cx="32" cy="32" stroke-width="8" style="stroke:var(--accent); stroke-dasharray: ${weeklyRingCircumference}; stroke-dashoffset: ${weeklyRingOffset};"></circle>
+                            </svg>
+                            <span class="absolute font-bold text-sm">${workoutsThisWeek}/${weeklyGoal}</span>
+                        </div>
+                        <div class="flex-grow">
+                             <p class="stat-value -mb-1">${weeklyProgress.toFixed(0)}<span class="text-xl">%</span></p>
+                             <p class="stat-label">پیشرفت هفتگی</p>
+                        </div>
+                    </div>
+                    <div class="stat-card animate-fade-in-up" style="animation-delay: 600ms;">
+                         <div class="icon-container" style="--icon-bg: var(--admin-accent-green);"><i data-lucide="weight" class="w-6 h-6 text-white"></i></div>
+                        <div>
+                            <p class="stat-value">${lastWeight} <span class="text-base font-normal">kg</span></p>
+                            <p class="stat-label">وزن فعلی (<span class="${Number(weightChange) >= 0 ? 'text-green-500' : 'text-red-500'}">${Number(weightChange) >= 0 ? '+' : ''}${weightChange} kg</span>)</p>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 animate-fade-in-up" style="animation-delay: 700ms;">
+                        <h3 class="font-bold text-lg mb-2">رکوردهای شخصی</h3>
+                        <div class="space-y-2">
+                           ${bestLifts.map(lift => `
+                                <div class="record-item">
+                                    <div>
+                                        <p class="exercise-name">${lift.exerciseName}</p>
+                                        ${lift.date ? `<p class="record-date">${new Date(lift.date).toLocaleDateString('fa-IR')}</p>` : ''}
+                                    </div>
+                                    ${lift.weight ? `<p class="record-value">${lift.weight}kg x ${lift.reps}</p>` : `<p class="text-sm text-text-secondary">ثبت نشده</p>`}
+                                </div>
+                           `).join('')}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     `;
     window.lucide?.createIcons();
+    initDashboardCharts(userData);
+};
 
-    const gaugeValue = dashboardContentEl.querySelector('.gauge-value') as SVGCircleElement;
-    if (gaugeValue) {
-        setTimeout(() => {
-            const finalDashoffset = circumference * (1 - weeklyProgress / 100);
-            gaugeValue.style.strokeDashoffset = String(finalDashoffset);
-        }, 100);
+const initDashboardCharts = (userData: any) => {
+    const weightHistory = userData.weightHistory || [];
+    const weightChartCtx = document.getElementById('user-weight-chart') as HTMLCanvasElement;
+    if (weightChartCtx) {
+        new window.Chart(weightChartCtx, {
+            type: 'line',
+            data: {
+                labels: weightHistory.map((d: any) => new Date(d.date).toLocaleDateString('fa-IR')),
+                datasets: [{
+                    label: 'Weight',
+                    data: weightHistory.map((d: any) => d.weight),
+                    borderColor: 'var(--accent)',
+                    backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 2,
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'روند تغییر وزن (کیلوگرم)' } } }
+        });
+    }
+
+    const weeklyMetrics = calculateWeeklyMetrics(userData.workoutHistory);
+    const volumeChartCtx = document.getElementById('user-volume-chart') as HTMLCanvasElement;
+    if (volumeChartCtx) {
+         new window.Chart(volumeChartCtx, {
+            type: 'bar',
+            data: {
+                labels: weeklyMetrics.labels,
+                datasets: [{
+                    label: 'Volume',
+                    data: weeklyMetrics.volumes,
+                    backgroundColor: 'color-mix(in srgb, var(--admin-accent-blue) 70%, transparent)',
+                    borderColor: 'var(--admin-accent-blue)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'حجم تمرین هفتگی (کیلوگرم)' } } }
+        });
     }
 };
 
@@ -1229,16 +1269,6 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         }
     }
 
-    mainContainer.querySelectorAll('.coach-nav-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            if (!(e.currentTarget as HTMLElement).classList.contains('locked-feature')) {
-                switchTab(e.currentTarget as HTMLElement)
-            } else {
-                showToast('برای دسترسی به این بخش، لطفا یک پلن مناسب از فروشگاه تهیه کنید.', 'warning');
-            }
-        });
-    });
-
     // Initial cart render
     renderCartModalContentAndBadge(currentUser);
 
@@ -1284,6 +1314,16 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         if (!(e.target instanceof HTMLElement)) return;
         const target = e.target;
         
+        const navLink = target.closest<HTMLElement>('.coach-nav-link');
+        if (navLink) {
+            if (!navLink.classList.contains('locked-feature')) {
+                switchTab(navLink);
+            } else {
+                showToast('برای دسترسی به این بخش، لطفا یک پلن مناسب از فروشگاه تهیه کنید.', 'warning');
+            }
+            return;
+        }
+
         const actionBtn = target.closest<HTMLButtonElement>('button[data-action]');
         if (actionBtn) {
             const action = actionBtn.dataset.action;

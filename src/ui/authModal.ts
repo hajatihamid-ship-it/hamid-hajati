@@ -186,8 +186,8 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
     document.getElementById('switch-back-to-login-btn-2')?.addEventListener('click', () => switchAuthForm('login'));
 
 
-    // --- Google Login ---
-    document.getElementById('google-login-btn')?.addEventListener('click', () => {
+    // --- Google Auth ---
+    const handleGoogleAuth = () => {
         const googleUsername = 'user_google';
         const googleEmail = 'user.google@fitgympro.com';
         let allUsers = getUsers();
@@ -213,7 +213,10 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
         }
         
         handleLoginActions(googleUsername);
-    });
+    };
+
+    document.getElementById('google-login-btn')?.addEventListener('click', handleGoogleAuth);
+    document.getElementById('google-signup-btn')?.addEventListener('click', handleGoogleAuth);
 
     // --- Form Submissions ---
     const loginForm = document.getElementById("login-form") as HTMLFormElement;
@@ -396,6 +399,11 @@ export function renderAuthModal() {
                         </div>
                         <button type="submit" class="primary-button w-full !py-3 !text-base mt-2">ثبت نام</button>
                     </form>
+                    <div class="form-divider text-xs">یا</div>
+                     <button type="button" id="google-signup-btn" class="google-btn">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo">
+                        ثبت نام با حساب گوگل
+                    </button>
                     <p class="text-center text-sm text-secondary mt-6">
                         قبلا ثبت نام کرده‌اید؟
                         <button id="switch-to-login-btn" type="button" class="font-bold text-accent hover:underline">وارد شوید</button>

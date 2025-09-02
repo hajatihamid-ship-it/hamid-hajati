@@ -357,9 +357,19 @@
 
         /* Landing Page & Auth Modal */
         .landing-page-container { min-height: 100vh; overflow: hidden; position: relative; }
-        .landing-bg { position: absolute; inset: 0; background-image: url('https://images.unsplash.com/photo-1581009137042-c552e485697a?q=80&w=2070&auto=format&fit=crop'); background-size: cover; background-position: center; }
-        .landing-bg::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(18, 24, 40, 0.6) 0%, rgba(18, 24, 40, 0.9) 80%); }
-        .glass-nav { background-color: #1e293b; border: 1px solid rgba(45, 55, 72, 0.5); }
+        .landing-bg { 
+            position: absolute; 
+            inset: 0; 
+            background-color: #0c101d;
+            overflow: hidden;
+        }
+        .landing-bg::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(18, 24, 40, 0.4) 0%, rgba(12, 16, 29, 0.95) 80%); }
+        .glass-nav { 
+            background-color: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+        }
         .hero-cta-btn { position: relative; overflow: hidden; }
         .glow-circle { position: absolute; width: 200px; height: 200px; background: radial-gradient(circle, var(--accent) 0%, transparent 70%); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: pulse 4s infinite; opacity: 0.3; transition: all 0.4s ease; }
         @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.3; } 50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.5; } 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.3; } }
@@ -891,31 +901,44 @@
             color: var(--text-primary);
         }
 
-        /* Divi-inspired User Dashboard */
-        .divi-welcome-header {
-            padding: 2.5rem 2rem;
-            border-radius: var(--radius-card);
-            background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, black), color-mix(in srgb, var(--accent) 40%, black));
-            box-shadow: 0 10px 20px -5px var(--accent-transparent-20);
+        /* --- New World-Class User Dashboard Styles --- */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+            gap: 1.5rem;
         }
-        .divi-kpi-card {
+        @media (min-width: 1024px) { /* lg */
+            .dashboard-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+        .dashboard-main-col {
+            grid-column: span 1 / span 1;
+        }
+        @media (min-width: 1024px) {
+            .dashboard-main-col {
+                grid-column: span 2 / span 2;
+            }
+        }
+        .dashboard-side-col {
+            grid-column: span 1 / span 1;
+        }
+
+        .stat-card {
             background-color: var(--bg-secondary);
             border-radius: var(--radius-card);
+            border: 1px solid var(--border-primary);
             padding: 1.5rem;
             display: flex;
             align-items: center;
             gap: 1.25rem;
-            border: 1px solid var(--border-primary);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .divi-kpi-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.07), 0 8px 10px -6px rgba(0,0,0,0.07);
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-card);
         }
-        html[data-theme='dark'] .divi-kpi-card:hover {
-             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -4px rgba(0,0,0,0.2);
-        }
-        .divi-kpi-card .icon-container {
+        .stat-card .icon-container {
             width: 50px;
             height: 50px;
             border-radius: 50%;
@@ -925,25 +948,63 @@
             flex-shrink: 0;
             background-color: var(--icon-bg);
         }
-        .divi-kpi-card .kpi-value {
+        .stat-card .stat-value {
             font-size: 2rem;
             font-weight: 800;
             line-height: 1;
         }
-        .divi-kpi-card .kpi-label {
+        .stat-card .stat-label {
             font-size: 0.875rem;
             color: var(--text-secondary);
         }
-        .gauge-value {
-            transition: stroke-dashoffset 1.2s cubic-bezier(0.65, 0, 0.35, 1);
+        
+        .progress-ring {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
-        .divi-today-workout {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        .progress-ring-svg { transform: rotate(-90deg); }
+        .progress-ring-track { fill: none; stroke: var(--bg-tertiary); }
+        .progress-ring-value {
+            fill: none;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s cubic-bezier(0.65, 0, 0.35, 1);
         }
-        .divi-today-workout:hover {
-             transform: translateY(-5px);
-             box-shadow: var(--shadow-card);
+
+        .today-focus-card {
+            background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, black), color-mix(in srgb, var(--accent) 40%, black));
+            box-shadow: 0 10px 20px -5px var(--accent-transparent-20);
+            border-radius: var(--radius-card);
+            padding: 2rem;
         }
+        
+        .record-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-primary);
+        }
+        .record-item:last-child {
+            border-bottom: none;
+        }
+        .record-item .exercise-name {
+            font-weight: 600;
+        }
+        .record-item .record-value {
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .record-item .record-date {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .chart-container {
+            height: 250px;
+        }
+        /* End New Styles */
 
         /* User Profile Page Enhancements */
         .highlight-coach-selection {
@@ -1013,6 +1074,48 @@
             opacity: 1;
             pointer-events: auto;
         }
+
+        /* --- New World-Class Landing Page Styles --- */
+        .particles { position: absolute; inset: 0; z-index: 1; }
+        .particle { position: absolute; background-color: var(--accent); border-radius: 50%; opacity: 0; animation: rise 10s infinite linear; }
+        @keyframes rise {
+            0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
+            10% { opacity: 0.7; }
+            90% { opacity: 0.7; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+        .hero-headline-accent { position: relative; display: inline-block; color: var(--accent); }
+        .hero-headline-accent::after { content: ''; position: absolute; left: 0; right: 0; bottom: -5px; height: 4px; background: var(--accent); filter: blur(8px); }
+        .calculator-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.5), rgba(15, 23, 42, 0.5));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(51, 65, 85, 0.7);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+        }
+        #calculator-widget .text-yellow-400 { color: var(--text-primary); }
+        #calculator-widget .text-accent { color: var(--accent); }
+        .calculator-result-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; padding: 1rem; background-color: rgba(15, 23, 42, 0.6); border-radius: var(--radius-card); }
+        @media (min-width: 768px) { .calculator-result-grid { grid-template-columns: repeat(2, 1fr); } }
+        .result-metric-card { background-color: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-btn); padding: 1rem; text-align: center; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .result-metric-card:hover { transform: translateY(-4px); box-shadow: 0 0 15px var(--accent-transparent-20); }
+        .result-metric-card .label { font-size: 0.875rem; color: var(--text-secondary); }
+        .result-metric-card .value { font-size: 2.25rem; font-weight: 800; line-height: 1.1; color: var(--accent); margin: 0.25rem 0; }
+        .result-metric-card .unit { font-size: 0.75rem; color: var(--text-secondary); }
+        #landing-bmi-indicator-track { background-color: var(--bg-tertiary); height: 8px; border-radius: 4px; position: relative; overflow: hidden; }
+        #landing-bmi-indicator-bar { position: absolute; top: 0; left: 0; height: 100%; border-radius: 4px; transition: width 0.5s ease-out, background-color 0.5s ease-out; }
+        #coaches-showcase .coach-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.3), rgba(15, 23, 42, 0.3));
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--border-primary);
+        }
+        #coaches-showcase .coach-card:hover { background-color: rgba(51, 65, 85, 0.5); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .coach-card .avatar-container { width: 128px; height: 128px; border-radius: 50%; margin: 0 auto; border: 4px solid transparent; background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box, linear-gradient(45deg, var(--accent), var(--admin-accent-blue)) border-box; transition: transform 0.3s ease; }
+        .coach-card:hover .avatar-container { transform: scale(1.05); }
+        #coaches-showcase .coach-card .coach-name { color: var(--text-primary); }
+        #coaches-showcase .coach-card .coach-specialty { color: var(--accent); }
+        .landing-footer { background-color: #0c101d; padding: 3rem 1rem; border-top: 1px solid var(--border-primary); }
+        /* --- End New Landing Page Styles --- */
     </style>
 <script type="importmap">
 {
