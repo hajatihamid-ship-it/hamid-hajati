@@ -1,3 +1,5 @@
+
+
 import { getUserData, saveUserData, addActivityLog, getCart, saveCart, getDiscounts, getNotifications, clearNotification, setNotification, getStorePlans, getUsers } from '../services/storage';
 import { getTodayWorkoutData, calculateBodyMetrics, calculateWorkoutStreak, performMetricCalculations, findBestLifts, calculateWeeklyMetrics } from '../utils/calculations';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement, hexToRgba } from '../utils/dom';
@@ -6,6 +8,8 @@ import { sanitizeHTML } from '../utils/dom';
 import { formatPrice, timeAgo, getLatestSubscription, getUserAccessPermissions, canUserChat } from '../utils/helpers';
 
 let selectedCoachInModal: string | null = null;
+let progressChartInstance: any = null;
+
 
 const checkProfileFormValidity = (currentUser: string) => {
     const form = document.getElementById('user-profile-form');
@@ -430,11 +434,15 @@ const renderDashboardTab = (currentUser: string, userData: any) => {
                     </div>
 
                     <div class="card p-6 animate-fade-in-up" style="animation-delay: 400ms;">
-                        <h3 class="font-bold text-lg mb-4">گزارش پیشرفت</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="chart-container"><canvas id="user-weight-chart"></canvas></div>
-                            <div class="chart-container"><canvas id="user-volume-chart"></canvas></div>
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
+                            <h3 class="font-bold text-lg">گزارش پیشرفت</h3>
+                            <div id="progress-chart-tabs" class="flex items-center gap-1 bg-bg-tertiary p-1 rounded-lg self-start sm:self-center">
+                                <button class="progress-tab-btn admin-tab-button !py-1 !px-3 !text-xs active-tab" data-chart="weight">روند وزن</button>
+                                <button class="progress-tab-btn admin-tab-button !py-1 !px-3 !text-xs" data-chart="volume">حجم تمرین</button>
+                                <button class="progress-tab-btn admin-tab-button !py-1 !px-3 !text-xs" data-chart="frequency">دفعات تمرین</button>
+                            </div>
                         </div>
+                        <div class="chart-container h-64 md:h-80"><canvas id="user-progress-chart"></canvas></div>
                     </div>
                 </div>
                 <div class="dashboard-side-col space-y-6">
@@ -497,47 +505,110 @@ const renderDashboardTab = (currentUser: string, userData: any) => {
     initDashboardCharts(userData);
 };
 
-const initDashboardCharts = (userData: any) => {
-    const weightHistory = userData.weightHistory || [];
-    const weightChartCtx = document.getElementById('user-weight-chart') as HTMLCanvasElement;
-    if (weightChartCtx) {
-        new window.Chart(weightChartCtx, {
-            type: 'line',
-            data: {
-                labels: weightHistory.map((d: any) => new Date(d.date).toLocaleDateString('fa-IR')),
-                datasets: [{
-                    label: 'Weight',
-                    data: weightHistory.map((d: any) => d.weight),
-                    borderColor: 'var(--accent)',
-                    backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)',
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 2,
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'روند تغییر وزن (کیلوگرم)' } } }
-        });
+const renderProgressChart = (chartType: string, userData: any) => {
+    const ctx = document.getElementById('user-progress-chart') as HTMLCanvasElement;
+    if (!ctx) return;
+
+    if (progressChartInstance) {
+        progressChartInstance.destroy();
     }
+    
+    const isDark = document.documentElement.dataset.theme === 'dark';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
+
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            title: {
+                display: true, text: '',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                font: { family: 'Vazirmatn, sans-serif', weight: 'bold' }
+            }
+        },
+        scales: {
+            x: {
+                grid: { color: gridColor },
+                ticks: { color: textColor, font: { family: 'Vazirmatn, sans-serif' } }
+            },
+            y: {
+                grid: { color: gridColor },
+                ticks: { color: textColor, font: { family: 'Vazirmatn, sans-serif' } }
+            }
+        }
+    };
 
     const weeklyMetrics = calculateWeeklyMetrics(userData.workoutHistory);
-    const volumeChartCtx = document.getElementById('user-volume-chart') as HTMLCanvasElement;
-    if (volumeChartCtx) {
-         new window.Chart(volumeChartCtx, {
-            type: 'bar',
-            data: {
-                labels: weeklyMetrics.labels,
-                datasets: [{
-                    label: 'Volume',
-                    data: weeklyMetrics.volumes,
-                    backgroundColor: 'color-mix(in srgb, var(--admin-accent-blue) 70%, transparent)',
-                    borderColor: 'var(--admin-accent-blue)',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'حجم تمرین هفتگی (کیلوگرم)' } } }
-        });
+    const weightHistory = userData.weightHistory || [];
+    let chartConfig: any;
+    const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    const blueColor = getComputedStyle(document.documentElement).getPropertyValue('--admin-accent-blue').trim();
+    const orangeColor = getComputedStyle(document.documentElement).getPropertyValue('--admin-accent-orange').trim();
+
+    switch (chartType) {
+        case 'weight':
+            chartConfig = {
+                type: 'line',
+                data: {
+                    labels: weightHistory.map((d: any) => new Date(d.date).toLocaleDateString('fa-IR')),
+                    datasets: [{
+                        label: 'وزن (کیلوگرم)',
+                        data: weightHistory.map((d: any) => d.weight),
+                        borderColor: accentColor,
+                        backgroundColor: hexToRgba(accentColor, 0.2),
+                        fill: true, tension: 0.3, pointRadius: 2,
+                    }]
+                },
+                options: { ...commonOptions }
+            };
+            chartConfig.options.plugins.title.text = 'روند تغییر وزن (کیلوگرم)';
+            break;
+        case 'volume':
+             chartConfig = {
+                type: 'bar',
+                data: {
+                    labels: weeklyMetrics.labels,
+                    datasets: [{
+                        label: 'حجم (کیلوگرم)',
+                        data: weeklyMetrics.volumes,
+                        backgroundColor: hexToRgba(blueColor, 0.7),
+                        borderColor: blueColor,
+                        borderWidth: 1, borderRadius: 4
+                    }]
+                },
+                options: { ...commonOptions }
+            };
+            chartConfig.options.plugins.title.text = 'حجم تمرین هفتگی (کیلوگرم)';
+            break;
+        case 'frequency':
+            chartConfig = {
+                type: 'bar',
+                data: {
+                    labels: weeklyMetrics.labels,
+                    datasets: [{
+                        label: 'تعداد تمرینات',
+                        data: weeklyMetrics.frequencies,
+                        backgroundColor: hexToRgba(orangeColor, 0.7),
+                        borderColor: orangeColor,
+                        borderWidth: 1, borderRadius: 4
+                    }]
+                },
+                 options: { ...commonOptions }
+            };
+            chartConfig.options.plugins.title.text = 'تعداد تمرینات در هفته';
+            chartConfig.options.scales.y.ticks = { ...chartConfig.options.scales.y.ticks, stepSize: 1 };
+            break;
     }
+
+    if (chartConfig) {
+        progressChartInstance = new window.Chart(ctx, chartConfig);
+    }
+};
+
+const initDashboardCharts = (userData: any) => {
+    renderProgressChart('weight', userData);
 };
 
 const renderCartModalContentAndBadge = (currentUser: string) => {
@@ -832,28 +903,12 @@ const updateProfileMetricsDisplay = (container: HTMLElement) => {
     const metrics = calculateBodyMetrics(container);
     if (!metrics) return;
 
-    const {
-        age, height, weight, gender, activityLevel,
-        neck, waist, hip
-    } = {
-        age: parseFloat((container.querySelector('input[name="age"]') as HTMLInputElement)?.value),
-        height: parseFloat((container.querySelector('input[name="height"]') as HTMLInputElement)?.value),
-        weight: parseFloat((container.querySelector('input[name="weight"]') as HTMLInputElement)?.value),
-        gender: (container.querySelector('input[name="gender_user"]:checked') as HTMLInputElement)?.value,
-        activityLevel: parseFloat((container.querySelector('input[name="activity_level_user"]:checked') as HTMLInputElement)?.value),
-        neck: parseFloat((container.querySelector('.neck-input') as HTMLInputElement)?.value),
-        waist: parseFloat((container.querySelector('.waist-input') as HTMLInputElement)?.value),
-        hip: parseFloat((container.querySelector('.hip-input') as HTMLInputElement)?.value),
-    };
+    const weight = parseFloat((container.querySelector('input[name="weight"]') as HTMLInputElement)?.value);
     
-    // Selectors for the new metrics panel
-    const metricsPanel = document.getElementById('profile-metrics-panel');
-    if (!metricsPanel) return;
-
     // BMI
     const bmiValue = metrics.bmi;
-    const bmiGaugeValue = metricsPanel.querySelector('.bmi-gauge-value');
-    const bmiGaugeCircle = metricsPanel.querySelector('.bmi-gauge-circle') as SVGCircleElement;
+    const bmiGaugeValue = container.querySelector('.bmi-gauge-value');
+    const bmiGaugeCircle = container.querySelector('.bmi-gauge-circle') as SVGCircleElement;
 
     if (bmiGaugeValue && bmiGaugeCircle) {
         if (bmiValue) {
@@ -869,13 +924,13 @@ const updateProfileMetricsDisplay = (container: HTMLElement) => {
     }
     
     // Body Composition
-    const bodyCompContainer = metricsPanel.querySelector('.body-composition-container');
+    const bodyCompContainer = container.querySelector('.body-composition-container');
     if (bodyCompContainer) {
         const chart = bodyCompContainer.querySelector('.body-composition-chart') as HTMLElement;
         const placeholder = bodyCompContainer.querySelector('.chart-placeholder') as HTMLElement;
         const bodyfatOutput = bodyCompContainer.querySelector('.bodyfat-output') as HTMLElement;
 
-        if (metrics.bodyFat === null) {
+        if (metrics.bodyFat === null || isNaN(metrics.bodyFat)) {
             chart.classList.add('hidden');
             placeholder.classList.remove('hidden');
             bodyfatOutput.textContent = '–';
@@ -891,8 +946,8 @@ const updateProfileMetricsDisplay = (container: HTMLElement) => {
 
     // TDEE
     const tdeeValue = metrics.tdee;
-    const tdeeGaugeValue = metricsPanel.querySelector('.tdee-gauge-value');
-    const tdeeGaugeCircle = metricsPanel.querySelector('.tdee-gauge-circle') as SVGCircleElement;
+    const tdeeGaugeValue = container.querySelector('.tdee-gauge-value');
+    const tdeeGaugeCircle = container.querySelector('.tdee-gauge-circle') as SVGCircleElement;
      if (tdeeGaugeValue && tdeeGaugeCircle) {
         if (tdeeValue) {
             tdeeGaugeValue.textContent = String(Math.round(tdeeValue));
@@ -907,7 +962,7 @@ const updateProfileMetricsDisplay = (container: HTMLElement) => {
     }
 
     // Ideal Weight
-    const idealWeightOutput = metricsPanel.querySelector('.ideal-weight-output');
+    const idealWeightOutput = container.querySelector('.ideal-weight-output');
     if (idealWeightOutput) {
         idealWeightOutput.textContent = metrics.idealWeight || '–';
     }
@@ -945,138 +1000,112 @@ const renderProfileTab = (currentUser: string, userData: any) => {
     const showSpecificSportInput = step1?.specializedSport && ['martial_arts', 'pro_athlete', 'other'].includes(step1.specializedSport);
 
     container.innerHTML = `
-        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in-up">
-            <!-- Form Column -->
-            <div class="lg:col-span-2 space-y-6">
-                 <!-- Profile Header -->
+        <div class="max-w-4xl mx-auto space-y-6 animate-fade-in-up">
+            <form id="user-profile-form" class="space-y-6">
+                <!-- Profile Header -->
                 <div class="card p-6 flex flex-col sm:flex-row items-center gap-6">
-                    ${profile?.avatar ? 
+                     ${profile?.avatar ? 
                         `<img src="${profile.avatar}" alt="${name}" class="w-24 h-24 rounded-full object-cover flex-shrink-0 border-4 border-accent/30">` :
                         `<div class="w-24 h-24 rounded-full bg-accent text-bg-secondary flex-shrink-0 flex items-center justify-center text-4xl font-bold">
                             ${initials}
                         </div>`
                     }
-                    <div class="text-center sm:text-right">
-                        <h2 class="text-2xl font-bold">${name}</h2>
-                        <p class="text-text-secondary">${email}</p>
+                    <div class="flex-grow text-center sm:text-right">
+                        <div class="input-group">
+                            <input type="text" id="user-profile-name" class="input-field w-full !text-2xl !font-bold !p-2 !bg-transparent !border-transparent focus:!bg-bg-tertiary focus:!border-border-primary" value="${step1?.clientName || ''}" placeholder="نام و نام خانوادگی">
+                        </div>
+                        <p class="text-text-secondary -mt-2">${email}</p>
+                    </div>
+                    <button type="submit" id="profile-submit-btn" class="primary-button !py-3 !px-8 ml-auto" disabled>
+                        <i data-lucide="send" class="w-4 h-4 ml-2"></i>
+                        ذخیره و ارسال
+                    </button>
+                </div>
+                
+                <!-- Personal and Coach Info -->
+                <div class="info-card">
+                    <div class="card-title"><i data-lucide="user-round"></i>اطلاعات فردی و مربی</div>
+                    <div class="card-content grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="input-group"><input type="tel" id="user-profile-mobile" class="input-field w-full" value="${step1?.mobile || ''}" placeholder=" "><label class="input-label">شماره موبایل</label></div>
+                        <div class="input-group"><input type="url" id="user-profile-avatar" class="input-field w-full" value="${profile?.avatar || ''}" placeholder=" "><label class="input-label">لینک عکس پروفایل</label></div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold mb-2">مربی</label>
+                            <button type="button" id="select-coach-btn" class="input-field w-full text-right flex justify-between items-center ${coachNotSelected ? 'highlight-coach-selection' : ''}">
+                                <span id="current-coach-name">${coachName}</span><i data-lucide="chevron-down" class="w-4 h-4"></i>
+                            </button>
+                            ${coachNotSelected ? `<div class="coach-selection-warning"><i data-lucide="alert-triangle" class="w-4 h-4"></i><span>لطفا مربی خود را انتخاب کنید.</span></div>` : ''}
+                        </div>
                     </div>
                 </div>
 
-                <form id="user-profile-form" class="space-y-6">
-                    <div class="card p-6">
-                        <h3 class="text-lg font-bold mb-6 flex items-center gap-2"><i data-lucide="user-round" class="w-5 h-5 text-accent"></i>اطلاعات فردی</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                            <div class="input-group"><input type="text" id="user-profile-name" class="input-field w-full" value="${step1?.clientName || ''}" placeholder=" "><label class="input-label">نام و نام خانوادگی</label></div>
-                            <div class="input-group"><input type="email" class="input-field w-full" value="${step1?.clientEmail || ''}" placeholder=" " readonly><label class="input-label">ایمیل (غیرقابل تغییر)</label></div>
-                            <div class="input-group"><input type="tel" id="user-profile-mobile" class="input-field w-full" value="${step1?.mobile || ''}" placeholder=" "><label class="input-label">شماره موبایل</label></div>
-                            <div class="input-group"><input type="url" id="user-profile-avatar" class="input-field w-full" value="${profile?.avatar || ''}" placeholder=" "><label class="input-label">لینک عکس پروفایل</label></div>
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-semibold mb-2">مربی</label>
-                                <button type="button" id="select-coach-btn" class="input-field w-full text-right flex justify-between items-center ${coachNotSelected ? 'highlight-coach-selection' : ''}">
-                                    <span id="current-coach-name">${coachName}</span><i data-lucide="chevron-down" class="w-4 h-4"></i>
-                                </button>
-                                ${coachNotSelected ? `<div class="coach-selection-warning"><i data-lucide="alert-triangle" class="w-4 h-4"></i><span>لطفا مربی خود را انتخاب کنید.</span></div>` : ''}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card p-6">
-                         <h3 class="text-lg font-bold mb-6 flex items-center gap-2"><i data-lucide="scan-line" class="w-5 h-5 text-accent"></i>مشخصات فیزیکی</h3>
-                         <div class="space-y-6">
-                            <div class="radio-group-pink"><p class="text-sm font-semibold mb-2">جنسیت</p><div class="grid grid-cols-2 gap-2">
+                <!-- Physical Specs & Metrics -->
+                <div class="info-card">
+                    <div class="card-title"><i data-lucide="scan-line"></i>مشخصات و آمار بدنی</div>
+                    <div class="card-content grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="space-y-6">
+                             <div class="radio-group-pink"><p class="text-sm font-semibold mb-2">جنسیت</p><div class="grid grid-cols-2 gap-2">
                                 <label class="option-card-label"><input type="radio" name="gender_user" value="مرد" class="option-card-input" ${step1?.gender === 'مرد' ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">مرد</span></label>
                                 <label class="option-card-label"><input type="radio" name="gender_user" value="زن" class="option-card-input" ${step1?.gender === 'زن' ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">زن</span></label>
                             </div></div>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                <div class="space-y-1 slider-container-blue"><label class="font-semibold text-sm">سن: <span>${step1?.age || 25}</span></label><input type="range" name="age" min="15" max="80" value="${step1?.age || 25}" class="range-slider age-slider w-full mt-1"></div>
-                                <div class="space-y-1 slider-container-green"><label class="font-semibold text-sm">قد (cm): <span>${step1?.height || 175}</span></label><input type="range" name="height" min="140" max="220" value="${step1?.height || 175}" class="range-slider height-slider w-full mt-1"></div>
-                                <div class="space-y-1 slider-container-orange"><label class="font-semibold text-sm">وزن (kg): <span>${step1?.weight || 75}</span></label><input type="range" name="weight" min="40" max="150" step="0.5" value="${step1?.weight || 75}" class="range-slider weight-slider w-full mt-1"></div>
-                            </div>
+                            <div class="space-y-1 slider-container-blue"><label class="font-semibold text-sm">سن: <span>${step1?.age || 25}</span></label><input type="range" name="age" min="15" max="80" value="${step1?.age || 25}" class="range-slider age-slider w-full mt-1"></div>
+                            <div class="space-y-1 slider-container-green"><label class="font-semibold text-sm">قد (cm): <span>${step1?.height || 175}</span></label><input type="range" name="height" min="140" max="220" value="${step1?.height || 175}" class="range-slider height-slider w-full mt-1"></div>
+                            <div class="space-y-1 slider-container-orange"><label class="font-semibold text-sm">وزن (kg): <span>${step1?.weight || 75}</span></label><input type="range" name="weight" min="40" max="150" step="0.5" value="${step1?.weight || 75}" class="range-slider weight-slider w-full mt-1"></div>
                             <details><summary class="font-semibold cursor-pointer text-sm flex items-center gap-1">اندازه‌گیری دور بدن (اختیاری) <i data-lucide="chevron-down" class="w-4 h-4 details-arrow"></i></summary>
                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                                    <div class="input-group"><input type="number" name="neck" class="input-field w-full neck-input" value="${step1?.neck || ''}" placeholder=" "><label class="input-label">دور گردن (cm)</label></div>
-                                    <div class="input-group"><input type="number" name="waist" class="input-field w-full waist-input" value="${step1?.waist || ''}" placeholder=" "><label class="input-label">دور کمر (cm)</label></div>
-                                    <div class="input-group"><input type="number" name="hip" class="input-field w-full hip-input" value="${step1?.hip || ''}" placeholder=" "><label class="input-label">دور باسن (cm)</label></div>
+                                    <div class="input-group-gray"><div class="input-group"><input type="number" name="neck" class="input-field w-full neck-input" value="${step1?.neck || ''}" placeholder=" "><label class="input-label">گردن</label></div></div>
+                                    <div class="input-group-gray"><div class="input-group"><input type="number" name="waist" class="input-field w-full waist-input" value="${step1?.waist || ''}" placeholder=" "><label class="input-label">کمر</label></div></div>
+                                    <div class="input-group-gray"><div class="input-group"><input type="number" name="hip" class="input-field w-full hip-input" value="${step1?.hip || ''}" placeholder=" "><label class="input-label">باسن</label></div></div>
                                 </div>
                             </details>
-                         </div>
-                    </div>
-
-                    <div class="card p-6">
-                        <h3 class="text-lg font-bold mb-6 flex items-center gap-2"><i data-lucide="target" class="w-5 h-5 text-accent"></i>اهداف و سطح فعالیت</h3>
-                        <div class="space-y-6">
-                            <div>
-                                <p class="text-sm font-semibold mb-2">هدف اصلی شما</p>
-                                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                                    ${trainingGoals.map(goal => `<label class="option-card-label"><input type="radio" name="training_goal_user" value="${goal}" class="option-card-input" ${step1?.trainingGoal === goal ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">${goal}</span></label>`).join('')}
+                        </div>
+                        <div class="space-y-4">
+                            <div class="text-center"><h4 class="font-semibold mb-2">شاخص توده بدنی (BMI)</h4>
+                                <div class="gauge inline-block" style="width: 120px; height: 120px;">
+                                    <svg class="gauge-svg" viewBox="0 0 100 100"><circle class="gauge-track" r="45" cx="50" cy="50" stroke-width="8"></circle><circle class="gauge-value bmi-gauge-circle" r="45" cx="50" cy="50" stroke-width="8" style="stroke:var(--admin-accent-blue); stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 0.5s ease;"></circle></svg>
+                                    <div class="gauge-text"><span class="gauge-number text-2xl bmi-gauge-value"></span></div>
                                 </div>
                             </div>
-                             <div>
-                                <p class="text-sm font-semibold mb-2">ورزش تخصصی</p>
-                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    ${specializedSports.map(sport => `<label class="option-card-label"><input type="radio" name="specialized_sport_user" value="${sport.value}" class="option-card-input" ${step1?.specializedSport === sport.value ? 'checked data-is-checked="true"' : ''}><span class="option-card-content !text-xs sm:!text-sm">${sport.label}</span></label>`).join('')}
+                            <div class="body-composition-container"><h4 class="font-semibold mb-2 flex justify-between items-center"><span>ترکیب بدنی</span><span class="font-bold bodyfat-output"></span></h4>
+                                <div class="relative h-6">
+                                    <div class="chart-placeholder absolute inset-0 text-xs text-text-secondary bg-bg-tertiary rounded-md p-2 flex items-center justify-center">دور بدن را وارد کنید</div>
+                                    <div class="body-composition-chart flex h-full rounded-md overflow-hidden">
+                                        <div class="lbm-bar bg-green-500 transition-all duration-500"></div><div class="fat-mass-bar bg-red-500 transition-all duration-500"></div>
+                                    </div>
                                 </div>
+                                <div class="flex justify-between text-xs text-text-secondary mt-1"><span>توده بدون چربی</span><span>توده چربی</span></div>
                             </div>
-                            <div id="specific-sport-container" class="mt-4 ${!showSpecificSportInput ? 'hidden' : ''}">
-                                <div class="input-group">
-                                    <input type="text" id="specific_sport_name_user" name="specific_sport_name_user" class="input-field w-full" value="${step1?.specificSportName || ''}" placeholder=" ">
-                                    <label for="specific_sport_name_user" class="input-label">نام دقیق رشته (مثلا: جودو)</label>
-                                </div>
-                            </div>
-                            <div>
-                                <p class="text-sm font-semibold mb-2">روزهای تمرین در هفته</p>
-                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    ${[3, 4, 5, 6].map(day => `<label class="option-card-label"><input type="radio" name="training_days_user" value="${day}" class="option-card-input" ${step1?.trainingDays === day ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">${day} روز</span></label>`).join('')}
-                                </div>
-                            </div>
-                            <div>
-                                <p class="text-sm font-semibold mb-2">سطح فعالیت روزانه</p>
-                                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                                    ${activityLevels.map(level => `<label class="option-card-label"><input type="radio" name="activity_level_user" value="${level.value}" class="option-card-input" ${step1?.activityLevel === level.value ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">${level.label}</span></label>`).join('')}
+                            <div class="text-center"><h4 class="font-semibold mb-2">کالری روزانه (TDEE)</h4>
+                                <div class="gauge inline-block" style="width: 120px; height: 120px;">
+                                    <svg class="gauge-svg" viewBox="0 0 100 100"><circle class="gauge-track" r="45" cx="50" cy="50" stroke-width="8"></circle><circle class="gauge-value tdee-gauge-circle" r="45" cx="50" cy="50" stroke-width="8" style="stroke:var(--admin-accent-orange); stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 0.5s ease;"></circle></svg>
+                                    <div class="gauge-text"><span class="gauge-number text-2xl tdee-gauge-value"></span><span class="gauge-label">kcal</span></div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="flex justify-center"><button type="submit" id="profile-submit-btn" class="primary-button !py-3 !px-8" disabled>ارسال برای مربی</button></div>
-                </form>
-            </div>
-            
-            <!-- Metrics Column -->
-            <div id="profile-metrics-panel" class="lg:col-span-1 space-y-6">
-                <div class="card p-6 sticky top-6 space-y-6">
-                    <h3 class="text-lg font-bold text-center">آمار کلیدی بدن شما</h3>
-                    <!-- BMI Gauge -->
-                    <div class="text-center"><h4 class="font-semibold mb-2">شاخص توده بدنی (BMI)</h4>
-                        <div class="gauge inline-block" style="width: 120px; height: 120px;">
-                            <svg class="gauge-svg" viewBox="0 0 100 100"><circle class="gauge-track" r="45" cx="50" cy="50" stroke-width="8"></circle><circle class="gauge-value bmi-gauge-circle" r="45" cx="50" cy="50" stroke-width="8" style="stroke:var(--admin-accent-blue); stroke-dasharray: 283; stroke-dashoffset: 283;"></circle></svg>
-                            <div class="gauge-text"><span class="gauge-number text-2xl bmi-gauge-value"></span></div>
-                        </div>
-                    </div>
-                    <!-- Body Comp -->
-                    <div class="body-composition-container"><h4 class="font-semibold mb-2 flex justify-between items-center"><span>ترکیب بدنی</span><span class="font-bold bodyfat-output"></span></h4>
-                        <div class="relative h-6">
-                            <div class="chart-placeholder hidden absolute inset-0 text-xs text-text-secondary bg-bg-tertiary rounded-md p-2 flex items-center justify-center">دور بدن را وارد کنید</div>
-                            <div class="body-composition-chart flex h-full rounded-md overflow-hidden">
-                                <div class="lbm-bar bg-green-500 transition-all duration-500"></div>
-                                <div class="fat-mass-bar bg-red-500 transition-all duration-500"></div>
-                            </div>
-                        </div>
-                        <div class="flex justify-between text-xs text-text-secondary mt-1"><span>توده بدون چربی</span><span>توده چربی</span></div>
-                    </div>
-                    <!-- TDEE Gauge -->
-                    <div class="text-center"><h4 class="font-semibold mb-2">کالری روزانه (TDEE)</h4>
-                        <div class="gauge inline-block" style="width: 120px; height: 120px;">
-                            <svg class="gauge-svg" viewBox="0 0 100 100"><circle class="gauge-track" r="45" cx="50" cy="50" stroke-width="8"></circle><circle class="gauge-value tdee-gauge-circle" r="45" cx="50" cy="50" stroke-width="8" style="stroke:var(--admin-accent-orange); stroke-dasharray: 283; stroke-dashoffset: 283;"></circle></svg>
-                            <div class="gauge-text"><span class="gauge-number text-2xl tdee-gauge-value"></span><span class="gauge-label">kcal</span></div>
-                        </div>
-                    </div>
-                    <!-- Ideal Weight -->
-                    <div class="info-card !bg-bg-tertiary p-3 text-center">
-                        <p class="text-sm text-text-secondary">محدوده وزن ایده‌آل شما</p>
-                        <p class="font-bold text-lg ideal-weight-output"></p>
                     </div>
                 </div>
-            </div>
+
+                <!-- Goals & Activity -->
+                <div class="info-card">
+                    <div class="card-title"><i data-lucide="target"></i>اهداف و سطح فعالیت</div>
+                    <div class="card-content space-y-6">
+                        <div><p class="text-sm font-semibold mb-2">هدف اصلی شما</p><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                            ${trainingGoals.map(goal => `<label class="option-card-label"><input type="radio" name="training_goal_user" value="${goal}" class="option-card-input" ${step1?.trainingGoal === goal ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">${goal}</span></label>`).join('')}
+                        </div></div>
+                         <div><p class="text-sm font-semibold mb-2">ورزش تخصصی</p><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            ${specializedSports.map(sport => `<label class="option-card-label"><input type="radio" name="specialized_sport_user" value="${sport.value}" class="option-card-input" ${step1?.specializedSport === sport.value ? 'checked data-is-checked="true"' : ''}><span class="option-card-content !text-xs sm:!text-sm">${sport.label}</span></label>`).join('')}
+                        </div></div>
+                        <div id="specific-sport-container" class="mt-4 ${!showSpecificSportInput ? 'hidden' : ''}"><div class="input-group">
+                            <input type="text" id="specific_sport_name_user" name="specific_sport_name_user" class="input-field w-full" value="${step1?.specificSportName || ''}" placeholder=" "><label for="specific_sport_name_user" class="input-label">نام دقیق رشته</label>
+                        </div></div>
+                        <div><p class="text-sm font-semibold mb-2">روزهای تمرین در هفته</p><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            ${[3, 4, 5, 6].map(day => `<label class="option-card-label"><input type="radio" name="training_days_user" value="${day}" class="option-card-input" ${step1?.trainingDays === day ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">${day} روز</span></label>`).join('')}
+                        </div></div>
+                        <div><p class="text-sm font-semibold mb-2">سطح فعالیت روزانه</p><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                            ${activityLevels.map(level => `<label class="option-card-label"><input type="radio" name="activity_level_user" value="${level.value}" class="option-card-input" ${step1?.activityLevel === level.value ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">${level.label}</span></label>`).join('')}
+                        </div></div>
+                    </div>
+                </div>
+            </form>
         </div>
     `;
 };
@@ -1457,6 +1486,20 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             closeModal(document.getElementById('user-dashboard-modal'));
             checkProfileFormValidity(currentUser);
         }
+        
+        const progressTabs = mainContainer.querySelector('#progress-chart-tabs');
+        if (progressTabs) {
+            const tabButton = target.closest<HTMLElement>('.progress-tab-btn');
+            if (tabButton && !tabButton.classList.contains('active-tab')) {
+                progressTabs.querySelectorAll('.progress-tab-btn').forEach(btn => btn.classList.remove('active-tab'));
+                tabButton.classList.add('active-tab');
+                const chartType = tabButton.dataset.chart;
+                const currentData = getUserData(currentUser);
+                if (chartType) {
+                    renderProgressChart(chartType, currentData);
+                }
+            }
+        }
     });
 
     mainContainer.addEventListener('input', e => {
@@ -1496,7 +1539,8 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
 
     mainContainer.addEventListener('submit', e => {
         e.preventDefault();
-        const target = e.target as HTMLFormElement;
+        // FIX: Cast e.target to HTMLElement to ensure dataset property is available.
+        const target = e.target as HTMLElement;
 
         if (target.id === 'user-chat-form') {
             const input = document.getElementById('user-chat-input') as HTMLInputElement;
@@ -1555,7 +1599,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         }
 
         if (target.id === 'user-profile-form') {
-            const form = target;
+            const form = target as HTMLFormElement;
             const freshUserData = getUserData(currentUser);
             const dataToUpdate: any = {
                 step1: { ...freshUserData.step1 },
