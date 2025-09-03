@@ -1061,7 +1061,7 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                         <div class="space-y-4">
                             <div class="text-center"><h4 class="font-semibold mb-2">شاخص توده بدنی (BMI)</h4>
                                 <div class="gauge inline-block" style="width: 120px; height: 120px;">
-                                    <svg class="gauge-svg" viewBox="0 0 100 100"><circle class="gauge-track" r="45" cx="50" cy="50" stroke-width="8"></circle><circle class="gauge-value bmi-gauge-circle" r="45" cx="50" cy="50" stroke-width="8" style="stroke:var(--admin-accent-blue); stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 0.5s ease;"></circle></svg>
+                                    <svg class="gauge-svg" viewBox="0 0 100 100"><circle class="gauge-track" r="45" cx="50" cy="50" stroke-width="8"></circle><circle class="gauge-value bmi-gauge-circle" r="45" cx="50" cy="50" stroke-width="8" style="stroke:var(--admin-accent-green); stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 0.5s ease;"></circle></svg>
                                     <div class="gauge-text"><span class="gauge-number text-2xl bmi-gauge-value"></span></div>
                                 </div>
                             </div>

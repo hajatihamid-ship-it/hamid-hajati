@@ -200,16 +200,16 @@ const getCalculatorHTML = () => {
                         </div>
                     </div>
 
-                    <div>
-                        <label class="font-semibold text-sm">سن: <span class="font-bold text-accent">25</span></label>
+                    <div class="slider-container-blue">
+                        <label class="font-semibold text-sm">سن: <span>25</span></label>
                         <input type="range" name="age" min="15" max="80" value="25" class="range-slider age-slider w-full mt-1">
                     </div>
-                    <div>
-                        <label class="font-semibold text-sm">قد (cm): <span class="font-bold text-accent">175</span></label>
+                    <div class="slider-container-green">
+                        <label class="font-semibold text-sm">قد (cm): <span>175</span></label>
                         <input type="range" name="height" min="140" max="220" value="175" class="range-slider height-slider w-full mt-1">
                     </div>
-                    <div class="sm:col-span-2">
-                        <label class="font-semibold text-sm">وزن (kg): <span class="font-bold text-accent">75</span></label>
+                    <div class="sm:col-span-2 slider-container-orange">
+                        <label class="font-semibold text-sm">وزن (kg): <span>75</span></label>
                         <input type="range" name="weight" min="40" max="150" value="75" step="0.5" class="range-slider weight-slider w-full mt-1">
                     </div>
                     
@@ -614,7 +614,7 @@ export function initLandingPageListeners(onGoToDashboard?: () => void) {
         calculator.addEventListener('input', e => {
             const target = e.target as HTMLInputElement;
             if (target.matches('.range-slider')) {
-                const labelSpan = target.previousElementSibling?.querySelector('span');
+                const labelSpan = target.closest('div')?.querySelector('label > span');
                 if (labelSpan) labelSpan.textContent = target.value;
                 updateSliderTrack(target);
             }
@@ -628,6 +628,8 @@ export function initLandingPageListeners(onGoToDashboard?: () => void) {
             }
         });
         
+        // Initial call to set sliders track colors
+        calculator.querySelectorAll<HTMLInputElement>('.range-slider').forEach(updateSliderTrack);
         updateCalculatorResults();
     }
     
