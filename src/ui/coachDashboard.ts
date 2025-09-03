@@ -1,9 +1,8 @@
 
-
 import { getTemplates, saveTemplate, deleteTemplate, getUsers, getUserData, saveUserData, getNotifications, setNotification, clearNotification, getExercisesDB, getSupplementsDB } from '../services/storage';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement, sanitizeHTML, hexToRgba } from '../utils/dom';
 import { getLatestPurchase, timeAgo, getLastActivity } from '../utils/helpers';
-import { generateWorkoutPlan, generateSupplementPlan, generateNutritionPlan } from '../services/gemini';
+import { generateWorkoutPlan, generateSupplementPlan, generateNutritionPlan, generateFoodReplacements } from '../services/gemini';
 import { calculateWorkoutStreak, performMetricCalculations } from '../utils/calculations';
 
 let currentStep = 1;
@@ -14,6 +13,7 @@ let currentSelectionTarget: HTMLElement | null = null;
 let exerciseToMuscleGroupMap: Record<string, string> = {};
 let currentNutritionPlanObject: any | null = null;
 let isEditingRecentProgram = false;
+let activeReplacementTarget: HTMLLIElement | null = null;
 
 export function renderCoachDashboard(currentUser: string, userData: any) {
     const name = userData.step1?.clientName || currentUser;
@@ -221,6 +221,20 @@ export function renderCoachDashboard(currentUser: string, userData: any) {
             </div>
             <div class="p-4 border-t border-border-primary"><button type="submit" class="primary-button w-full">ذخیره شاگرد</button></div>
         </form>
+    </div>
+    <div id="replacement-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
+            <div class="flex justify-between items-center p-4 border-b border-border-primary">
+                <h2 id="replacement-modal-title" class="font-bold text-xl">جایگزینی برای: <span class="text-accent"></span></h2>
+                <button class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+            </div>
+            <div id="replacement-modal-body" class="p-6 min-h-[150px]">
+                <!-- Loading or suggestions here -->
+            </div>
+            <div class="p-4 border-t border-border-primary flex justify-end">
+                <button id="just-delete-btn" class="secondary-button !text-red-accent">فقط حذف کن</button>
+            </div>
+        </div>
     </div>
     `;
 }
@@ -1706,7 +1720,7 @@ const renderProgramBuilderTab = () => {
                                         <span class="option-card-content !py-2"><i data-lucide="sparkles" class="w-4 h-4 inline-block ml-1"></i> تولید با AI</span>
                                     </label>
                                     <label class="option-card-label">
-                                        <input type="radio" name="nutrition_choice" value="manual" class="option-card-input">
+                                        <input type="radio" id="nutrition-choice-manual" name="nutrition_choice" value="manual" class="option-card-input">
                                         <span class="option-card-content !py-2"><i data-lucide="pencil" class="w-4 h-4 inline-block ml-1"></i> طراحی دستی</span>
                                     </label>
                                 </div>
@@ -2089,6 +2103,63 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         return null;
     };
     
+// FIX: Define a function to handle food replacement modal logic.
+const openReplacementModalFor = (targetLi: HTMLLIElement) => {
+    activeReplacementTarget = targetLi;
+    const modal = document.getElementById('replacement-modal');
+    const titleSpan = document.querySelector('#replacement-modal-title span');
+    const body = document.getElementById('replacement-modal-body');
+
+    if (!modal || !titleSpan || !body) return;
+
+    const foodToReplace = targetLi.querySelector('.food-item-text')?.textContent?.trim();
+    const mealName = targetLi.closest('.meal-card')?.getAttribute('data-meal-name');
+
+    if (!foodToReplace || !mealName) {
+        showToast('خطا در شناسایی آیتم غذایی.', 'error');
+        return;
+    }
+
+    titleSpan.textContent = foodToReplace;
+    body.innerHTML = `<div class="flex justify-center items-center h-full"><div class="loader"></div> <p class="ml-2">در حال دریافت پیشنهاد از AI...</p></div>`;
+    openModal(modal);
+
+    if (!activeStudentUsername) {
+        body.innerHTML = `<p class="text-text-secondary text-center">ابتدا یک شاگرد را انتخاب کنید.</p>`;
+        return;
+    }
+
+    const isLocal = activeStudentUsername.startsWith('local_');
+    let studentData: any;
+    if (isLocal) {
+        const coachData = getUserData(currentUser);
+        studentData = (coachData.localStudents || []).find((s:any) => s.id === activeStudentUsername);
+    } else {
+        studentData = getUserData(activeStudentUsername);
+    }
+
+    if (!studentData?.step1) {
+        body.innerHTML = `<p class="text-text-secondary text-center">اطلاعات شاگرد برای دریافت پیشنهاد کامل نیست.</p>`;
+        return;
+    }
+
+    generateFoodReplacements(studentData.step1, mealName, foodToReplace)
+        .then(suggestions => {
+            if (suggestions && suggestions.length > 0) {
+                body.innerHTML = `
+                    <p class="text-sm text-text-secondary mb-3">پیشنهادهای جایگزین:</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        ${suggestions.map(s => `<button class="suggestion-btn secondary-button">${s}</button>`).join('')}
+                    </div>
+                `;
+            } else {
+                body.innerHTML = `<p class="text-text-secondary text-center">پیشنهاد جایگزینی یافت نشد.</p>`;
+            }
+        })
+        .catch(() => {
+            body.innerHTML = `<p class="text-text-secondary text-center">خطا در ارتباط با هوش مصنوعی.</p>`;
+        });
+};
     // Helper functions for AI features
     const addSupplementRow = (supData: any) => {
         const container = document.getElementById('added-supplements-container');
@@ -2687,7 +2758,7 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                     li.className = 'flex justify-between items-center bg-bg-secondary p-1.5 rounded';
                     li.innerHTML = `
                         <span class="food-item-text">${sanitizeHTML(foodText)}</span>
-                        <button type="button" class="remove-food-item-btn text-red-accent/70 hover:text-red-accent"><i data-lucide="x" class="w-4 h-4 pointer-events-none"></i></button>
+                        <button type="button" class="replace-food-item-btn text-blue-500/70 hover:text-blue-500" title="ویرایش/جایگزینی"><i data-lucide="refresh-cw" class="w-4 h-4 pointer-events-none"></i></button>
                     `;
                     list.appendChild(li);
                     input.value = '';
@@ -2697,9 +2768,12 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             return;
         }
 
-        const removeFoodItemBtn = target.closest('.remove-food-item-btn');
-        if (removeFoodItemBtn) {
-            removeFoodItemBtn.parentElement?.remove();
+        const replaceFoodItemBtn = target.closest('.replace-food-item-btn');
+        if (replaceFoodItemBtn) {
+            const targetLi = replaceFoodItemBtn.closest('li');
+            if(targetLi) {
+                openReplacementModalFor(targetLi as HTMLLIElement);
+            }
             return;
         }
 
@@ -2820,4 +2894,26 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             if(studentsTab) switchTab(studentsTab);
         }
     });
+
+    const replacementModal = document.getElementById('replacement-modal');
+    if (replacementModal && !replacementModal.dataset.listenerAttached) {
+        replacementModal.dataset.listenerAttached = 'true';
+        replacementModal.addEventListener('click', e => {
+            const target = e.target as HTMLElement;
+            const suggestionBtn = target.closest('.suggestion-btn');
+            const justDeleteBtn = target.closest('#just-delete-btn');
+
+            if (suggestionBtn && activeReplacementTarget) {
+                const newText = suggestionBtn.textContent || '';
+                const span = activeReplacementTarget.querySelector('.food-item-text');
+                if (span) span.textContent = newText;
+                closeModal(replacementModal);
+                activeReplacementTarget = null;
+            } else if (justDeleteBtn && activeReplacementTarget) {
+                activeReplacementTarget.remove();
+                closeModal(replacementModal);
+                activeReplacementTarget = null;
+            }
+        });
+    }
 }

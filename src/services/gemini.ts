@@ -206,3 +206,47 @@ export const generateSupplementPlan = async (studentData: any, goal: string): Pr
         return null;
     }
 };
+
+export const generateFoodReplacements = async (
+    studentData: any,
+    mealName: string,
+    foodToReplace: string
+): Promise<string[] | null> => {
+    const ai = getGenAI();
+    const tdee = studentData?.tdee || 2500;
+    const goal = studentData?.trainingGoal || "حفظ وزن";
+
+    const prompt = `
+        For a client with the goal of "${goal}" and a daily calorie target around ${tdee} kcal, suggest exactly 3 healthy and nutritionally similar alternatives for the food item "${foodToReplace}".
+        This food item is part of the "${mealName}" meal. The suggestions should be appropriate for this meal.
+        Return the suggestions as a JSON array of strings in Persian.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        suggestions: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.STRING
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        const jsonText = response.text.trim();
+        const result = JSON.parse(jsonText);
+        return result.suggestions || null;
+    } catch (error) {
+        console.error("AI Food Replacement Error:", error);
+        showToast("خطا در دریافت پیشنهاد جایگزین", "error");
+        return null;
+    }
+};
