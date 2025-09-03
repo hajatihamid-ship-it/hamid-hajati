@@ -219,7 +219,7 @@ export const generateFoodReplacements = async (
     const prompt = `
         For a client with the goal of "${goal}" and a daily calorie target around ${tdee} kcal, suggest exactly 3 healthy and nutritionally similar alternatives for the food item "${foodToReplace}".
         This food item is part of the "${mealName}" meal. The suggestions should be appropriate for this meal.
-        Return the suggestions as a JSON array of strings in Persian.
+        Return the suggestions as a JSON object containing an array of strings in Persian.
     `;
 
     try {

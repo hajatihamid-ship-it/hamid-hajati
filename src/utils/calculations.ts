@@ -206,3 +206,17 @@ export const findBestLifts = (history: any[] = [], targetExercises: string[]) =>
         ...bestLifts[exerciseName]
     }));
 };
+
+export const getWeightChange = (userData: any) => {
+    if (!userData.weightHistory || userData.weightHistory.length < 2) {
+        return { change: 0, trend: 'neutral' };
+    }
+    const firstWeight = userData.weightHistory[0].weight;
+    const lastWeight = userData.weightHistory[userData.weightHistory.length - 1].weight;
+    const change = lastWeight - firstWeight;
+    let trend = 'neutral';
+    if (change > 0) trend = 'up';
+    if (change < 0) trend = 'down';
+
+    return { change: parseFloat(change.toFixed(1)), trend };
+};

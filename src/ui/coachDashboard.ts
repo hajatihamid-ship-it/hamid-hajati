@@ -1,9 +1,8 @@
-
 import { getTemplates, saveTemplate, deleteTemplate, getUsers, getUserData, saveUserData, getNotifications, setNotification, clearNotification, getExercisesDB, getSupplementsDB } from '../services/storage';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement, sanitizeHTML, hexToRgba } from '../utils/dom';
 import { getLatestPurchase, timeAgo, getLastActivity } from '../utils/helpers';
 import { generateWorkoutPlan, generateSupplementPlan, generateNutritionPlan, generateFoodReplacements } from '../services/gemini';
-import { calculateWorkoutStreak, performMetricCalculations } from '../utils/calculations';
+import { calculateWorkoutStreak, performMetricCalculations, getWeightChange } from '../utils/calculations';
 
 let currentStep = 1;
 const totalSteps = 4;
@@ -275,20 +274,6 @@ const getColorForName = (name: string) => {
     }
     const index = Math.abs(hash % colors.length);
     return colors[index];
-};
-
-const getWeightChange = (userData: any) => {
-    if (!userData.weightHistory || userData.weightHistory.length < 2) {
-        return { change: 0, trend: 'neutral' };
-    }
-    const firstWeight = userData.weightHistory[0].weight;
-    const lastWeight = userData.weightHistory[userData.weightHistory.length - 1].weight;
-    const change = lastWeight - firstWeight;
-    let trend = 'neutral';
-    if (change > 0) trend = 'up';
-    if (change < 0) trend = 'down';
-
-    return { change: parseFloat(change.toFixed(1)), trend };
 };
 
 const renderProgressTimeline = (userData: any) => {
@@ -899,7 +884,7 @@ const gatherPlanData = () => {
     
     plan.workout.notes = (document.getElementById('coach-notes-final') as HTMLTextAreaElement)?.value || '';
 
-    // Gather nutrition data
+    // Gather nutrition data from the manual builder since it's now the primary editor
     const manualNutritionBuilder = document.getElementById('manual-nutrition-builder');
     if (manualNutritionBuilder && !manualNutritionBuilder.classList.contains('hidden')) {
         const meals: any[] = [];
@@ -914,6 +899,7 @@ const gatherPlanData = () => {
         const generalTips = (manualNutritionBuilder.querySelector('#manual-nutrition-tips') as HTMLTextAreaElement).value.split('\n').filter(Boolean);
         
         if(meals.length > 0) {
+            // Reconstruct the plan object to match the AI's structure for consistency
             plan.nutritionPlan = {
                 weeklyPlan: [{
                     dayName: "برنامه غذایی روزانه",
@@ -923,6 +909,7 @@ const gatherPlanData = () => {
             };
         }
     } else {
+        // If AI was used but not edited, the object is already stored
         plan.nutritionPlan = currentNutritionPlanObject;
     }
 
@@ -1560,11 +1547,11 @@ const renderDashboardTab = (currentUser: string) => {
         <div class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 ${kpiCards.map(kpi => `
-                    <div class="divi-kpi-card">
+                    <div class="stat-card">
                         <div class="icon-container" style="--icon-bg: var(--${kpi.color});"><i data-lucide="${kpi.icon}" class="w-6 h-6 text-white"></i></div>
                         <div>
-                            <p class="kpi-value">${kpi.value}</p>
-                            <p class="kpi-label">${kpi.title}</p>
+                            <p class="stat-value">${kpi.value}</p>
+                            <p class="stat-label">${kpi.title}</p>
                         </div>
                     </div>
                 `).join('')}
@@ -1727,7 +1714,6 @@ const renderProgramBuilderTab = () => {
                                 <div id="ai-nutrition-container">
                                     <p class="text-text-secondary mb-4 text-sm">یک برنامه غذایی نمونه و هوشمند بر اساس اطلاعات و هدف شاگرد خود ایجاد کنید.</p>
                                     <button id="ai-nutrition-btn" class="primary-button w-full"><i data-lucide="sparkles" class="w-4 h-4 ml-2"></i>تولید برنامه غذایی با AI</button>
-                                    <div id="nutrition-plan-display" class="hidden mt-4 max-h-96 overflow-y-auto relative"></div>
                                 </div>
                                 <div id="manual-nutrition-builder" class="hidden space-y-3">
                                     ${mealNames.map(meal => `
@@ -2103,63 +2089,62 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
         return null;
     };
     
-// FIX: Define a function to handle food replacement modal logic.
-const openReplacementModalFor = (targetLi: HTMLLIElement) => {
-    activeReplacementTarget = targetLi;
-    const modal = document.getElementById('replacement-modal');
-    const titleSpan = document.querySelector('#replacement-modal-title span');
-    const body = document.getElementById('replacement-modal-body');
-
-    if (!modal || !titleSpan || !body) return;
-
-    const foodToReplace = targetLi.querySelector('.food-item-text')?.textContent?.trim();
-    const mealName = targetLi.closest('.meal-card')?.getAttribute('data-meal-name');
-
-    if (!foodToReplace || !mealName) {
-        showToast('خطا در شناسایی آیتم غذایی.', 'error');
-        return;
-    }
-
-    titleSpan.textContent = foodToReplace;
-    body.innerHTML = `<div class="flex justify-center items-center h-full"><div class="loader"></div> <p class="ml-2">در حال دریافت پیشنهاد از AI...</p></div>`;
-    openModal(modal);
-
-    if (!activeStudentUsername) {
-        body.innerHTML = `<p class="text-text-secondary text-center">ابتدا یک شاگرد را انتخاب کنید.</p>`;
-        return;
-    }
-
-    const isLocal = activeStudentUsername.startsWith('local_');
-    let studentData: any;
-    if (isLocal) {
-        const coachData = getUserData(currentUser);
-        studentData = (coachData.localStudents || []).find((s:any) => s.id === activeStudentUsername);
-    } else {
-        studentData = getUserData(activeStudentUsername);
-    }
-
-    if (!studentData?.step1) {
-        body.innerHTML = `<p class="text-text-secondary text-center">اطلاعات شاگرد برای دریافت پیشنهاد کامل نیست.</p>`;
-        return;
-    }
-
-    generateFoodReplacements(studentData.step1, mealName, foodToReplace)
-        .then(suggestions => {
-            if (suggestions && suggestions.length > 0) {
-                body.innerHTML = `
-                    <p class="text-sm text-text-secondary mb-3">پیشنهادهای جایگزین:</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        ${suggestions.map(s => `<button class="suggestion-btn secondary-button">${s}</button>`).join('')}
-                    </div>
-                `;
-            } else {
-                body.innerHTML = `<p class="text-text-secondary text-center">پیشنهاد جایگزینی یافت نشد.</p>`;
-            }
-        })
-        .catch(() => {
-            body.innerHTML = `<p class="text-text-secondary text-center">خطا در ارتباط با هوش مصنوعی.</p>`;
-        });
-};
+    const openReplacementModalFor = (targetLi: HTMLLIElement) => {
+        activeReplacementTarget = targetLi;
+        const modal = document.getElementById('replacement-modal');
+        const titleSpan = document.querySelector('#replacement-modal-title span');
+        const body = document.getElementById('replacement-modal-body');
+    
+        if (!modal || !titleSpan || !body) return;
+    
+        const foodToReplace = targetLi.querySelector('.food-item-text')?.textContent?.trim();
+        const mealName = targetLi.closest('.meal-card')?.getAttribute('data-meal-name');
+    
+        if (!foodToReplace || !mealName) {
+            showToast('خطا در شناسایی آیتم غذایی.', 'error');
+            return;
+        }
+    
+        titleSpan.textContent = foodToReplace;
+        body.innerHTML = `<div class="flex justify-center items-center h-full"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div> <p class="ml-2">در حال دریافت پیشنهاد از AI...</p></div>`;
+        openModal(modal);
+    
+        if (!activeStudentUsername) {
+            body.innerHTML = `<p class="text-text-secondary text-center">ابتدا یک شاگرد را انتخاب کنید.</p>`;
+            return;
+        }
+    
+        const isLocal = activeStudentUsername.startsWith('local_');
+        let studentData: any;
+        if (isLocal) {
+            const coachData = getUserData(currentUser);
+            studentData = (coachData.localStudents || []).find((s:any) => s.id === activeStudentUsername);
+        } else {
+            studentData = getUserData(activeStudentUsername);
+        }
+    
+        if (!studentData?.step1) {
+            body.innerHTML = `<p class="text-text-secondary text-center">اطلاعات شاگرد برای دریافت پیشنهاد کامل نیست.</p>`;
+            return;
+        }
+    
+        generateFoodReplacements(studentData.step1, mealName, foodToReplace)
+            .then(suggestions => {
+                if (suggestions && suggestions.length > 0) {
+                    body.innerHTML = `
+                        <p class="text-sm text-text-secondary mb-3">پیشنهادهای جایگزین:</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            ${suggestions.map(s => `<button class="suggestion-btn secondary-button">${s}</button>`).join('')}
+                        </div>
+                    `;
+                } else {
+                    body.innerHTML = `<p class="text-text-secondary text-center">پیشنهاد جایگزینی یافت نشد.</p>`;
+                }
+            })
+            .catch(() => {
+                body.innerHTML = `<p class="text-text-secondary text-center">خطا در ارتباط با هوش مصنوعی.</p>`;
+            });
+    };
     // Helper functions for AI features
     const addSupplementRow = (supData: any) => {
         const container = document.getElementById('added-supplements-container');
@@ -2670,44 +2655,40 @@ const openReplacementModalFor = (targetLi: HTMLLIElement) => {
                 .then(plan => {
                     if (plan) {
                         currentNutritionPlanObject = plan;
-                        const display = document.getElementById('nutrition-plan-display');
-                        if (display) {
-                            display.classList.remove('hidden');
-                            
-                            const renderInteractivePlan = () => {
-                                let html = `<div class="flex justify-between items-center"><h4 class="font-bold mb-2">برنامه غذایی نمونه</h4><button id="clear-nutrition-plan" class="secondary-button !p-1 !text-xs">پاک کردن</button></div>`;
-                                html += (currentNutritionPlanObject.weeklyPlan || []).map((day: any, dayIndex: number) => `
-                                    <details class="mb-2"><summary class="font-semibold cursor-pointer p-2 bg-bg-tertiary rounded-md">${day.dayName}</summary>
-                                    <ul class="pt-2 pr-4 text-sm space-y-2">${(day.meals || []).map((meal: any, mealIndex: number) => `<li><strong>${meal.mealName}:</strong><ul class="list-disc pr-4 text-text-secondary">${(meal.options || []).map((opt: string, optIndex: number) => `<li class="flex justify-between items-center"><span>${opt}</span><button class="remove-food-option text-red-accent hover:text-red-400" data-day="${dayIndex}" data-meal="${mealIndex}" data-opt="${optIndex}"><i data-lucide="x-circle" class="w-4 h-4 pointer-events-none"></i></button></li>`).join('')}</ul></li>`).join('')}</ul></details>`).join('');
-                                html += `<h4 class="font-bold mt-4 mb-2">نکات</h4><ul class="list-disc pr-4 text-sm text-text-secondary space-y-1">${(currentNutritionPlanObject.generalTips || []).map((tip: string) => `<li>${tip}</li>`).join('')}</ul>`;
-                                display.innerHTML = html;
-                                window.lucide?.createIcons();
-                            };
+                        // Instead of showing a static preview, populate the manual builder
+                        const manualBuilder = document.getElementById('manual-nutrition-builder');
+                        const aiContainer = document.getElementById('ai-nutrition-container');
+                        const manualRadio = document.getElementById('nutrition-choice-manual') as HTMLInputElement;
 
-                            renderInteractivePlan();
+                        if (manualBuilder && aiContainer && manualRadio) {
+                            // Clear previous manual entries
+                            manualBuilder.querySelectorAll('.food-item-list').forEach(list => list.innerHTML = '');
 
-                            display.addEventListener('renderPlan', renderInteractivePlan);
-
-                            display.addEventListener('click', (e) => {
-                                const target = e.target as HTMLElement;
-                                const clearBtn = target.closest('#clear-nutrition-plan');
-                                if (clearBtn) {
-                                    currentNutritionPlanObject = null;
-                                    display.classList.add('hidden');
-                                    display.innerHTML = '';
-                                    return;
-                                }
-                                const removeBtn = target.closest('.remove-food-option');
-                                if (removeBtn) {
-                                    const dayIndex = parseInt(removeBtn.getAttribute('data-day')!, 10);
-                                    const mealIndex = parseInt(removeBtn.getAttribute('data-meal')!, 10);
-                                    const optIndex = parseInt(removeBtn.getAttribute('data-opt')!, 10);
-                                    currentNutritionPlanObject.weeklyPlan[dayIndex].meals[mealIndex].options.splice(optIndex, 1);
-                                    renderInteractivePlan();
+                            // Populate with AI data
+                            (plan.weeklyPlan[0].meals || []).forEach((meal: any) => {
+                                const mealCard = manualBuilder.querySelector(`.meal-card[data-meal-name="${meal.mealName}"]`);
+                                const list = mealCard?.querySelector('.food-item-list');
+                                if (list) {
+                                    (meal.options || []).forEach((opt: string) => {
+                                        const li = document.createElement('li');
+                                        li.className = 'flex justify-between items-center bg-bg-secondary p-1.5 rounded';
+                                        li.innerHTML = `
+                                            <span class="food-item-text">${sanitizeHTML(opt)}</span>
+                                            <button type="button" class="replace-food-item-btn text-blue-500/70 hover:text-blue-500" title="ویرایش/جایگزینی"><i data-lucide="refresh-cw" class="w-4 h-4 pointer-events-none"></i></button>
+                                        `;
+                                        list.appendChild(li);
+                                    });
                                 }
                             });
+                            (manualBuilder.querySelector('#manual-nutrition-tips') as HTMLTextAreaElement).value = (plan.generalTips || []).join('\n');
+                            
+                            // Switch view to manual builder
+                            aiContainer.classList.add('hidden');
+                            manualBuilder.classList.remove('hidden');
+                            manualRadio.checked = true;
+                            window.lucide.createIcons();
                         }
-                        showToast('برنامه غذایی با موفقیت ایجاد شد.', 'success');
+                        showToast('برنامه غذایی با موفقیت ایجاد و آماده ویرایش است.', 'success');
                     }
                 })
                 .finally(() => { aiNutritionBtn.classList.remove('is-loading'); aiNutritionBtn.disabled = false; });

@@ -1069,7 +1069,9 @@
         .sidebar-overlay {
             position: fixed;
             inset: 0;
-            background-color: rgba(0,0,0,0.5);
+            background-color: rgba(15, 23, 42, 0.6); /* Darker overlay for better focus */
+            backdrop-filter: blur(4px); /* Modern blur effect */
+            -webkit-backdrop-filter: blur(4px); /* Safari support */
             z-index: 39;
             opacity: 0;
             pointer-events: none;
