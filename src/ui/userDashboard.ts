@@ -1,6 +1,3 @@
-
-
-
 import { getUserData, saveUserData, addActivityLog, getCart, saveCart, getDiscounts, getNotifications, clearNotification, setNotification, getStorePlans, getUsers } from '../services/storage';
 import { getTodayWorkoutData, calculateBodyMetrics, calculateWorkoutStreak, performMetricCalculations, findBestLifts, calculateWeeklyMetrics } from '../utils/calculations';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement, hexToRgba } from '../utils/dom';
@@ -902,70 +899,52 @@ const renderNutritionTab = (currentUser: string, userData: any) => {
 
 const updateProfileMetricsDisplay = (container: HTMLElement) => {
     const metrics = calculateBodyMetrics(container);
-    if (!metrics) return;
 
-    const weight = parseFloat((container.querySelector('input[name="weight"]') as HTMLInputElement)?.value);
-    
-    // BMI
-    const bmiValue = metrics.bmi;
-    const bmiGaugeValue = container.querySelector('.bmi-gauge-value');
-    const bmiGaugeCircle = container.querySelector('.bmi-gauge-circle') as SVGCircleElement;
+    // BMI Gauge
+    const bmiValueEl = document.getElementById('bmi-value');
+    const bmiCategoryEl = document.getElementById('bmi-category');
+    // FIX: Use querySelector with a generic type for type safety with SVG elements.
+    const bmiArc = document.querySelector<SVGCircleElement>('#bmi-gauge-arc');
 
-    if (bmiGaugeValue && bmiGaugeCircle) {
-        if (bmiValue) {
-            bmiGaugeValue.textContent = String(bmiValue);
-            const circumference = 2 * Math.PI * 45;
-            let percentage = (bmiValue - 15) / (25); // Normalize from 15 to 40
-            percentage = Math.max(0, Math.min(1, percentage));
-            bmiGaugeCircle.style.strokeDashoffset = `${circumference * (1 - percentage)}`;
+    if (bmiValueEl && bmiCategoryEl && bmiArc) {
+        if (metrics && metrics.bmi) {
+            const bmi = metrics.bmi;
+            bmiValueEl.textContent = bmi.toFixed(1);
+            let category = 'نرمال';
+            let color = 'var(--admin-accent-green)';
+            if (bmi < 18.5) { category = 'کمبود وزن'; color = 'var(--admin-accent-blue)'; }
+            else if (bmi >= 25 && bmi < 30) { category = 'اضافه وزن'; color = 'var(--admin-accent-yellow)'; }
+            else if (bmi >= 30) { category = 'چاقی'; color = 'var(--admin-accent-red)'; }
+            bmiCategoryEl.textContent = category;
+            bmiArc.style.stroke = color;
+            
+            const circumference = 2 * Math.PI * 54; // r=54
+            const normalizedBmi = Math.max(0, Math.min(1, (bmi - 15) / (40 - 15)));
+            const offset = circumference * (1 - normalizedBmi);
+            bmiArc.style.strokeDashoffset = String(offset);
         } else {
-            bmiGaugeValue.textContent = '–';
-             bmiGaugeCircle.style.strokeDashoffset = `${2 * Math.PI * 45}`;
-        }
-    }
-    
-    // Body Composition
-    const bodyCompContainer = container.querySelector('.body-composition-container');
-    if (bodyCompContainer) {
-        const chart = bodyCompContainer.querySelector('.body-composition-chart') as HTMLElement;
-        const placeholder = bodyCompContainer.querySelector('.chart-placeholder') as HTMLElement;
-        const bodyfatOutput = bodyCompContainer.querySelector('.bodyfat-output') as HTMLElement;
-
-        if (metrics.bodyFat === null || isNaN(metrics.bodyFat)) {
-            chart.classList.add('hidden');
-            placeholder.classList.remove('hidden');
-            bodyfatOutput.textContent = '–';
-        } else {
-            chart.classList.remove('hidden');
-            placeholder.classList.add('hidden');
-            const lbmPercentage = (metrics.lbm! / weight) * 100;
-            (chart.querySelector('.lbm-bar') as HTMLElement).style.width = `${lbmPercentage}%`;
-            (chart.querySelector('.fat-mass-bar') as HTMLElement).style.width = `${100 - lbmPercentage}%`;
-            bodyfatOutput.textContent = `${metrics.bodyFat.toFixed(1)}%`;
+            bmiValueEl.textContent = '--';
+            bmiCategoryEl.textContent = '--';
+            bmiArc.style.strokeDashoffset = String(2 * Math.PI * 54);
         }
     }
 
-    // TDEE
-    const tdeeValue = metrics.tdee;
-    const tdeeGaugeValue = container.querySelector('.tdee-gauge-value');
-    const tdeeGaugeCircle = container.querySelector('.tdee-gauge-circle') as SVGCircleElement;
-     if (tdeeGaugeValue && tdeeGaugeCircle) {
-        if (tdeeValue) {
-            tdeeGaugeValue.textContent = String(Math.round(tdeeValue));
-            const circumference = 2 * Math.PI * 45;
-            let percentage = (tdeeValue - 1000) / (4000); // Normalize from 1000 to 5000
-            percentage = Math.max(0, Math.min(1, percentage));
-            tdeeGaugeCircle.style.strokeDashoffset = `${circumference * (1 - percentage)}`;
-        } else {
-            tdeeGaugeValue.textContent = '–';
-            tdeeGaugeCircle.style.strokeDashoffset = `${2 * Math.PI * 45}`;
-        }
-    }
+    // TDEE Gauge
+    const tdeeValueEl = document.getElementById('tdee-value');
+    // FIX: Use querySelector with a generic type for type safety with SVG elements.
+    const tdeeArc = document.querySelector<SVGCircleElement>('#tdee-gauge-arc');
 
-    // Ideal Weight
-    const idealWeightOutput = container.querySelector('.ideal-weight-output');
-    if (idealWeightOutput) {
-        idealWeightOutput.textContent = metrics.idealWeight || '–';
+    if (tdeeValueEl && tdeeArc) {
+        if (metrics && metrics.tdee) {
+            tdeeValueEl.textContent = String(Math.round(metrics.tdee));
+            const circumference = 2 * Math.PI * 54;
+            const normalizedTdee = Math.max(0, Math.min(1, (metrics.tdee - 1000) / (4000 - 1000)));
+            const offset = circumference * (1 - normalizedTdee);
+            tdeeArc.style.strokeDashoffset = String(offset);
+        } else {
+            tdeeValueEl.textContent = '--';
+            tdeeArc.style.strokeDashoffset = String(2 * Math.PI * 54);
+        }
     }
 };
 
@@ -973,146 +952,97 @@ const renderProfileTab = (currentUser: string, userData: any) => {
     const container = document.getElementById('profile-content');
     if (!container) return;
     const { step1, profile } = userData;
-
-    const name = step1?.clientName || currentUser;
-    const email = step1?.clientEmail || 'ایمیل ثبت نشده';
-    const initials = (name || '?').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
-    
     const coachData = step1?.coachName ? getUserData(step1.coachName) : null;
     const coachName = coachData?.step1?.clientName || step1?.coachName || 'انتخاب کنید';
     const coachNotSelected = !step1?.coachName;
-
     const trainingGoals = ['کاهش وزن', 'افزایش حجم', 'بهبود ترکیب بدنی', 'تناسب اندام عمومی', 'افزایش قدرت'];
-    const specializedSports = [
-        { value: 'bodybuilding', label: '💪 بدنسازی' },
-        { value: 'martial_arts', label: '🥋 رزمی' },
-        { value: 'general_fitness', label: '🤸 آمادگی جسمانی' },
-        { value: 'health_wellness', label: '❤️ سلامتی' },
-        { value: 'pro_athlete', label: '🏆 حرفه‌ای' },
-        { value: 'other', label: '⚪️ سایر' }
-    ];
-    const activityLevels = [
-        { value: 1.2, label: 'نشسته' },
-        { value: 1.375, label: 'کم' },
-        { value: 1.55, label: 'متوسط' },
-        { value: 1.725, label: 'زیاد' },
-        { value: 1.9, label: 'خیلی زیاد' }
-    ];
-    const showSpecificSportInput = step1?.specializedSport && ['martial_arts', 'pro_athlete', 'other'].includes(step1.specializedSport);
-
+    const activityLevels = [ { value: 1.2, label: 'نشسته' }, { value: 1.375, label: 'کم' }, { value: 1.55, label: 'متوسط' }, { value: 1.725, label: 'زیاد' }, { value: 1.9, label: 'خیلی زیاد' }];
+    
     container.innerHTML = `
-        <div class="max-w-4xl mx-auto space-y-6 animate-fade-in-up">
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 animate-fade-in-up">
+        <div class="lg:col-span-3">
             <form id="user-profile-form" class="space-y-6">
-                <!-- Profile Header -->
-                <div class="card p-6 flex flex-col sm:flex-row items-center gap-6">
-                    <div class="flex-shrink-0">
-                        <label for="user-profile-avatar-input" class="profile-avatar-upload block">
-                            ${profile?.avatar ? 
-                                `<img id="user-profile-avatar-preview" src="${profile.avatar}" alt="${name}" class="avatar-preview-img">` :
-                                `<div id="user-profile-avatar-initials" class="avatar-initials bg-accent text-bg-secondary flex items-center justify-center text-4xl font-bold">${initials}</div>`
-                            }
-                            <div class="upload-overlay">
-                                <i data-lucide="camera" class="w-8 h-8"></i>
+                <div class="card p-6">
+                    <div class="flex justify-between items-center mb-4">
+                         <h2 class="text-xl font-bold">پروفایل کاربری</h2>
+                         <button type="submit" id="profile-submit-btn" class="primary-button" disabled>ذخیره تغییرات</button>
+                    </div>
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-4">
+                            <label for="user-profile-avatar-input" class="profile-avatar-upload block">
+                                ${profile?.avatar ? 
+                                    `<img id="user-profile-avatar-preview" src="${profile.avatar}" alt="${step1?.clientName}" class="avatar-preview-img">` :
+                                    `<div id="user-profile-avatar-initials" class="avatar-initials bg-accent text-bg-secondary flex items-center justify-center text-4xl font-bold">${(step1?.clientName || '?').charAt(0)}</div>`
+                                }
+                                <div class="upload-overlay"><i data-lucide="camera" class="w-8 h-8"></i></div>
+                            </label>
+                            <input type="file" id="user-profile-avatar-input" class="hidden" accept="image/*">
+                            <div class="flex-grow">
+                                 <div class="input-group"><input type="text" id="user-profile-name" class="input-field w-full" value="${step1?.clientName || ''}" placeholder=" "><label for="user-profile-name" class="input-label">نام و نام خانوادگی</label></div>
+                                 <div class="input-group mt-2"><input type="tel" id="user-profile-mobile" class="input-field w-full" value="${step1?.mobile || ''}" placeholder=" "><label class="input-label">شماره موبایل</label></div>
                             </div>
-                        </label>
-                        <input type="file" id="user-profile-avatar-input" class="hidden" accept="image/*">
-                    </div>
-                    <div class="flex-grow text-center sm:text-right">
-                        <div class="input-group">
-                            <input type="text" id="user-profile-name" class="input-field w-full !text-2xl !font-bold !p-2 !bg-transparent !border-transparent focus:!bg-bg-tertiary focus:!border-border-primary" value="${step1?.clientName || ''}" placeholder="نام و نام خانوادگی">
                         </div>
-                        <p class="text-text-secondary -mt-2">${email}</p>
-                    </div>
-                    <button type="submit" id="profile-submit-btn" class="primary-button !py-3 !px-8 ml-auto" disabled>
-                        <i data-lucide="send" class="w-4 h-4 ml-2"></i>
-                        ذخیره و ارسال
-                    </button>
-                </div>
-                
-                <!-- Personal and Coach Info -->
-                <div class="info-card">
-                    <div class="card-title"><i data-lucide="user-round"></i>اطلاعات فردی و مربی</div>
-                    <div class="card-content grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="input-group"><input type="tel" id="user-profile-mobile" class="input-field w-full" value="${step1?.mobile || ''}" placeholder=" "><label class="input-label">شماره موبایل</label></div>
-                        <div class="md:col-span-2">
+                        <div>
                             <label class="block text-sm font-semibold mb-2">مربی</label>
                             <button type="button" id="select-coach-btn" class="input-field w-full text-right flex justify-between items-center ${coachNotSelected ? 'highlight-coach-selection' : ''}">
                                 <span id="current-coach-name">${coachName}</span><i data-lucide="chevron-down" class="w-4 h-4"></i>
                             </button>
                             ${coachNotSelected ? `<div class="coach-selection-warning"><i data-lucide="alert-triangle" class="w-4 h-4"></i><span>لطفا مربی خود را انتخاب کنید.</span></div>` : ''}
                         </div>
-                    </div>
-                </div>
-
-                <!-- Physical Specs & Metrics -->
-                <div class="info-card">
-                    <div class="card-title"><i data-lucide="scan-line"></i>مشخصات و آمار بدنی</div>
-                    <div class="card-content grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div class="space-y-6">
-                             <div class="radio-group-pink"><p class="text-sm font-semibold mb-2">جنسیت</p><div class="grid grid-cols-2 gap-2">
-                                <label class="option-card-label"><input type="radio" name="gender_user" value="مرد" class="option-card-input" ${step1?.gender === 'مرد' ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">مرد</span></label>
-                                <label class="option-card-label"><input type="radio" name="gender_user" value="زن" class="option-card-input" ${step1?.gender === 'زن' ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">زن</span></label>
-                            </div></div>
-                            <div class="space-y-1 slider-container-blue"><label class="font-semibold text-sm">سن: <span>${step1?.age || 25}</span></label><input type="range" name="age" min="15" max="80" value="${step1?.age || 25}" class="range-slider age-slider w-full mt-1"></div>
-                            <div class="space-y-1 slider-container-green"><label class="font-semibold text-sm">قد (cm): <span>${step1?.height || 175}</span></label><input type="range" name="height" min="140" max="220" value="${step1?.height || 175}" class="range-slider height-slider w-full mt-1"></div>
-                            <div class="space-y-1 slider-container-orange"><label class="font-semibold text-sm">وزن (kg): <span>${step1?.weight || 75}</span></label><input type="range" name="weight" min="40" max="150" step="0.5" value="${step1?.weight || 75}" class="range-slider weight-slider w-full mt-1"></div>
-                            <details><summary class="font-semibold cursor-pointer text-sm flex items-center gap-1">اندازه‌گیری دور بدن (اختیاری) <i data-lucide="chevron-down" class="w-4 h-4 details-arrow"></i></summary>
-                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                                    <div class="input-group-gray"><div class="input-group"><input type="number" name="neck" class="input-field w-full neck-input" value="${step1?.neck || ''}" placeholder=" "><label class="input-label">گردن</label></div></div>
-                                    <div class="input-group-gray"><div class="input-group"><input type="number" name="waist" class="input-field w-full waist-input" value="${step1?.waist || ''}" placeholder=" "><label class="input-label">کمر</label></div></div>
-                                    <div class="input-group-gray"><div class="input-group"><input type="number" name="hip" class="input-field w-full hip-input" value="${step1?.hip || ''}" placeholder=" "><label class="input-label">باسن</label></div></div>
-                                </div>
-                            </details>
-                        </div>
-                        <div class="space-y-4">
-                            <div class="text-center"><h4 class="font-semibold mb-2">شاخص توده بدنی (BMI)</h4>
-                                <div class="gauge inline-block" style="width: 120px; height: 120px;">
-                                    <svg class="gauge-svg" viewBox="0 0 100 100"><circle class="gauge-track" r="45" cx="50" cy="50" stroke-width="8"></circle><circle class="gauge-value bmi-gauge-circle" r="45" cx="50" cy="50" stroke-width="8" style="stroke:var(--admin-accent-green); stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 0.5s ease;"></circle></svg>
-                                    <div class="gauge-text"><span class="gauge-number text-2xl bmi-gauge-value"></span></div>
-                                </div>
-                            </div>
-                            <div class="body-composition-container"><h4 class="font-semibold mb-2 flex justify-between items-center"><span>ترکیب بدنی</span><span class="font-bold bodyfat-output"></span></h4>
-                                <div class="relative h-6">
-                                    <div class="chart-placeholder absolute inset-0 text-xs text-text-secondary bg-bg-tertiary rounded-md p-2 flex items-center justify-center">دور بدن را وارد کنید</div>
-                                    <div class="body-composition-chart flex h-full rounded-md overflow-hidden">
-                                        <div class="lbm-bar bg-green-500 transition-all duration-500"></div><div class="fat-mass-bar bg-red-500 transition-all duration-500"></div>
-                                    </div>
-                                </div>
-                                <div class="flex justify-between text-xs text-text-secondary mt-1"><span>توده بدون چربی</span><span>توده چربی</span></div>
-                            </div>
-                            <div class="text-center"><h4 class="font-semibold mb-2">کالری روزانه (TDEE)</h4>
-                                <div class="gauge inline-block" style="width: 120px; height: 120px;">
-                                    <svg class="gauge-svg" viewBox="0 0 100 100"><circle class="gauge-track" r="45" cx="50" cy="50" stroke-width="8"></circle><circle class="gauge-value tdee-gauge-circle" r="45" cx="50" cy="50" stroke-width="8" style="stroke:var(--admin-accent-orange); stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 0.5s ease;"></circle></svg>
-                                    <div class="gauge-text"><span class="gauge-number text-2xl tdee-gauge-value"></span><span class="gauge-label">kcal</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Goals & Activity -->
-                <div class="info-card">
-                    <div class="card-title"><i data-lucide="target"></i>اهداف و سطح فعالیت</div>
-                    <div class="card-content space-y-6">
-                        <div><p class="text-sm font-semibold mb-2">هدف اصلی شما</p><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                        <div class="radio-group-pink"><p class="text-sm font-semibold mb-2">جنسیت</p><div class="grid grid-cols-2 gap-2">
+                            <label class="option-card-label"><input type="radio" name="gender_user" value="مرد" class="option-card-input" ${step1?.gender === 'مرد' ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">مرد</span></label>
+                            <label class="option-card-label"><input type="radio" name="gender_user" value="زن" class="option-card-input" ${step1?.gender === 'زن' ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">زن</span></label>
+                        </div></div>
+                        <div class="space-y-1 slider-container-blue"><label class="font-semibold text-sm">سن: <span>${step1?.age || 25}</span></label><input type="range" name="age" min="15" max="80" value="${step1?.age || 25}" class="range-slider age-slider w-full mt-1"></div>
+                        <div class="space-y-1 slider-container-green"><label class="font-semibold text-sm">قد (cm): <span>${step1?.height || 175}</span></label><input type="range" name="height" min="140" max="220" value="${step1?.height || 175}" class="range-slider height-slider w-full mt-1"></div>
+                        <div class="space-y-1 slider-container-orange"><label class="font-semibold text-sm">وزن (kg): <span>${step1?.weight || 75}</span></label><input type="range" name="weight" min="40" max="150" step="0.5" value="${step1?.weight || 75}" class="range-slider weight-slider w-full mt-1"></div>
+                        <div><p class="text-sm font-semibold mb-2">هدف اصلی شما</p><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             ${trainingGoals.map(goal => `<label class="option-card-label"><input type="radio" name="training_goal_user" value="${goal}" class="option-card-input" ${step1?.trainingGoal === goal ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">${goal}</span></label>`).join('')}
-                        </div></div>
-                         <div><p class="text-sm font-semibold mb-2">ورزش تخصصی</p><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            ${specializedSports.map(sport => `<label class="option-card-label"><input type="radio" name="specialized_sport_user" value="${sport.value}" class="option-card-input" ${step1?.specializedSport === sport.value ? 'checked data-is-checked="true"' : ''}><span class="option-card-content !text-xs sm:!text-sm">${sport.label}</span></label>`).join('')}
-                        </div></div>
-                        <div id="specific-sport-container" class="mt-4 ${!showSpecificSportInput ? 'hidden' : ''}"><div class="input-group">
-                            <input type="text" id="specific_sport_name_user" name="specific_sport_name_user" class="input-field w-full" value="${step1?.specificSportName || ''}" placeholder=" "><label for="specific_sport_name_user" class="input-label">نام دقیق رشته</label>
                         </div></div>
                         <div><p class="text-sm font-semibold mb-2">روزهای تمرین در هفته</p><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             ${[3, 4, 5, 6].map(day => `<label class="option-card-label"><input type="radio" name="training_days_user" value="${day}" class="option-card-input" ${step1?.trainingDays === day ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">${day} روز</span></label>`).join('')}
                         </div></div>
-                        <div><p class="text-sm font-semibold mb-2">سطح فعالیت روزانه</p><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                        <div><p class="text-sm font-semibold mb-2">سطح فعالیت روزانه</p><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             ${activityLevels.map(level => `<label class="option-card-label"><input type="radio" name="activity_level_user" value="${level.value}" class="option-card-input" ${step1?.activityLevel === level.value ? 'checked data-is-checked="true"' : ''}><span class="option-card-content">${level.label}</span></label>`).join('')}
                         </div></div>
                     </div>
                 </div>
             </form>
         </div>
+        <div class="lg:col-span-2 space-y-6">
+            <div class="card p-4 text-center">
+                <h3 class="font-bold">شاخص توده بدنی (BMI)</h3>
+                <div class="relative w-48 h-48 mx-auto my-4">
+                    <svg viewBox="0 0 120 120" class="w-full h-full transform -rotate-90">
+                        <circle cx="60" cy="60" r="54" fill="none" stroke="var(--bg-tertiary)" stroke-width="12" />
+                        <circle id="bmi-gauge-arc" cx="60" cy="60" r="54" fill="none" stroke="var(--admin-accent-green)" stroke-width="12" stroke-linecap="round" stroke-dasharray="339.29" stroke-dashoffset="339.29" style="transition: stroke-dashoffset 1s ease-out, stroke 0.5s ease;" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="bmi-value" class="text-3xl font-extrabold">--</span>
+                        <span id="bmi-category" class="text-sm font-semibold text-text-secondary">--</span>
+                    </div>
+                </div>
+                <div class="flex justify-center gap-x-4 text-xs">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-yellow-400"></span>اضافه وزن</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-green-500"></span>نرمال</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-red-500"></span>چاقی</span>
+                </div>
+            </div>
+            <div class="card p-4 text-center">
+                <h3 class="font-bold">کالری نگهداری روزانه (TDEE)</h3>
+                <div class="relative w-48 h-48 mx-auto my-4">
+                    <svg viewBox="0 0 120 120" class="w-full h-full transform -rotate-90">
+                        <circle cx="60" cy="60" r="54" fill="none" stroke="var(--bg-tertiary)" stroke-width="12" />
+                        <circle id="tdee-gauge-arc" cx="60" cy="60" r="54" fill="none" stroke="var(--admin-accent-blue)" stroke-width="12" stroke-linecap="round" stroke-dasharray="339.29" stroke-dashoffset="339.29" style="transition: stroke-dashoffset 1s ease-out;" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="tdee-value" class="text-3xl font-extrabold">--</span>
+                        <span class="text-sm font-semibold text-text-secondary">kcal</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     `;
 };
 

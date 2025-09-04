@@ -180,108 +180,90 @@ const getCalculatorHTML = () => {
     <section id="calculator-widget" class="py-16">
         <div class="calculator-card max-w-6xl mx-auto p-6 md:p-8 animate-fade-in-up animation-delay-800">
             <div class="text-center mb-8">
-                <h3 class="font-bold text-2xl text-accent">محاسبه‌گر هوشمند تناسب اندام</h3>
-                <p class="text-text-primary mt-2 max-w-3xl mx-auto">اطلاعات خود را وارد کنید تا معیارهای کلیدی بدن خود را مشاهده کرده و یک دید کلی از وضعیت فعلی خود به دست آورید.</p>
+                <h3 class="font-bold text-2xl text-accent">محاسبه‌گر پیشرفته تناسب اندام</h3>
+                <p class="text-text-primary mt-2 max-w-3xl mx-auto">اطلاعات خود را وارد کنید تا یک تحلیل کامل از وضعیت بدن و نیازهای روزانه خود دریافت کنید.</p>
             </div>
-            <form id="landing-page-calculator" class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-8">
-                <!-- Inputs -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
-                    <div class="sm:col-span-2 flex items-center gap-4">
-                        <span class="font-semibold w-16 shrink-0">جنسیت:</span>
-                        <div class="flex-grow grid grid-cols-2 gap-2">
-                             <label class="option-card-label">
-                                <input type="radio" name="gender" value="مرد" class="option-card-input" checked>
-                                <span class="option-card-content !py-2">مرد</span>
-                            </label>
-                             <label class="option-card-label">
-                                <input type="radio" name="gender" value="زن" class="option-card-input">
-                                <span class="option-card-content !py-2">زن</span>
-                            </label>
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                <form id="landing-page-calculator" class="lg:col-span-3 space-y-8">
+                    <!-- Basic Info -->
+                    <div>
+                        <h4 class="font-bold text-lg mb-4 flex items-center gap-2 text-accent">
+                            <span class="bg-accent text-bg-secondary w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">۱</span> اطلاعات پایه
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
+                             <div class="sm:col-span-2 flex items-center gap-4"><span class="font-semibold w-16 shrink-0">جنسیت:</span><div class="flex-grow grid grid-cols-2 gap-2">
+                                <label class="option-card-label"><input type="radio" name="gender" value="مرد" class="option-card-input" checked><span class="option-card-content !py-2">مرد</span></label>
+                                <label class="option-card-label"><input type="radio" name="gender" value="زن" class="option-card-input"><span class="option-card-content !py-2">زن</span></label>
+                            </div></div>
+                            <div class="slider-container-blue"><label class="font-semibold text-sm">سن: <span>25</span></label><input type="range" name="age" min="15" max="80" value="25" class="range-slider age-slider w-full mt-1"></div>
+                            <div class="slider-container-green"><label class="font-semibold text-sm">قد (cm): <span>175</span></label><input type="range" name="height" min="140" max="220" value="175" class="range-slider height-slider w-full mt-1"></div>
+                            <div class="sm:col-span-2 slider-container-orange"><label class="font-semibold text-sm">وزن (kg): <span>75.0</span></label><input type="range" name="weight" min="40" max="150" value="75" step="0.5" class="range-slider weight-slider w-full mt-1"></div>
                         </div>
                     </div>
-
-                    <div class="slider-container-blue">
-                        <label class="font-semibold text-sm">سن: <span>25</span></label>
-                        <input type="range" name="age" min="15" max="80" value="25" class="range-slider age-slider w-full mt-1">
-                    </div>
-                    <div class="slider-container-green">
-                        <label class="font-semibold text-sm">قد (cm): <span>175</span></label>
-                        <input type="range" name="height" min="140" max="220" value="175" class="range-slider height-slider w-full mt-1">
-                    </div>
-                    <div class="sm:col-span-2 slider-container-orange">
-                        <label class="font-semibold text-sm">وزن (kg): <span>75</span></label>
-                        <input type="range" name="weight" min="40" max="150" value="75" step="0.5" class="range-slider weight-slider w-full mt-1">
-                    </div>
-                    
-                    <div class="sm:col-span-2">
-                        <h4 class="font-semibold text-sm mb-2">هدف تمرینی</h4>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                            ${trainingGoals.map((goal, index) => `
-                                <label class="option-card-label">
-                                    <input type="radio" name="training_goal_user" value="${goal.value}" class="option-card-input" ${index === 1 ? 'checked' : ''}>
-                                    <span class="option-card-content !py-2">${goal.label}</span>
-                                </label>
-                            `).join('')}
+                     <!-- Lifestyle & Goals -->
+                    <div>
+                        <h4 class="font-bold text-lg mb-4 flex items-center gap-2 text-accent">
+                            <span class="bg-accent text-bg-secondary w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">۲</span> سبک زندگی و اهداف
+                        </h4>
+                        <div class="space-y-6">
+                            <div><h5 class="font-semibold text-sm mb-2">هدف تمرینی</h5><div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                                ${trainingGoals.map((goal, index) => `<label class="option-card-label"><input type="radio" name="training_goal_user" value="${goal.value}" class="option-card-input" ${index === 1 ? 'checked' : ''}><span class="option-card-content !py-2">${goal.label}</span></label>`).join('')}
+                            </div></div>
+                            <div><h5 class="font-semibold text-sm mb-2">سطح فعالیت روزانه</h5><div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
+                                ${activityLevels.map((level, index) => `<label class="option-card-label"><input type="radio" name="activity_level" value="${level.value}" class="option-card-input" ${index === 2 ? 'checked' : ''}><span class="option-card-content !py-2">${level.label}</span></label>`).join('')}
+                            </div></div>
                         </div>
                     </div>
-
-                    <div class="sm:col-span-2">
-                        <h4 class="font-semibold text-sm mb-2">روزهای تمرین در هفته</h4>
-                        <div class="grid grid-cols-4 gap-2 text-xs">
-                            ${[3, 4, 5, 6].map((day, index) => `
-                                <label class="option-card-label">
-                                    <input type="radio" name="training_days_user" value="${day}" class="option-card-input" ${index === 1 ? 'checked' : ''}>
-                                    <span class="option-card-content !py-2">${day} روز</span>
-                                </label>
-                            `).join('')}
+                     <!-- Advanced Metrics -->
+                    <details id="advanced-metrics-details">
+                        <summary class="font-bold text-lg cursor-pointer flex items-center gap-2 text-accent list-none">
+                            <span class="bg-accent text-bg-secondary w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">۳</span>
+                            محاسبات پیشرفته (اختیاری)
+                            <i data-lucide="chevron-down" class="details-arrow mr-auto transition-transform"></i>
+                        </summary>
+                        <div class="p-4 bg-bg-tertiary rounded-lg space-y-4 mt-3">
+                            <p class="text-xs text-text-secondary">با وارد کردن اندازه‌های دور بدن، درصد چربی و توده بدون چربی خود را با دقت بیشتری محاسبه کنید (تمام اندازه‌ها به سانتی‌متر).</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="input-group"><input type="number" name="neck" class="input-field w-full neck-input" placeholder=" "><label class="input-label">دور گردن</label></div>
+                                <div class="input-group"><input type="number" name="waist" class="input-field w-full waist-input" placeholder=" "><label class="input-label">دور کمر</label></div>
+                                <div class="input-group hidden" id="hip-input-container"><input type="number" name="hip" class="input-field w-full hip-input" placeholder=" "><label class="input-label">دور باسن</label></div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="sm:col-span-2">
-                        <h4 class="font-semibold text-sm mb-2">سطح فعالیت روزانه</h4>
-                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
-                            ${activityLevels.map((level, index) => `
-                                <label class="option-card-label">
-                                    <input type="radio" name="activity_level" value="${level.value}" class="option-card-input" ${index === 2 ? 'checked' : ''}>
-                                    <span class="option-card-content !py-2">${level.label}</span>
-                                </label>
-                            `).join('')}
+                    </details>
+                </form>
+                <!-- Results -->
+                <div class="lg:col-span-2"><div class="sticky top-6 space-y-4">
+                    <h4 class="font-bold text-xl text-center">نتایج شما</h4>
+                    <div id="calculator-results-container" class="calculator-result-grid !grid-cols-1">
+                        <div class="result-metric-card p-4 text-center">
+                            <p class="label">کالری مورد نیاز شما</p>
+                            <p class="value text-accent !text-4xl"><span id="goal-tdee-output">...</span> <span class="!text-lg">kcal</span></p>
+                            <p class="unit text-xs">برای <strong id="goal-text-output">افزایش حجم</strong> | نگهداری: <span id="tdee-output">...</span> kcal</p>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Outputs -->
-                <div class="flex flex-col justify-between">
-                    <div class="calculator-result-grid">
-                         <div class="result-metric-card">
-                            <p class="label">کالری روزانه (TDEE)</p>
-                            <p class="value"><span class="tdee-output">2450</span></p>
-                            <p class="unit">کیلوکالری</p>
+                        <div class="result-metric-card p-3 text-center">
+                            <p class="label">شاخص BMI</p>
+                            <p class="value"><span id="bmi-output">...</span></p>
+                            <div id="landing-bmi-indicator-track" class="my-1.5"><div id="landing-bmi-indicator-bar"></div></div>
+                            <p id="bmi-category-output" class="unit text-xs">...</p>
                         </div>
-                         <div class="result-metric-card">
-                            <p class="label">شاخص توده بدنی (BMI)</p>
-                            <p class="value"><span class="bmi-output">24.5</span></p>
-                             <div id="landing-bmi-indicator-track" class="w-full mt-1">
-                                <div id="landing-bmi-indicator-bar"></div>
-                             </div>
+                        <div id="body-comp-card" class="result-metric-card p-3 text-center hidden">
+                            <p class="label">% چربی بدن</p>
+                            <p class="value"><span id="bodyfat-output">...</span></p>
+                            <p class="unit text-xs">توده بدون چربی: <span id="lbm-output">...</span> kg</p>
                         </div>
-                         <div class="result-metric-card">
-                            <p class="label">درصد چربی بدن (تخمینی)</p>
-                            <p class="value"><span class="bodyfat-output">–</span></p>
-                            <p class="unit">برای محاسبه، دور بدن را وارد کنید</p>
-                        </div>
-                         <div class="result-metric-card">
-                            <p class="label">محدوده وزن ایده‌آل</p>
-                            <p class="value !text-xl"><span class="ideal-weight-output">...</span></p>
-                            <p class="unit">کیلوگرم</p>
-                        </div>
+                        <div class="result-metric-card p-4 text-center"><p class="label">ماکرونوترینت‌های پیشنهادی (روزانه)</p><div class="grid grid-cols-3 gap-2 mt-2">
+                            <div><p class="value !text-lg text-admin-accent-pink"><span id="protein-output">...</span> g</p><p class="unit text-xs">پروتئین</p></div>
+                            <div><p class="value !text-lg text-admin-accent-orange"><span id="carbs-output">...</span> g</p><p class="unit text-xs">کربوهیدرات</p></div>
+                            <div><p class="value !text-lg text-admin-accent-yellow"><span id="fat-output">...</span> g</p><p class="unit text-xs">چربی</p></div>
+                        </div></div>
                     </div>
                     <button type="button" id="calculator-cta-btn" class="primary-button w-full !py-3 mt-4">دریافت برنامه شخصی‌سازی شده</button>
-                </div>
-            </form>
+                </div></div>
+            </div>
         </div>
-    </section>
-    `;
-}
+    </section>`;
+};
+
 
 const renderCoachCardHTML = (coach: any): string => {
     const coachData = getUserData(coach.username);
@@ -491,8 +473,11 @@ export function initLandingPageListeners(onGoToDashboard?: () => void) {
                         height: formData.get('height'),
                         weight: formData.get('weight'),
                         trainingGoal: formData.get('training_goal_user'),
-                        trainingDays: formData.get('training_days_user'),
                         activityLevel: formData.get('activity_level'),
+                        trainingDays: 4, // Default value
+                        neck: formData.get('neck'),
+                        waist: formData.get('waist'),
+                        hip: formData.get('hip'),
                     };
                     sessionStorage.setItem('fitgympro_calculator_data', JSON.stringify(data));
                 }
@@ -522,114 +507,124 @@ export function initLandingPageListeners(onGoToDashboard?: () => void) {
         document.getElementById('close-info-modal-btn')?.addEventListener('click', () => closeModal(infoModal));
     }
     
-    // Calculator widget logic
     const calculator = document.getElementById('landing-page-calculator');
     if (calculator) {
+        const hipInputContainer = document.getElementById('hip-input-container');
+
         const updateCalculatorResults = () => {
             const metrics = calculateBodyMetrics(calculator);
+            if (!metrics) return;
+
+            const { tdee, bmi, bodyFat, lbm } = metrics;
+            const goal = (calculator.querySelector('input[name="training_goal_user"]:checked') as HTMLInputElement)?.value || 'افزایش حجم';
             
-            const tdeeOutput = calculator.querySelector('.tdee-output');
-            const bmiOutput = calculator.querySelector('.bmi-output');
-            const bodyfatOutput = calculator.querySelector('.bodyfat-output');
-            const idealWeightOutput = calculator.querySelector('.ideal-weight-output');
-            const bmiIndicatorBar = calculator.querySelector('#landing-bmi-indicator-bar');
-            
-            const bmiValueParent = bmiOutput?.closest('.value') as HTMLElement | null;
-            const bodyfatValueParent = bodyfatOutput?.closest('.value') as HTMLElement | null;
+            let goalTdee = tdee || 0;
+            let pRatio = 0.3, cRatio = 0.4, fRatio = 0.3; // Default for maintenance/general
 
-            const clearOutputs = () => {
-                if(tdeeOutput) tdeeOutput.textContent = '–';
-                if(bmiOutput) bmiOutput.textContent = '–';
-                if(bodyfatOutput) bodyfatOutput.textContent = '–';
-                if(idealWeightOutput) idealWeightOutput.textContent = '–';
-                if(bmiIndicatorBar) (bmiIndicatorBar as HTMLElement).style.width = `0%`;
-                if(bmiValueParent) bmiValueParent.style.color = 'var(--accent)';
-                if(bodyfatValueParent) bodyfatValueParent.style.color = 'var(--accent)';
-            };
-
-            if (metrics) {
-                if (tdeeOutput) tdeeOutput.textContent = metrics.tdee ? String(Math.round(metrics.tdee)) : '–';
-                if (bmiOutput) bmiOutput.textContent = metrics.bmi ? String(metrics.bmi) : '–';
-                if (bodyfatOutput) bodyfatOutput.textContent = metrics.bodyFat ? `${metrics.bodyFat}%` : '–';
-                if (idealWeightOutput) idealWeightOutput.textContent = metrics.idealWeight || '–';
-
-                if (bmiIndicatorBar && bmiValueParent && metrics.bmi) {
-                    const bmi = metrics.bmi;
-                    const minBmi = 15;
-                    const maxBmi = 40;
-                    let percentage = (bmi - minBmi) / (maxBmi - minBmi) * 100;
-                    percentage = Math.max(0, Math.min(100, percentage));
-
-                    let color = 'var(--admin-accent-green)'; // Normal
-                    if (bmi < 18.5) color = 'var(--admin-accent-blue)'; // Underweight
-                    else if (bmi >= 25 && bmi < 30) color = 'var(--admin-accent-orange)'; // Overweight
-                    else if (bmi >= 30) color = 'var(--admin-accent-red)'; // Obese
-                    
-                    bmiValueParent.style.color = color;
-                    
-                    setTimeout(() => {
-                        (bmiIndicatorBar as HTMLElement).style.width = `${percentage}%`;
-                        (bmiIndicatorBar as HTMLElement).style.backgroundColor = color;
-                    }, 100);
-
-                } else {
-                     if (bmiIndicatorBar) (bmiIndicatorBar as HTMLElement).style.width = '0%';
-                     if (bmiValueParent) bmiValueParent.style.color = 'var(--accent)';
-                }
-
-                if (bodyfatValueParent && metrics.bodyFat) {
-                    const genderRadios = calculator.querySelectorAll('input[name="gender"]');
-                    let gender = 'مرد'; // default
-                    for (const radio of Array.from(genderRadios)) {
-                        if ((radio as HTMLInputElement).checked) {
-                            gender = (radio as HTMLInputElement).value;
-                            break;
-                        }
-                    }
-                    
-                    const bf = metrics.bodyFat;
-                    let bfColor = 'var(--admin-accent-green)'; // Default to healthy
-            
-                    if (gender === 'مرد') {
-                        if (bf < 6) bfColor = 'var(--admin-accent-blue)'; // Low
-                        else if (bf <= 17) bfColor = 'var(--admin-accent-green)'; // Healthy/Fit
-                        else if (bf <= 24) bfColor = 'var(--admin-accent-orange)'; // Average/High
-                        else bfColor = 'var(--admin-accent-red)'; // Obese
-                    } else { // زن
-                        if (bf < 14) bfColor = 'var(--admin-accent-blue)'; // Low
-                        else if (bf <= 24) bfColor = 'var(--admin-accent-green)'; // Healthy/Fit
-                        else if (bf <= 31) bfColor = 'var(--admin-accent-orange)'; // Average/High
-                        else bfColor = 'var(--admin-accent-red)'; // Obese
-                    }
-                    bodyfatValueParent.style.color = bfColor;
-                } else if (bodyfatValueParent) {
-                    bodyfatValueParent.style.color = 'var(--accent)';
-                }
-
-            } else {
-                clearOutputs();
+            if (goal === 'کاهش وزن') {
+                goalTdee *= 0.85; // 15% deficit
+                pRatio = 0.4; cRatio = 0.3; fRatio = 0.3;
+            } else if (goal === 'افزایش حجم') {
+                goalTdee *= 1.15; // 15% surplus
+                pRatio = 0.35; cRatio = 0.45; fRatio = 0.2;
+            } else if (goal === 'افزایش قدرت') {
+                pRatio = 0.35; cRatio = 0.40; fRatio = 0.25;
             }
+
+            const protein = goalTdee > 0 ? Math.round((goalTdee * pRatio) / 4) : 0;
+            const carbs = goalTdee > 0 ? Math.round((goalTdee * cRatio) / 4) : 0;
+            const fat = goalTdee > 0 ? Math.round((goalTdee * fRatio) / 9) : 0;
+
+            (document.getElementById('tdee-output') as HTMLElement).textContent = String(Math.round(tdee || 0));
+            (document.getElementById('goal-tdee-output') as HTMLElement).textContent = String(Math.round(goalTdee));
+            (document.getElementById('goal-text-output') as HTMLElement).textContent = goal;
+            (document.getElementById('bmi-output') as HTMLElement).textContent = bmi ? bmi.toFixed(1) : '...';
+            
+            // BMI Indicator Bar Logic
+            const bmiBar = document.getElementById('landing-bmi-indicator-bar') as HTMLElement;
+            const bmiCategoryEl = document.getElementById('bmi-category-output') as HTMLElement;
+            if (bmi && bmiBar && bmiCategoryEl) {
+                let category = 'نرمال';
+                let color = '#22c55e'; // green
+            
+                // Define a visual range for the BMI bar (e.g., from 15 to 40)
+                const minVisibleBmi = 15;
+                const maxVisibleBmi = 40;
+                
+                // Calculate percentage based on the linear scale
+                let percentage = ((bmi - minVisibleBmi) / (maxVisibleBmi - minVisibleBmi)) * 100;
+                percentage = Math.max(0, Math.min(100, percentage)); // Clamp between 0 and 100
+            
+                // Determine category and color based on standard BMI ranges
+                if (bmi < 18.5) {
+                    category = 'کمبود وزن';
+                    color = '#3b82f6'; // blue
+                } else if (bmi < 25) {
+                    category = 'نرمال';
+                    color = '#22c55e'; // green
+                } else if (bmi < 30) {
+                    category = 'اضافه وزن';
+                    color = '#f59e0b'; // amber
+                } else {
+                    category = 'چاقی';
+                    color = '#ef4444'; // red
+                }
+                
+                bmiCategoryEl.textContent = category;
+                bmiBar.style.width = `${percentage}%`;
+                bmiBar.style.backgroundColor = color;
+            }
+
+            // Body Composition
+            const bodyCompCard = document.getElementById('body-comp-card');
+            if (bodyCompCard) {
+                if (bodyFat && lbm) {
+                    (document.getElementById('bodyfat-output') as HTMLElement).textContent = `${bodyFat.toFixed(1)}%`;
+                    (document.getElementById('lbm-output') as HTMLElement).textContent = lbm.toFixed(1);
+                    bodyCompCard.classList.remove('hidden');
+                } else {
+                    bodyCompCard.classList.add('hidden');
+                }
+            }
+
+            (document.getElementById('protein-output') as HTMLElement).textContent = String(protein);
+            (document.getElementById('carbs-output') as HTMLElement).textContent = String(carbs);
+            (document.getElementById('fat-output') as HTMLElement).textContent = String(fat);
+        };
+        
+        const handleGenderChange = () => {
+            const isFemale = (calculator.querySelector('input[name="gender"]:checked') as HTMLInputElement)?.value === 'زن';
+            hipInputContainer?.classList.toggle('hidden', !isFemale);
         };
 
         calculator.addEventListener('input', e => {
             const target = e.target as HTMLInputElement;
             if (target.matches('.range-slider')) {
                 const labelSpan = target.closest('div')?.querySelector('label > span');
-                if (labelSpan) labelSpan.textContent = target.value;
+                if (labelSpan) {
+                     if (target.step === '0.5') {
+                        labelSpan.textContent = parseFloat(target.value).toFixed(1);
+                     } else {
+                        labelSpan.textContent = target.value;
+                     }
+                }
                 updateSliderTrack(target);
             }
-             updateCalculatorResults();
+            updateCalculatorResults();
         });
         
         calculator.addEventListener('change', e => {
             const target = e.target as HTMLInputElement;
+            if (target.matches('input[name="gender"]')) {
+                handleGenderChange();
+            }
             if (target.matches('input[type="radio"]')) {
                 updateCalculatorResults();
             }
         });
         
-        // Initial call to set sliders track colors
         calculator.querySelectorAll<HTMLInputElement>('.range-slider').forEach(updateSliderTrack);
+        handleGenderChange();
         updateCalculatorResults();
     }
     

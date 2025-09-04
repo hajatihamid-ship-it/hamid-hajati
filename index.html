@@ -795,9 +795,9 @@
 
         /* Landing Page Widgets */
         .calculator-card {
-            background-color: #141a28; /* Darker matte */
-            border: 1px solid var(--accent-transparent-30); /* Accent border */
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+            border: 1px solid rgba(51, 65, 85, 0.7);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
             border-radius: var(--radius-card);
         }
         #calculator-widget .text-yellow-400 {
@@ -1093,15 +1093,7 @@
         }
         .hero-headline-accent { position: relative; display: inline-block; color: var(--accent); }
         .hero-headline-accent::after { content: ''; position: absolute; left: 0; right: 0; bottom: -5px; height: 4px; background: var(--accent); filter: blur(8px); }
-        .calculator-card {
-            background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
-            border: 1px solid rgba(51, 65, 85, 0.7);
-            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
-        }
-        #calculator-widget .text-yellow-400 { color: var(--text-primary); }
-        #calculator-widget .text-accent { color: var(--accent); }
-        .calculator-result-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; padding: 1rem; background-color: rgba(15, 23, 42, 0.6); border-radius: var(--radius-card); }
-        @media (min-width: 768px) { .calculator-result-grid { grid-template-columns: repeat(2, 1fr); } }
+        .calculator-result-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
         .result-metric-card { background-color: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-btn); padding: 1rem; text-align: center; transition: transform 0.2s ease, box-shadow 0.2s ease; }
         .result-metric-card:hover { transform: translateY(-4px); box-shadow: 0 0 15px var(--accent-transparent-20); }
         .result-metric-card .label { font-size: 0.875rem; color: var(--text-secondary); }

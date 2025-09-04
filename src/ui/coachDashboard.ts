@@ -1344,13 +1344,22 @@ const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) =
             const name = s.name;
             const goal = studentData.step1?.trainingGoal || 'بدون هدف';
             const latestPurchase = getLatestPurchase(studentData);
+            const avatarUrl = studentData.profile?.avatar;
             
             const optionNode = optionTemplate.content.cloneNode(true) as DocumentFragment;
             const button = optionNode.querySelector('.student-option-btn') as HTMLButtonElement;
             button.dataset.username = s.id;
             
-            const avatar = button.querySelector('.student-avatar') as HTMLElement;
-            avatar.textContent = name.substring(0, 1).toUpperCase();
+            const avatarContainer = button.querySelector('.student-avatar') as HTMLElement;
+            if (avatarUrl) {
+                avatarContainer.innerHTML = `<img src="${avatarUrl}" alt="${name}" class="w-full h-full object-cover rounded-full">`;
+                avatarContainer.classList.remove('bg-accent');
+                avatarContainer.textContent = '';
+            } else {
+                avatarContainer.innerHTML = '';
+                avatarContainer.textContent = name.substring(0, 1).toUpperCase();
+                avatarContainer.classList.add('bg-accent');
+            }
             
             (button.querySelector('.student-name') as HTMLElement).textContent = name;
             const planStatusEl = button.querySelector('.student-plan-status') as HTMLElement;
@@ -1564,12 +1573,17 @@ const renderDashboardTab = (currentUser: string) => {
                         const studentData = getUserData(student.username);
                         const name = studentData.step1?.clientName || student.username;
                         const latestPurchase = getLatestPurchase(studentData);
+                        const avatarUrl = studentData.profile?.avatar;
+                        const avatarHtml = avatarUrl
+                            ? `<img src="${avatarUrl}" alt="${name}" class="w-10 h-10 rounded-full object-cover">`
+                            : `<div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white" style="background-color: ${getColorForName(name)};">
+                                ${name.substring(0, 1).toUpperCase()}
+                               </div>`;
+
                         return `
                             <div class="flex justify-between items-center p-3 bg-bg-tertiary rounded-lg">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white" style="background-color: ${getColorForName(name)};">
-                                        ${name.substring(0, 1).toUpperCase()}
-                                    </div>
+                                    ${avatarHtml}
                                     <div>
                                         <p class="font-semibold">${name}</p>
                                         <p class="text-xs text-text-secondary">${latestPurchase?.planName || ''} - ${timeAgo(latestPurchase.purchaseDate)}</p>
@@ -1590,10 +1604,26 @@ const renderProfileTab = (currentUser: string, userData: any) => {
     const container = document.getElementById('profile-content');
     if (!container) return;
     const { step1, profile } = userData;
+    const name = step1?.coachName || currentUser;
+    const avatarUrl = profile?.avatar;
+    const initials = (name || '?').charAt(0).toUpperCase();
+
     container.innerHTML = `
         <div class="card max-w-2xl mx-auto p-6">
-            <h2 class="text-xl font-bold mb-4">پروفایل مربی</h2>
-            <form id="coach-profile-form" class="space-y-4">
+            <h2 class="text-xl font-bold mb-6">پروفایل مربی</h2>
+            <form id="coach-profile-form" class="space-y-6">
+                 <div class="flex items-center gap-4">
+                    <label for="coach-profile-avatar-input" class="profile-avatar-upload block">
+                        ${avatarUrl ?
+                            `<img id="coach-profile-avatar-preview" src="${avatarUrl}" alt="${name}" class="avatar-preview-img">` :
+                            `<div id="coach-profile-avatar-initials" class="avatar-initials bg-accent text-bg-secondary flex items-center justify-center text-4xl font-bold">${initials}</div>`
+                        }
+                        <div class="upload-overlay"><i data-lucide="camera" class="w-8 h-8"></i></div>
+                    </label>
+                    <input type="file" id="coach-profile-avatar-input" class="hidden" accept="image/*">
+                    <p class="text-sm text-text-secondary">برای نمایش بهتر در لیست مربیان، یک عکس پروفایل بارگذاری کنید.</p>
+                </div>
+
                 <div class="input-group">
                     <input type="text" id="coach-profile-name" name="coach-profile-name" class="input-field w-full" value="${step1?.coachName || ''}" placeholder=" ">
                     <label for="coach-profile-name" class="input-label">نام نمایشی</label>
@@ -1605,10 +1635,6 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                 <div class="input-group">
                     <textarea id="coach-profile-bio" name="coach-profile-bio" class="input-field w-full min-h-[100px]" placeholder=" ">${profile?.bio || ''}</textarea>
                     <label for="coach-profile-bio" class="input-label">بیوگرافی کوتاه</label>
-                </div>
-                 <div class="input-group">
-                    <input type="url" id="coach-profile-avatar" name="coach-profile-avatar" class="input-field w-full" value="${profile?.avatar || ''}" placeholder=" ">
-                    <label for="coach-profile-avatar" class="input-label">لینک عکس پروفایل</label>
                 </div>
                 <button type="submit" class="primary-button w-full">ذخیره تغییرات</button>
             </form>
@@ -1808,15 +1834,20 @@ const renderChatTab = (currentUser: string) => {
         const studentData = getUserData(student.username);
         const name = studentData.step1?.clientName || student.username;
         const lastMessage = (studentData.chatHistory || []).slice(-1)[0];
+        const avatarUrl = studentData.profile?.avatar;
 
         const clone = template.content.cloneNode(true) as DocumentFragment;
         const button = clone.querySelector('button')!;
         button.dataset.username = student.username;
 
-        const avatar = button.querySelector('.student-avatar')!;
-        avatar.textContent = name.substring(0, 1).toUpperCase();
-        avatar.setAttribute('style', `background-color: ${getColorForName(name)}`);
-
+        const avatarContainer = button.querySelector('.student-avatar')!;
+        if (avatarUrl) {
+            avatarContainer.innerHTML = `<img src="${avatarUrl}" alt="${name}" class="w-full h-full object-cover rounded-full">`;
+        } else {
+            avatarContainer.textContent = name.substring(0, 1).toUpperCase();
+            avatarContainer.setAttribute('style', `background-color: ${getColorForName(name)}`);
+        }
+        
         (button.querySelector('.student-name') as HTMLElement).textContent = name;
 
         if (lastMessage) {
@@ -1985,6 +2016,7 @@ const renderStudentCards = (students: any[], containerId: string) => {
         const name = studentData.step1?.clientName || student.username;
         const goal = studentData.step1?.trainingGoal || 'بدون هدف';
         const latestPurchase = student.isLocal ? null : getLatestPurchase(studentData);
+        const avatarUrl = studentData.profile?.avatar;
 
         const streak = calculateWorkoutStreak(studentData.workoutHistory);
         const weightChange = getWeightChange(studentData);
@@ -2025,15 +2057,17 @@ const renderStudentCards = (students: any[], containerId: string) => {
                  <p class="text-sm text-text-secondary">خریدی ثبت نشده است.</p>
             </div>`;
         }
+        
+        const avatarHtml = avatarUrl
+            ? `<img src="${avatarUrl}" alt="${name}" class="w-14 h-14 rounded-full object-cover">`
+            : `<div class="w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-xl text-white" style="background-color: ${getColorForName(name)};">${name.substring(0, 1).toUpperCase()}</div>`;
 
 
         return `
             <div class="${cardClasses}">
                 <!-- Header -->
                 <div class="flex items-start gap-4">
-                    <div class="w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-xl text-white" style="background-color: ${getColorForName(name)};">
-                        ${name.substring(0, 1).toUpperCase()}
-                    </div>
+                    ${avatarHtml}
                     <div class="flex-grow overflow-hidden">
                         <h3 class="font-bold text-xl truncate">${name}</h3>
                         <p class="text-sm text-text-secondary truncate">${goal}</p>
@@ -2823,11 +2857,14 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             freshData.step1.coachName = (form.elements.namedItem('coach-profile-name') as HTMLInputElement).value;
             freshData.profile.specialization = (form.elements.namedItem('coach-profile-specialization') as HTMLInputElement).value;
             freshData.profile.bio = (form.elements.namedItem('coach-profile-bio') as HTMLTextAreaElement).value;
-            freshData.profile.avatar = (form.elements.namedItem('coach-profile-avatar') as HTMLInputElement).value;
+
+            const avatarPreview = document.getElementById('coach-profile-avatar-preview') as HTMLImageElement;
+            if (avatarPreview && avatarPreview.dataset.isNew === 'true' && avatarPreview.src.startsWith('data:image/')) {
+                freshData.profile.avatar = avatarPreview.src;
+            }
 
             saveUserData(currentUser, freshData);
             showToast('پروفایل با موفقیت ذخیره شد.', 'success');
-            // Re-render header with new name
             const name = freshData.step1.coachName || currentUser;
             const headerNameEl = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary .font-bold.text-sm');
             if (headerNameEl) headerNameEl.textContent = name;
@@ -2896,5 +2933,38 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
                 activeReplacementTarget = null;
             }
         });
+    }
+
+    const coachProfileForm = document.getElementById('coach-profile-form');
+    if (coachProfileForm) {
+        const avatarInput = document.getElementById('coach-profile-avatar-input');
+        if(avatarInput) {
+            avatarInput.addEventListener('change', e => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64String = reader.result as string;
+                    const wrapper = document.querySelector('.profile-avatar-upload');
+                    if (wrapper) {
+                        const initialsDiv = document.getElementById('coach-profile-avatar-initials');
+                        if (initialsDiv) initialsDiv.style.display = 'none';
+
+                        let previewImg = document.getElementById('coach-profile-avatar-preview') as HTMLImageElement;
+                        if (!previewImg) {
+                            previewImg = document.createElement('img');
+                            previewImg.id = 'coach-profile-avatar-preview';
+                            previewImg.alt = "Avatar Preview";
+                            previewImg.className = 'avatar-preview-img';
+                            wrapper.insertBefore(previewImg, wrapper.firstChild);
+                        }
+                        previewImg.src = base64String;
+                        previewImg.dataset.isNew = 'true';
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
     }
 }
