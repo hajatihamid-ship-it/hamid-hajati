@@ -1,5 +1,6 @@
 
 
+
 import { getUserData, saveUserData, addActivityLog, getCart, saveCart, getDiscounts, getNotifications, clearNotification, setNotification, getStorePlans, getUsers } from '../services/storage';
 import { getTodayWorkoutData, calculateBodyMetrics, calculateWorkoutStreak, performMetricCalculations, findBestLifts, calculateWeeklyMetrics } from '../utils/calculations';
 import { showToast, updateSliderTrack, openModal, closeModal, exportElement, hexToRgba } from '../utils/dom';
@@ -1004,12 +1005,18 @@ const renderProfileTab = (currentUser: string, userData: any) => {
             <form id="user-profile-form" class="space-y-6">
                 <!-- Profile Header -->
                 <div class="card p-6 flex flex-col sm:flex-row items-center gap-6">
-                     ${profile?.avatar ? 
-                        `<img src="${profile.avatar}" alt="${name}" class="w-24 h-24 rounded-full object-cover flex-shrink-0 border-4 border-accent/30">` :
-                        `<div class="w-24 h-24 rounded-full bg-accent text-bg-secondary flex-shrink-0 flex items-center justify-center text-4xl font-bold">
-                            ${initials}
-                        </div>`
-                    }
+                    <div class="flex-shrink-0">
+                        <label for="user-profile-avatar-input" class="profile-avatar-upload block">
+                            ${profile?.avatar ? 
+                                `<img id="user-profile-avatar-preview" src="${profile.avatar}" alt="${name}" class="avatar-preview-img">` :
+                                `<div id="user-profile-avatar-initials" class="avatar-initials bg-accent text-bg-secondary flex items-center justify-center text-4xl font-bold">${initials}</div>`
+                            }
+                            <div class="upload-overlay">
+                                <i data-lucide="camera" class="w-8 h-8"></i>
+                            </div>
+                        </label>
+                        <input type="file" id="user-profile-avatar-input" class="hidden" accept="image/*">
+                    </div>
                     <div class="flex-grow text-center sm:text-right">
                         <div class="input-group">
                             <input type="text" id="user-profile-name" class="input-field w-full !text-2xl !font-bold !p-2 !bg-transparent !border-transparent focus:!bg-bg-tertiary focus:!border-border-primary" value="${step1?.clientName || ''}" placeholder="نام و نام خانوادگی">
@@ -1027,7 +1034,6 @@ const renderProfileTab = (currentUser: string, userData: any) => {
                     <div class="card-title"><i data-lucide="user-round"></i>اطلاعات فردی و مربی</div>
                     <div class="card-content grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="input-group"><input type="tel" id="user-profile-mobile" class="input-field w-full" value="${step1?.mobile || ''}" placeholder=" "><label class="input-label">شماره موبایل</label></div>
-                        <div class="input-group"><input type="url" id="user-profile-avatar" class="input-field w-full" value="${profile?.avatar || ''}" placeholder=" "><label class="input-label">لینک عکس پروفایل</label></div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-semibold mb-2">مربی</label>
                             <button type="button" id="select-coach-btn" class="input-field w-full text-right flex justify-between items-center ${coachNotSelected ? 'highlight-coach-selection' : ''}">
@@ -1174,6 +1180,36 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                     profileForm.addEventListener('change', checkValidity);
                     checkValidity();
                     updateProfileMetricsDisplay(profileForm as HTMLElement);
+                    
+                    const avatarInput = document.getElementById('user-profile-avatar-input');
+                    if(avatarInput) {
+                        avatarInput.addEventListener('change', e => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (!file) return;
+
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                                const base64String = reader.result as string;
+                                const wrapper = document.querySelector('.profile-avatar-upload');
+                                if (wrapper) {
+                                    const initialsDiv = document.getElementById('user-profile-avatar-initials');
+                                    if (initialsDiv) initialsDiv.style.display = 'none';
+
+                                    let previewImg = document.getElementById('user-profile-avatar-preview') as HTMLImageElement;
+                                    if (!previewImg) {
+                                        previewImg = document.createElement('img');
+                                        previewImg.id = 'user-profile-avatar-preview';
+                                        previewImg.alt = "Avatar Preview";
+                                        previewImg.className = 'avatar-preview-img';
+                                        wrapper.insertBefore(previewImg, wrapper.firstChild);
+                                    }
+                                    previewImg.src = base64String;
+                                    previewImg.dataset.isNew = 'true';
+                                }
+                            };
+                            reader.readAsDataURL(file);
+                        });
+                    }
                 }
                 break;
             case 'help-content':
@@ -1616,9 +1652,11 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
 
             const mobile = getVal('#user-profile-mobile');
             if (mobile) dataToUpdate.step1.mobile = mobile;
-
-            const avatar = getVal('#user-profile-avatar');
-            if (avatar) dataToUpdate.profile.avatar = avatar;
+            
+            const avatarPreview = document.getElementById('user-profile-avatar-preview') as HTMLImageElement;
+            if (avatarPreview && avatarPreview.dataset.isNew === 'true' && avatarPreview.src.startsWith('data:image/')) {
+                dataToUpdate.profile.avatar = avatarPreview.src;
+            }
 
             if (selectedCoachInModal) dataToUpdate.step1.coachName = selectedCoachInModal;
 
@@ -1679,10 +1717,19 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             const coachData = getUserData(dataToUpdate.step1.coachName);
             const coachName = coachData?.step1?.clientName || dataToUpdate.step1.coachName || 'بدون مربی';
             
-            const headerNameEl = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary .font-bold.text-sm');
-            if(headerNameEl) headerNameEl.textContent = name;
-            const headerCoachEl = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary .text-xs.text-text-secondary');
-            if(headerCoachEl) headerCoachEl.textContent = `مربی: ${coachName}`;
+            const headerProfileInfo = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary');
+            if(headerProfileInfo) {
+                const avatarContainer = headerProfileInfo.children[0];
+                const textContainer = headerProfileInfo.children[1];
+                if (dataToUpdate.profile.avatar) {
+                    avatarContainer.innerHTML = `<img src="${dataToUpdate.profile.avatar}" alt="${name}" class="w-10 h-10 rounded-full object-cover">`;
+                } else {
+                    const initials = name.substring(0, 1).toUpperCase();
+                    avatarContainer.innerHTML = `<div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg text-bg-secondary" style="background-color: var(--accent);">${initials}</div>`;
+                }
+                (textContainer.querySelector('.font-bold.text-sm') as HTMLElement).textContent = name;
+                (textContainer.querySelector('.text-xs.text-text-secondary') as HTMLElement).textContent = `مربی: ${coachName}`;
+            }
             
             // Re-render tab to show updated info
             renderProfileTab(currentUser, getUserData(currentUser));
