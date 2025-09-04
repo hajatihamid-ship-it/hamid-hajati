@@ -2,6 +2,8 @@ import { showToast, closeModal } from '../utils/dom';
 import { getUsers, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, getCart, saveCart } from '../services/storage';
 import { performMetricCalculations } from '../utils/calculations';
 
+declare var firebase: any;
+
 const switchAuthForm = (formToShow: 'login' | 'signup' | 'forgot-password' | 'forgot-confirmation') => {
     const containers: { [key: string]: HTMLElement | null } = {
         login: document.getElementById("login-form-container"),
@@ -187,32 +189,64 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
 
 
     // --- Google Auth ---
-    const handleGoogleAuth = () => {
-        const googleUsername = 'user_google';
-        const googleEmail = 'user.google@fitgympro.com';
-        let allUsers = getUsers();
-        let googleUser = allUsers.find((u: any) => u.username === googleUsername);
-
-        if (!googleUser) {
-            googleUser = {
-                username: googleUsername,
-                email: googleEmail,
-                password: `gl_${Date.now()}`, // Dummy password
-                role: 'user',
-                status: 'active',
-                coachStatus: null,
-                joinDate: new Date().toISOString()
-            };
-            allUsers.push(googleUser);
-            saveUsers(allUsers);
-            saveUserData(googleUsername, {
-                step1: { clientName: 'کاربر گوگل', clientEmail: googleEmail },
-                joinDate: new Date().toISOString()
-            });
-            addActivityLog(`${googleUsername} signed up via Google.`);
+    const handleGoogleAuth = async () => {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        try {
+            const result = await firebase.auth().signInWithPopup(provider);
+            const user = result.user;
+    
+            if (user) {
+                const googleEmail = user.email;
+                const googleName = user.displayName;
+                let allUsers = getUsers();
+                let appUser = allUsers.find((u: any) => u.email === googleEmail);
+    
+                if (appUser) {
+                    // User exists, log them in
+                    if (appUser.status === 'suspended') {
+                        showToast("حساب کاربری شما مسدود شده است.", "error");
+                        firebase.auth().signOut(); // Sign out from firebase as well
+                        return;
+                    }
+                    handleLoginActions(appUser.username);
+                } else {
+                    // New user, create an account
+                    let username = googleEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+                    // Ensure username is unique
+                    let counter = 1;
+                    let originalUsername = username;
+                    while (allUsers.some((u: any) => u.username === username)) {
+                        username = `${originalUsername}${counter}`;
+                        counter++;
+                    }
+    
+                    const newUser = {
+                        username: username,
+                        email: googleEmail,
+                        password: `gl_${user.uid}`, // Dummy password using UID for uniqueness
+                        role: 'user',
+                        status: 'active',
+                        coachStatus: null,
+                        joinDate: new Date().toISOString()
+                    };
+                    allUsers.push(newUser);
+                    saveUsers(allUsers);
+                    saveUserData(username, {
+                        step1: { clientName: googleName || username, clientEmail: googleEmail },
+                        joinDate: new Date().toISOString()
+                    });
+                    addActivityLog(`${username} signed up via Google.`);
+                    handleLoginActions(username);
+                }
+            }
+        } catch (error: any) {
+            console.error("Google Auth Error:", error);
+            if (error.code === 'auth/popup-closed-by-user') {
+                showToast("پنجره ورود گوگل بسته شد.", "warning");
+            } else {
+                showToast("خطا در ورود با حساب گوگل. لطفاً دوباره تلاش کنید.", "error");
+            }
         }
-        
-        handleLoginActions(googleUsername);
     };
 
     document.getElementById('google-login-btn')?.addEventListener('click', handleGoogleAuth);
