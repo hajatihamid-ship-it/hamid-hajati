@@ -1,4 +1,5 @@
-import { openModal } from '../utils/dom';
+
+import { openModal, closeModal } from '../utils/dom';
 import { getSiteSettings, getUsers, getUserData, getStorePlans, getMagazineArticles } from '../services/storage';
 import { performMetricCalculations, calculateMacros } from '../utils/calculations';
 import { formatPrice, timeAgo } from '../utils/helpers';
@@ -131,7 +132,7 @@ const renderCalculator = () => `
                             </div>
                             <!-- CTA Button -->
                             <div class="text-center mt-6">
-                                <button id="get-plan-from-calc-btn" class="primary-button !bg-accent !text-black !px-8 !py-2.5 !text-base !rounded-md animate-pulse-accent">دریافت برنامه شخصی‌سازی شده</button>
+                                <button id="get-plan-from-calc-btn" class="primary-button !bg-yellow-400 hover:!bg-yellow-500 !text-black !px-8 !py-2.5 !text-base !rounded-md animate-pulse">دریافت برنامه شخصی‌سازی شده</button>
                             </div>
                         </div>
                     </div>
@@ -141,7 +142,7 @@ const renderCalculator = () => `
     </section>
 `;
 
-const renderCoaches = async () => {
+const renderCoachesContent = async () => {
     const allUsers = await getUsers();
     const coachUsernames = ["morteza_heydari", "hamid_hajati", "coach10186"];
     const coachPromises = coachUsernames.map(async username => {
@@ -156,118 +157,121 @@ const renderCoaches = async () => {
     const coaches = (await Promise.all(coachPromises)).filter(Boolean);
 
     return `
-    <section id="coaches" class="py-16">
-        <div class="container mx-auto px-4">
-            <div class="text-center mb-10">
-                <h2 class="text-3xl lg:text-4xl font-extrabold text-white">با مربیان متخصص ما آشنا شوید</h2>
-                <p class="mt-4 text-slate-400 max-w-2xl mx-auto">
-                    تیمی از بهترین مربیان کشور که آماده‌اند تا شما را در مسیر رسیدن به اهدافتان همراهی کنند.
-                </p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                ${coaches.map((c: any) => {
-                    const name = c.data.step1?.clientName || c.user.username;
-                    const specialization = c.data.profile?.specialization || "مربی رسمی بدنسازی";
-                    const avatar = c.data.profile?.avatar;
-                    const avatarHtml = avatar
-                        ? `<img src="${avatar}" alt="${name}" class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-slate-700 object-cover">`
-                        : `<div class="w-24 h-24 rounded-full mx-auto mb-4 bg-slate-700 flex items-center justify-center font-bold text-3xl">${name.charAt(0)}</div>`;
-
-                    return `
-                    <div class="coach-card-revert">
-                        ${avatarHtml}
-                        <h3 class="text-xl font-bold text-white">${name}</h3>
-                        <p class="text-accent font-semibold text-sm mt-1">${specialization}</p>
-                        <div class="flex justify-center gap-4 mt-4 text-slate-400">
-                           <a href="#" class="hover:text-white"><i data-lucide="instagram" class="w-5 h-5"></i></a>
-                           <a href="#" class="hover:text-white"><i data-lucide="send" class="w-5 h-5"></i></a>
-                        </div>
-                    </div>
-                    `;
-                }).join('')}
-            </div>
+        <div class="text-center mb-10">
+            <h2 class="text-3xl lg:text-4xl font-extrabold text-white">با مربیان متخصص ما آشنا شوید</h2>
+            <p class="mt-4 text-slate-400 max-w-2xl mx-auto">
+                تیمی از بهترین مربیان کشور که آماده‌اند تا شما را در مسیر رسیدن به اهدافتان همراهی کنند.
+            </p>
         </div>
-    </section>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            ${coaches.map((c: any) => {
+                const name = c.data.step1?.clientName || c.user.username;
+                const specialization = c.data.profile?.specialization || "مربی رسمی بدنسازی";
+                const avatar = c.data.profile?.avatar;
+                const avatarHtml = avatar
+                    ? `<img src="${avatar}" alt="${name}" class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-slate-700 object-cover">`
+                    : `<div class="w-24 h-24 rounded-full mx-auto mb-4 bg-slate-700 flex items-center justify-center font-bold text-3xl">${name.charAt(0)}</div>`;
+
+                return `
+                <div class="coach-card-revert">
+                    ${avatarHtml}
+                    <h3 class="text-xl font-bold text-white">${name}</h3>
+                    <p class="text-accent font-semibold text-sm mt-1">${specialization}</p>
+                    <div class="flex justify-center gap-4 mt-4 text-slate-400">
+                       <a href="#" class="hover:text-white"><i data-lucide="instagram" class="w-5 h-5"></i></a>
+                       <a href="#" class="hover:text-white"><i data-lucide="send" class="w-5 h-5"></i></a>
+                    </div>
+                </div>
+                `;
+            }).join('')}
+        </div>
     `;
 };
 
-const renderPricing = async () => {
+const renderPricingContent = async () => {
     const plans = await getStorePlans();
-    if (!plans || plans.length === 0) return '';
+    if (!plans || plans.length === 0) return '<p class="text-white text-center">پلن‌های قیمت‌گذاری به زودی اعلام خواهند شد.</p>';
 
     return `
-    <section id="pricing" class="py-16">
-        <div class="container mx-auto px-4">
-            <div class="text-center mb-10">
-                <h2 class="text-3xl lg:text-4xl font-extrabold text-white">تعرفه‌های شفاف و منعطف</h2>
-                <p class="mt-4 text-slate-400 max-w-2xl mx-auto">
-                    پلنی را انتخاب کنید که کاملاً با نیازها و بودجه شما مطابقت دارد.
-                </p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-start">
-                ${plans.map((plan: any) => `
-                    <div class="pricing-card ${plan.recommended ? 'recommended' : ''}">
-                        ${plan.recommended ? '<div class="recommended-badge">پیشنهادی</div>' : ''}
-                        <div class="p-8">
-                            <h3 class="text-xl font-bold text-white">${plan.emoji || ''} ${plan.planName}</h3>
-                            <p class="text-sm text-slate-400 mt-2 h-10">${plan.description}</p>
-                            <div class="my-6">
-                                <span class="text-4xl font-extrabold text-white">${formatPrice(plan.price).split(' ')[0]}</span>
-                                <span class="text-slate-400">/ تومان</span>
-                            </div>
-                            <ul class="space-y-3 text-sm text-slate-300">
-                                ${(plan.features || []).map((feature: string) => `
-                                    <li class="flex items-center gap-3">
-                                        <i data-lucide="check" class="w-5 h-5 text-accent"></i>
-                                        <span>${feature}</span>
-                                    </li>
-                                `).join('')}
-                            </ul>
-                        </div>
-                        <div class="p-6 pt-0">
-                             <button class="select-plan-btn primary-button !bg-accent !text-black w-full !text-base !py-3 !rounded-md" data-plan-id="${plan.planId}">انتخاب پلن</button>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
+        <div class="text-center mb-10">
+            <h2 class="text-3xl lg:text-4xl font-extrabold text-white">تعرفه‌های شفاف و منعطف</h2>
+            <p class="mt-4 text-slate-400 max-w-2xl mx-auto">
+                پلنی را انتخاب کنید که کاملاً متناسب با اهداف و بودجه شما باشد.
+            </p>
         </div>
-    </section>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-start">
+            ${plans.map((plan: any) => `
+                <div class="pricing-card ${plan.recommended ? 'recommended' : ''} h-full flex flex-col">
+                    ${plan.recommended ? '<div class="recommended-badge">پیشنهادی</div>' : ''}
+                    <div class="p-8 flex flex-col flex-grow">
+                        <h3 class="text-xl font-bold text-white">${plan.emoji || ''} ${plan.planName}</h3>
+                        <p class="text-sm text-slate-400 mt-2 h-10">${plan.description}</p>
+                        <div class="my-6">
+                            <span class="text-4xl font-extrabold text-white">${formatPrice(plan.price).split(' ')[0]}</span>
+                            <span class="text-slate-400">/ تومان</span>
+                        </div>
+                        <ul class="space-y-3 text-sm text-slate-300 mb-6 flex-grow">
+                            ${(plan.features || []).map((feature: string) => `
+                                <li class="flex items-center gap-3">
+                                    <i data-lucide="check" class="w-5 h-5 text-accent"></i>
+                                    <span>${feature}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                        <button class="select-plan-btn primary-button !bg-accent !text-black w-full !text-base !py-3 !rounded-md mt-auto" data-plan-id="${plan.planId}">انتخاب پلن</button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
     `;
 };
 
-const renderMagazine = async () => {
+const renderMagazineContent = async () => {
     const articles = await getMagazineArticles();
     if (!articles || articles.length === 0) return '';
     const latestArticles = articles.slice(0, 2); 
 
     return `
-    <section id="magazine" class="py-16">
-        <div class="container mx-auto px-4">
-            <div class="text-center mb-10">
-                <h2 class="text-3xl lg:text-4xl font-extrabold text-white">آخرین مقالات مجله FitGym Pro</h2>
-                <p class="mt-4 text-slate-400 max-w-2xl mx-auto">
-                    دانش خود را با مقالات علمی و کاربردی در زمینه تناسب اندام، تغذیه و سبک زندگی سالم افزایش دهید.
-                </p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                ${latestArticles.map((article: any) => `
-                    <a href="#" class="magazine-card-revert group">
-                        <img src="${article.imageUrl}" alt="${article.title}" class="w-full h-56 object-cover rounded-t-xl transition-transform duration-300 group-hover:scale-105">
-                        <div class="p-6">
-                            <p class="text-sm font-semibold text-accent mb-2">${article.category}</p>
-                            <h3 class="text-xl font-bold text-white group-hover:text-accent transition-colors">${article.title}</h3>
-                            <p class="text-sm text-slate-400 mt-3 line-clamp-3">${article.content.split(' ').slice(0, 30).join(' ')}...</p>
-                            <div class="mt-4 pt-4 border-t border-slate-700 text-xs text-slate-500">
-                                <span>${timeAgo(article.publishDate)}</span>
-                            </div>
-                        </div>
-                    </a>
-                `).join('')}
-            </div>
+        <div class="text-center mb-10">
+            <h2 class="text-3xl lg:text-4xl font-extrabold text-white">آخرین مقالات مجله FitGym Pro</h2>
+            <p class="mt-4 text-slate-400 max-w-2xl mx-auto">
+                دانش خود را با مقالات علمی و کاربردی در زمینه تناسب اندام، تغذیه و سبک زندگی سالم افزایش دهید.
+            </p>
         </div>
-    </section>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            ${latestArticles.map((article: any) => `
+                <a href="#" class="magazine-card-revert group">
+                    <img src="${article.imageUrl}" alt="${article.title}" class="w-full h-56 object-cover rounded-t-xl transition-transform duration-300 group-hover:scale-105">
+                    <div class="p-6">
+                        <p class="text-sm font-semibold text-accent mb-2">${article.category}</p>
+                        <h3 class="text-xl font-bold text-white group-hover:text-accent transition-colors">${article.title}</h3>
+                        <p class="text-sm text-slate-400 mt-3 line-clamp-3">${article.content.split(' ').slice(0, 30).join(' ')}...</p>
+                        <div class="mt-4 pt-4 border-t border-slate-700 text-xs text-slate-500">
+                            <span>${timeAgo(article.publishDate)}</span>
+                        </div>
+                    </div>
+                </a>
+            `).join('')}
+        </div>
     `;
 };
+
+const renderContactContent = (settings: any) => {
+    const { contactInfo, socialMedia } = settings;
+    return `
+        <div class="text-center text-white/50 text-sm">
+            <h2 class="text-3xl lg:text-4xl font-extrabold text-white mb-6">تماس با ما</h2>
+            <div class="flex justify-center gap-6 mb-6">
+                <a href="${socialMedia.instagram}" target="_blank" rel="noopener noreferrer" class="hover:text-white"><i data-lucide="instagram" class="w-5 h-5"></i></a>
+                <a href="${socialMedia.telegram}" target="_blank" rel="noopener noreferrer" class="hover:text-white"><i data-lucide="send" class="w-5 h-5"></i></a>
+                <a href="${socialMedia.youtube}" target="_blank" rel="noopener noreferrer" class="hover:text-white"><i data-lucide="youtube" class="w-5 h-5"></i></a>
+            </div>
+            <p class="mb-1">${contactInfo.address}</p>
+            <p>ایمیل: <a href="mailto:${contactInfo.email}" class="hover:text-white">${contactInfo.email}</a> | تلفن: <a href="tel:${contactInfo.phone.replace(/-/g, '')}" class="hover:text-white">${contactInfo.phone}</a></p>
+        </div>
+    `;
+};
+
 
 export const renderLandingPage = async () => {
     const settings = await getSiteSettings();
@@ -280,10 +284,10 @@ export const renderLandingPage = async () => {
                  <div class="container mx-auto px-4 flex justify-between items-center">
                     <a href="#" class="text-2xl font-black text-white">${siteName}</a>
                     <nav class="hidden lg:flex items-center gap-6 text-white/80">
-                        <a href="#coaches" class="landing-nav-link">مربیان</a>
-                        <a href="#pricing" class="landing-nav-link">تعرفه</a>
-                        <a href="#magazine" class="landing-nav-link">مجله FitGym Pro</a>
-                        <a href="#contact" class="landing-nav-link">تماس با ما</a>
+                        <button data-modal-target="coaches-modal" class="landing-nav-link">مربیان</button>
+                        <button data-modal-target="pricing-modal" class="landing-nav-link">تعرفه</button>
+                        <button data-modal-target="magazine-modal" class="landing-nav-link">مجله FitGym Pro</button>
+                        <button data-modal-target="contact-modal" class="landing-nav-link">تماس با ما</button>
                     </nav>
                     <button id="login-btn-landing" class="primary-button !bg-accent !text-black !py-2 !px-5 !rounded-md">ورود / ثبت نام</button>
                 </div>
@@ -306,10 +310,7 @@ export const renderLandingPage = async () => {
         </div>
         <div class="bg-[#0B1222]">
             ${renderCalculator()}
-            ${await renderCoaches()}
-            ${await renderPricing()}
-            ${await renderMagazine()}
-            <footer id="contact" class="bg-[#101A2E] py-12 border-t border-white/10 mt-16">
+             <footer class="bg-[#101A2E] py-12 border-t border-white/10 mt-16">
                  <div class="container mx-auto px-4 text-center text-white/50 text-sm">
                     <p class="font-bold text-lg mb-4 text-white">${siteName}</p>
                     <div class="flex justify-center gap-6 mb-6">
@@ -322,6 +323,32 @@ export const renderLandingPage = async () => {
                     <p class="mt-6">&copy; ${new Date().getFullYear()} ${siteName}. تمام حقوق محفوظ است.</p>
                 </div>
             </footer>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="pricing-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-7xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col !bg-[#0B1222] !border-[#334155]">
+            <div class="p-4 border-b border-slate-700 flex-shrink-0 text-right"><button class="close-modal-btn secondary-button !p-2 rounded-full !bg-slate-700 hover:!bg-slate-600 !border-slate-600"><i data-lucide="x" class="text-white"></i></button></div>
+            <div class="p-8 overflow-y-auto">${await renderPricingContent()}</div>
+        </div>
+    </div>
+    <div id="coaches-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-5xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col !bg-[#0B1222] !border-[#334155]">
+            <div class="p-4 border-b border-slate-700 flex-shrink-0 text-right"><button class="close-modal-btn secondary-button !p-2 rounded-full !bg-slate-700 hover:!bg-slate-600 !border-slate-600"><i data-lucide="x" class="text-white"></i></button></div>
+            <div class="p-8 overflow-y-auto">${await renderCoachesContent()}</div>
+        </div>
+    </div>
+    <div id="magazine-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-5xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col !bg-[#0B1222] !border-[#334155]">
+            <div class="p-4 border-b border-slate-700 flex-shrink-0 text-right"><button class="close-modal-btn secondary-button !p-2 rounded-full !bg-slate-700 hover:!bg-slate-600 !border-slate-600"><i data-lucide="x" class="text-white"></i></button></div>
+            <div class="p-8 overflow-y-auto">${await renderMagazineContent()}</div>
+        </div>
+    </div>
+    <div id="contact-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative !bg-[#0B1222] !border-[#334155]">
+            <div class="p-4 text-right"><button class="close-modal-btn secondary-button !p-2 rounded-full !bg-slate-700 hover:!bg-slate-600 !border-slate-600"><i data-lucide="x" class="text-white"></i></button></div>
+            <div class="p-8 pt-0">${renderContactContent(settings)}</div>
         </div>
     </div>
     `;
@@ -418,22 +445,45 @@ export const initLandingPageListeners = () => {
             } else {
                 header.classList.remove('scrolled');
             }
-        });
+        }, { passive: true });
     }
 
-     // Auth modal triggers
+    // --- Generic Modal and Action Handler ---
     document.body.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
+
+        // Modal Triggers
+        const modalTrigger = target.closest('[data-modal-target]');
+        if (modalTrigger) {
+            const modalId = modalTrigger.getAttribute('data-modal-target');
+            if (modalId) {
+                openModal(document.getElementById(modalId));
+            }
+            return;
+        }
+
+        // Modal Closers
+        if (target.classList.contains('modal') || target.closest('.close-modal-btn')) {
+            closeModal(target.closest('.modal'));
+            return;
+        }
+
+        // Login Button
         if (target.closest('#login-btn-landing')) {
             openModal(document.getElementById('auth-modal'));
+            return;
         }
+        
+        // Select Plan Button
         const selectPlanBtn = target.closest('.select-plan-btn');
         if (selectPlanBtn) {
             const planId = (selectPlanBtn as HTMLElement).dataset.planId;
             if (planId) {
                 sessionStorage.setItem('fitgympro_selected_plan', planId);
+                closeModal(selectPlanBtn.closest('.modal'));
                 openModal(document.getElementById('auth-modal'));
             }
+            return;
         }
     });
 
@@ -466,13 +516,15 @@ export const initLandingPageListeners = () => {
         const numberInput = calculator.querySelector<HTMLInputElement>(`#${inputId}`);
 
         if (numberInput) {
+            const syncAndUpdate = () => {
+                updateLandingSliderTrack(slider);
+                updateCalculatorResults();
+            };
             // Sync slider to input
             slider.addEventListener('input', () => {
                 numberInput.value = slider.step === '0.5' ? parseFloat(slider.value).toFixed(1) : slider.value;
-                updateLandingSliderTrack(slider);
-                updateCalculatorResults();
+                syncAndUpdate();
             });
-
             // Sync input to slider
             numberInput.addEventListener('input', () => {
                 let value = parseFloat(numberInput.value);
@@ -485,18 +537,15 @@ export const initLandingPageListeners = () => {
                 }
                 
                 slider.value = String(value);
-                updateLandingSliderTrack(slider);
-                updateCalculatorResults();
+                syncAndUpdate();
             });
-            
             numberInput.addEventListener('blur', () => {
                 let value = parseFloat(numberInput.value);
                 const min = parseFloat(slider.min);
                 if (isNaN(value) || value < min) {
                     numberInput.value = slider.step === '0.5' ? parseFloat(slider.min).toFixed(1) : slider.min;
                     slider.value = slider.min;
-                    updateLandingSliderTrack(slider);
-                    updateCalculatorResults();
+                    syncAndUpdate();
                 }
             });
         }
