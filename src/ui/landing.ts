@@ -1,30 +1,31 @@
 
+
 import { openModal, closeModal } from '../utils/dom';
 import { getSiteSettings, getUsers, getUserData, getStorePlans, getMagazineArticles } from '../services/storage';
 import { performMetricCalculations, calculateMacros } from '../utils/calculations';
 import { formatPrice, timeAgo } from '../utils/helpers';
 
 const createGauge = (id: string, label: string) => `
-    <div class="gauge-container !p-2">
-        <h4 class="gauge-label !mb-1 !text-sm">${label}</h4>
-        <div class="gauge-svg-wrapper !w-28 !h-28 !my-0">
+    <div class="gauge-container">
+        <h4 class="gauge-label">${label}</h4>
+        <div class="gauge-svg-wrapper">
             <svg class="gauge-svg" viewBox="0 0 160 160">
                 <circle class="gauge-track-circle" r="70" cx="80" cy="80"></circle>
                 <circle id="${id}-arc" class="gauge-value-circle" r="70" cx="80" cy="80" style="stroke-dasharray: 440; stroke-dashoffset: 440;"></circle>
             </svg>
             <div class="gauge-text-content">
-                <span id="${id}-value" class="gauge-value-text !text-2xl">--</span>
+                <span id="${id}-value" class="gauge-value-text">--</span>
                 <span id="${id}-unit" class="gauge-unit-text"></span>
             </div>
         </div>
-        <div id="${id}-sub-info" class="gauge-sub-info !pt-1 !h-8"></div>
+        <div id="${id}-sub-info" class="gauge-sub-info"></div>
     </div>
 `;
 
 const renderCalculator = () => `
     <section id="fitness-calculator" class="py-16">
         <div class="container mx-auto px-4">
-            <div class="calculator-wrapper !p-8">
+            <div class="calculator-wrapper">
                 <div class="text-center mb-10">
                     <h2 class="text-3xl lg:text-4xl font-extrabold text-white">محاسبه‌گر پیشرفته تناسب اندام</h2>
                     <p class="mt-3 text-slate-400 max-w-2xl mx-auto">
@@ -32,108 +33,117 @@ const renderCalculator = () => `
                     </p>
                 </div>
                 
-                <div class="grid grid-cols-1 lg:grid-cols-5 gap-x-8 gap-y-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-8">
 
-                    <!-- Right Column (on RTL): INPUTS -->
-                    <div class="lg:col-span-3">
-                        <div id="calculator-inputs" class="space-y-6">
-                            <!-- Basic Info Section -->
-                            <div class="calculator-input-section">
-                                <h3 class="!mb-4"><span>۱</span>اطلاعات پایه</h3>
-                                <div class="space-y-4">
-                                    <div class="calculator-radio-group grid grid-cols-12 items-center gap-x-4">
-                                        <p class="font-semibold text-sm text-slate-300 col-span-3">جنسیت</p>
-                                        <div class="grid grid-cols-2 gap-2 col-span-9">
-                                            <label class="option-card-label"><input type="radio" name="gender_calc" value="مرد" class="option-card-input" checked><span class="option-card-content !py-2">مرد</span></label>
-                                            <label class="option-card-label"><input type="radio" name="gender_calc" value="زن" class="option-card-input"><span class="option-card-content !py-2">زن</span></label>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="slider-container-blue grid grid-cols-12 items-center gap-x-4">
-                                        <p class="font-semibold text-sm text-slate-300 col-span-3">سن</p>
-                                        <input type="range" id="age-slider" class="calculator-slider col-span-6" min="15" max="80" value="25">
-                                        <input type="number" id="age-input" class="calculator-styled-input col-span-3 w-full" min="15" max="80" value="25">
-                                    </div>
-
-                                    <div class="slider-container-green grid grid-cols-12 items-center gap-x-4">
-                                        <p class="font-semibold text-sm text-slate-300 col-span-3">قد (cm)</p>
-                                        <input type="range" id="height-slider" class="calculator-slider col-span-6" min="140" max="220" value="175">
-                                        <input type="number" id="height-input" class="calculator-styled-input col-span-3 w-full" min="140" max="220" value="175">
-                                    </div>
-
-                                    <div class="slider-container-orange grid grid-cols-12 items-center gap-x-4">
-                                        <p class="font-semibold text-sm text-slate-300 col-span-3">وزن (kg)</p>
-                                        <input type="range" id="weight-slider" class="calculator-slider col-span-6" min="40" max="150" step="0.5" value="75">
-                                        <input type="number" id="weight-input" class="calculator-styled-input col-span-3 w-full" min="40" max="150" step="0.5" value="75.0">
+                    <!-- INPUTS -->
+                    <div id="calculator-inputs" class="space-y-6">
+                        <!-- Basic Info Section -->
+                        <div class="calculator-input-section">
+                            <h3 class="!mb-4"><span>۱</span>اطلاعات پایه</h3>
+                            <div class="space-y-4">
+                                <div class="calculator-radio-group grid grid-cols-12 items-center gap-x-4">
+                                    <p class="font-semibold text-sm text-slate-300 col-span-3">جنسیت</p>
+                                    <div class="grid grid-cols-2 gap-2 col-span-9">
+                                        <label class="option-card-label"><input type="radio" name="gender_calc" value="مرد" class="option-card-input" checked><span class="option-card-content !py-2">مرد</span></label>
+                                        <label class="option-card-label"><input type="radio" name="gender_calc" value="زن" class="option-card-input"><span class="option-card-content !py-2">زن</span></label>
                                     </div>
                                 </div>
+                                
+                                <div class="slider-container-blue grid grid-cols-12 items-center gap-x-4">
+                                    <p class="font-semibold text-sm text-slate-300 col-span-3">سن</p>
+                                    <input type="range" id="age-slider" class="calculator-slider col-span-6" min="15" max="80" value="25">
+                                    <input type="number" id="age-input" class="calculator-styled-input col-span-3 w-full" min="15" max="80" value="25">
+                                </div>
+
+                                <div class="slider-container-green grid grid-cols-12 items-center gap-x-4">
+                                    <p class="font-semibold text-sm text-slate-300 col-span-3">قد (cm)</p>
+                                    <input type="range" id="height-slider" class="calculator-slider col-span-6" min="140" max="220" value="175">
+                                    <input type="number" id="height-input" class="calculator-styled-input col-span-3 w-full" min="140" max="220" value="175">
+                                </div>
+
+                                <div class="slider-container-orange grid grid-cols-12 items-center gap-x-4">
+                                    <p class="font-semibold text-sm text-slate-300 col-span-3">وزن (kg)</p>
+                                    <input type="range" id="weight-slider" class="calculator-slider col-span-6" min="40" max="150" step="0.5" value="75">
+                                    <input type="number" id="weight-input" class="calculator-styled-input col-span-3 w-full" min="40" max="150" step="0.5" value="75.0">
+                                </div>
                             </div>
-                            <!-- Lifestyle & Goals Section -->
-                            <div class="calculator-input-section">
-                                <h3 class="!mb-4"><span>۲</span>سبک زندگی و اهداف</h3>
-                                <div class="space-y-4">
-                                    <div class="calculator-radio-group">
-                                        <p class="font-semibold text-sm mb-2 text-slate-300">هدف تمرینی</p>
-                                        <div class="grid grid-cols-3 gap-2">
-                                            <label class="option-card-label"><input type="radio" name="goal_calc" value="کاهش وزن" class="option-card-input"><span class="option-card-content !py-2">کاهش وزن</span></label>
-                                            <label class="option-card-label"><input type="radio" name="goal_calc" value="حفظ وزن" class="option-card-input" checked><span class="option-card-content !py-2">حفظ وزن</span></label>
-                                            <label class="option-card-label"><input type="radio" name="goal_calc" value="افزایش حجم" class="option-card-input"><span class="option-card-content !py-2">افزایش حجم</span></label>
-                                        </div>
+                        </div>
+                        <!-- Lifestyle & Goals Section -->
+                        <div class="calculator-input-section">
+                            <h3 class="!mb-4"><span>۲</span>سبک زندگی و اهداف</h3>
+                            <div class="space-y-4">
+                                <div class="calculator-radio-group">
+                                    <p class="font-semibold text-sm mb-2 text-slate-300">هدف تمرینی</p>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <label class="option-card-label"><input type="radio" name="goal_calc" value="کاهش وزن" class="option-card-input"><span class="option-card-content !py-2">کاهش وزن</span></label>
+                                        <label class="option-card-label"><input type="radio" name="goal_calc" value="حفظ وزن" class="option-card-input" checked><span class="option-card-content !py-2">حفظ وزن</span></label>
+                                        <label class="option-card-label"><input type="radio" name="goal_calc" value="افزایش حجم" class="option-card-input"><span class="option-card-content !py-2">افزایش حجم</span></label>
                                     </div>
-                                    <div class="calculator-radio-group">
-                                        <p class="font-semibold text-sm mb-2 text-slate-300">سطح فعالیت روزانه</p>
-                                        <div class="grid grid-cols-3 gap-2">
-                                            <label class="option-card-label"><input type="radio" name="activity_level_calc" value="1.2" class="option-card-input"><span class="option-card-content !py-2 !text-xs">نشسته</span></label>
-                                            <label class="option-card-label"><input type="radio" name="activity_level_calc" value="1.375" class="option-card-input"><span class="option-card-content !py-2 !text-xs">کم</span></label>
-                                            <label class="option-card-label"><input type="radio" name="activity_level_calc" value="1.55" class="option-card-input" checked><span class="option-card-content !py-2 !text-xs">متوسط</span></label>
-                                            <label class="option-card-label"><input type="radio" name="activity_level_calc" value="1.725" class="option-card-input"><span class="option-card-content !py-2 !text-xs">زیاد</span></label>
-                                            <label class="option-card-label"><input type="radio" name="activity_level_calc" value="1.9" class="option-card-input"><span class="option-card-content !py-2 !text-xs">خیلی زیاد</span></label>
-                                        </div>
+                                </div>
+                                <div class="calculator-radio-group">
+                                    <p class="font-semibold text-sm mb-2 text-slate-300">سطح فعالیت روزانه</p>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <label class="option-card-label"><input type="radio" name="activity_level_calc" value="1.2" class="option-card-input"><span class="option-card-content !py-2 !text-xs">نشسته</span></label>
+                                        <label class="option-card-label"><input type="radio" name="activity_level_calc" value="1.375" class="option-card-input"><span class="option-card-content !py-2 !text-xs">کم</span></label>
+                                        <label class="option-card-label"><input type="radio" name="activity_level_calc" value="1.55" class="option-card-input" checked><span class="option-card-content !py-2 !text-xs">متوسط</span></label>
+                                        <label class="option-card-label"><input type="radio" name="activity_level_calc" value="1.725" class="option-card-input"><span class="option-card-content !py-2 !text-xs">زیاد</span></label>
+                                        <label class="option-card-label"><input type="radio" name="activity_level_calc" value="1.9" class="option-card-input"><span class="option-card-content !py-2 !text-xs">خیلی زیاد</span></label>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                         <!-- Advanced Section -->
+                        <div class="calculator-input-section">
+                            <details>
+                                <summary class="font-bold text-sm text-slate-300 cursor-pointer list-none flex items-center justify-between">
+                                    <span>
+                                        <h3 class="inline !p-0 !m-0 !border-none"><span>۳</span>اندازه‌گیری پیشرفته (اختیاری)</h3>
+                                        <p class="text-xs text-slate-500 pr-8">برای محاسبه دقیق‌تر درصد چربی</p>
+                                    </span>
+                                    <i data-lucide="chevron-down" class="details-arrow"></i>
+                                </summary>
+                                <div class="mt-4 grid grid-cols-3 gap-4">
+                                    <input type="number" id="neck-input" class="calculator-input" placeholder="دور گردن (cm)">
+                                    <input type="number" id="waist-input" class="calculator-input" placeholder="دور کمر (cm)">
+                                    <input type="number" id="hip-input" class="calculator-input" placeholder="دور باسن (cm)">
+                                </div>
+                            </details>
+                        </div>
                     </div>
 
-                    <!-- Left Column (on RTL): RESULTS -->
-                    <div class="lg:col-span-2">
-                        <div id="calculator-results" class="hidden sticky top-24">
-                            <div class="text-center mb-4">
-                                <h3 class="text-xl font-bold text-white">نتایج تحلیل شما</h3>
-                                <div class="w-16 h-1 bg-accent mx-auto mt-2 rounded-full"></div>
-                            </div>
-                            <div class="space-y-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                  ${createGauge('tdee-gauge', 'کالری روزانه')}
-                                  ${createGauge('bmi-gauge', 'شاخص BMI')}
+                    <!-- RESULTS -->
+                    <div id="calculator-results" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          ${createGauge('tdee-gauge', 'کالری روزانه')}
+                          ${createGauge('bmi-gauge', 'شاخص BMI')}
+                        </div>
+                        <div class="result-card-small">
+                             <div class="grid grid-cols-2 gap-4 text-center">
+                                 <div>
+                                    <p id="bodyfat-value" class="text-2xl font-bold text-slate-200">--</p>
+                                    <p class="text-xs text-slate-400">درصد چربی (%)</p>
                                 </div>
-                                <div class="result-card-small">
-                                     <div class="grid grid-cols-2 gap-4 text-center">
-                                         <div>
-                                            <p id="bodyfat-value" class="text-xl font-bold text-slate-200">--</p>
-                                            <p class="text-xs text-slate-400">درصد چربی (%)</p>
-                                        </div>
-                                        <div>
-                                            <p id="lbm-value" class="text-xl font-bold text-slate-200">--</p>
-                                            <p class="text-xs text-slate-400">توده بدون چربی (kg)</p>
-                                        </div>
-                                     </div>
-                                     <hr class="border-slate-700 my-3">
-                                     <h4 class="font-semibold text-slate-300 text-sm mb-2 text-center">ماکروهای پیشنهادی (گرم)</h4>
-                                     <div class="space-y-2 text-xs">
-                                        <div class="flex justify-between items-center"><span>پروتئین</span><strong id="protein-value">--</strong></div>
-                                        <div class="macro-bar"><div id="protein-bar" class="macro-bar-inner bg-sky-500" style="width: 0%;"></div></div>
-                                        <div class="flex justify-between items-center"><span>کربوهیدرات</span><strong id="carbs-value">--</strong></div>
-                                        <div class="macro-bar"><div id="carbs-bar" class="macro-bar-inner bg-orange-500" style="width: 0%;"></div></div>
-                                        <div class="flex justify-between items-center"><span>چربی</span><strong id="fat-value">--</strong></div>
-                                        <div class="macro-bar"><div id="fat-bar" class="macro-bar-inner bg-yellow-500" style="width: 0%;"></div></div>
-                                     </div>
+                                <div>
+                                    <p id="lbm-value" class="text-2xl font-bold text-slate-200">--</p>
+                                    <p class="text-xs text-slate-400">توده بدون چربی (kg)</p>
                                 </div>
-                            </div>
-                            <!-- CTA Button -->
-                            <div class="text-center mt-6">
-                                <button id="get-plan-from-calc-btn" class="primary-button !bg-yellow-400 hover:!bg-yellow-500 !text-black !px-8 !py-2.5 !text-base !rounded-md animate-pulse">دریافت برنامه شخصی‌سازی شده</button>
-                            </div>
+                             </div>
+                        </div>
+                        <div class="result-card-small">
+                             <h4 class="font-semibold text-slate-300 text-sm mb-3 text-center">ماکروهای پیشنهادی (گرم)</h4>
+                             <div class="space-y-2 text-xs">
+                                <div class="flex justify-between items-center"><span>پروتئین</span><strong id="protein-value">--</strong></div>
+                                <div class="macro-bar"><div id="protein-bar" class="macro-bar-inner bg-sky-500" style="width: 0%;"></div></div>
+                                <div class="flex justify-between items-center"><span>کربوهیدرات</span><strong id="carbs-value">--</strong></div>
+                                <div class="macro-bar"><div id="carbs-bar" class="macro-bar-inner bg-orange-500" style="width: 0%;"></div></div>
+                                <div class="flex justify-between items-center"><span>چربی</span><strong id="fat-value">--</strong></div>
+                                <div class="macro-bar"><div id="fat-bar" class="macro-bar-inner bg-yellow-500" style="width: 0%;"></div></div>
+                             </div>
+                        </div>
+                        <!-- CTA Button -->
+                        <div class="text-center pt-4">
+                            <button id="get-plan-from-calc-btn" class="primary-button !bg-yellow-400 hover:!bg-yellow-500 !text-black !px-8 !py-2.5 !text-base !rounded-md animate-pulse">دریافت برنامه شخصی‌سازی شده</button>
                         </div>
                     </div>
                 </div>
@@ -358,20 +368,17 @@ const updateCalculatorResults = () => {
     const calculator = document.getElementById('fitness-calculator');
     if (!calculator) return;
 
-    const resultsEl = document.getElementById('calculator-results');
-    if (resultsEl && resultsEl.classList.contains('hidden')) {
-        resultsEl.classList.remove('hidden');
-        resultsEl.classList.add('animate-fade-in');
-    }
-
     const age = parseInt((calculator.querySelector('#age-slider') as HTMLInputElement).value, 10);
     const height = parseInt((calculator.querySelector('#height-slider') as HTMLInputElement).value, 10);
     const weight = parseFloat((calculator.querySelector('#weight-slider') as HTMLInputElement).value);
     const gender = (calculator.querySelector('input[name="gender_calc"]:checked') as HTMLInputElement).value;
     const activityLevel = parseFloat((calculator.querySelector('input[name="activity_level_calc"]:checked') as HTMLInputElement).value);
     const goal = (calculator.querySelector('input[name="goal_calc"]:checked') as HTMLInputElement).value;
+    const neck = parseFloat((calculator.querySelector('#neck-input') as HTMLInputElement).value);
+    const waist = parseFloat((calculator.querySelector('#waist-input') as HTMLInputElement).value);
+    const hip = parseFloat((calculator.querySelector('#hip-input') as HTMLInputElement).value);
 
-    const metrics = performMetricCalculations({ age, height, weight, gender, activityLevel });
+    const metrics = performMetricCalculations({ age, height, weight, gender, activityLevel, neck, waist, hip });
 
     // TDEE Gauge
     const tdeeValueEl = document.getElementById('tdee-gauge-value')!;
@@ -550,12 +557,13 @@ export const initLandingPageListeners = () => {
             });
         }
     });
-
-    const radioButtons = calculator.querySelectorAll<HTMLInputElement>('.option-card-input');
-    radioButtons.forEach(radio => {
-        radio.addEventListener('change', updateCalculatorResults);
-    });
     
+    const allInputs = calculator.querySelectorAll('input');
+    allInputs.forEach(input => {
+        input.addEventListener('input', updateCalculatorResults);
+        input.addEventListener('change', updateCalculatorResults);
+    });
+
     document.getElementById('get-plan-from-calc-btn')?.addEventListener('click', () => {
         const data = {
             age: (calculator.querySelector('#age-slider') as HTMLInputElement).value,
@@ -564,6 +572,9 @@ export const initLandingPageListeners = () => {
             gender: (calculator.querySelector('input[name="gender_calc"]:checked') as HTMLInputElement).value,
             activityLevel: (calculator.querySelector('input[name="activity_level_calc"]:checked') as HTMLInputElement).value,
             trainingGoal: (calculator.querySelector('input[name="goal_calc"]:checked') as HTMLInputElement).value,
+            neck: (calculator.querySelector('#neck-input') as HTMLInputElement).value,
+            waist: (calculator.querySelector('#waist-input') as HTMLInputElement).value,
+            hip: (calculator.querySelector('#hip-input') as HTMLInputElement).value,
         };
         sessionStorage.setItem('fitgympro_calculator_data', JSON.stringify(data));
         openModal(document.getElementById('auth-modal'));
