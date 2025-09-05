@@ -1,11 +1,40 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl" data-theme="dark">
+<html lang="fa" dir="rtl" data-theme="lemon">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FitGym Pro | Advanced Fitness Planner</title>
     
     <!-- Tailwind CSS -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'bg-primary': 'var(--bg-primary)',
+              'bg-secondary': 'var(--bg-secondary)',
+              'bg-tertiary': 'var(--bg-tertiary)',
+              'text-primary': 'var(--text-primary)',
+              'text-secondary': 'var(--text-secondary)',
+              'border-primary': 'var(--border-primary)',
+              'border-secondary': 'var(--border-secondary)',
+              'accent': 'var(--accent)',
+              'accent-hover': 'var(--accent-hover)',
+              'green-accent': 'var(--green-accent)',
+              'green-accent-hover': 'var(--green-accent-hover)',
+              'red-accent': 'var(--red-accent)',
+              'admin-accent-green': 'var(--admin-accent-green)',
+              'admin-accent-pink': 'var(--admin-accent-pink)',
+              'admin-accent-blue': 'var(--admin-accent-blue)',
+              'admin-accent-orange': 'var(--admin-accent-orange)',
+              'admin-accent-yellow': 'var(--admin-accent-yellow)',
+              'admin-accent-red': 'var(--admin-accent-red)',
+              'admin-accent-gray': 'var(--admin-accent-gray)',
+            }
+          }
+        }
+      }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Google Fonts -->
@@ -159,6 +188,9 @@
             --status-pending-text: #854d0e;
             --status-revoked-bg: #fee2e2;
             --status-revoked-text: #991b1b;
+        }
+        html {
+            scroll-behavior: smooth;
         }
         body {
             font-family: 'Vazirmatn', sans-serif;
@@ -355,63 +387,89 @@
             color: var(--admin-accent-yellow);
         }
 
-        /* Landing Page & Auth Modal */
-        .landing-page-container { min-height: 100vh; overflow: hidden; position: relative; }
-        .landing-bg {
-            position: absolute;
-            inset: 0;
-            background-image: url('https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=2070&auto=format&fit=crop');
-            background-size: cover;
-            background-position: center top;
-            overflow: hidden;
+        /* --- New Landing Page Styles --- */
+        .landing-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            transition: all 0.3s ease-in-out;
+            padding: 1rem 0;
         }
-        .landing-bg::after {
+        .landing-header.scrolled {
+            background-color: var(--bg-secondary);
+            box-shadow: var(--shadow-card);
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-primary);
+        }
+        .landing-nav-link {
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: color 0.2s;
+        }
+        .landing-nav-link:hover {
+            color: var(--text-primary);
+        }
+        .landing-section {
+            padding: 5rem 1rem;
+        }
+        .section-title {
+            font-size: 2.25rem; /* text-4xl */
+            font-weight: 800;
+            line-height: 1.2;
+        }
+        .section-subtitle {
+            font-size: 1.125rem; /* text-lg */
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 1rem auto 0;
+        }
+        .feature-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--radius-card);
+            padding: 2rem;
+            text-align: right;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-card);
+        }
+        .testimonial-card {
+            background-color: var(--bg-tertiary);
+            border-radius: var(--radius-card);
+            padding: 2rem;
+            text-align: center;
+        }
+        .how-it-works-step {
+            position: relative;
+        }
+        .how-it-works-step:not(:last-child)::after {
             content: '';
             position: absolute;
-            inset: 0;
-            background: linear-gradient(to top, rgba(15, 23, 42, 1) 5%, rgba(15, 23, 42, 0.7) 40%, rgba(15, 23, 42, 0.8) 100%);
+            top: 32px; /* Center of the icon */
+            right: -50%;
+            width: calc(100% - 64px);
+            height: 2px;
+            background-image: linear-gradient(to left, var(--border-secondary) 50%, transparent 50%);
+            background-size: 8px 2px;
+            background-repeat: repeat-x;
+            transform: translateX(32px);
         }
-        .glass-nav { 
-            background-color: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(51, 65, 85, 0.6);
+        @media (max-width: 768px) {
+            .how-it-works-step:not(:last-child)::after {
+                display: none;
+            }
         }
-        .hero-cta-btn { position: relative; overflow: hidden; }
-        .glow-circle { position: absolute; width: 200px; height: 200px; background: radial-gradient(circle, var(--accent) 0%, transparent 70%); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: pulse 4s infinite; opacity: 0.3; transition: all 0.4s ease; }
-        @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.3; } 50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.5; } 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.3; } }
-        .hero-cta-btn:hover .glow-circle { animation-play-state: paused; transform: translate(-50%, -50%) scale(1.4); opacity: 0.6; }
-        
-        .motivational-card {
-            background-color: #1e293b; 
-            border: 1px solid rgba(45, 55, 72, 0.5);
+        .final-cta-section {
+            background-color: var(--bg-tertiary);
             border-radius: var(--radius-card);
-            padding: 1.25rem;
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-            max-width: 420px;
-            margin: 3rem auto 0;
-            transition: transform 0.3s ease;
-        }
-        .motivational-card:hover { transform: translateY(-5px); }
-        .motivational-card .stat { display: flex; align-items: center; gap: 1rem; }
-        .motivational-card .stat i { color: var(--accent); }
-        .motivational-card .stat-text p:first-child { font-weight: 700; }
-        .motivational-card .stat-text p:last-child { color: var(--text-secondary); }
-
-        .landing-nav-link { background: none; border: none; color: white; cursor: pointer; position: relative; padding-bottom: 4px; transition: color 0.3s; }
-        .landing-nav-link::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background-color: var(--accent); transform: scaleX(0); transition: transform 0.3s ease; }
-        .landing-nav-link:hover { color: var(--accent); }
-        .landing-nav-link:hover::after { transform: scaleX(1); }
-        
-        .social-icon-link {
-            color: var(--text-secondary);
-            transition: color 0.3s ease, transform 0.3s ease;
-        }
-        .social-icon-link:hover {
-            color: var(--accent);
-            transform: translateY(-3px);
+            padding: 4rem 2rem;
+            text-align: center;
         }
 
+
+        /* Auth Modal */
         .form-container {
             transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
             position: absolute;
@@ -792,42 +850,7 @@
             background-color: var(--accent);
             transition: width 0.5s ease;
         }
-
-        /* Landing Page Widgets */
-        .calculator-card {
-            background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
-            border: 1px solid rgba(51, 65, 85, 0.7);
-            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
-            border-radius: var(--radius-card);
-        }
-        #calculator-widget .text-yellow-400 {
-            color: var(--accent);
-        }
-        .result-display {
-            transition: transform 0.3s ease;
-        }
-        .result-display:hover {
-            transform: scale(1.05);
-        }
-        .coach-card {
-            padding: 2rem;
-            border-radius: var(--radius-card);
-            transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
-            background-color: #1a2234;
-            border: 1px solid rgba(45, 55, 72, 0.6);
-        }
-        .coach-card:hover {
-            transform: translateY(-8px);
-            background-color: #334155;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-        .coach-card img {
-            transition: transform 0.3s ease;
-        }
-        .coach-card:hover img {
-            transform: scale(1.1);
-        }
-
+        
         /* Chat enhancements */
         .chat-header {
             display: flex;
@@ -1082,37 +1105,6 @@
             pointer-events: auto;
         }
 
-        /* --- New World-Class Landing Page Styles --- */
-        .particles { position: absolute; inset: 0; z-index: 1; }
-        .particle { position: absolute; background-color: var(--accent); border-radius: 50%; opacity: 0; animation: rise 10s infinite linear; }
-        @keyframes rise {
-            0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
-            10% { opacity: 0.7; }
-            90% { opacity: 0.7; }
-            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
-        }
-        .hero-headline-accent { position: relative; display: inline-block; color: var(--accent); }
-        .hero-headline-accent::after { content: ''; position: absolute; left: 0; right: 0; bottom: -5px; height: 4px; background: var(--accent); filter: blur(8px); }
-        .calculator-result-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
-        .result-metric-card { background-color: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-btn); padding: 1rem; text-align: center; transition: transform 0.2s ease, box-shadow 0.2s ease; }
-        .result-metric-card:hover { transform: translateY(-4px); box-shadow: 0 0 15px var(--accent-transparent-20); }
-        .result-metric-card .label { font-size: 0.875rem; color: var(--text-secondary); }
-        .result-metric-card .value { font-size: 2.25rem; font-weight: 800; line-height: 1.1; color: var(--accent); margin: 0.25rem 0; }
-        .result-metric-card .unit { font-size: 0.75rem; color: var(--text-secondary); }
-        #landing-bmi-indicator-track { background-color: var(--bg-tertiary); height: 8px; border-radius: 4px; position: relative; overflow: hidden; }
-        #landing-bmi-indicator-bar { position: absolute; top: 0; left: 0; height: 100%; border-radius: 4px; transition: width 0.5s ease-out, background-color 0.5s ease-out; }
-        #coaches-showcase .coach-card {
-            background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
-            border: 1px solid var(--border-primary);
-        }
-        #coaches-showcase .coach-card:hover { background-color: rgba(51, 65, 85, 0.8); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
-        .coach-card .avatar-container { width: 128px; height: 128px; border-radius: 50%; margin: 0 auto; border: 4px solid transparent; background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box, linear-gradient(45deg, var(--accent), var(--admin-accent-blue)) border-box; transition: transform 0.3s ease; }
-        .coach-card:hover .avatar-container { transform: scale(1.05); }
-        #coaches-showcase .coach-card .coach-name { color: var(--text-primary); }
-        #coaches-showcase .coach-card .coach-specialty { color: var(--accent); }
-        .landing-footer { background-color: #0c101d; padding: 3rem 1rem; border-top: 1px solid var(--border-primary); }
-        /* --- End New Landing Page Styles --- */
-
         /* Profile avatar upload */
         .profile-avatar-upload {
             position: relative;
@@ -1142,6 +1134,199 @@
         }
         .profile-avatar-upload:hover .upload-overlay {
             opacity: 1;
+        }
+
+        /* --- Landing Page Reversion Styles --- */
+        .landing-page-revert {
+            background-color: #0B1222;
+            color: #E2E8F0;
+        }
+        .landing-page-revert body {
+            background-color: #0B1222;
+        }
+        .landing-page-revert .landing-header {
+            transition: background-color 0.3s;
+        }
+        .landing-page-revert .landing-header.scrolled {
+            background-color: rgba(17, 27, 46, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .landing-page-revert .landing-nav-link {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        .landing-page-revert .landing-nav-link:hover {
+            color: #ffffff;
+        }
+        .hero-section-wrapper {
+            background-image: linear-gradient(to top, #0B1222 5%, rgba(11, 18, 34, 0.7) 50%), url('https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=2069&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+        }
+        .calculator-wrapper {
+            background-color: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            margin-top: -5rem;
+            position: relative;
+            z-index: 5;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+        .calculator-input-section h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #cbd5e1;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+        }
+        .calculator-input-section h3 span {
+            background-color: #334155;
+            color: var(--accent);
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            margin-left: 0.75rem;
+        }
+        .calculator-radio-group .option-card-content {
+            background-color: #334155;
+            border-color: #475569;
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+        .calculator-radio-group .option-card-label:hover .option-card-content {
+            background-color: #475569;
+        }
+        .calculator-radio-group .option-card-input:checked + .option-card-content {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            color: #0B1222;
+            font-weight: 700;
+        }
+        .calculator-radio-group .option-card-input:checked + .option-card-content::after {
+           display: none;
+        }
+        .calculator-slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+        .calculator-slider-label .value {
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+        input[type=range].calculator-slider {
+             -webkit-appearance: none; appearance: none;
+            width: 100%; height: 6px;
+            background: #334155;
+            border-radius: 3px; outline: none;
+        }
+        input[type=range].calculator-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #f1f5f9;
+            border: 4px solid var(--accent);
+            cursor: pointer;
+            transition: transform .2s;
+        }
+        input[type=range].calculator-slider:hover::-webkit-slider-thumb {
+            transform: scale(1.1);
+        }
+        .results-card {
+            background-color: #0F172A;
+            border: 1px solid #334155;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .results-card .value {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+        }
+        .bmi-progress-bar {
+            height: 8px;
+            background-color: #334155;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .bmi-progress-bar-inner {
+            height: 100%;
+            background-color: var(--accent);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .coach-card-revert {
+            background-color: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .coach-card-revert:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+        }
+        .pricing-card {
+            background-color: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 1.5rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .pricing-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+        }
+        .pricing-card.recommended {
+            border-color: var(--accent);
+            transform: scale(1.05);
+        }
+        .recommended-badge {
+            position: absolute;
+            top: 1.5rem;
+            right: -2.5rem;
+            background-color: var(--accent);
+            color: #0B1222;
+            padding: 0.25rem 2rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            transform: rotate(45deg);
+        }
+        .magazine-card-revert {
+            display: block;
+            background-color: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 1.25rem;
+            transition: all 0.3s;
+            overflow: hidden;
+        }
+        .magazine-card-revert:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+        }
+        .line-clamp-3 {
+           overflow: hidden;
+           display: -webkit-box;
+           -webkit-box-orient: vertical;
+           -webkit-line-clamp: 3;
         }
     </style>
 <script type="importmap">

@@ -1,7 +1,3 @@
-
-
-
-
 import { getUsers, getDiscounts, getActivityLog, saveUsers, saveUserData, addActivityLog, getUserData, getStorePlans, saveStorePlans, getExercisesDB, saveExercisesDB, getSupplementsDB, saveSupplementsDB, saveDiscounts, getSiteSettings, saveSiteSettings, getMagazineArticles, saveMagazineArticles } from '../services/storage';
 import { formatPrice, timeAgo } from '../utils/helpers';
 import { openModal, closeModal, showToast, applySiteSettings } from '../utils/dom';
@@ -35,12 +31,13 @@ const getStatusBadge = (status: string, role: string, coachStatus: string | null
     }
 };
 
-const renderAnalyticsPage = () => {
+const renderAnalyticsPage = async () => {
     const pageContainer = document.getElementById('admin-analytics-page');
     if (!pageContainer) return;
 
-    const coaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified').map((c: any) => {
-        const data = getUserData(c.username);
+    const allUsers = await getUsers();
+    const coachesPromises = allUsers.filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified').map(async (c: any) => {
+        const data = await getUserData(c.username);
         return {
             username: c.username,
             name: data.step1?.clientName || c.username,
@@ -51,6 +48,8 @@ const renderAnalyticsPage = () => {
             avgProgramDeliveryHours: data.performance?.avgProgramDeliveryHours || 0
         };
     });
+    
+    const coaches = await Promise.all(coachesPromises);
 
     coaches.sort((a, b) => {
         const key = coachAnalyticsSort.key as keyof typeof a;
@@ -99,8 +98,8 @@ const renderAnalyticsPage = () => {
     window.lucide?.createIcons();
 };
 
-const renderDiscountsAdminHtml = () => {
-    const discounts = getDiscounts();
+const renderDiscountsAdminHtml = async () => {
+    const discounts = await getDiscounts();
     return `
         <div class="flex justify-between items-center mb-4">
             <div>
@@ -126,13 +125,13 @@ const renderDiscountsAdminHtml = () => {
     `;
 };
 
-const initCharts = () => {
+const initCharts = async () => {
     const revenueCtx = document.getElementById('revenueChart') as HTMLCanvasElement;
     if (revenueCtx && window.Chart) {
         const existingChart = window.Chart.getChart(revenueCtx);
         if (existingChart) existingChart.destroy();
 
-        const plans = getStorePlans();
+        const plans = await getStorePlans();
         const revenueData = {
             'basic-1m': [200000, 300000, 250000, 400000, 350000, 500000],
             'full-3m': [500000, 800000, 600000, 1000000, 900000, 1200000],
@@ -184,7 +183,7 @@ const initCharts = () => {
         new window.Chart(plansCtx, {
             type: 'doughnut',
             data: {
-                labels: getStorePlans().map((p: any) => p.planName),
+                labels: (await getStorePlans()).map((p: any) => p.planName),
                 datasets: [{
                     label: 'فروش پلن',
                     data: [12, 19, 28, 21],
@@ -203,12 +202,12 @@ const initCharts = () => {
     }
 };
 
-const renderUserRowsHtml = () => {
-    const users = getUsers();
+const renderUserRowsHtml = async () => {
+    const users = await getUsers();
     const coaches = users.filter((u: any) => u.role === 'coach');
 
-    const allUsersHtml = users.map((user: any) => {
-        const userData = getUserData(user.username);
+    const allUsersHtmlPromises = users.map(async (user: any) => {
+        const userData = await getUserData(user.username);
         const name = userData.step1?.clientName || user.username;
         const avatar = userData.profile?.avatar;
         const avatarHtml = avatar
@@ -240,10 +239,12 @@ const renderUserRowsHtml = () => {
                     </button>` : ''}
             </td>
         </tr>`;
-    }).join('');
+    });
+    const allUsersHtml = (await Promise.all(allUsersHtmlPromises)).join('');
 
-    const coachesHtml = coaches.map((coach: any) => {
-        const coachData = getUserData(coach.username);
+
+    const coachesHtmlPromises = coaches.map(async (coach: any) => {
+        const coachData = await getUserData(coach.username);
         const name = coachData.step1?.clientName || coach.username;
         const avatar = coachData.profile?.avatar;
         const avatarHtml = avatar
@@ -261,7 +262,7 @@ const renderUserRowsHtml = () => {
                     </div>
                 </div>
             </td>
-            <td class="p-4">${getUserData(coach.username).students || 0}</td>
+            <td class="p-4">${coachData.students || 0}</td>
             <td class="p-4">${new Date(coach.joinDate).toLocaleDateString('fa-IR')}</td>
             <td class="p-4">${getStatusBadge(coach.status, coach.role, coach.coachStatus)}</td>
             <td class="p-4 flex items-center gap-2">
@@ -275,13 +276,14 @@ const renderUserRowsHtml = () => {
                 ${coach.coachStatus === 'revoked' ? `<button data-action="reapprove" data-username="${coach.username}" class="primary-button !py-1 !px-2 !text-xs">تایید مجدد</button>` : ''}
             </td>
         </tr>`;
-    }).join('');
+    });
+    const coachesHtml = (await Promise.all(coachesHtmlPromises)).join('');
 
     return { allUsersHtml, coachesHtml };
 };
 
-const refreshUserTables = () => {
-    const { allUsersHtml, coachesHtml } = renderUserRowsHtml();
+const refreshUserTables = async () => {
+    const { allUsersHtml, coachesHtml } = await renderUserRowsHtml();
     const allUsersTbody = document.getElementById('all-users-tbody');
     const coachesTbody = document.getElementById('coaches-tbody');
     if (allUsersTbody) allUsersTbody.innerHTML = allUsersHtml;
@@ -289,8 +291,8 @@ const refreshUserTables = () => {
     window.lucide?.createIcons();
 };
 
-const renderPlansAdminHtml = () => {
-    const plans = getStorePlans();
+const renderPlansAdminHtml = async () => {
+    const plans = await getStorePlans();
     const plansListHtml = plans.length > 0 ? plans.map((plan: any) => `
         <div class="p-4 border-l-4 rounded-lg flex items-center justify-between bg-bg-secondary hover:bg-bg-tertiary transition-colors" style="border-left-color: ${plan.color || 'var(--accent)'};">
            <div class="flex items-center gap-3">
@@ -345,13 +347,13 @@ const renderPlansAdminHtml = () => {
     `;
 };
 
-const openUserActivityModal = (username: string) => {
+const openUserActivityModal = async (username: string) => {
     const modal = document.getElementById('view-activity-modal');
     const body = document.getElementById('view-activity-modal-body');
     const title = document.getElementById('view-activity-modal-title');
     if (!modal || !body || !title) return;
 
-    const userData = getUserData(username);
+    const userData = await getUserData(username);
     title.textContent = `نمای کلی فعالیت: ${username}`;
 
     const programHistory = userData.programHistory || [];
@@ -430,25 +432,27 @@ const openUserActivityModal = (username: string) => {
     }
 };
 
-const renderCommissionsHtml = () => {
-    const coaches = getUsers().filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
-    const users = getUsers();
-    const coachSales: Record<string, { totalSales: number }> = {};
+const renderCommissionsHtml = async () => {
+    const allUsers = await getUsers();
+    const coaches = allUsers.filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
+    const users = allUsers;
+    const coachSales: Record<string, { totalSales: number, coachName: string }> = {};
 
-    coaches.forEach(coach => {
-        coachSales[coach.username] = { totalSales: 0 };
-    });
+    for (const coach of coaches) {
+        const coachData = await getUserData(coach.username);
+        coachSales[coach.username] = { totalSales: 0, coachName: coachData.step1?.clientName || coach.username };
+    }
 
-    users.forEach(user => {
-        const userData = getUserData(user.username);
+    for (const user of users) {
+        const userData = await getUserData(user.username);
         const coachName = userData.step1?.coachName;
         if (coachName && coachSales[coachName]) {
             const userSales = (userData.subscriptions || []).reduce((sum: number, sub: any) => sum + sub.price, 0);
             coachSales[coachName].totalSales += userSales;
         }
-    });
+    }
     
-    const settings = getSiteSettings();
+    const settings = await getSiteSettings();
     const commissionRate = (settings.financial.commissionRate || 0) / 100;
 
     return `
@@ -475,12 +479,12 @@ const renderCommissionsHtml = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            ${coaches.length > 0 ? coaches.map(coach => {
-                                const sales = coachSales[coach.username]?.totalSales || 0;
+                            ${Object.keys(coachSales).length > 0 ? Object.entries(coachSales).map(([username, data]) => {
+                                const sales = data.totalSales;
                                 const coachShare = sales * (1 - commissionRate);
                                 return `
                                     <tr class="hover:bg-bg-tertiary transition-colors">
-                                        <td class="p-4 font-semibold">${getUserData(coach.username).step1?.clientName || coach.username}</td>
+                                        <td class="p-4 font-semibold">${data.coachName}</td>
                                         <td class="p-4">${formatPrice(sales)}</td>
                                         <td class="p-4 font-bold text-admin-accent-green">${formatPrice(coachShare)}</td>
                                         <td class="p-4">
@@ -500,8 +504,8 @@ const renderCommissionsHtml = () => {
     `;
 };
 
-const renderSettingsPageHTML = () => {
-    const settings = getSiteSettings();
+const renderSettingsPageHTML = async () => {
+    const settings = await getSiteSettings();
 
     return `
     <div class="flex items-center gap-2 border-b border-border-primary mb-6 flex-wrap">
@@ -645,7 +649,7 @@ const renderSettingsPageHTML = () => {
 };
 
 // FIX: Define openArticleModal to handle adding/editing magazine articles.
-const openArticleModal = (articleId: string | null = null) => {
+const openArticleModal = async (articleId: string | null = null) => {
     const modal = document.getElementById('magazine-article-modal');
     const form = document.getElementById('magazine-article-form') as HTMLFormElement;
     const title = document.getElementById('magazine-article-modal-title');
@@ -655,7 +659,7 @@ const openArticleModal = (articleId: string | null = null) => {
     form.removeAttribute('data-editing-id');
 
     if (articleId) {
-        const articles = getMagazineArticles();
+        const articles = await getMagazineArticles();
         const article = articles.find(a => a.id === articleId);
         if (article) {
             title.textContent = 'ویرایش مقاله';
@@ -672,11 +676,11 @@ const openArticleModal = (articleId: string | null = null) => {
 };
 
 // FIX: Define renderMagazineAdminPage to display the magazine management UI.
-const renderMagazineAdminPage = () => {
+const renderMagazineAdminPage = async () => {
     const pageContainer = document.getElementById('admin-magazine-page');
     if (!pageContainer) return;
 
-    const articles = getMagazineArticles();
+    const articles = await getMagazineArticles();
 
     pageContainer.innerHTML = `
         <div class="card p-4">
@@ -709,7 +713,7 @@ const renderMagazineAdminPage = () => {
     window.lucide?.createIcons();
 };
 
-export function renderAdminDashboard() {
+export async function renderAdminDashboard() {
     const name = "Admin";
     const navItems = [
         { page: 'dashboard', icon: 'layout-dashboard', label: 'داشبورد' },
@@ -916,7 +920,7 @@ export function renderAdminDashboard() {
     `;
 }
 
-export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess: (username: string) => void, handleGoToHome: () => void) {
+export async function initAdminDashboard(handleLogout: () => void, handleLoginSuccess: (username: string) => void, handleGoToHome: () => void) {
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
     document.getElementById('go-to-home-btn')?.addEventListener('click', handleGoToHome);
     
@@ -940,10 +944,10 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         'activity-log': 'گزارش فعالیت'
     };
     
-    const renderWebhooksList = () => {
+    const renderWebhooksList = async () => {
         const container = document.getElementById('webhooks-list-container');
         if (!container) return;
-        const settings = getSiteSettings();
+        const settings = await getSiteSettings();
         const webhooks = settings.integrations.webhooks || [];
         
         if (webhooks.length === 0) {
@@ -969,7 +973,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
     };
 
 
-    const switchTab = (activeTab: HTMLElement) => {
+    const switchTab = async (activeTab: HTMLElement) => {
         const page = activeTab.dataset.page;
         if (!page) return;
 
@@ -987,7 +991,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         
         switch (page) {
             case 'dashboard':
-                const users = getUsers();
+                const users = await getUsers();
                 const coaches = users.filter((u: any) => u.role === 'coach' && u.coachStatus === 'verified');
                 const pendingCoaches = users.filter((u: any) => u.role === 'coach' && u.coachStatus === 'pending');
                 const kpis = [
@@ -1021,10 +1025,10 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                         </div>
                     </div>
                 `;
-                initCharts();
+                await initCharts();
                 break;
             case 'users':
-                const { allUsersHtml } = renderUserRowsHtml();
+                const { allUsersHtml } = await renderUserRowsHtml();
                  pageContainer.innerHTML = `
                     <div class="card overflow-hidden">
                         <div class="overflow-x-auto">
@@ -1037,7 +1041,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 `;
                 break;
             case 'coaches':
-                 const { coachesHtml } = renderUserRowsHtml();
+                 const { coachesHtml } = await renderUserRowsHtml();
                  pageContainer.innerHTML = `
                     <div class="card overflow-hidden">
                         <div class="overflow-x-auto">
@@ -1052,29 +1056,29 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             case 'store':
                 pageContainer.innerHTML = `
                     <div class="space-y-6">
-                        <div id="plans-admin-container" class="card p-4">${renderPlansAdminHtml()}</div>
-                        <div id="discounts-admin-container" class="card p-4">${renderDiscountsAdminHtml()}</div>
+                        <div id="plans-admin-container" class="card p-4">${await renderPlansAdminHtml()}</div>
+                        <div id="discounts-admin-container" class="card p-4">${await renderDiscountsAdminHtml()}</div>
                     </div>
                 `;
                 break;
              case 'analytics':
-                renderAnalyticsPage();
+                await renderAnalyticsPage();
                 break;
             case 'commissions':
-                pageContainer.innerHTML = renderCommissionsHtml();
+                pageContainer.innerHTML = await renderCommissionsHtml();
                 break;
             case 'cms':
-                renderCMSPage();
+                await renderCMSPage();
                 break;
             case 'magazine':
-                renderMagazineAdminPage();
+                await renderMagazineAdminPage();
                 break;
             case 'settings':
-                pageContainer.innerHTML = renderSettingsPageHTML();
-                renderWebhooksList();
+                pageContainer.innerHTML = await renderSettingsPageHTML();
+                await renderWebhooksList();
                 break;
             case 'activity-log':
-                const logs = getActivityLog();
+                const logs = await getActivityLog();
                 pageContainer.innerHTML = `
                     <div class="card p-4">
                         <div class="space-y-2">
@@ -1094,14 +1098,14 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
 
     const initialTab = mainContainer.querySelector('.nav-link[data-page="dashboard"]');
     if (initialTab) {
-        switchTab(initialTab as HTMLElement);
+        await switchTab(initialTab as HTMLElement);
     }
     
     navLinks.forEach(link => {
-        link.addEventListener('click', (e) => switchTab(e.currentTarget as HTMLElement));
+        link.addEventListener('click', async (e) => await switchTab(e.currentTarget as HTMLElement));
     });
     
-    mainContainer.addEventListener('click', (e) => {
+    mainContainer.addEventListener('click', async (e) => {
         const target = e.target as HTMLElement;
 
         const tabButton = target.closest<HTMLElement>('.admin-tab-button');
@@ -1136,26 +1140,26 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         if (actionButton) {
             const action = actionButton.dataset.action;
             const username = actionButton.dataset.username;
-            let users = getUsers();
+            let users = await getUsers();
             const userIndex = users.findIndex((u: any) => u.username === username);
 
             if (userIndex !== -1) {
                 switch(action) {
-                    case 'suspend': users[userIndex].status = 'suspended'; saveUsers(users); addActivityLog(`کاربر ${username} مسدود شد.`); refreshUserTables(); break;
-                    case 'activate': users[userIndex].status = 'active'; saveUsers(users); addActivityLog(`کاربر ${username} فعال شد.`); refreshUserTables(); break;
-                    case 'approve': users[userIndex].coachStatus = 'verified'; saveUsers(users); addActivityLog(`مربی ${username} تایید شد.`); refreshUserTables(); break;
+                    case 'suspend': users[userIndex].status = 'suspended'; await saveUsers(users); await addActivityLog(`کاربر ${username} مسدود شد.`); await refreshUserTables(); break;
+                    case 'activate': users[userIndex].status = 'active'; await saveUsers(users); await addActivityLog(`کاربر ${username} فعال شد.`); await refreshUserTables(); break;
+                    case 'approve': users[userIndex].coachStatus = 'verified'; await saveUsers(users); await addActivityLog(`مربی ${username} تایید شد.`); await refreshUserTables(); break;
                     case 'revoke':
-                    case 'reject': users[userIndex].coachStatus = 'revoked'; saveUsers(users); addActivityLog(`همکاری با مربی ${username} لغو شد.`); refreshUserTables(); break;
-                    case 'reapprove': users[userIndex].coachStatus = 'verified'; saveUsers(users); addActivityLog(`مربی ${username} مجددا تایید شد.`); refreshUserTables(); break;
+                    case 'reject': users[userIndex].coachStatus = 'revoked'; await saveUsers(users); await addActivityLog(`همکاری با مربی ${username} لغو شد.`); await refreshUserTables(); break;
+                    case 'reapprove': users[userIndex].coachStatus = 'verified'; await saveUsers(users); await addActivityLog(`مربی ${username} مجددا تایید شد.`); await refreshUserTables(); break;
                     case 'impersonate':
                         const adminUser = getCurrentUser();
                         if (adminUser) {
                             sessionStorage.setItem("impersonating_admin", adminUser);
-                            addActivityLog(`ادمین وارد حساب ${username} شد.`);
-                            handleLoginSuccess(username!);
+                            await addActivityLog(`ادمین وارد حساب ${username} شد.`);
+                            await handleLoginSuccess(username!);
                         }
                         break;
-                     case 'view-activity': openUserActivityModal(username!); break;
+                     case 'view-activity': await openUserActivityModal(username!); break;
                 }
             }
 
@@ -1165,37 +1169,37 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
 
             switch(action) {
                 case 'add-plan': openPlanModal(); break;
-                case 'edit-plan': if(planId) openPlanModal(planId); break;
+                case 'edit-plan': if(planId) await openPlanModal(planId); break;
                 case 'delete-plan':
                     if (planId && confirm('آیا از حذف این پلن مطمئن هستید؟')) {
-                        let plans = getStorePlans();
+                        let plans = await getStorePlans();
                         plans = plans.filter(p => p.planId !== planId);
-                        saveStorePlans(plans);
-                        document.getElementById('plans-admin-container')!.innerHTML = renderPlansAdminHtml();
+                        await saveStorePlans(plans);
+                        document.getElementById('plans-admin-container')!.innerHTML = await renderPlansAdminHtml();
                         window.lucide.createIcons();
                         showToast('پلن با موفقیت حذف شد.', 'success');
                     }
                     break;
                 case 'add-discount': openDiscountModal(); break;
-                case 'edit-discount': if(discountCode) openDiscountModal(discountCode); break;
+                case 'edit-discount': if(discountCode) await openDiscountModal(discountCode); break;
                 case 'delete-discount':
                     if (discountCode && confirm('آیا از حذف این کد تخفیف مطمئن هستید؟')) {
-                        let discounts = getDiscounts();
+                        let discounts = await getDiscounts();
                         delete discounts[discountCode];
-                        saveDiscounts(discounts);
-                        document.getElementById('discounts-admin-container')!.innerHTML = renderDiscountsAdminHtml();
+                        await saveDiscounts(discounts);
+                        document.getElementById('discounts-admin-container')!.innerHTML = await renderDiscountsAdminHtml();
                         window.lucide.createIcons();
                         showToast('کد تخفیف حذف شد.', 'success');
                     }
                     break;
-                case 'add-article': openArticleModal(); break;
-                case 'edit-article': if (articleId) openArticleModal(articleId); break;
+                case 'add-article': await openArticleModal(); break;
+                case 'edit-article': if (articleId) await openArticleModal(articleId); break;
                 case 'delete-article':
                     if (articleId && confirm('آیا از حذف این مقاله مطمئن هستید؟')) {
-                        let articles = getMagazineArticles();
+                        let articles = await getMagazineArticles();
                         articles = articles.filter(a => a.id !== articleId);
-                        saveMagazineArticles(articles);
-                        renderMagazineAdminPage();
+                        await saveMagazineArticles(articles);
+                        await renderMagazineAdminPage();
                         showToast('مقاله با موفقیت حذف شد.', 'success');
                     }
                     break;
@@ -1211,7 +1215,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 coachAnalyticsSort.key = key;
                 coachAnalyticsSort.order = 'desc';
             }
-            renderAnalyticsPage();
+            await renderAnalyticsPage();
         }
 
         if (target.closest('#add-webhook-btn')) {
@@ -1227,13 +1231,13 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         if (webhookActionButton) {
             const id = webhookActionButton.getAttribute('data-id');
             const action = webhookActionButton.getAttribute('data-action');
-            let settings = getSiteSettings();
+            let settings = await getSiteSettings();
             
             if (action === 'delete-webhook') {
                 if (confirm('آیا از حذف این وب‌هوک مطمئن هستید؟')) {
                     settings.integrations.webhooks = settings.integrations.webhooks.filter((h: any) => h.id !== id);
-                    saveSiteSettings(settings);
-                    renderWebhooksList();
+                    await saveSiteSettings(settings);
+                    await renderWebhooksList();
                     showToast('وب‌هوک با موفقیت حذف شد.', 'success');
                 }
             } else if (action === 'edit-webhook') {
@@ -1255,11 +1259,11 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         
         const cmsActionButton = target.closest('[data-cms-action]');
         if (cmsActionButton) {
-            handleCMSActions(cmsActionButton as HTMLElement);
+            await handleCMSActions(cmsActionButton as HTMLElement);
         }
     });
 
-    mainContainer.addEventListener('submit', (e) => {
+    mainContainer.addEventListener('submit', async (e) => {
         const form = e.target as HTMLFormElement;
         if (form.id === 'site-settings-form') {
             e.preventDefault();
@@ -1291,7 +1295,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                     privacyPolicy: (form.querySelector('#setting-content-privacy') as HTMLTextAreaElement).value,
                 },
                 integrations: {
-                    ...getSiteSettings().integrations, // Preserve webhooks
+                    ...(await getSiteSettings()).integrations, // Preserve webhooks
                     paymentGateways: {
                         zarinpal: (form.querySelector('#setting-gateway-zarinpal') as HTMLInputElement).value,
                         idpay: (form.querySelector('#setting-gateway-idpay') as HTMLInputElement).value,
@@ -1305,15 +1309,15 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 }
             };
 
-            saveSiteSettings(newSettings);
-            addActivityLog('تنظیمات سایت به‌روزرسانی شد.');
+            await saveSiteSettings(newSettings);
+            await addActivityLog('تنظیمات سایت به‌روزرسانی شد.');
             applySiteSettings(newSettings);
             
-            setTimeout(() => {
+            setTimeout(async () => {
                 button?.classList.remove('is-loading');
                 showToast('تنظیمات با موفقیت ذخیره شد.', 'success');
                 if (document.getElementById('admin-commissions-page')?.offsetParent !== null) {
-                    document.getElementById('admin-commissions-page')!.innerHTML = renderCommissionsHtml();
+                    document.getElementById('admin-commissions-page')!.innerHTML = await renderCommissionsHtml();
                 }
             }, 500);
         }
@@ -1328,7 +1332,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 return;
             }
 
-            let settings = getSiteSettings();
+            let settings = await getSiteSettings();
             const editingId = form.getAttribute('data-editing-id');
 
             if (editingId) {
@@ -1341,8 +1345,8 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 settings.integrations.webhooks.push(newHook);
             }
 
-            saveSiteSettings(settings);
-            renderWebhooksList();
+            await saveSiteSettings(settings);
+            await renderWebhooksList();
             showToast('وب‌هوک با موفقیت ذخیره شد.', 'success');
             closeModal(document.getElementById('webhook-modal'));
         }
@@ -1364,15 +1368,15 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 access: formData.getAll('access') as string[]
             };
 
-            let plans = getStorePlans();
+            let plans = await getStorePlans();
             if (form.getAttribute('data-editing-id')) {
                 const index = plans.findIndex(p => p.planId === planId);
                 if (index > -1) plans[index] = newPlan;
             } else {
                 plans.push(newPlan);
             }
-            saveStorePlans(plans);
-            document.getElementById('plans-admin-container')!.innerHTML = renderPlansAdminHtml();
+            await saveStorePlans(plans);
+            document.getElementById('plans-admin-container')!.innerHTML = await renderPlansAdminHtml();
             window.lucide.createIcons();
             showToast('پلن با موفقیت ذخیره شد.', 'success');
             closeModal(document.getElementById('plan-modal'));
@@ -1388,11 +1392,11 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 value: parseInt(formData.get('value') as string, 10),
             };
 
-            let discounts = getDiscounts();
+            let discounts = await getDiscounts();
             discounts[code] = newDiscount;
             
-            saveDiscounts(discounts);
-            document.getElementById('discounts-admin-container')!.innerHTML = renderDiscountsAdminHtml();
+            await saveDiscounts(discounts);
+            document.getElementById('discounts-admin-container')!.innerHTML = await renderDiscountsAdminHtml();
             window.lucide.createIcons();
             showToast('کد تخفیف با موفقیت ذخیره شد.', 'success');
             closeModal(document.getElementById('discount-modal'));
@@ -1415,7 +1419,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 return;
             }
 
-            const db = getSupplementsDB();
+            const db = await getSupplementsDB();
             if (!db[category]) db[category] = [];
 
             if (originalName) { // Editing
@@ -1427,9 +1431,9 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 db[category].push(newSupp);
             }
             
-            saveSupplementsDB(db);
+            await saveSupplementsDB(db);
             showToast('مکمل با موفقیت ذخیره شد.', 'success');
-            renderSupplementsCMS();
+            await renderSupplementsCMS();
             closeModal(document.getElementById('supplement-cms-modal'));
         }
         if (form.id === 'magazine-article-form') {
@@ -1445,7 +1449,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
                 publishDate: new Date().toISOString()
             };
             
-            let articles = getMagazineArticles();
+            let articles = await getMagazineArticles();
             if (editingId) {
                 const index = articles.findIndex(a => a.id === editingId);
                 if (index > -1) {
@@ -1454,8 +1458,8 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
             } else {
                 articles.push(articleData);
             }
-            saveMagazineArticles(articles);
-            renderMagazineAdminPage();
+            await saveMagazineArticles(articles);
+            await renderMagazineAdminPage();
             showToast('مقاله با موفقیت ذخیره شد.', 'success');
             closeModal(document.getElementById('magazine-article-modal'));
         }
@@ -1467,7 +1471,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         });
     });
 
-    const openPlanModal = (planId: string | null = null) => {
+    const openPlanModal = async (planId: string | null = null) => {
         const modal = document.getElementById('plan-modal');
         const form = document.getElementById('plan-form') as HTMLFormElement;
         const title = document.getElementById('plan-modal-title');
@@ -1479,13 +1483,13 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         form.querySelectorAll<HTMLInputElement>('input[name="access"]').forEach(cb => cb.checked = false);
 
         if (planId) {
-            const plan = getStorePlans().find(p => p.planId === planId);
+            const plan = (await getStorePlans()).find(p => p.planId === planId);
             if (plan) {
                 title.textContent = 'ویرایش پلن';
                 form.setAttribute('data-editing-id', planId);
                 (form.elements.namedItem('planName') as HTMLInputElement).value = plan.planName;
                 (form.elements.namedItem('description') as HTMLInputElement).value = plan.description;
-                // Fix: Convert number to string for input value
+                // FIX: Convert number to string for input value
                 (form.elements.namedItem('price') as HTMLInputElement).value = String(plan.price);
                 (form.elements.namedItem('features') as HTMLTextAreaElement).value = plan.features.join('\n');
                 (form.elements.namedItem('emoji') as HTMLInputElement).value = plan.emoji;
@@ -1502,7 +1506,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         openModal(modal);
     };
 
-    const openDiscountModal = (code: string | null = null) => {
+    const openDiscountModal = async (code: string | null = null) => {
         const modal = document.getElementById('discount-modal');
         const form = document.getElementById('discount-form') as HTMLFormElement;
         const title = document.getElementById('discount-modal-title');
@@ -1513,13 +1517,13 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
         codeInput.readOnly = false;
 
         if (code) {
-            const discount = getDiscounts()[code];
+            const discount = (await getDiscounts())[code];
             if (discount) {
                 title.textContent = 'ویرایش کد تخفیف';
                 codeInput.value = code;
                 codeInput.readOnly = true;
                 (form.querySelector(`input[name="type"][value="${discount.type}"]`) as HTMLInputElement).checked = true;
-                // Fix: Convert number to string for input value
+                // FIX: Convert number to string for input value
                 (form.elements.namedItem('value') as HTMLInputElement).value = String(discount.value);
             }
         } else {
@@ -1531,7 +1535,7 @@ export function initAdminDashboard(handleLogout: () => void, handleLoginSuccess:
 
 
 // --- CMS Specific Functions ---
-const renderCMSPage = () => {
+const renderCMSPage = async () => {
     const pageContainer = document.getElementById('admin-cms-page');
     if (!pageContainer) return;
     pageContainer.innerHTML = `
@@ -1542,15 +1546,15 @@ const renderCMSPage = () => {
         <div id="cms-exercises-content" class="cms-tab-content animate-fade-in"></div>
         <div id="cms-supplements-content" class="cms-tab-content animate-fade-in hidden"></div>
     `;
-    renderExercisesCMS();
-    renderSupplementsCMS();
+    await renderExercisesCMS();
+    await renderSupplementsCMS();
     window.lucide?.createIcons();
 };
 
-const renderExercisesCMS = () => {
+const renderExercisesCMS = async () => {
     const container = document.getElementById('cms-exercises-content');
     if (!container) return;
-    const db = getExercisesDB();
+    const db = await getExercisesDB();
     const sortedGroups = Object.keys(db).sort((a,b) => a.localeCompare(b, 'fa'));
 
     container.innerHTML = `
@@ -1590,10 +1594,10 @@ const renderExercisesCMS = () => {
     `;
 };
 
-const renderSupplementsCMS = () => {
+const renderSupplementsCMS = async () => {
     const container = document.getElementById('cms-supplements-content');
     if (!container) return;
-    const db = getSupplementsDB();
+    const db = await getSupplementsDB();
     const sortedCategories = Object.keys(db).sort((a,b) => a.localeCompare(b, 'fa'));
 
      container.innerHTML = `
@@ -1636,7 +1640,7 @@ const renderSupplementsCMS = () => {
     `;
 };
 
-const openSupplementModal = (category: string, supplementName: string | null = null) => {
+const openSupplementModal = async (category: string, supplementName: string | null = null) => {
     const modal = document.getElementById('supplement-cms-modal');
     const form = document.getElementById('supplement-cms-form') as HTMLFormElement;
     const title = document.getElementById('supplement-cms-modal-title');
@@ -1648,7 +1652,7 @@ const openSupplementModal = (category: string, supplementName: string | null = n
 
     if (supplementName) { // Editing
         title.textContent = `ویرایش مکمل: ${supplementName}`;
-        const db = getSupplementsDB();
+        const db = await getSupplementsDB();
         const supplement = db[category]?.find(s => s.name === supplementName);
         if (supplement) {
             form.dataset.originalName = supplementName;
@@ -1663,7 +1667,7 @@ const openSupplementModal = (category: string, supplementName: string | null = n
     openModal(modal);
 };
 
-const handleCMSActions = (target: HTMLElement) => {
+const handleCMSActions = async (target: HTMLElement) => {
     const action = target.dataset.cmsAction;
     const group = target.dataset.group;
     const exercise = target.dataset.exercise;
@@ -1674,72 +1678,72 @@ const handleCMSActions = (target: HTMLElement) => {
     if (action === 'add-muscle-group') {
         const newGroup = prompt("نام گروه عضلانی جدید را وارد کنید:");
         if (newGroup) {
-            const db = getExercisesDB();
+            const db = await getExercisesDB();
             if (!db[newGroup]) {
                 db[newGroup] = [];
-                saveExercisesDB(db);
-                renderExercisesCMS();
+                await saveExercisesDB(db);
+                await renderExercisesCMS();
             } else {
                 showToast("این گروه قبلا وجود داشته است.", "error");
             }
         }
     } else if (action === 'delete-muscle-group' && group && confirm(`آیا از حذف گروه "${group}" و تمام حرکات آن مطمئن هستید؟`)) {
-        const db = getExercisesDB();
+        const db = await getExercisesDB();
         delete db[group];
-        saveExercisesDB(db);
-        renderExercisesCMS();
+        await saveExercisesDB(db);
+        await renderExercisesCMS();
     } else if (action === 'add-exercise' && group) {
         const newExercise = prompt(`نام حرکت جدید برای گروه "${group}" را وارد کنید:`);
         if (newExercise) {
-            const db = getExercisesDB();
+            const db = await getExercisesDB();
             db[group].push(newExercise);
-            saveExercisesDB(db);
-            renderExercisesCMS();
+            await saveExercisesDB(db);
+            await renderExercisesCMS();
         }
     } else if (action === 'edit-exercise' && group && exercise) {
         const updatedExercise = prompt(`نام جدید برای "${exercise}" را وارد کنید:`, exercise);
         if (updatedExercise && updatedExercise !== exercise) {
-            const db = getExercisesDB();
+            const db = await getExercisesDB();
             const index = db[group].indexOf(exercise);
             if (index > -1) {
                 db[group][index] = updatedExercise;
-                saveExercisesDB(db);
-                renderExercisesCMS();
+                await saveExercisesDB(db);
+                await renderExercisesCMS();
             }
         }
     } else if (action === 'delete-exercise' && group && exercise && confirm(`آیا از حذف حرکت "${exercise}" مطمئن هستید؟`)) {
-        const db = getExercisesDB();
+        const db = await getExercisesDB();
         db[group] = db[group].filter(ex => ex !== exercise);
-        saveExercisesDB(db);
-        renderExercisesCMS();
+        await saveExercisesDB(db);
+        await renderExercisesCMS();
     }
 
     // Supplements
     else if (action === 'add-supplement-category') {
         const newCategory = prompt("نام دسته جدید مکمل را وارد کنید:");
         if (newCategory) {
-            const db = getSupplementsDB();
+            const db = await getSupplementsDB();
             if (!db[newCategory]) {
                 db[newCategory] = [];
-                saveSupplementsDB(db);
-                renderSupplementsCMS();
+                await saveSupplementsDB(db);
+                await renderSupplementsCMS();
             } else {
                 showToast("این دسته قبلا وجود داشته است.", "error");
             }
         }
     } else if (action === 'delete-supplement-category' && category && confirm(`آیا از حذف دسته "${category}" و تمام مکمل‌های آن مطمئن هستید؟`)) {
-        const db = getSupplementsDB();
+        const db = await getSupplementsDB();
         delete db[category];
-        saveSupplementsDB(db);
-        renderSupplementsCMS();
+        await saveSupplementsDB(db);
+        await renderSupplementsCMS();
     } else if (action === 'add-supplement' && category) {
-        openSupplementModal(category);
+        await openSupplementModal(category);
     } else if (action === 'edit-supplement' && category && supplementName) {
-        openSupplementModal(category, supplementName);
+        await openSupplementModal(category, supplementName);
     } else if (action === 'delete-supplement' && category && supplementName && confirm(`آیا از حذف مکمل "${supplementName}" مطمئن هستید؟`)) {
-        const db = getSupplementsDB();
+        const db = await getSupplementsDB();
         db[category] = db[category].filter(sup => sup.name !== supplementName);
-        saveSupplementsDB(db);
-        renderSupplementsCMS();
+        await saveSupplementsDB(db);
+        await renderSupplementsCMS();
     }
 };

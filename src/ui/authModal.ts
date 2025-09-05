@@ -56,13 +56,13 @@ const clearValidationError = (inputEl: HTMLInputElement) => {
     if (errorEl) errorEl.textContent = '';
 };
 
-const applyCalculatorData = (username: string): boolean => {
+const applyCalculatorData = async (username: string): Promise<boolean> => {
     const calculatorDataRaw = sessionStorage.getItem('fitgympro_calculator_data');
     if (!calculatorDataRaw) return false;
 
     try {
         const calculatorData = JSON.parse(calculatorDataRaw);
-        const userData = getUserData(username);
+        const userData = await getUserData(username);
         if (!userData.step1) userData.step1 = {};
 
         const step1Data: any = {
@@ -72,7 +72,7 @@ const applyCalculatorData = (username: string): boolean => {
             height: parseInt(calculatorData.height, 10),
             weight: parseFloat(calculatorData.weight),
             trainingGoal: calculatorData.trainingGoal,
-            trainingDays: parseInt(calculatorData.trainingDays, 10),
+            // trainingDays: parseInt(calculatorData.trainingDays, 10), // This is not part of calculator
             activityLevel: parseFloat(calculatorData.activityLevel),
         };
 
@@ -83,7 +83,7 @@ const applyCalculatorData = (username: string): boolean => {
         
         userData.step1 = step1Data;
 
-        saveUserData(username, userData);
+        await saveUserData(username, userData);
         sessionStorage.removeItem('fitgympro_calculator_data');
         return true;
 
@@ -94,19 +94,19 @@ const applyCalculatorData = (username: string): boolean => {
     }
 }
 
-const addSelectedPlanToCart = (username: string): boolean => {
+const addSelectedPlanToCart = async (username: string): Promise<boolean> => {
     const selectedPlanId = sessionStorage.getItem('fitgympro_selected_plan');
     if (!selectedPlanId) return false;
 
-    const plans = getStorePlans();
+    const plans = await getStorePlans();
     const planToAdd = plans.find((p: any) => p.planId === selectedPlanId);
     
     if (planToAdd) {
-        const cart = getCart(username);
+        const cart = await getCart(username);
         // Avoid duplicates
         if (!cart.items.some((item: any) => item.planId === selectedPlanId)) {
             cart.items.push(planToAdd);
-            saveCart(username, cart);
+            await saveCart(username, cart);
             showToast(`${planToAdd.planName} به سبد خرید اضافه شد.`, 'success');
         }
     }
@@ -161,9 +161,9 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
     const authModal = document.getElementById('auth-modal');
     if (!authModal) return;
 
-    const handleLoginActions = (username: string) => {
-        const calculatorDataApplied = applyCalculatorData(username);
-        const planAdded = addSelectedPlanToCart(username);
+    const handleLoginActions = async (username: string) => {
+        const calculatorDataApplied = await applyCalculatorData(username);
+        const planAdded = await addSelectedPlanToCart(username);
         if (calculatorDataApplied || planAdded) {
             sessionStorage.setItem('fitgympro_redirect_to_tab', 'store-content');
             if (planAdded) sessionStorage.setItem('fitgympro_open_cart', 'true');
@@ -190,62 +190,60 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
 
     // --- Google Auth ---
     const handleGoogleAuth = async () => {
-        const provider = new firebase.auth.GoogleAuthProvider();
+        // Mock Google Sign-In to bypass environment restrictions (e.g., sandboxed iframes)
+        // that prevent Firebase popups from working.
+        const mockGoogleUser = {
+            email: 'google.user@example.com',
+            displayName: 'Google User',
+            uid: `mock-g-${Date.now()}`
+        };
+
         try {
-            const result = await firebase.auth().signInWithPopup(provider);
-            const user = result.user;
-    
-            if (user) {
-                const googleEmail = user.email;
-                const googleName = user.displayName;
-                let allUsers = getUsers();
-                let appUser = allUsers.find((u: any) => u.email === googleEmail);
-    
-                if (appUser) {
-                    // User exists, log them in
-                    if (appUser.status === 'suspended') {
-                        showToast("حساب کاربری شما مسدود شده است.", "error");
-                        firebase.auth().signOut(); // Sign out from firebase as well
-                        return;
-                    }
-                    handleLoginActions(appUser.username);
-                } else {
-                    // New user, create an account
-                    let username = googleEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
-                    // Ensure username is unique
-                    let counter = 1;
-                    let originalUsername = username;
-                    while (allUsers.some((u: any) => u.username === username)) {
-                        username = `${originalUsername}${counter}`;
-                        counter++;
-                    }
-    
-                    const newUser = {
-                        username: username,
-                        email: googleEmail,
-                        password: `gl_${user.uid}`, // Dummy password using UID for uniqueness
-                        role: 'user',
-                        status: 'active',
-                        coachStatus: null,
-                        joinDate: new Date().toISOString()
-                    };
-                    allUsers.push(newUser);
-                    saveUsers(allUsers);
-                    saveUserData(username, {
-                        step1: { clientName: googleName || username, clientEmail: googleEmail },
-                        joinDate: new Date().toISOString()
-                    });
-                    addActivityLog(`${username} signed up via Google.`);
-                    handleLoginActions(username);
+            const googleEmail = mockGoogleUser.email;
+            const googleName = mockGoogleUser.displayName;
+            let allUsers = await getUsers();
+            let appUser = allUsers.find((u: any) => u.email === googleEmail);
+
+            if (appUser) {
+                // User exists, log them in
+                if (appUser.status === 'suspended') {
+                    showToast("حساب کاربری شما مسدود شده است.", "error");
+                    return;
                 }
+                await handleLoginActions(appUser.username);
+            } else {
+                // New user, create an account
+                let username = googleEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+                // Ensure username is unique
+                let counter = 1;
+                let originalUsername = username;
+                while (allUsers.some((u: any) => u.username === username)) {
+                    username = `${originalUsername}${counter}`;
+                    counter++;
+                }
+
+                const newUser = {
+                    username: username,
+                    email: googleEmail,
+                    password: `gl_${mockGoogleUser.uid}`, // Dummy password using UID for uniqueness
+                    role: 'user',
+                    status: 'active',
+                    coachStatus: null,
+                    joinDate: new Date().toISOString()
+                };
+                allUsers.push(newUser);
+                await saveUsers(allUsers);
+                await saveUserData(username, {
+                    step1: { clientName: googleName || username, clientEmail: googleEmail },
+                    joinDate: new Date().toISOString()
+                });
+                await addActivityLog(`${username} signed up via mock Google.`);
+                showToast('ورود با حساب گوگل (شبیه‌سازی شده) موفقیت‌آمیز بود.', 'success');
+                await handleLoginActions(username);
             }
         } catch (error: any) {
-            console.error("Google Auth Error:", error);
-            if (error.code === 'auth/popup-closed-by-user') {
-                showToast("پنجره ورود گوگل بسته شد.", "warning");
-            } else {
-                showToast("خطا در ورود با حساب گوگل. لطفاً دوباره تلاش کنید.", "error");
-            }
+            console.error("Mock Google Auth Error:", error);
+            showToast("خطا در ورود شبیه‌سازی شده با گوگل.", "error");
         }
     };
 
@@ -254,7 +252,7 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
 
     // --- Form Submissions ---
     const loginForm = document.getElementById("login-form") as HTMLFormElement;
-    loginForm?.addEventListener("submit", e => {
+    loginForm?.addEventListener("submit", async e => {
         e.preventDefault();
         const usernameInput = document.getElementById("login-username") as HTMLInputElement;
         const passwordInput = document.getElementById("login-password") as HTMLInputElement;
@@ -266,7 +264,8 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
             return;
         }
 
-        const user = getUsers().find((u: any) => u.username === username);
+        const users = await getUsers();
+        const user = users.find((u: any) => u.username === username);
 
         if (user && user.password === password) {
              if (user.status === 'suspended') {
@@ -277,7 +276,7 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
                  showToast("حساب مربیگری شما در انتظار تایید مدیر است.", "error");
                  return;
              }
-            handleLoginActions(username);
+            await handleLoginActions(username);
         } else {
             showToast("نام کاربری یا رمز عبور اشتباه است.", "error");
             loginForm.closest('.card')?.classList.add('shake-animation');
@@ -289,7 +288,7 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
     const signupPasswordInput = document.getElementById("signup-password") as HTMLInputElement;
     signupPasswordInput?.addEventListener('input', () => checkPasswordStrength(signupPasswordInput.value));
 
-    signupForm?.addEventListener("submit", e => {
+    signupForm?.addEventListener("submit", async e => {
         e.preventDefault();
         const usernameInput = document.getElementById("signup-username") as HTMLInputElement;
         const emailInput = document.getElementById("signup-email") as HTMLInputElement;
@@ -308,7 +307,9 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
             showValidationError(usernameInput, 'نام کاربری باید حداقل ۳ کاراکتر باشد.');
             hasError = true;
         }
-        if (getUsers().some((u: any) => u.username === username)) {
+
+        const allUsers = await getUsers();
+        if (allUsers.some((u: any) => u.username === username)) {
             showValidationError(usernameInput, 'این نام کاربری قبلا استفاده شده است.');
             hasError = true;
         }
@@ -323,7 +324,6 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
 
         if (hasError) return;
         
-        const allUsers = getUsers();
         allUsers.push({
             username: username,
             email: email,
@@ -333,19 +333,19 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
             coachStatus: null,
             joinDate: new Date().toISOString()
         });
-        saveUsers(allUsers);
-        saveUserData(username, {
+        await saveUsers(allUsers);
+        await saveUserData(username, {
             step1: { clientName: username, clientEmail: email },
             joinDate: new Date().toISOString()
         });
         
         showToast("ثبت نام با موفقیت انجام شد! در حال ورود...", "success");
-        addActivityLog(`${username} ثبت نام کرد.`);
-        handleLoginActions(username);
+        await addActivityLog(`${username} ثبت نام کرد.`);
+        await handleLoginActions(username);
     });
 
     const forgotPasswordForm = document.getElementById("forgot-password-form") as HTMLFormElement;
-    forgotPasswordForm?.addEventListener('submit', (e) => {
+    forgotPasswordForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const emailInput = document.getElementById('forgot-email') as HTMLInputElement;
         const email = emailInput.value.trim();
@@ -355,7 +355,8 @@ export function initAuthListeners(handleLoginSuccess: (username: string) => void
             return;
         }
 
-        const userExists = getUsers().some((u: any) => u.email === email);
+        const users = await getUsers();
+        const userExists = users.some((u: any) => u.email === email);
 
         if (userExists) {
             // Simulate sending email

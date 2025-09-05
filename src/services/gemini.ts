@@ -1,3 +1,4 @@
+// FIX: Import Type from "@google/genai" for use in responseSchema.
 import { GoogleGenAI, Type } from "@google/genai";
 import { getGenAI } from '../state';
 import { showToast } from "../utils/dom";
@@ -87,7 +88,7 @@ export const generateWorkoutPlan = async (studentData: any): Promise<any | null>
     }
 
     // Create a flat list of available exercises to guide the AI
-    const exerciseDB = getExercisesDB();
+    const exerciseDB = await getExercisesDB();
     const availableExercises = Object.values(exerciseDB).flat().join(', ');
 
     const prompt = `
@@ -156,7 +157,7 @@ export const generateWorkoutPlan = async (studentData: any): Promise<any | null>
 
 export const generateSupplementPlan = async (studentData: any, goal: string): Promise<any[] | null> => {
     const ai = getGenAI();
-    const supplementsDB = getSupplementsDB();
+    const supplementsDB = await getSupplementsDB();
     const availableSupplements: string[] = [];
     Object.values(supplementsDB).forEach(category => {
         category.forEach(sup => {

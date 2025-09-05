@@ -43,6 +43,32 @@ export const performMetricCalculations = (data: { age: number, height: number, w
     return metrics;
 };
 
+export const calculateMacros = (tdee: number, weight: number, goal: string) => {
+    if (!tdee || !weight || !goal) return { protein: 0, carbs: 0, fat: 0 };
+    
+    let calorieTarget = tdee;
+    if (goal === 'کاهش وزن') {
+        calorieTarget -= 400;
+    } else if (goal === 'افزایش حجم') {
+        calorieTarget += 300;
+    }
+
+    const proteinGrams = Math.round(weight * 1.8);
+    const proteinCalories = proteinGrams * 4;
+
+    const fatCalories = Math.round(calorieTarget * 0.25);
+    const fatGrams = Math.round(fatCalories / 9);
+
+    const carbCalories = calorieTarget - proteinCalories - fatCalories;
+    const carbGrams = Math.round(carbCalories / 4);
+
+    return {
+        protein: proteinGrams > 0 ? proteinGrams : 0,
+        carbs: carbGrams > 0 ? carbGrams : 0,
+        fat: fatGrams > 0 ? fatGrams : 0
+    };
+};
+
 
 export const calculateBodyMetrics = (container: HTMLElement) => {
     const s = parseFloat((container.querySelector(".age-slider") as HTMLInputElement).value);

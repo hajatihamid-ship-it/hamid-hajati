@@ -1,11 +1,10 @@
-
-
 import { renderLandingPage, initLandingPageListeners } from './ui/landing';
 import { renderAuthModal, initAuthListeners } from './ui/authModal';
 import { renderCoachDashboard, initCoachDashboard, updateCoachNotifications } from './ui/coachDashboard';
 import { renderUserDashboard, initUserDashboard, updateUserNotifications } from './ui/userDashboard';
 import { renderAdminDashboard, initAdminDashboard } from './ui/adminDashboard';
-import { getUsers, getUserData, saveUsers, saveUserData, addActivityLog, saveDiscounts, getStorePlans, saveStorePlans, seedCMSData, getSiteSettings } from './services/storage';
+// FIX: Correctly import idbSet, idbGet, and idbDel which are now exported from storage.ts
+import { getUsers, getUserData, saveUsers, saveUserData, addActivityLog, saveDiscounts, getStorePlans, saveStorePlans, seedCMSData, getSiteSettings, idbSet, idbGet, idbDel } from './services/storage';
 import { setCurrentUser, getCurrentUser } from './state';
 import { sanitizeHTML, applySiteSettings } from './utils/dom';
 import { STORE_PLANS as APP_STORE_PLANS } from './config';
@@ -13,8 +12,9 @@ import { STORE_PLANS as APP_STORE_PLANS } from './config';
 let notificationInterval: number | null = null;
 let themeListenerAttached = false;
 
-const seedInitialUsers = () => {
-    if (getUsers().length === 0) {
+const seedInitialUsers = async () => {
+    const users = await getUsers();
+    if (users.length === 0) {
         console.log("No users found. Seeding initial admin, coach, and user.");
         const initialUsers = [
              { username: "admin10186", email: "admin@fitgympro.com", password: "admin10186", role: "admin", status: "active", coachStatus: null, joinDate: new Date().toISOString() },
@@ -28,14 +28,14 @@ const seedInitialUsers = () => {
              { username: "khorshidi_m", email: "khorshidi.m@fitgympro.com", password: "password123", role: "coach", status: "active", coachStatus: "revoked", joinDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() },
              { username: "sara_ahmadi", email: "sara.a@fitgympro.com", password: "password123", role: "coach", status: "active", coachStatus: "verified", joinDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString() }
         ];
-        saveUsers(initialUsers);
+        await saveUsers(initialUsers);
         
         // --- Seed individual user data for ALL users ---
-        saveUserData("admin10186", {
+        await saveUserData("admin10186", {
              step1: { clientName: "Admin" }
         });
 
-        saveUserData("coach10186", {
+        await saveUserData("coach10186", {
              step1: { coachName: "Coach Verified", clientName: "Coach Verified", gender: "مرد" },
              students: 28,
              performance: {
@@ -46,11 +46,11 @@ const seedInitialUsers = () => {
              }
         });
         
-        saveUserData("coach_pending", {
+        await saveUserData("coach_pending", {
              step1: { coachName: "Coach Pending", clientName: "Coach Pending" }
         });
         
-        saveUserData("user_suspended", {
+        await saveUserData("user_suspended", {
             step1: { clientName: "User Suspended", clientEmail: "suspended@fitgympro.com" },
             joinDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
         });
@@ -159,9 +159,9 @@ const seedInitialUsers = () => {
                 { date: '2024-07-01', weight: 81 }
             ]
         };
-        saveUserData("user_active", userWorkoutData);
+        await saveUserData("user_active", userWorkoutData);
 
-        saveUserData("user_needs_plan", {
+        await saveUserData("user_needs_plan", {
             step1: { clientName: "User Needs Plan", clientEmail: "needsplan@fitgympro.com", coachName: "coach10186" },
             joinDate: new Date().toISOString(),
             subscriptions: [{
@@ -174,7 +174,7 @@ const seedInitialUsers = () => {
             }]
         });
 
-        saveUserData("hamid_hajati", {
+        await saveUserData("hamid_hajati", {
              step1: { coachName: "حمید حاجتی", clientName: "حمید حاجتی", gender: "مرد" },
              profile: {
                  avatar: "https://i.pravatar.cc/150?u=hamid_hajati",
@@ -189,7 +189,7 @@ const seedInitialUsers = () => {
                  avgProgramDeliveryHours: 14
              }
         });
-        saveUserData("morteza_heydari", {
+        await saveUserData("morteza_heydari", {
              step1: { coachName: "مرتضی حیدری نسب", clientName: "مرتضی حیدری نسب", gender: "مرد" },
              profile: {
                  avatar: "https://i.pravatar.cc/150?u=morteza_heydari",
@@ -204,7 +204,7 @@ const seedInitialUsers = () => {
                  avgProgramDeliveryHours: 11
              }
         });
-        saveUserData("khorshidi_m", {
+        await saveUserData("khorshidi_m", {
              step1: { coachName: "خورشیدی مهر", clientName: "خورشیدی مهر", gender: "مرد" },
              profile: {
                  avatar: "https://i.pravatar.cc/150?u=khorshidi_m",
@@ -220,7 +220,7 @@ const seedInitialUsers = () => {
              }
         });
 
-        saveUserData("sara_ahmadi", {
+        await saveUserData("sara_ahmadi", {
              step1: { coachName: "سارا احمدی", clientName: "سارا احمدی", gender: "زن" },
              profile: {
                  avatar: "https://i.pravatar.cc/150?u=sara_ahmadi",
@@ -237,38 +237,40 @@ const seedInitialUsers = () => {
         });
 
 
-        addActivityLog("Initial users (admin, coaches, users) were created automatically.");
-        saveDiscounts({ 'WELCOME10': { type: 'percentage', value: 10 }, 'SAVE50K': { type: 'fixed', value: 50000 } });
-        addActivityLog("Initial discount codes created.");
+        await addActivityLog("Initial users (admin, coaches, users) were created automatically.");
+        await saveDiscounts({ 'WELCOME10': { type: 'percentage', value: 10 }, 'SAVE50K': { type: 'fixed', value: 50000 } });
+        await addActivityLog("Initial discount codes created.");
     }
      // Seed plans if they don't exist
-    if (getStorePlans().length === 0) {
-        const plans = [
+     const plans = await getStorePlans();
+    if (plans.length === 0) {
+        const initialPlans = [
             { planId: 'basic-1m', planName: 'پکیج پایه ۱ ماهه', description: 'ایده‌آل برای شروع و آشنایی.', price: 150000, features: ['برنامه تمرینی اختصاصی', 'پشتیبانی پایه در چت'], emoji: '💪', color: '#3b82f6', access: ['workout_plan', 'chat'] },
             { planId: 'full-3m', planName: 'پکیج کامل ۳ ماهه', description: 'بهترین گزینه برای نتایج پایدار.', price: 400000, features: ['برنامه تمرینی اختصاصی', 'برنامه غذایی هوشمند', 'پشتیبانی کامل در چت', 'تحلیل هفتگی پیشرفت'], emoji: '🚀', color: '#ec4899', recommended: true, access: ['workout_plan', 'nutrition_plan', 'chat'] },
             { planId: 'pro-6m', planName: 'پکیج حرفه‌ای ۶ ماهه', description: 'برای ورزشکاران جدی و اهداف بزرگ.', price: 700000, features: ['تمام ویژگی‌های کامل', 'تماس ویدیویی ماهانه', 'اولویت در پشتیبانی'], emoji: '⭐', color: '#f97316', access: ['workout_plan', 'nutrition_plan', 'chat'] },
             { planId: 'nutrition-1m', planName: 'برنامه غذایی ۱ ماهه', description: 'فقط برنامه غذایی تخصصی.', price: 100000, features: ['برنامه غذایی هوشمند', 'پشتیبانی تغذیه در چت'], emoji: '🥗', color: '#10b981', access: ['nutrition_plan', 'chat'] }
         ];
-        saveStorePlans(plans);
-        addActivityLog("Initial store plans were created automatically.");
+        await saveStorePlans(initialPlans);
+        await addActivityLog("Initial store plans were created automatically.");
     }
 };
 
-const updateAllNotifications = () => {
+const updateAllNotifications = async () => {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
 
-    const user = getUsers().find((u: any) => u.username === currentUser);
+    const users = await getUsers();
+    const user = users.find((u: any) => u.username === currentUser);
     if (!user) return;
 
     if (user.role === 'coach') {
-        updateCoachNotifications(currentUser);
+        await updateCoachNotifications(currentUser);
     } else if (user.role === 'user') {
-        updateUserNotifications(currentUser);
+        await updateUserNotifications(currentUser);
     }
 };
 
-export const renderApp = () => {
+export const renderApp = async () => {
     const appContainer = document.getElementById('app-root');
     if (!appContainer) return;
     
@@ -278,30 +280,34 @@ export const renderApp = () => {
         notificationInterval = null;
     }
 
-    const lastUser = localStorage.getItem("fitgympro_last_user");
+    const lastUser = await idbGet<string>("fitgympro_last_user");
     setCurrentUser(lastUser || null);
     const currentUser = getCurrentUser();
 
     if (!currentUser) {
-        appContainer.innerHTML = renderLandingPage() + renderAuthModal();
+        // FIX: await async function renderLandingPage
+        appContainer.innerHTML = await renderLandingPage() + renderAuthModal();
+// FIX: The function initLandingPageListeners expects 0 arguments.
         initLandingPageListeners();
         initAuthListeners(handleLoginSuccess);
     } else {
-        const users = getUsers();
+        const users = await getUsers();
         const currentUserData = users.find((u: any) => u.username === currentUser);
         if (!currentUserData) {
-            handleLogout();
+            await handleLogout();
             return;
         }
 
-        const userData = getUserData(currentUser);
-        const handleGoToHome = () => {
+        const userData = await getUserData(currentUser);
+        const handleGoToHome = async () => {
             if (!appContainer) return;
-            appContainer.innerHTML = renderLandingPage() + renderAuthModal();
-            initLandingPageListeners(renderApp); // Pass renderApp as the callback
+            // FIX: await async function renderLandingPage
+            appContainer.innerHTML = await renderLandingPage() + renderAuthModal();
+// FIX: The function initLandingPageListeners expects 0 arguments.
+            initLandingPageListeners(); 
             window.lucide?.createIcons();
             setTimeout(() => {
-                const mainContainer = document.querySelector('.landing-page-container');
+                const mainContainer = document.querySelector('.landing-page-wrapper');
                 if (mainContainer) {
                     mainContainer.classList.add('opacity-100');
                 }
@@ -310,23 +316,23 @@ export const renderApp = () => {
 
         switch (currentUserData.role) {
             case 'admin':
-                appContainer.innerHTML = renderAdminDashboard();
-                initAdminDashboard(handleLogout, handleLoginSuccess, handleGoToHome);
+                appContainer.innerHTML = await renderAdminDashboard();
+                await initAdminDashboard(handleLogout, handleLoginSuccess, handleGoToHome);
                 break;
             case 'coach':
-                appContainer.innerHTML = renderCoachDashboard(currentUser, userData);
-                initCoachDashboard(currentUser, handleLogout, handleGoToHome);
+                appContainer.innerHTML = await renderCoachDashboard(currentUser, userData);
+                await initCoachDashboard(currentUser, handleLogout, handleGoToHome);
                 break;
             case 'user':
-                appContainer.innerHTML = renderUserDashboard(currentUser, userData);
-                initUserDashboard(currentUser, userData, handleLogout, handleGoToHome);
+                appContainer.innerHTML = await renderUserDashboard(currentUser, userData);
+                await initUserDashboard(currentUser, userData, handleLogout, handleGoToHome);
                 break;
             default:
-                handleLogout();
+                await handleLogout();
                 return;
         }
         
-        updateAllNotifications();
+        await updateAllNotifications();
         // Start a new interval for live notifications.
         notificationInterval = window.setInterval(updateAllNotifications, 3000);
     }
@@ -350,30 +356,30 @@ export const renderApp = () => {
     window.lucide?.createIcons();
     
     setTimeout(() => {
-        const mainContainer = document.querySelector('.landing-page-container, #coach-dashboard-container, #user-dashboard-container, .admin-dashboard-container');
+        const mainContainer = document.querySelector('.landing-page-wrapper, #coach-dashboard-container, #user-dashboard-container, .admin-dashboard-container');
         if (mainContainer) {
             mainContainer.classList.add('opacity-100');
         }
     }, 50);
 };
 
-export const handleLoginSuccess = (username: string) => {
+export const handleLoginSuccess = async (username: string) => {
     setCurrentUser(username);
-    localStorage.setItem("fitgympro_last_user", username);
-    renderApp();
+    await idbSet("fitgympro_last_user", username);
+    await renderApp();
 };
 
-export const handleLogout = () => {
+export const handleLogout = async () => {
     // If admin is impersonating, logout should return them to admin panel
     const impersonatingAdmin = sessionStorage.getItem("impersonating_admin");
     if (impersonatingAdmin) {
         sessionStorage.removeItem("impersonating_admin");
-        handleLoginSuccess(impersonatingAdmin);
+        await handleLoginSuccess(impersonatingAdmin);
         return;
     }
     setCurrentUser(null);
-    localStorage.removeItem("fitgympro_last_user");
-    renderApp();
+    await idbDel("fitgympro_last_user");
+    await renderApp();
 };
 
 const initTheme = () => {
@@ -463,62 +469,47 @@ const initSidebarToggle = () => {
 };
 
 const initCommonListeners = () => {
-    document.body.addEventListener('click', e => {
+    document.body.addEventListener('click', async e => {
         if (!(e.target instanceof HTMLElement)) return;
-        const target = e.target;
-        const passToggle = target.closest('.password-toggle');
-        if (passToggle) {
-            const targetId = passToggle.getAttribute('data-target');
+        const target = e.target as HTMLElement;
+        
+        // Handle password toggle
+        const passwordToggle = target.closest('.password-toggle');
+        if (passwordToggle) {
+            const targetId = passwordToggle.getAttribute('data-target');
             if (targetId) {
-                const passInput = document.getElementById(targetId) as HTMLInputElement;
-                const icon = passToggle.querySelector('i');
-                if (passInput && icon) {
-                    if (passInput.type === 'password') {
-                        passInput.type = 'text';
+                const passwordInput = document.getElementById(targetId) as HTMLInputElement;
+                const icon = passwordToggle.querySelector('i');
+                if (passwordInput && icon) {
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
                         icon.setAttribute('data-lucide', 'eye-off');
                     } else {
-                        passInput.type = 'password';
+                        passwordInput.type = 'password';
                         icon.setAttribute('data-lucide', 'eye');
                     }
                     window.lucide?.createIcons();
                 }
             }
+            return;
         }
-        
-        // Impersonation exit listener
+
+        // Handle exit impersonation
         if (target.closest('#exit-impersonation-btn')) {
-            const adminUsername = sessionStorage.getItem('impersonating_admin');
-            if (adminUsername) {
-                addActivityLog(`ادمین از حالت مشاهده حساب ${getCurrentUser()} خارج شد.`);
-                sessionStorage.removeItem('impersonating_admin');
-                handleLoginSuccess(adminUsername);
-            }
+            await handleLogout();
+            return;
         }
     });
-
-    initSidebarToggle();
 };
 
-export const initApp = () => {
-    applySiteSettings(getSiteSettings());
-    seedInitialUsers();
-    seedCMSData();
-    renderApp();
-    initCommonListeners();
+// FIX: Add and export initApp function to be the single entry point.
+export const initApp = async () => {
+    const settings = await getSiteSettings();
+    applySiteSettings(settings);
+    await seedInitialUsers();
+    await seedCMSData();
+    await renderApp();
     initTheme();
-    
-    // Use a mutation observer to re-apply icons and theme settings after re-renders
-    const observer = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                initTheme(); // Re-apply theme specific icons
-                window.lucide?.createIcons();
-            }
-        }
-    });
-    
-    const appRoot = document.getElementById('app-root');
-    if (appRoot) {
-        observer.observe(appRoot, { childList: true });
-    }
+    initSidebarToggle();
+    initCommonListeners();
 };

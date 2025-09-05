@@ -9,13 +9,15 @@ let selectedCoachInModal: string | null = null;
 let progressChartInstance: any = null;
 
 
-const checkProfileFormValidity = (currentUser: string) => {
+// FIX: Make function async to await getUserData
+const checkProfileFormValidity = async (currentUser: string) => {
     const form = document.getElementById('user-profile-form');
     const submitBtn = document.getElementById('profile-submit-btn');
     if (!form || !submitBtn) return;
 
     const name = (form.querySelector('#user-profile-name') as HTMLInputElement)?.value.trim();
-    const coachIsSelected = !!(getUserData(currentUser).step1?.coachName || selectedCoachInModal);
+    // FIX: await async function getUserData
+    const coachIsSelected = !!((await getUserData(currentUser)).step1?.coachName || selectedCoachInModal);
     const gender = (form.querySelector('input[name="gender_user"]:checked') as HTMLInputElement)?.value;
     const goal = (form.querySelector('input[name="training_goal_user"]:checked') as HTMLInputElement)?.value;
     const days = (form.querySelector('input[name="training_days_user"]:checked') as HTMLInputElement)?.value;
@@ -27,9 +29,9 @@ const checkProfileFormValidity = (currentUser: string) => {
 };
 
 
-export function renderUserDashboard(currentUser: string, userData: any) {
+export async function renderUserDashboard(currentUser: string, userData: any) {
     const name = userData.step1?.clientName || currentUser;
-    const coachData = userData.step1?.coachName ? getUserData(userData.step1.coachName) : null;
+    const coachData = userData.step1?.coachName ? await getUserData(userData.step1.coachName) : null;
     const coachName = coachData?.step1?.clientName || userData.step1?.coachName || 'بدون مربی';
     const avatarUrl = userData.profile?.avatar;
 
@@ -176,8 +178,8 @@ export function renderUserDashboard(currentUser: string, userData: any) {
     `;
 }
 
-export const updateUserNotifications = (currentUser: string) => {
-    const notifications = getNotifications(currentUser);
+export const updateUserNotifications = async (currentUser: string) => {
+    const notifications = await getNotifications(currentUser);
     const dashboardContainer = document.getElementById('user-dashboard-container');
     if (!dashboardContainer) return;
 
@@ -609,9 +611,10 @@ const initDashboardCharts = (userData: any) => {
     renderProgressChart('weight', userData);
 };
 
-const renderCartModalContentAndBadge = (currentUser: string) => {
+// FIX: Make function async to await getCart() and getDiscounts()
+const renderCartModalContentAndBadge = async (currentUser: string) => {
     // 1. Update Badge
-    const cart = getCart(currentUser);
+    const cart = await getCart(currentUser);
     const badge = document.getElementById('header-cart-badge');
     if (badge) {
         if (cart.items.length > 0) {
@@ -634,7 +637,7 @@ const renderCartModalContentAndBadge = (currentUser: string) => {
     }
 
     const subtotal = cart.items.reduce((sum: number, item: any) => sum + item.price, 0);
-    const discounts = getDiscounts();
+    const discounts = await getDiscounts();
     let discountAmount = 0;
     let finalTotal = subtotal;
 
@@ -682,11 +685,12 @@ const renderCartModalContentAndBadge = (currentUser: string) => {
 };
 
 
-const renderStoreTab = (currentUser: string) => {
+// FIX: Make function async to await getUserData()
+const renderStoreTab = async (currentUser: string) => {
     const container = document.getElementById('store-content');
     if (!container) return;
-    const plans = getStorePlans();
-    const hasCoach = !!getUserData(currentUser).step1?.coachName;
+    const plans = await getStorePlans();
+    const hasCoach = !!(await getUserData(currentUser)).step1?.coachName;
     
     container.innerHTML = `
         ${!hasCoach ? `
@@ -732,10 +736,11 @@ const renderStoreTab = (currentUser: string) => {
     window.lucide?.createIcons();
 };
 
-const renderChatTab = (currentUser: string, userData: any) => {
+// FIX: Make function async to await getUserData()
+const renderChatTab = async (currentUser: string, userData: any) => {
     const container = document.getElementById('chat-content');
     if (!container) return;
-    const coachData = userData.step1?.coachName ? getUserData(userData.step1.coachName) : null;
+    const coachData = userData.step1?.coachName ? await getUserData(userData.step1.coachName) : null;
     const coachName = coachData?.step1?.clientName || userData.step1?.coachName || 'بدون مربی';
     const coachAvatar = coachData?.profile?.avatar;
 
@@ -790,12 +795,12 @@ const renderChatTab = (currentUser: string, userData: any) => {
         </div>
     `;
 
-    const renderMessages = () => {
+    const renderMessages = async () => {
         const messagesContainer = document.querySelector('#user-chat-messages-container');
         const messagesInnerContainer = messagesContainer?.querySelector('div');
         if (!messagesContainer || !messagesInnerContainer) return;
         
-        const currentData = getUserData(currentUser);
+        const currentData = await getUserData(currentUser);
         const chatHistory = (currentData.chatHistory || []);
         messagesInnerContainer.innerHTML = chatHistory.map((msg: any) => `
             <div class="flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}">
@@ -807,7 +812,7 @@ const renderChatTab = (currentUser: string, userData: any) => {
         `).join('');
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     };
-    renderMessages();
+    await renderMessages();
 
     const quickRepliesContainer = document.getElementById('user-quick-replies');
     if (quickRepliesContainer) {
@@ -948,11 +953,12 @@ const updateProfileMetricsDisplay = (container: HTMLElement) => {
     }
 };
 
-const renderProfileTab = (currentUser: string, userData: any) => {
+// FIX: Make function async to await getUserData()
+const renderProfileTab = async (currentUser: string, userData: any) => {
     const container = document.getElementById('profile-content');
     if (!container) return;
     const { step1, profile } = userData;
-    const coachData = step1?.coachName ? getUserData(step1.coachName) : null;
+    const coachData = step1?.coachName ? await getUserData(step1.coachName) : null;
     const coachName = coachData?.step1?.clientName || step1?.coachName || 'انتخاب کنید';
     const coachNotSelected = !step1?.coachName;
     const trainingGoals = ['کاهش وزن', 'افزایش حجم', 'بهبود ترکیب بدنی', 'تناسب اندام عمومی', 'افزایش قدرت'];
@@ -1046,7 +1052,7 @@ const renderProfileTab = (currentUser: string, userData: any) => {
     `;
 };
 
-export function initUserDashboard(currentUser: string, userData: any, handleLogout: () => void, handleGoToHome: () => void) {
+export async function initUserDashboard(currentUser: string, userData: any, handleLogout: () => void, handleGoToHome: () => void) {
     const mainContainer = document.getElementById('user-dashboard-container');
     if (!mainContainer) return;
 
@@ -1063,7 +1069,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         'help-content': { title: 'راهنما', subtitle: 'پاسخ به سوالات متداول.' }
     };
 
-    const switchTab = (activeTab: HTMLElement) => {
+    const switchTab = async (activeTab: HTMLElement) => {
         const targetId = activeTab.getAttribute('data-target');
         if (!targetId) return;
 
@@ -1081,10 +1087,10 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             subtitleEl.textContent = targetData.subtitle;
         }
 
-        clearNotification(currentUser, targetId);
-        updateUserNotifications(currentUser);
+        await clearNotification(currentUser, targetId);
+        await updateUserNotifications(currentUser);
 
-        const currentData = getUserData(currentUser);
+        const currentData = await getUserData(currentUser);
         switch (targetId) {
             case 'dashboard-content':
                 renderDashboardTab(currentUser, currentData);
@@ -1096,19 +1102,19 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 renderNutritionTab(currentUser, currentData);
                 break;
             case 'chat-content':
-                renderChatTab(currentUser, currentData);
+                await renderChatTab(currentUser, currentData);
                 break;
             case 'store-content':
-                renderStoreTab(currentUser);
+                await renderStoreTab(currentUser);
                 break;
             case 'profile-content':
-                renderProfileTab(currentUser, currentData);
+                await renderProfileTab(currentUser, currentData);
                 const profileForm = document.getElementById('user-profile-form');
                 if (profileForm) {
                     const checkValidity = () => checkProfileFormValidity(currentUser);
                     profileForm.addEventListener('input', checkValidity);
                     profileForm.addEventListener('change', checkValidity);
-                    checkValidity();
+                    await checkValidity();
                     updateProfileMetricsDisplay(profileForm as HTMLElement);
                     
                     const avatarInput = document.getElementById('user-profile-avatar-input');
@@ -1247,25 +1253,26 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
     if (defaultTab) {
         if (sessionStorage.getItem('fitgympro_redirect_to_tab') === 'store-content') {
             const storeTab = mainContainer.querySelector<HTMLElement>('.coach-nav-link[data-target="store-content"]');
-            switchTab(storeTab || defaultTab);
+            await switchTab(storeTab || defaultTab);
             sessionStorage.removeItem('fitgympro_redirect_to_tab');
              if (sessionStorage.getItem('fitgympro_open_cart') === 'true') {
-                setTimeout(() => {
+                setTimeout(async () => {
+                    await renderCartModalContentAndBadge(currentUser);
                     openModal(document.getElementById('cart-modal'));
                     sessionStorage.removeItem('fitgympro_open_cart');
                 }, 100);
             }
         } else if (sessionStorage.getItem('fromProfileSave') === 'true') {
             const profileTab = mainContainer.querySelector<HTMLElement>('.coach-nav-link[data-target="profile-content"]');
-            switchTab(profileTab || defaultTab);
+            await switchTab(profileTab || defaultTab);
             sessionStorage.removeItem('fromProfileSave');
         } else {
-            switchTab(defaultTab);
+            await switchTab(defaultTab);
         }
     }
 
     // Initial cart render
-    renderCartModalContentAndBadge(currentUser);
+    await renderCartModalContentAndBadge(currentUser);
 
     document.getElementById('close-user-modal-btn')?.addEventListener('click', () => {
         closeModal(document.getElementById('user-dashboard-modal'));
@@ -1273,46 +1280,52 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
     document.getElementById('close-cart-modal-btn')?.addEventListener('click', () => {
         closeModal(document.getElementById('cart-modal'));
     });
-     document.getElementById('header-cart-btn')?.addEventListener('click', () => {
+     document.getElementById('header-cart-btn')?.addEventListener('click', async () => {
+        await renderCartModalContentAndBadge(currentUser);
         openModal(document.getElementById('cart-modal'));
     });
 
-    const openCoachSelectionModal = (coaches: any[]) => {
+    const openCoachSelectionModal = async (coaches: any[]) => {
         const modal = document.getElementById('user-dashboard-modal');
         const titleEl = document.getElementById('user-modal-title');
         const bodyEl = document.getElementById('user-modal-body');
         if (!modal || !titleEl || !bodyEl) return;
     
         titleEl.textContent = 'انتخاب مربی';
+
+        const coachDataPromises = coaches.map(async (coach) => {
+            const coachData = await getUserData(coach.username);
+            const name = coachData.step1?.clientName || coach.username;
+            const specialization = coachData.profile?.specialization || 'مربی بدنسازی';
+            const avatar = coachData.profile?.avatar;
+            return `
+                <button class="coach-selection-card text-center p-4 border rounded-lg hover:bg-bg-tertiary hover:border-accent transition-colors" data-coach-username="${coach.username}" data-coach-name="${name}">
+                    ${avatar ? `<img src="${avatar}" class="w-20 h-20 rounded-full mx-auto mb-3 object-cover">` : `<div class="w-20 h-20 rounded-full mx-auto mb-3 bg-bg-tertiary flex items-center justify-center font-bold text-2xl">${name.charAt(0)}</div>`}
+                    <p class="font-bold">${name}</p>
+                    <p class="text-xs text-text-secondary">${specialization}</p>
+                </button>
+            `;
+        });
+        
+        const coachCardsHtml = await Promise.all(coachDataPromises);
+
         bodyEl.innerHTML = `
             <p class="text-text-secondary mb-4">لطفا مربی مورد نظر خود را برای دریافت برنامه انتخاب کنید.</p>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                ${coaches.map(coach => {
-                    const coachData = getUserData(coach.username);
-                    const name = coachData.step1?.clientName || coach.username;
-                    const specialization = coachData.profile?.specialization || 'مربی بدنسازی';
-                    const avatar = coachData.profile?.avatar;
-                    return `
-                        <button class="coach-selection-card text-center p-4 border rounded-lg hover:bg-bg-tertiary hover:border-accent transition-colors" data-coach-username="${coach.username}" data-coach-name="${name}">
-                            ${avatar ? `<img src="${avatar}" class="w-20 h-20 rounded-full mx-auto mb-3 object-cover">` : `<div class="w-20 h-20 rounded-full mx-auto mb-3 bg-bg-tertiary flex items-center justify-center font-bold text-2xl">${name.charAt(0)}</div>`}
-                            <p class="font-bold">${name}</p>
-                            <p class="text-xs text-text-secondary">${specialization}</p>
-                        </button>
-                    `;
-                }).join('')}
+                ${coachCardsHtml.join('')}
             </div>
         `;
         openModal(modal);
     }
     
-    mainContainer.addEventListener('click', e => {
+    mainContainer.addEventListener('click', async e => {
         if (!(e.target instanceof HTMLElement)) return;
         const target = e.target;
         
         const navLink = target.closest<HTMLElement>('.coach-nav-link');
         if (navLink) {
             if (!navLink.classList.contains('locked-feature')) {
-                switchTab(navLink);
+                await switchTab(navLink);
             } else {
                 showToast('برای دسترسی به این بخش، لطفا یک پلن مناسب از فروشگاه تهیه کنید.', 'warning');
             }
@@ -1325,13 +1338,13 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             const dayIndex = parseInt(actionBtn.dataset.dayIndex || '-1', 10);
             
             if (action === 'log-workout' && dayIndex !== -1) {
-                const todayData = getTodayWorkoutData(getUserData(currentUser));
+                const todayData = getTodayWorkoutData(await getUserData(currentUser));
                 if (todayData && todayData.dayIndex === dayIndex) {
                     openWorkoutLogModal(todayData.day, dayIndex, currentUser);
                 }
             } else if (action === 'go-to-store') {
                 const storeTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="store-content"]');
-                if (storeTab) switchTab(storeTab);
+                if (storeTab) await switchTab(storeTab);
             }
         }
 
@@ -1347,15 +1360,15 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         const addToCartBtn = target.closest('.add-to-cart-btn');
         if (addToCartBtn) {
             const planId = (addToCartBtn as HTMLElement).dataset.planId;
-            const plans = getStorePlans();
+            const plans = await getStorePlans();
             const planToAdd = plans.find((p:any) => p.planId === planId);
             if (planToAdd) {
-                const cart = getCart(currentUser);
+                const cart = await getCart(currentUser);
                 if (!cart.items.some((item: any) => item.planId === planId)) {
                     cart.items.push(planToAdd);
-                    saveCart(currentUser, cart);
+                    await saveCart(currentUser, cart);
                     showToast(`${planToAdd.planName} به سبد خرید اضافه شد.`, 'success');
-                    renderCartModalContentAndBadge(currentUser);
+                    await renderCartModalContentAndBadge(currentUser);
                 } else {
                     showToast('این پلن قبلا به سبد خرید اضافه شده است.', 'warning');
                 }
@@ -1365,23 +1378,23 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         const removeFromCartBtn = target.closest('.remove-from-cart-btn');
         if (removeFromCartBtn) {
             const planId = (removeFromCartBtn as HTMLElement).dataset.planId;
-            let cart = getCart(currentUser);
+            let cart = await getCart(currentUser);
             cart.items = cart.items.filter((item: any) => item.planId !== planId);
-            saveCart(currentUser, cart);
-            renderCartModalContentAndBadge(currentUser);
+            await saveCart(currentUser, cart);
+            await renderCartModalContentAndBadge(currentUser);
         }
 
         const applyDiscountBtn = target.closest('#apply-discount-btn-modal');
         if (applyDiscountBtn) {
             const input = document.getElementById('discount-code-input-modal') as HTMLInputElement;
             const code = input.value.trim().toUpperCase();
-            const discounts = getDiscounts();
+            const discounts = await getDiscounts();
             if (discounts[code]) {
-                const cart = getCart(currentUser);
+                const cart = await getCart(currentUser);
                 cart.discountCode = code;
-                saveCart(currentUser, cart);
+                await saveCart(currentUser, cart);
                 showToast(`کد تخفیف ${code} اعمال شد.`, 'success');
-                renderCartModalContentAndBadge(currentUser);
+                await renderCartModalContentAndBadge(currentUser);
             } else {
                 showToast('کد تخفیف نامعتبر است.', 'error');
             }
@@ -1389,10 +1402,10 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
 
         const checkoutBtn = target.closest('#checkout-btn-modal');
         if (checkoutBtn) {
-            const cart = getCart(currentUser);
+            const cart = await getCart(currentUser);
             if(cart.items.length === 0) return;
 
-            const freshUserData = getUserData(currentUser);
+            const freshUserData = await getUserData(currentUser);
             if (!freshUserData.subscriptions) freshUserData.subscriptions = [];
             
             const newSubscriptions = cart.items.map((item: any) => ({
@@ -1402,22 +1415,22 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             }));
             
             freshUserData.subscriptions.push(...newSubscriptions);
-            saveUserData(currentUser, freshUserData);
+            await saveUserData(currentUser, freshUserData);
             
-            saveCart(currentUser, { items: [], discountCode: null });
+            await saveCart(currentUser, { items: [], discountCode: null });
             
             // Re-render the entire dashboard to reflect new permissions
             const appRoot = document.getElementById('app-root');
             if (appRoot) {
-                appRoot.innerHTML = renderUserDashboard(currentUser, freshUserData);
-                initUserDashboard(currentUser, freshUserData, handleLogout, handleGoToHome);
+                appRoot.innerHTML = await renderUserDashboard(currentUser, freshUserData);
+                await initUserDashboard(currentUser, freshUserData, handleLogout, handleGoToHome);
             }
 
             showToast('خرید شما با موفقیت انجام شد! مربی به زودی برنامه شما را ارسال خواهد کرد.', 'success');
             
             const coachUsername = freshUserData.step1?.coachName;
             if (coachUsername) {
-                setNotification(coachUsername, 'students-content', '🔔');
+                await setNotification(coachUsername, 'students-content', '🔔');
             }
 
             closeModal(document.getElementById('cart-modal'));
@@ -1427,13 +1440,13 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         const goToProfileBtn = target.closest('#go-to-profile-from-store') || target.closest('#go-to-profile-from-nutrition');
         if (goToProfileBtn) {
             const profileTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="profile-content"]');
-            if (profileTab) switchTab(profileTab);
+            if (profileTab) await switchTab(profileTab);
         }
 
         const selectCoachBtn = target.closest('#select-coach-btn');
         if (selectCoachBtn) {
-            const coaches = getUsers().filter((u:any) => u.role === 'coach' && u.coachStatus === 'verified');
-            openCoachSelectionModal(coaches);
+            const coaches = (await getUsers()).filter((u:any) => u.role === 'coach' && u.coachStatus === 'verified');
+            await openCoachSelectionModal(coaches);
         }
 
         const coachCard = target.closest('.coach-selection-card');
@@ -1450,7 +1463,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 if (warning) warning.innerHTML = '';
             }
             closeModal(document.getElementById('user-dashboard-modal'));
-            checkProfileFormValidity(currentUser);
+            await checkProfileFormValidity(currentUser);
         }
         
         const progressTabs = mainContainer.querySelector('#progress-chart-tabs');
@@ -1460,7 +1473,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 progressTabs.querySelectorAll('.progress-tab-btn').forEach(btn => btn.classList.remove('active-tab'));
                 tabButton.classList.add('active-tab');
                 const chartType = tabButton.dataset.chart;
-                const currentData = getUserData(currentUser);
+                const currentData = await getUserData(currentUser);
                 if (chartType) {
                     renderProgressChart(chartType, currentData);
                 }
@@ -1503,29 +1516,28 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
         }
     });
 
-    mainContainer.addEventListener('submit', e => {
+    mainContainer.addEventListener('submit', async e => {
         e.preventDefault();
-        // FIX: Cast e.target to HTMLElement to ensure dataset property is available.
         const target = e.target as HTMLElement;
 
         if (target.id === 'user-chat-form') {
             const input = document.getElementById('user-chat-input') as HTMLInputElement;
             const message = input.value.trim();
             if (message) {
-                const freshUserData = getUserData(currentUser);
+                const freshUserData = await getUserData(currentUser);
                 if (!freshUserData.chatHistory) freshUserData.chatHistory = [];
                 freshUserData.chatHistory.push({
                     sender: 'user',
                     message,
                     timestamp: new Date().toISOString()
                 });
-                saveUserData(currentUser, freshUserData);
+                await saveUserData(currentUser, freshUserData);
                 input.value = '';
-                renderChatTab(currentUser, freshUserData);
+                await renderChatTab(currentUser, freshUserData);
                 
                 const coachUsername = freshUserData.step1?.coachName;
                 if(coachUsername) {
-                    setNotification(coachUsername, 'chat-content', '💬');
+                    await setNotification(coachUsername, 'chat-content', '💬');
                 }
             }
         }
@@ -1550,15 +1562,15 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
                 }
             });
 
-            const freshUserData = getUserData(currentUser);
+            const freshUserData = await getUserData(currentUser);
             if (!freshUserData.workoutHistory) freshUserData.workoutHistory = [];
             freshUserData.workoutHistory.push({
                 date: new Date().toISOString(),
                 dayIndex: dayIndex,
                 exercises: exercises
             });
-            saveUserData(currentUser, freshUserData);
-            addActivityLog(`${currentUser} logged a workout.`);
+            await saveUserData(currentUser, freshUserData);
+            await addActivityLog(`${currentUser} logged a workout.`);
             showToast('تمرین با موفقیت ثبت شد!', 'success');
             closeModal(document.getElementById('user-dashboard-modal'));
             renderDashboardTab(currentUser, freshUserData);
@@ -1566,7 +1578,7 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
 
         if (target.id === 'user-profile-form') {
             const form = target as HTMLFormElement;
-            const freshUserData = getUserData(currentUser);
+            const freshUserData = await getUserData(currentUser);
             const dataToUpdate: any = {
                 step1: { ...freshUserData.step1 },
                 profile: { ...freshUserData.profile }
@@ -1600,7 +1612,15 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             if (!isNaN(height)) dataToUpdate.step1.height = height;
             
             const weight = getFloat('input[name="weight"]');
-            if (!isNaN(weight)) dataToUpdate.step1.weight = weight;
+            if (!isNaN(weight)) {
+                dataToUpdate.step1.weight = weight;
+                if (!freshUserData.weightHistory) freshUserData.weightHistory = [];
+                // Only add a new entry if the weight is different from the last one
+                const lastWeightEntry = freshUserData.weightHistory[freshUserData.weightHistory.length - 1];
+                if (!lastWeightEntry || lastWeightEntry.weight !== weight) {
+                     freshUserData.weightHistory.push({ date: new Date().toISOString(), weight });
+                }
+            }
 
             const neck = getFloat('.neck-input');
             if (!isNaN(neck)) dataToUpdate.step1.neck = neck;
@@ -1614,18 +1634,6 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             const trainingGoal = getRadio("training_goal_user");
             if (trainingGoal) dataToUpdate.step1.trainingGoal = trainingGoal;
             
-            const specializedSport = getRadio("specialized_sport_user");
-            if (specializedSport) {
-                dataToUpdate.step1.specializedSport = specializedSport;
-                const specificSportName = getVal('input[name="specific_sport_name_user"]');
-                const showFor = ['martial_arts', 'pro_athlete', 'other'];
-                if (showFor.includes(specializedSport)) {
-                    dataToUpdate.step1.specificSportName = specificSportName;
-                } else {
-                    dataToUpdate.step1.specificSportName = ''; // Clear it if not applicable
-                }
-            }
-
             const trainingDays = getRadio("training_days_user");
             if (trainingDays) dataToUpdate.step1.trainingDays = parseInt(trainingDays, 10);
             
@@ -1638,13 +1646,13 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             }
             dataToUpdate.lastProfileUpdate = new Date().toISOString();
 
-            saveUserData(currentUser, { ...freshUserData, ...dataToUpdate });
+            await saveUserData(currentUser, { ...freshUserData, ...dataToUpdate });
             
-            addActivityLog(`${currentUser} updated their profile.`);
+            await addActivityLog(`${currentUser} updated their profile.`);
             showToast('اطلاعات با موفقیت برای مربی ارسال شد.', 'success');
             
             const name = dataToUpdate.step1.clientName || currentUser;
-            const coachData = getUserData(dataToUpdate.step1.coachName);
+            const coachData = await getUserData(dataToUpdate.step1.coachName);
             const coachName = coachData?.step1?.clientName || dataToUpdate.step1.coachName || 'بدون مربی';
             
             const headerProfileInfo = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary');
@@ -1662,11 +1670,11 @@ export function initUserDashboard(currentUser: string, userData: any, handleLogo
             }
             
             // Re-render tab to show updated info
-            renderProfileTab(currentUser, getUserData(currentUser));
+            await renderProfileTab(currentUser, await getUserData(currentUser));
             const profileForm = document.getElementById('user-profile-form');
             if (profileForm) {
                 updateProfileMetricsDisplay(profileForm as HTMLElement);
-                checkProfileFormValidity(currentUser);
+                await checkProfileFormValidity(currentUser);
             }
         }
     });

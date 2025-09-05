@@ -3,6 +3,7 @@ import { showToast, updateSliderTrack, openModal, closeModal, exportElement, san
 import { getLatestPurchase, timeAgo, getLastActivity } from '../utils/helpers';
 import { generateWorkoutPlan, generateSupplementPlan, generateNutritionPlan, generateFoodReplacements } from '../services/gemini';
 import { calculateWorkoutStreak, performMetricCalculations, getWeightChange } from '../utils/calculations';
+import { getGenAI } from '../state';
 
 let currentStep = 1;
 const totalSteps = 4;
@@ -81,175 +82,181 @@ export function renderCoachDashboard(currentUser: string, userData: any) {
             <div id="program-builder-content" class="coach-tab-content hidden"></div>
             <div id="templates-content" class="coach-tab-content hidden"></div>
             <div id="profile-content" class="coach-tab-content hidden"></div>
+            
+            <!-- Modals for Coach Dashboard -->
+            <div id="selection-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+                <div class="card w-full max-w-2xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
+                    <div class="selection-modal-header p-4 border-b border-border-primary flex-shrink-0">
+                         <div class="flex justify-between items-center mb-4">
+                            <h2 class="selection-modal-title font-bold text-xl"></h2>
+                            <button class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                            <div class="relative flex-grow">
+                                <i data-lucide="search" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"></i>
+                                <input type="search" class="selection-modal-search input-field w-full !pr-10" placeholder="جستجو...">
+                            </div>
+                            <div id="student-filter-chips" class="flex items-center gap-2">
+                                <span class="filter-chip active" data-filter="all">همه</span>
+                                <span class="filter-chip" data-filter="needs_plan">در انتظار</span>
+                                <span class="filter-chip" data-filter="inactive">غیرفعال</span>
+                            </div>
+                             <select id="student-sort-select" class="input-field !text-sm">
+                                <option value="name">مرتب‌سازی: نام</option>
+                                <option value="activity">مرتب‌سازی: آخرین فعالیت</option>
+                                <option value="join_date">مرتب‌سازی: تاریخ عضویت</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="selection-modal-options p-4 pt-2 overflow-y-auto flex-grow">
+                        <!-- Options will be injected here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div id="student-profile-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+                <div class="card w-full max-w-5xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
+                    <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
+                        <h2 id="student-modal-name" class="font-bold text-xl"></h2>
+                        <button class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+                    </div>
+                    <div class="flex-grow flex flex-col md:flex-row overflow-hidden">
+                        <div class="w-full md:w-1/3 border-l border-border-primary flex-shrink-0 bg-bg-tertiary overflow-y-auto">
+                            <!-- Student Info Sidebar -->
+                        </div>
+                        <div class="w-full md:w-2/3 flex flex-col">
+                            <div class="flex-shrink-0 p-2 bg-bg-tertiary border-b border-border-primary">
+                                <div class="bg-bg-secondary p-1 rounded-lg flex items-center gap-1">
+                                     <button class="student-modal-tab admin-tab-button flex-1 active-tab" data-target="student-program-content">برنامه</button>
+                                     <button class="student-modal-tab admin-tab-button flex-1" data-target="student-progress-content">روند پیشرفت</button>
+                                     <button class="student-modal-tab admin-tab-button flex-1" data-target="student-chat-content">گفتگو</button>
+                                </div>
+                            </div>
+                            <div class="flex-grow overflow-y-auto p-4">
+                                <div id="student-program-content" class="student-modal-content">
+                                    <div id="student-program-content-wrapper"></div>
+                                </div>
+                                <div id="student-progress-content" class="student-modal-content hidden"></div>
+                                <div id="student-chat-content" class="student-modal-content hidden h-full">
+                                   <div class="h-full flex flex-col">
+                                         <div id="coach-chat-messages-container" class="p-2 flex-grow overflow-y-auto message-container flex flex-col">
+                                            <div class="space-y-4"></div>
+                                        </div>
+                                        <div class="p-2 border-t border-border-primary">
+                                            <div id="coach-quick-replies" class="flex items-center gap-2 mb-2 flex-wrap"></div>
+                                            <form id="coach-chat-form" class="flex items-center gap-3">
+                                                <input id="coach-chat-input" type="text" class="input-field flex-grow" placeholder="پیام خود را بنویسید..." autocomplete="off">
+                                                <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+             <div id="local-client-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+                <form id="local-client-form" class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
+                     <div class="flex justify-between items-center p-4 border-b border-border-primary">
+                        <h2 id="local-client-modal-title" class="font-bold text-xl">افزودن شاگرد حضوری</h2>
+                        <button type="button" class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+                    </div>
+                    <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                        <div>
+                            <h3 class="font-bold text-md mb-3 border-b border-border-primary pb-2 text-accent">اطلاعات پایه</h3>
+                            <div class="space-y-4 pt-2">
+                                <div class="input-group"><input type="text" name="clientName" class="input-field w-full" placeholder=" " required><label class="input-label">نام و نام خانوادگی *</label></div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="input-group"><input type="number" name="age" class="input-field w-full" placeholder=" "><label class="input-label">سن</label></div>
+                                    <div class="input-group"><input type="number" name="height" class="input-field w-full" placeholder=" "><label class="input-label">قد (cm)</label></div>
+                                </div>
+                                <div class="input-group"><input type="number" step="0.5" name="weight" class="input-field w-full" placeholder=" "><label class="input-label">وزن (kg)</label></div>
+                                <div>
+                                    <p class="text-sm font-semibold mb-2">جنسیت</p>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <label class="option-card-label"><input type="radio" name="gender" value="مرد" class="option-card-input" checked><span class="option-card-content">مرد</span></label>
+                                        <label class="option-card-label"><input type="radio" name="gender" value="زن" class="option-card-input"><span class="option-card-content">زن</span></label>
+                                    </div>
+                                </div>
+                                 <div class="input-group"><input type="text" name="contact" class="input-field w-full" placeholder=" "><label class="input-label">اطلاعات تماس (اختیاری)</label></div>
+                            </div>
+                        </div>
+        
+                         <div>
+                            <h3 class="font-bold text-md mb-3 border-b border-border-primary pb-2 text-accent">جزئیات تمرینی</h3>
+                            <div class="space-y-4 pt-2">
+                                <div class="input-group"><input type="text" name="trainingGoal" class="input-field w-full" placeholder="مثلا: کاهش وزن، افزایش حجم"><label class="input-label">هدف تمرینی</label></div>
+                                <div class="input-group"><input type="number" name="trainingDays" class="input-field w-full" placeholder=" "><label class="input-label">روزهای تمرین در هفته</label></div>
+                                <div>
+                                    <p class="text-sm font-semibold mb-2">سطح فعالیت روزانه</p>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                        <label class="option-card-label"><input type="radio" name="activityLevel" value="1.2" class="option-card-input"><span class="option-card-content">نشسته</span></label>
+                                        <label class="option-card-label"><input type="radio" name="activityLevel" value="1.375" class="option-card-input"><span class="option-card-content">کم</span></label>
+                                        <label class="option-card-label"><input type="radio" name="activityLevel" value="1.55" class="option-card-input" checked><span class="option-card-content">متوسط</span></label>
+                                        <label class="option-card-label"><input type="radio" name="activityLevel" value="1.725" class="option-card-input"><span class="option-card-content">زیاد</span></label>
+                                        <label class="option-card-label"><input type="radio" name="activityLevel" value="1.9" class="option-card-input"><span class="option-card-content">خیلی زیاد</span></label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold mb-2">سطح تجربه</p>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <label class="option-card-label"><input type="radio" name="experienceLevel" value="مبتدی" class="option-card-input" checked><span class="option-card-content">مبتدی</span></label>
+                                        <label class="option-card-label"><input type="radio" name="experienceLevel" value="متوسط" class="option-card-input"><span class="option-card-content">متوسط</span></label>
+                                        <label class="option-card-label"><input type="radio" name="experienceLevel" value="پیشرفته" class="option-card-input"><span class="option-card-content">پیشرفته</span></label>
+                                    </div>
+                                </div>
+                                <div class="input-group"><textarea name="limitations" class="input-field w-full min-h-[80px]" placeholder=" "></textarea><label class="input-label">آسیب دیدگی یا محدودیت‌ها</label></div>
+                            </div>
+                        </div>
+        
+                        <div>
+                            <h3 class="font-bold text-md mb-3 border-b border-border-primary pb-2 text-accent">سایر اطلاعات</h3>
+                            <div class="space-y-4 pt-2">
+                                <div class="input-group"><textarea name="coachNotes" class="input-field w-full min-h-[80px]" placeholder=" "></textarea><label class="input-label">یادداشت‌های مربی (محرمانه)</label></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 border-t border-border-primary"><button type="submit" class="primary-button w-full">ذخیره شاگرد</button></div>
+                </form>
+            </div>
+            <div id="replacement-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+                <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
+                    <div class="flex justify-between items-center p-4 border-b border-border-primary">
+                        <h2 id="replacement-modal-title" class="font-bold text-xl">جایگزینی برای: <span class="text-accent"></span></h2>
+                        <button class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
+                    </div>
+                    <div id="replacement-modal-body" class="p-6 min-h-[150px]">
+                        <!-- Loading or suggestions here -->
+                    </div>
+                    <div class="p-4 border-t border-border-primary flex justify-end">
+                        <button id="just-delete-btn" class="secondary-button !text-red-accent">فقط حذف کن</button>
+                    </div>
+                </div>
+            </div>
         </main>
-    </div>
-
-    <!-- Modals for Coach Dashboard -->
-    <div id="selection-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-2xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
-            <div class="selection-modal-header p-4 border-b border-border-primary flex-shrink-0">
-                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="selection-modal-title font-bold text-xl"></h2>
-                    <button class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
-                </div>
-                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div class="relative flex-grow">
-                        <i data-lucide="search" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"></i>
-                        <input type="search" class="selection-modal-search input-field w-full !pr-10" placeholder="جستجو...">
-                    </div>
-                    <div id="student-filter-chips" class="flex items-center gap-2">
-                        <span class="filter-chip active" data-filter="all">همه</span>
-                        <span class="filter-chip" data-filter="needs_plan">در انتظار</span>
-                        <span class="filter-chip" data-filter="inactive">غیرفعال</span>
-                    </div>
-                     <select id="student-sort-select" class="input-field !text-sm">
-                        <option value="name">مرتب‌سازی: نام</option>
-                        <option value="activity">مرتب‌سازی: آخرین فعالیت</option>
-                        <option value="join_date">مرتب‌سازی: تاریخ عضویت</option>
-                    </select>
-                </div>
-            </div>
-            <div class="selection-modal-options p-4 pt-2 overflow-y-auto flex-grow">
-                <!-- Options will be injected here -->
-            </div>
-        </div>
-    </div>
-    
-    <div id="student-profile-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-5xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center p-4 border-b border-border-primary flex-shrink-0">
-                <h2 id="student-modal-name" class="font-bold text-xl"></h2>
-                <button class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
-            </div>
-            <div class="flex-grow flex flex-col md:flex-row overflow-hidden">
-                <div class="w-full md:w-1/3 border-l border-border-primary flex-shrink-0 bg-bg-tertiary overflow-y-auto">
-                    <!-- Student Info Sidebar -->
-                </div>
-                <div class="w-full md:w-2/3 flex flex-col">
-                    <div class="flex-shrink-0 p-2 bg-bg-tertiary border-b border-border-primary">
-                        <div class="bg-bg-secondary p-1 rounded-lg flex items-center gap-1">
-                             <button class="student-modal-tab admin-tab-button flex-1 active-tab" data-target="student-program-content">برنامه</button>
-                             <button class="student-modal-tab admin-tab-button flex-1" data-target="student-progress-content">روند پیشرفت</button>
-                             <button class="student-modal-tab admin-tab-button flex-1" data-target="student-chat-content">گفتگو</button>
-                        </div>
-                    </div>
-                    <div class="flex-grow overflow-y-auto p-4">
-                        <div id="student-program-content" class="student-modal-content">
-                            <div id="student-program-content-wrapper"></div>
-                        </div>
-                        <div id="student-progress-content" class="student-modal-content hidden"></div>
-                        <div id="student-chat-content" class="student-modal-content hidden h-full">
-                           <div class="h-full flex flex-col">
-                                 <div id="coach-chat-messages-container" class="p-2 flex-grow overflow-y-auto message-container flex flex-col">
-                                    <div class="space-y-4"></div>
-                                </div>
-                                <div class="p-2 border-t border-border-primary">
-                                    <div id="coach-quick-replies" class="flex items-center gap-2 mb-2 flex-wrap"></div>
-                                    <form id="coach-chat-form" class="flex items-center gap-3">
-                                        <input id="coach-chat-input" type="text" class="input-field flex-grow" placeholder="پیام خود را بنویسید..." autocomplete="off">
-                                        <button type="submit" class="primary-button !p-3"><i data-lucide="send" class="w-5 h-5"></i></button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-     <div id="local-client-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <form id="local-client-form" class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
-             <div class="flex justify-between items-center p-4 border-b border-border-primary">
-                <h2 id="local-client-modal-title" class="font-bold text-xl">افزودن شاگرد حضوری</h2>
-                <button type="button" class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
-            </div>
-            <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                <div>
-                    <h3 class="font-bold text-md mb-3 border-b border-border-primary pb-2 text-accent">اطلاعات پایه</h3>
-                    <div class="space-y-4 pt-2">
-                        <div class="input-group"><input type="text" name="clientName" class="input-field w-full" placeholder=" " required><label class="input-label">نام و نام خانوادگی *</label></div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="input-group"><input type="number" name="age" class="input-field w-full" placeholder=" "><label class="input-label">سن</label></div>
-                            <div class="input-group"><input type="number" name="height" class="input-field w-full" placeholder=" "><label class="input-label">قد (cm)</label></div>
-                        </div>
-                        <div class="input-group"><input type="number" step="0.5" name="weight" class="input-field w-full" placeholder=" "><label class="input-label">وزن (kg)</label></div>
-                        <div>
-                            <p class="text-sm font-semibold mb-2">جنسیت</p>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="option-card-label"><input type="radio" name="gender" value="مرد" class="option-card-input" checked><span class="option-card-content">مرد</span></label>
-                                <label class="option-card-label"><input type="radio" name="gender" value="زن" class="option-card-input"><span class="option-card-content">زن</span></label>
-                            </div>
-                        </div>
-                         <div class="input-group"><input type="text" name="contact" class="input-field w-full" placeholder=" "><label class="input-label">اطلاعات تماس (اختیاری)</label></div>
-                    </div>
-                </div>
-
-                 <div>
-                    <h3 class="font-bold text-md mb-3 border-b border-border-primary pb-2 text-accent">جزئیات تمرینی</h3>
-                    <div class="space-y-4 pt-2">
-                        <div class="input-group"><input type="text" name="trainingGoal" class="input-field w-full" placeholder="مثلا: کاهش وزن، افزایش حجم"><label class="input-label">هدف تمرینی</label></div>
-                        <div class="input-group"><input type="number" name="trainingDays" class="input-field w-full" placeholder=" "><label class="input-label">روزهای تمرین در هفته</label></div>
-                        <div>
-                            <p class="text-sm font-semibold mb-2">سطح فعالیت روزانه</p>
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                <label class="option-card-label"><input type="radio" name="activityLevel" value="1.2" class="option-card-input"><span class="option-card-content">نشسته</span></label>
-                                <label class="option-card-label"><input type="radio" name="activityLevel" value="1.375" class="option-card-input"><span class="option-card-content">کم</span></label>
-                                <label class="option-card-label"><input type="radio" name="activityLevel" value="1.55" class="option-card-input" checked><span class="option-card-content">متوسط</span></label>
-                                <label class="option-card-label"><input type="radio" name="activityLevel" value="1.725" class="option-card-input"><span class="option-card-content">زیاد</span></label>
-                                <label class="option-card-label"><input type="radio" name="activityLevel" value="1.9" class="option-card-input"><span class="option-card-content">خیلی زیاد</span></label>
-                            </div>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold mb-2">سطح تجربه</p>
-                            <div class="grid grid-cols-3 gap-2">
-                                <label class="option-card-label"><input type="radio" name="experienceLevel" value="مبتدی" class="option-card-input" checked><span class="option-card-content">مبتدی</span></label>
-                                <label class="option-card-label"><input type="radio" name="experienceLevel" value="متوسط" class="option-card-input"><span class="option-card-content">متوسط</span></label>
-                                <label class="option-card-label"><input type="radio" name="experienceLevel" value="پیشرفته" class="option-card-input"><span class="option-card-content">پیشرفته</span></label>
-                            </div>
-                        </div>
-                        <div class="input-group"><textarea name="limitations" class="input-field w-full min-h-[80px]" placeholder=" "></textarea><label class="input-label">آسیب دیدگی یا محدودیت‌ها</label></div>
-                    </div>
-                </div>
-
-                <div>
-                    <h3 class="font-bold text-md mb-3 border-b border-border-primary pb-2 text-accent">سایر اطلاعات</h3>
-                    <div class="space-y-4 pt-2">
-                        <div class="input-group"><textarea name="coachNotes" class="input-field w-full min-h-[80px]" placeholder=" "></textarea><label class="input-label">یادداشت‌های مربی (محرمانه)</label></div>
-                    </div>
-                </div>
-            </div>
-            <div class="p-4 border-t border-border-primary"><button type="submit" class="primary-button w-full">ذخیره شاگرد</button></div>
-        </form>
-    </div>
-    <div id="replacement-modal" class="modal fixed inset-0 bg-black/60 z-[100] hidden opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="card w-full max-w-lg transform scale-95 transition-transform duration-300 relative">
-            <div class="flex justify-between items-center p-4 border-b border-border-primary">
-                <h2 id="replacement-modal-title" class="font-bold text-xl">جایگزینی برای: <span class="text-accent"></span></h2>
-                <button class="close-modal-btn secondary-button !p-2 rounded-full"><i data-lucide="x"></i></button>
-            </div>
-            <div id="replacement-modal-body" class="p-6 min-h-[150px]">
-                <!-- Loading or suggestions here -->
-            </div>
-            <div class="p-4 border-t border-border-primary flex justify-end">
-                <button id="just-delete-btn" class="secondary-button !text-red-accent">فقط حذف کن</button>
-            </div>
-        </div>
     </div>
     `;
 }
 
-const getCoachAllStudents = (coachUsername: string) => {
+// FIX: Convert to an async function to correctly handle promises from storage functions.
+const getCoachAllStudents = async (coachUsername: string) => {
     // 1. Get registered students
-    const registeredStudents = getUsers()
-        .filter((u: any) => {
-            if (u.role !== 'user') return false;
-            const studentData = getUserData(u.username);
-            return studentData.step1?.coachName === coachUsername;
-        })
-        .map((u: any) => ({ ...u, isLocal: false, id: u.username }));
+    const allUsers = await getUsers();
+    const registeredStudentPromises = allUsers
+        .filter((u: any) => u.role === 'user')
+        .map(async (u: any) => {
+            const studentData = await getUserData(u.username);
+            if (studentData.step1?.coachName === coachUsername) {
+                return { ...u, isLocal: false, id: u.username };
+            }
+            return null;
+        });
+    
+    const registeredStudents = (await Promise.all(registeredStudentPromises)).filter(s => s !== null);
 
     // 2. Get local students from coach's data
-    const coachData = getUserData(coachUsername);
+    const coachData = await getUserData(coachUsername);
     const localStudents = (coachData.localStudents || []).map((s: any) => ({
         ...s, // Contains id and step1
         username: s.id, // Use ID as the unique identifier
@@ -257,7 +264,7 @@ const getCoachAllStudents = (coachUsername: string) => {
         joinDate: s.joinDate || new Date().toISOString(), // Fallback join date
     }));
 
-    return [...registeredStudents, ...localStudents];
+    return [...(registeredStudents as any[]), ...localStudents];
 };
 
 
@@ -335,8 +342,9 @@ const renderProgressTimeline = (userData: any) => {
     return timelineHtml;
 };
 
-export const updateCoachNotifications = (currentUser: string) => {
-    const notifications = getNotifications(currentUser);
+// FIX: Convert to an async function to correctly await the result of getNotifications.
+export const updateCoachNotifications = async (currentUser: string) => {
+    const notifications = await getNotifications(currentUser);
     const mainContainer = document.getElementById('coach-dashboard-container');
     if (!mainContainer) return;
 
@@ -357,8 +365,9 @@ export const updateCoachNotifications = (currentUser: string) => {
     });
 };
 
-const buildExerciseMap = () => {
-    const exerciseDB = getExercisesDB();
+// FIX: Convert to an async function to correctly await the result of getExercisesDB.
+const buildExerciseMap = async () => {
+    const exerciseDB = await getExercisesDB();
     for (const group in exerciseDB) {
         for (const exercise of exerciseDB[group]) {
             exerciseToMuscleGroupMap[exercise] = group;
@@ -478,10 +487,11 @@ const changeStep = (step: number) => {
     }
 };
 
-const addExerciseRow = (dayId: string, exerciseData: any | null = null) => {
+// FIX: Convert to an async function to correctly await the result of getExercisesDB.
+const addExerciseRow = async (dayId: string, exerciseData: any | null = null) => {
     const dayContainer = document.getElementById(dayId);
     const template = document.getElementById('exercise-template') as HTMLTemplateElement;
-    const exerciseDB = getExercisesDB();
+    const exerciseDB = await getExercisesDB();
     if (!dayContainer || !template) return;
     
     const clone = template.content.cloneNode(true) as DocumentFragment;
@@ -520,25 +530,27 @@ const addExerciseRow = (dayId: string, exerciseData: any | null = null) => {
     calculateAndDisplayVolume();
 };
 
-const saveCurrentPlanAsTemplate = () => {
-    const planData = gatherPlanData();
+// FIX: Convert to an async function to correctly handle promises.
+const saveCurrentPlanAsTemplate = async () => {
+    const planData = await gatherPlanData();
     if (!planData) {
         showToast("لطفا ابتدا یک برنامه بسازید.", "error");
         return;
     }
     const templateName = prompt("یک نام برای این الگو وارد کنید:");
     if (templateName) {
-        saveTemplate(templateName, planData);
+        await saveTemplate(templateName, planData);
         showToast(`الگوی "${templateName}" با موفقیت ذخیره شد.`, "success");
-        renderTemplatesTab();
+        await renderTemplatesTab();
     }
 };
 
-const renderTemplatesTab = () => {
+// FIX: Convert to an async function to correctly await the result of getTemplates.
+const renderTemplatesTab = async () => {
     const templatesContainer = document.getElementById('templates-list-container');
     if (!templatesContainer) return;
     
-    const templates = getTemplates();
+    const templates = await getTemplates();
     if (Object.keys(templates).length === 0) {
         templatesContainer.innerHTML = `<p class="text-text-secondary">هنوز الگویی ذخیره نشده است.</p>`;
         return;
@@ -639,7 +651,8 @@ const initStudentWeightChartInModal = (userData: any) => {
     });
 };
 
-const openStudentProfileModal = (studentId: string, coachUsername: string) => {
+// FIX: Convert to an async function to correctly await the result of storage functions.
+const openStudentProfileModal = async (studentId: string, coachUsername: string) => {
     const modal = document.getElementById('student-profile-modal');
     if (!modal) return;
     
@@ -649,13 +662,13 @@ const openStudentProfileModal = (studentId: string, coachUsername: string) => {
     let user: any;
 
     if (isLocal) {
-        const coachData = getUserData(coachUsername);
+        const coachData = await getUserData(coachUsername);
         userData = (coachData.localStudents || []).find((s: any) => s.id === studentId);
         if (!userData) return;
         user = { email: userData.step1?.contact || 'شاگرد حضوری', ...userData };
     } else {
-        userData = getUserData(studentId);
-        user = getUsers().find((u:any) => u.username === studentId);
+        userData = await getUserData(studentId);
+        user = (await getUsers()).find((u:any) => u.username === studentId);
     }
 
 
@@ -776,8 +789,8 @@ const openStudentProfileModal = (studentId: string, coachUsername: string) => {
     if (modalTabs.length > 0) (modalTabs[0] as HTMLElement).click();
     
     // --- Chat Logic ---
-    const renderChat = () => {
-        const chatUserData = getUserData(studentId);
+    const renderChat = async () => {
+        const chatUserData = await getUserData(studentId);
         const messagesContainer = chatContent?.querySelector('#coach-chat-messages-container');
         const messagesInnerContainer = messagesContainer?.querySelector('div');
 
@@ -796,28 +809,28 @@ const openStudentProfileModal = (studentId: string, coachUsername: string) => {
     };
 
     if (!isLocal) {
-        renderChat();
+        await renderChat();
 
         const chatForm = chatContent?.querySelector('#coach-chat-form') as HTMLFormElement;
         const chatInput = chatContent?.querySelector('#coach-chat-input') as HTMLInputElement;
 
         if (chatForm && !chatForm.dataset.listenerAttached) {
-            chatForm.addEventListener('submit', (e) => {
+            chatForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const message = chatInput.value.trim();
                 if (!message || !activeStudentUsername) return;
 
-                const chatUserData = getUserData(activeStudentUsername);
+                const chatUserData = await getUserData(activeStudentUsername);
                 if (!chatUserData.chatHistory) chatUserData.chatHistory = [];
                 chatUserData.chatHistory.push({
                     sender: 'coach',
                     message: message,
                     timestamp: new Date().toISOString()
                 });
-                saveUserData(activeStudentUsername, chatUserData);
-                setNotification(activeStudentUsername, 'chat-content', '💬');
+                await saveUserData(activeStudentUsername, chatUserData);
+                await setNotification(activeStudentUsername, 'chat-content', '💬');
                 chatInput.value = '';
-                renderChat();
+                await renderChat();
             });
             chatForm.dataset.listenerAttached = 'true';
         }
@@ -828,7 +841,8 @@ const openStudentProfileModal = (studentId: string, coachUsername: string) => {
     window.lucide?.createIcons();
 };
 
-const gatherPlanData = () => {
+// FIX: Convert to an async function to correctly await the result of storage functions.
+const gatherPlanData = async () => {
     if (!activeStudentUsername) return null;
     
     const isLocal = activeStudentUsername.startsWith('local_');
@@ -836,10 +850,10 @@ const gatherPlanData = () => {
     
     const coachUsername = document.querySelector<HTMLElement>('#coach-dashboard-container')?.id.replace('coach-dashboard-container', '') || '';
     if (isLocal) {
-        const coachData = getUserData(coachUsername);
+        const coachData = await getUserData(coachUsername);
         studentData = (coachData.localStudents || []).find((s: any) => s.id === activeStudentUsername);
     } else {
-        studentData = getUserData(activeStudentUsername);
+        studentData = await getUserData(activeStudentUsername);
     }
 
     if (!studentData) return null;
@@ -916,8 +930,8 @@ const gatherPlanData = () => {
     return plan;
 };
 
-const renderProgramPreview = () => {
-    const planData = gatherPlanData();
+const renderProgramPreview = async () => {
+    const planData = await gatherPlanData();
     const previewContainer = document.getElementById('program-preview-for-export');
     if (!previewContainer) return;
     
@@ -1052,7 +1066,8 @@ const calculateMetricsFromData = (data: any) => {
     };
 };
 
-const renderStudentInfoForBuilder = (studentId: string, coachUsername: string) => {
+// FIX: Convert to an async function to correctly await the result of storage functions.
+const renderStudentInfoForBuilder = async (studentId: string, coachUsername: string) => {
     const selectionPrompt = document.getElementById('student-selection-prompt');
     const builderMain = document.getElementById('program-builder-main');
     const infoDisplay = document.getElementById('student-info-display');
@@ -1078,10 +1093,10 @@ const renderStudentInfoForBuilder = (studentId: string, coachUsername: string) =
     const isLocal = studentId.startsWith('local_');
     let studentData: any;
     if (isLocal) {
-        const coachData = getUserData(coachUsername);
+        const coachData = await getUserData(coachUsername);
         studentData = (coachData.localStudents || []).find((s:any) => s.id === studentId);
     } else {
-        studentData = getUserData(studentId);
+        studentData = await getUserData(studentId);
     }
 
     const { step1 } = studentData;
@@ -1250,7 +1265,8 @@ const resetProgramBuilder = () => {
     calculateAndDisplayVolume();
 };
 
-const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) => {
+// FIX: Convert to an async function to correctly await the result of storage functions.
+const openStudentSelectionModal = async (target: HTMLElement, coachUsername: string) => {
     currentSelectionTarget = target;
     const modal = document.getElementById('selection-modal');
     if (!modal) return;
@@ -1273,15 +1289,15 @@ const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) =
     (filterChipsContainer?.querySelector('.filter-chip[data-filter="all"]') as HTMLElement)?.classList.add('active');
     (sortSelect as HTMLSelectElement).value = 'name';
 
-    const allStudents = getCoachAllStudents(coachUsername);
+    const allStudents = await getCoachAllStudents(coachUsername);
 
-    const renderOptions = () => {
+    const renderOptions = async () => {
         const filter = (filterChipsContainer?.querySelector('.filter-chip.active') as HTMLElement)?.dataset.filter || 'all';
         const sortBy = (sortSelect as HTMLSelectElement).value;
         const searchTerm = searchInput.value.toLowerCase();
 
-        const studentDataWithDetails = allStudents.map((s: any) => {
-            const userData = s.isLocal ? s : getUserData(s.username);
+        const studentDataWithDetailsPromises = allStudents.map(async (s: any) => {
+            const userData = s.isLocal ? s : await getUserData(s.username);
             const lastActivityDate = (userData.workoutHistory && userData.workoutHistory.length > 0) 
                 ? userData.workoutHistory[userData.workoutHistory.length - 1].date 
                 : (userData.weightHistory && userData.weightHistory.length > 0)
@@ -1295,6 +1311,8 @@ const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) =
                 lastActivityTimestamp: new Date(lastActivityDate).getTime()
             };
         });
+
+        const studentDataWithDetails = await Promise.all(studentDataWithDetailsPromises);
 
         // 1. Filtering
         let filteredStudents = studentDataWithDetails.filter(s => {
@@ -1402,11 +1420,11 @@ const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) =
     // Clear old listeners by cloning the node, then attach new ones
     const newSearchInput = searchInput.cloneNode(true);
     searchInput.parentNode?.replaceChild(newSearchInput, searchInput);
-    (newSearchInput as HTMLInputElement).addEventListener('input', renderOptions);
+    (newSearchInput as HTMLInputElement).addEventListener('input', () => renderOptions());
     
     const newSortSelect = sortSelect.cloneNode(true);
     sortSelect.parentNode?.replaceChild(newSortSelect, sortSelect);
-    (newSortSelect as HTMLSelectElement).addEventListener('change', renderOptions);
+    (newSortSelect as HTMLSelectElement).addEventListener('change', () => renderOptions());
     
     const newFilterChipsContainer = filterChipsContainer?.cloneNode(true) as HTMLElement | undefined;
     if (filterChipsContainer && newFilterChipsContainer) {
@@ -1423,7 +1441,7 @@ const openStudentSelectionModal = (target: HTMLElement, coachUsername: string) =
         });
     }
 
-    renderOptions();
+    await renderOptions();
     optionsContainer.className = "selection-modal-options p-4 pt-2 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-3 content-start";
 
     openModal(modal);
@@ -1477,33 +1495,33 @@ const openSelectionModal = (options: string[], title: string, target: HTMLElemen
     openModal(modal);
 };
 
-const populateBuilderWithAI = (planData: any) => {
+const populateBuilderWithAI = async (planData: any) => {
     const daysOfWeek = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
-    const exerciseDB = getExercisesDB();
+    const exerciseDB = await getExercisesDB();
+    const skippedExercises: string[] = [];
     
     // Clear existing exercises
     document.querySelectorAll('.exercises-container').forEach(c => c.innerHTML = '');
 
-    // Populate new exercises
-    planData.days.forEach((day: any, index: number) => {
-        if (index >= daysOfWeek.length) return;
+    // Populate new exercises using for...of to handle async correctly
+    for (const [index, day] of (planData.days || []).entries()) {
+        if (index >= daysOfWeek.length) continue;
         const dayOfWeek = daysOfWeek[index];
         const dayCard = document.getElementById(`day-card-${dayOfWeek}`);
         if (dayCard) {
-            // Update day name
             (dayCard.querySelector('summary span') as HTMLElement).textContent = day.name || dayOfWeek;
             
-            // Add exercises
-            (day.exercises || []).forEach((ex: any) => {
+            for (const ex of (day.exercises || [])) {
                 const muscleGroup = Object.keys(exerciseDB).find(group => exerciseDB[group].includes(ex.name));
                 if (muscleGroup) {
-                    addExerciseRow(dayCard.id, ex);
+                    await addExerciseRow(dayCard.id, ex);
                 } else {
                     console.warn(`AI suggested exercise "${ex.name}" not found in DB. Skipping.`);
+                    skippedExercises.push(ex.name);
                 }
-            });
+            }
         }
-    });
+    }
 
     // Populate notes
     const notesTextarea = document.getElementById('coach-notes-final') as HTMLTextAreaElement;
@@ -1512,16 +1530,23 @@ const populateBuilderWithAI = (planData: any) => {
     }
     
     showToast("پیش‌نویس برنامه با هوش مصنوعی ساخته شد!", "success");
+    if (skippedExercises.length > 0) {
+        showToast(`برخی حرکات یافت نشد: ${skippedExercises.join(', ')}`, 'warning');
+    }
     calculateAndDisplayVolume();
 };
 
-const getStudentsNeedingAttention = (students: any[]) => {
-    return students.filter(student => {
-        if (student.isLocal) return false;
-        const studentData = getUserData(student.username);
+const getStudentsNeedingAttention = async (students: any[]) => {
+    const studentPromises = students.map(async (student) => {
+        if (student.isLocal) return null;
+        const studentData = await getUserData(student.username);
         const latestPurchase = getLatestPurchase(studentData);
-        return latestPurchase && latestPurchase.fulfilled === false;
+        if (latestPurchase && latestPurchase.fulfilled === false) {
+            return { ...student, userData: studentData }; // Attach data
+        }
+        return null;
     });
+    return (await Promise.all(studentPromises)).filter(s => s !== null) as any[];
 };
 
 const getLastActivityDate = (userData: any): string => {
@@ -1539,14 +1564,17 @@ const getLastActivityDate = (userData: any): string => {
     return new Date(lastTimestamp).toISOString();
 };
 // Helper function to render the coach dashboard tab
-const renderDashboardTab = (currentUser: string) => {
-    const students = getCoachAllStudents(currentUser);
-    const needsPlanStudents = getStudentsNeedingAttention(students);
+const renderDashboardTab = async (currentUser: string, coachData: any) => {
+    const students = await getCoachAllStudents(currentUser);
+    const needsPlanStudents = await getStudentsNeedingAttention(students);
+
+    const monthlyRevenue = (students.length * 150000 * 0.7).toLocaleString('fa-IR');
 
     const kpiCards = [
         { title: 'شاگردان فعال', value: students.length, icon: 'users', color: 'admin-accent-blue' },
         { title: 'در انتظار برنامه', value: needsPlanStudents.length, icon: 'alert-circle', color: 'admin-accent-orange' },
-        { title: 'امتیاز شما', value: '۴.۸ <span class="text-base font-normal">/ ۵</span>', icon: 'star', color: 'admin-accent-green' }
+        { title: 'امتیاز شما', value: `${coachData.performance?.rating || 'N/A'} <span class="text-base font-normal">/ ۵</span>`, icon: 'star', color: 'admin-accent-green' },
+        { title: 'درآمد تخمینی ماهانه', value: `${monthlyRevenue} <span class="text-base font-normal">تومان</span>`, icon: 'trending-up', color: 'admin-accent-pink' }
     ];
 
     const container = document.getElementById('dashboard-content');
@@ -1554,7 +1582,7 @@ const renderDashboardTab = (currentUser: string) => {
 
     container.innerHTML = `
         <div class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 ${kpiCards.map(kpi => `
                     <div class="stat-card">
                         <div class="icon-container" style="--icon-bg: var(--${kpi.color});"><i data-lucide="${kpi.icon}" class="w-6 h-6 text-white"></i></div>
@@ -1565,12 +1593,29 @@ const renderDashboardTab = (currentUser: string) => {
                     </div>
                 `).join('')}
             </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 admin-chart-container h-96">
+                    <h3 class="font-bold mb-4">رشد شاگردان (۶ ماه اخیر)</h3>
+                    <canvas id="coach-growth-chart"></canvas>
+                </div>
+                <div class="space-y-6">
+                    <div class="card p-6">
+                        <div class="flex items-center gap-3 mb-3">
+                            <i data-lucide="sparkles" class="w-6 h-6 text-accent"></i>
+                            <h3 class="font-bold text-lg">پیشنهاد هوشمند</h3>
+                        </div>
+                        <p id="ai-insight-text" class="text-text-secondary text-sm min-h-[60px]">برای دریافت یک پیشنهاد کاربردی جهت بهبود کسب و کار خود، کلیک کنید.</p>
+                        <button id="get-ai-insight-btn" class="secondary-button w-full mt-4 !text-sm">دریافت پیشنهاد</button>
+                    </div>
+                </div>
+            </div>
             
             <div class="card p-6">
                 <h3 class="font-bold text-lg mb-4">شاگردان در انتظار برنامه</h3>
                 <div id="dashboard-needs-attention-list" class="space-y-3">
                     ${needsPlanStudents.length > 0 ? needsPlanStudents.map(student => {
-                        const studentData = getUserData(student.username);
+                        const studentData = student.userData;
                         const name = studentData.step1?.clientName || student.username;
                         const latestPurchase = getLatestPurchase(studentData);
                         const avatarUrl = studentData.profile?.avatar;
@@ -1598,6 +1643,66 @@ const renderDashboardTab = (currentUser: string) => {
         </div>
     `;
     window.lucide?.createIcons();
+
+    const chartCtx = document.getElementById('coach-growth-chart') as HTMLCanvasElement;
+    if (chartCtx && window.Chart) {
+        const existingChart = window.Chart.getChart(chartCtx);
+        if (existingChart) existingChart.destroy();
+        
+        const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+        const blueColor = getComputedStyle(document.documentElement).getPropertyValue('--admin-accent-blue').trim();
+
+        new window.Chart(chartCtx, {
+            type: 'bar',
+            data: {
+                labels: ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'],
+                datasets: [
+                    {
+                        label: 'شاگردان جدید',
+                        data: [3, 5, 4, 7, 6, 8],
+                        backgroundColor: hexToRgba(blueColor, 0.7),
+                        borderColor: blueColor,
+                        borderWidth: 1,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'کل شاگردان فعال',
+                        data: [15, 18, 20, 25, 28, 34],
+                        backgroundColor: hexToRgba(accentColor, 0.7),
+                        borderColor: accentColor,
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                         grid: { display: false },
+                         ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() }
+                    },
+                    y: { 
+                        beginAtZero: true,
+                        grid: {
+                             color: getComputedStyle(document.documentElement).getPropertyValue('--border-primary').trim()
+                        },
+                        ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                             color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim()
+                        }
+                    }
+                }
+            }
+        });
+    }
 };
 
 const renderProfileTab = (currentUser: string, userData: any) => {
@@ -1792,7 +1897,8 @@ const renderProgramBuilderTab = () => {
     window.lucide?.createIcons();
 };
 
-const renderChatTab = (currentUser: string) => {
+// FIX: Convert to an async function to correctly handle promises from storage functions.
+const renderChatTab = async (currentUser: string) => {
     const container = document.getElementById('chat-content');
     if (!container) return;
 
@@ -1821,7 +1927,7 @@ const renderChatTab = (currentUser: string) => {
     const studentListContainer = document.getElementById('coach-chat-student-list');
     if (!studentListContainer) return;
 
-    const students = getCoachAllStudents(currentUser).filter(s => !s.isLocal);
+    const students = (await getCoachAllStudents(currentUser)).filter(s => !s.isLocal);
 
     if (students.length === 0) {
         studentListContainer.innerHTML = `<p class="p-4 text-center text-text-secondary">شما هنوز شاگرد آنلاینی ندارید.</p>`;
@@ -1830,8 +1936,8 @@ const renderChatTab = (currentUser: string) => {
 
     const template = document.getElementById('coach-chat-student-template') as HTMLTemplateElement;
 
-    studentListContainer.innerHTML = students.map(student => {
-        const studentData = getUserData(student.username);
+    const studentListHtmlPromises = students.map(async student => {
+        const studentData = await getUserData(student.username);
         const name = studentData.step1?.clientName || student.username;
         const lastMessage = (studentData.chatHistory || []).slice(-1)[0];
         const avatarUrl = studentData.profile?.avatar;
@@ -1860,9 +1966,11 @@ const renderChatTab = (currentUser: string) => {
         const tempDiv = document.createElement('div');
         tempDiv.appendChild(clone);
         return tempDiv.innerHTML;
-    }).join('');
+    });
 
-    const loadConversation = (studentUsername: string) => {
+    studentListContainer.innerHTML = (await Promise.all(studentListHtmlPromises)).join('');
+
+    const loadConversation = async (studentUsername: string) => {
         const chatWindow = document.getElementById('coach-chat-window');
         if (!chatWindow) return;
 
@@ -1870,8 +1978,8 @@ const renderChatTab = (currentUser: string) => {
             item.classList.toggle('active', (item as HTMLElement).dataset.username === studentUsername);
         });
 
-        const studentData = getUserData(studentUsername);
-        const studentUser = getUsers().find((u:any) => u.username === studentUsername);
+        const studentData = await getUserData(studentUsername);
+        const studentUser = (await getUsers()).find((u:any) => u.username === studentUsername);
         const name = studentData.step1?.clientName || studentUsername;
         const avatar = studentData.profile?.avatar;
         
@@ -1899,12 +2007,12 @@ const renderChatTab = (currentUser: string) => {
         `;
         window.lucide?.createIcons();
 
-        const renderMessages = () => {
+        const renderMessages = async () => {
             const messagesContainer = chatWindow.querySelector('#coach-chat-messages-container');
             const messagesInnerContainer = messagesContainer?.querySelector('div');
             if (!messagesContainer || !messagesInnerContainer) return;
 
-            const currentData = getUserData(studentUsername);
+            const currentData = await getUserData(studentUsername);
             const chatHistory = (currentData.chatHistory || []);
             messagesInnerContainer.innerHTML = chatHistory.map((msg: any) => `
                 <div class="flex ${msg.sender === 'coach' ? 'justify-end' : 'justify-start'}">
@@ -1917,7 +2025,7 @@ const renderChatTab = (currentUser: string) => {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         };
 
-        renderMessages();
+        await renderMessages();
 
         const quickRepliesContainer = chatWindow.querySelector('#coach-quick-replies');
         if (quickRepliesContainer) {
@@ -1949,7 +2057,7 @@ const renderChatTab = (currentUser: string) => {
             }
         });
 
-        chatWindow.addEventListener('submit', e => {
+        chatWindow.addEventListener('submit', async e => {
             const form = e.target as HTMLElement;
             if (form.id === 'coach-chat-form-main') {
                 e.preventDefault();
@@ -1958,15 +2066,15 @@ const renderChatTab = (currentUser: string) => {
                 const targetUsername = form.dataset.username;
 
                 if (message && targetUsername) {
-                    const targetData = getUserData(targetUsername);
+                    const targetData = await getUserData(targetUsername);
                     if (!targetData.chatHistory) targetData.chatHistory = [];
                     targetData.chatHistory.push({
                         sender: 'coach',
                         message: message,
                         timestamp: new Date().toISOString()
                     });
-                    saveUserData(targetUsername, targetData);
-                    setNotification(targetUsername, 'chat-content', '💬');
+                    await saveUserData(targetUsername, targetData);
+                    await setNotification(targetUsername, 'chat-content', '💬');
                     input.value = '';
                     
                     const messagesContainer = chatWindow.querySelector('#coach-chat-messages-container');
@@ -1994,25 +2102,22 @@ const renderChatTab = (currentUser: string) => {
     }
 
     if (students.length > 0) {
-        loadConversation(students[0].username);
+        await loadConversation(students[0].username);
     }
 };
 
-const renderStudentCards = (students: any[], containerId: string) => {
+// FIX: Convert to an async function to correctly handle promises from storage functions.
+const renderStudentCards = async (students: any[], containerId: string) => {
     const container = document.getElementById(containerId);
     if (!container) return;
 
     if (students.length === 0) {
-        if (containerId === 'needs-attention-grid') {
-            container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">هیچ شاگردی در حال حاضر منتظر برنامه نیست.</p>`;
-        } else {
-            container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">موردی برای نمایش یافت نشد.</p>`;
-        }
+        container.innerHTML = `<p class="text-text-secondary text-center col-span-full py-8">موردی برای نمایش یافت نشد.</p>`;
         return;
     }
 
-    container.innerHTML = students.map(student => {
-        const studentData = student.isLocal ? student : getUserData(student.username);
+    const studentCardsHtmlPromises = students.map(async student => {
+        const studentData = student.isLocal ? student : await getUserData(student.username);
         const name = studentData.step1?.clientName || student.username;
         const goal = studentData.step1?.trainingGoal || 'بدون هدف';
         const latestPurchase = student.isLocal ? null : getLatestPurchase(studentData);
@@ -2075,168 +2180,57 @@ const renderStudentCards = (students: any[], containerId: string) => {
                 </div>
                 
                 <!-- KPIs -->
-                <div class="grid grid-cols-3 gap-4 text-center text-sm py-4 border-y border-border-primary">
+                <div class="grid grid-cols-3 gap-2 text-center text-sm">
                     <div>
-                        <p class="font-extrabold text-2xl flex items-center justify-center gap-1.5">${streak} <i data-lucide="flame" class="w-5 h-5 text-orange-400"></i></p>
-                        <p class="text-xs text-text-secondary mt-1">زنجیره تمرین</p>
+                        <p class="font-bold">${streak}</p>
+                        <p class="text-xs text-text-secondary">زنجیره</p>
                     </div>
                     <div>
-                        <p class="font-extrabold text-2xl flex items-center justify-center gap-1.5 ${weightChange.change !== 0 ? trendColor : ''}">
-                            ${weightChange.change !== 0 ? `<i data-lucide="${trendIcon}" class="w-5 h-5"></i>` : ''}
-                            ${weightChange.change >= 0 ? '+' : ''}${weightChange.change}
-                        </p>
-                        <p class="text-xs text-text-secondary mt-1">تغییر وزن (kg)</p>
+                        <p class="font-bold ${trendColor}">${weightChange.change > 0 ? '+' : ''}${weightChange.change} kg</p>
+                        <p class="text-xs text-text-secondary">تغییر وزن</p>
                     </div>
                     <div>
-                        <p class="font-extrabold text-2xl">${getLastActivity(studentData).split(' ')[0]}</p>
-                        <p class="text-xs text-text-secondary mt-1">آخرین فعالیت</p>
+                        <p class="font-bold">${getLastActivity(studentData)}</p>
+                        <p class="text-xs text-text-secondary">فعالیت</p>
                     </div>
                 </div>
-
+                
                 <!-- Purchase Info -->
                 ${purchaseInfoHtml}
                 
                 <!-- Actions -->
-                <div class="mt-auto flex items-center gap-3">
-                    <button data-action="create-program" data-username="${student.id}" class="${needsPlan ? 'primary-button' : 'secondary-button'} !py-2.5 !px-4 !text-sm flex-grow">
-                        <i data-lucide="${needsPlan ? 'plus-circle' : 'edit'}" class="w-4 h-4 mr-2"></i>
-                        ${needsPlan ? 'ساخت برنامه' : 'ویرایش برنامه'}
-                    </button>
-                    <button data-action="view-student" data-username="${student.id}" class="secondary-button !py-2.5 !px-4 !text-sm"><i data-lucide="user" class="w-4 h-4 pointer-events-none"></i></button>
+                <div class="mt-auto pt-4 border-t border-border-primary flex items-center gap-2">
+                    <button class="primary-button !py-1 !px-3 !text-xs flex-1" data-action="view-student-profile" data-username="${student.id}">مشاهده پروفایل</button>
+                    ${!student.isLocal ? `<button class="secondary-button !py-1 !px-3 !text-xs" data-action="chat-with-student" data-username="${student.username}"><i data-lucide="message-square" class="w-4 h-4"></i></button>` : ''}
+                    ${student.isLocal ? `<button class="secondary-button !py-1 !px-3 !text-xs" data-action="edit-local-student" data-username="${student.id}"><i data-lucide="edit" class="w-4 h-4"></i></button>` : ''}
                 </div>
             </div>
         `;
-    }).join('');
+    });
+
+    const studentCardsHtml = await Promise.all(studentCardsHtmlPromises);
+    container.innerHTML = studentCardsHtml.join('');
     window.lucide?.createIcons();
 };
 
-export function initCoachDashboard(currentUser: string, handleLogout: () => void, handleGoToHome: () => void) {
+export async function initCoachDashboard(currentUser: string, handleLogout: () => void, handleGoToHome: () => void) {
     const mainContainer = document.getElementById('coach-dashboard-container');
     if (!mainContainer) return;
-    
-    const findSupplementInDB = (name: string) => {
-        const supplementsDB = getSupplementsDB();
-        for (const category in supplementsDB) {
-            const supplement = supplementsDB[category].find(s => s.name === name);
-            if (supplement) return supplement;
-        }
-        return null;
-    };
-    
-    const openReplacementModalFor = (targetLi: HTMLLIElement) => {
-        activeReplacementTarget = targetLi;
-        const modal = document.getElementById('replacement-modal');
-        const titleSpan = document.querySelector('#replacement-modal-title span');
-        const body = document.getElementById('replacement-modal-body');
-    
-        if (!modal || !titleSpan || !body) return;
-    
-        const foodToReplace = targetLi.querySelector('.food-item-text')?.textContent?.trim();
-        const mealName = targetLi.closest('.meal-card')?.getAttribute('data-meal-name');
-    
-        if (!foodToReplace || !mealName) {
-            showToast('خطا در شناسایی آیتم غذایی.', 'error');
-            return;
-        }
-    
-        titleSpan.textContent = foodToReplace;
-        body.innerHTML = `<div class="flex justify-center items-center h-full"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div> <p class="ml-2">در حال دریافت پیشنهاد از AI...</p></div>`;
-        openModal(modal);
-    
-        if (!activeStudentUsername) {
-            body.innerHTML = `<p class="text-text-secondary text-center">ابتدا یک شاگرد را انتخاب کنید.</p>`;
-            return;
-        }
-    
-        const isLocal = activeStudentUsername.startsWith('local_');
-        let studentData: any;
-        if (isLocal) {
-            const coachData = getUserData(currentUser);
-            studentData = (coachData.localStudents || []).find((s:any) => s.id === activeStudentUsername);
-        } else {
-            studentData = getUserData(activeStudentUsername);
-        }
-    
-        if (!studentData?.step1) {
-            body.innerHTML = `<p class="text-text-secondary text-center">اطلاعات شاگرد برای دریافت پیشنهاد کامل نیست.</p>`;
-            return;
-        }
-    
-        generateFoodReplacements(studentData.step1, mealName, foodToReplace)
-            .then(suggestions => {
-                if (suggestions && suggestions.length > 0) {
-                    body.innerHTML = `
-                        <p class="text-sm text-text-secondary mb-3">پیشنهادهای جایگزین:</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            ${suggestions.map(s => `<button class="suggestion-btn secondary-button">${s}</button>`).join('')}
-                        </div>
-                    `;
-                } else {
-                    body.innerHTML = `<p class="text-text-secondary text-center">پیشنهاد جایگزینی یافت نشد.</p>`;
-                }
-            })
-            .catch(() => {
-                body.innerHTML = `<p class="text-text-secondary text-center">خطا در ارتباط با هوش مصنوعی.</p>`;
-            });
-    };
-    // Helper functions for AI features
-    const addSupplementRow = (supData: any) => {
-        const container = document.getElementById('added-supplements-container');
-        const template = document.getElementById('supplement-row-template') as HTMLTemplateElement;
-        if (!container || !template) return;
 
-        const placeholder = container.querySelector('#supplement-placeholder');
-        if (placeholder) {
-            placeholder.remove();
-        }
-
-        const clone = template.content.cloneNode(true) as DocumentFragment;
-        const newRow = clone.querySelector('.supplement-row') as HTMLElement;
-
-        (newRow.querySelector('.supplement-name') as HTMLElement).textContent = supData.name;
-        (newRow.querySelector('.supplement-note') as HTMLElement).textContent = supData.note;
-        
-        const dosageSelect = newRow.querySelector('.dosage-select') as HTMLSelectElement;
-        const timingSelect = newRow.querySelector('.timing-select') as HTMLSelectElement;
-
-        supData.dosageOptions.forEach((opt: string) => {
-            const option = new Option(opt, opt);
-            dosageSelect.add(option);
-        });
-
-        supData.timingOptions.forEach((opt: string) => {
-            const option = new Option(opt, opt);
-            timingSelect.add(option);
-        });
-        
-        if (supData.selectedDosage && supData.dosageOptions.includes(supData.selectedDosage)) {
-            dosageSelect.value = supData.selectedDosage;
-        }
-        if (supData.selectedTiming && supData.timingOptions.includes(supData.selectedTiming)) {
-            timingSelect.value = supData.selectedTiming;
-        }
-        if (supData.notes) {
-            (newRow.querySelector('.notes-input') as HTMLInputElement).value = supData.notes;
-        }
-
-        container.appendChild(newRow);
-        window.lucide?.createIcons();
-    };
-
-
-    document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
-    document.getElementById('go-to-home-btn')?.addEventListener('click', handleGoToHome);
+    // Scoped event listeners for persistent elements
+    mainContainer.querySelector('#logout-btn')?.addEventListener('click', handleLogout);
+    mainContainer.querySelector('#go-to-home-btn')?.addEventListener('click', handleGoToHome);
 
     const pageTitles: Record<string, { title: string, subtitle: string }> = {
         'dashboard-content': { title: 'داشبورد', subtitle: 'خلاصه فعالیت‌ها و آمار شما.' },
-        'students-content': { title: 'شاگردان', subtitle: 'مدیریت شاگردان و برنامه‌هایشان.' },
+        'students-content': { title: 'شاگردان', subtitle: 'تمام شاگردان خود را مدیریت کنید.' },
         'chat-content': { title: 'گفتگو', subtitle: 'با شاگردان خود در ارتباط باشید.' },
-        'program-builder-content': { title: 'برنامه‌ساز', subtitle: 'ایجاد برنامه‌های تمرینی و غذایی.' },
-        'templates-content': { title: 'الگوها', subtitle: 'مدیریت الگوهای برنامه‌های تمرینی.' },
-        'profile-content': { title: 'پروفایل', subtitle: 'اطلاعات عمومی خود را ویرایش کنید.' }
+        'program-builder-content': { title: 'برنامه‌ساز', subtitle: 'برنامه‌های تمرینی و غذایی جدید بسازید.' },
+        'templates-content': { title: 'الگوها', subtitle: 'الگوهای برنامه خود را مدیریت کنید.' },
+        'profile-content': { title: 'پروفایل', subtitle: 'اطلاعات و پروفایل عمومی خود را ویرایش کنید.' }
     };
-    
-    const switchTab = (activeTab: HTMLElement) => {
+
+    const switchTab = async (activeTab: HTMLElement) => {
         const targetId = activeTab.getAttribute('data-target');
         if (!targetId) return;
 
@@ -2253,718 +2247,418 @@ export function initCoachDashboard(currentUser: string, handleLogout: () => void
             titleEl.textContent = targetData.title;
             subtitleEl.textContent = targetData.subtitle;
         }
-
-        clearNotification(currentUser, targetId);
-        updateCoachNotifications(currentUser);
         
+        await clearNotification(currentUser, targetId);
+        await updateCoachNotifications(currentUser);
+        
+        const pageContainer = document.getElementById(targetId);
+        if (pageContainer) {
+            pageContainer.innerHTML = `<div class="flex justify-center items-center p-16"><div class="w-12 h-12 rounded-full animate-spin border-4 border-dashed border-accent border-t-transparent"></div></div>`;
+        }
+        await new Promise(resolve => setTimeout(resolve, 50));
+
         switch (targetId) {
             case 'dashboard-content':
-                renderDashboardTab(currentUser);
+                const coachDataForDashboard = await getUserData(currentUser);
+                await renderDashboardTab(currentUser, coachDataForDashboard);
                 break;
             case 'students-content':
-                 mainContainer.querySelector('#students-content')!.innerHTML = `
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-lg">لیست شاگردان</h3>
-                        <button id="add-local-client-btn" class="primary-button flex items-center gap-2"><i data-lucide="user-plus"></i>افزودن شاگرد حضوری</button>
-                    </div>
-                    <div id="all-students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-                 `;
-                const allStudents = getCoachAllStudents(currentUser);
-                renderStudentCards(allStudents, 'all-students-grid');
+                await renderStudentsTab(currentUser);
                 break;
             case 'chat-content':
-                renderChatTab(currentUser);
+                await renderChatTab(currentUser);
                 break;
             case 'program-builder-content':
                 renderProgramBuilderTab();
-                resetProgramBuilder();
                 break;
             case 'templates-content':
-                mainContainer.querySelector('#templates-content')!.innerHTML = `
-                    <div class="card p-6">
-                        <div class="flex justify-between items-center mb-4">
-                             <h3 class="font-bold text-lg">الگوهای برنامه</h3>
-                             <button id="save-current-as-template-btn" class="secondary-button">ذخیره برنامه فعلی به عنوان الگو</button>
-                        </div>
-                        <div id="templates-list-container" class="space-y-2"></div>
-                    </div>
-                `;
-                renderTemplatesTab();
+                const templatesContainer = document.getElementById('templates-content');
+                if (templatesContainer) {
+                    templatesContainer.innerHTML = `
+                        <div class="card p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-lg">الگوهای برنامه</h3>
+                                <button data-action="save-template" class="primary-button !text-sm">ذخیره برنامه فعلی به عنوان الگو</button>
+                            </div>
+                            <div id="templates-list-container" class="space-y-2"></div>
+                        </div>`;
+                    await renderTemplatesTab();
+                }
                 break;
             case 'profile-content':
-                renderProfileTab(currentUser, getUserData(currentUser));
+                const coachData = await getUserData(currentUser);
+                renderProfileTab(currentUser, coachData);
                 break;
         }
     };
     
-    const defaultTab = mainContainer.querySelector<HTMLElement>('.coach-nav-link');
-    if(defaultTab) switchTab(defaultTab);
-    
-    const loadProgramIntoBuilder = (programData: any, studentUsername: string) => {
-        resetProgramBuilder();
-        isEditingRecentProgram = true;
-    
-        const programTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="program-builder-content"]');
-        if (programTab) switchTab(programTab);
-        renderStudentInfoForBuilder(studentUsername, currentUser);
-    
-        changeStep(2);
-    
-        (programData.workout.days || []).forEach((day: any) => {
-            const dayCard = Array.from(document.querySelectorAll('#step-content-2 .day-card')).find(card => (card.querySelector('summary span') as HTMLElement).textContent?.trim() === day.name.split(':')[0].trim());
-            if (dayCard) {
-                (dayCard.querySelector('summary span') as HTMLElement).textContent = day.name;
-                day.exercises.forEach((ex: any) => addExerciseRow(dayCard.id, ex));
+    // Main event listener for the entire dashboard
+    mainContainer.addEventListener('click', async e => {
+        if (!(e.target instanceof HTMLElement)) return;
+        const target = e.target;
+
+        if (target.id === 'get-ai-insight-btn') {
+            const btn = target as HTMLButtonElement;
+            const insightTextEl = document.getElementById('ai-insight-text');
+            const coachData = await getUserData(currentUser);
+            if (!insightTextEl) return;
+        
+            btn.classList.add('is-loading');
+            btn.disabled = true;
+            insightTextEl.textContent = 'در حال تحلیل داده‌ها...';
+        
+            try {
+                const ai = getGenAI();
+                const students = await getCoachAllStudents(currentUser);
+                const retentionRate = coachData.performance?.retentionRate || 92;
+        
+                const prompt = `As a world-class coach business consultant, give me one actionable tip in Persian to improve my fitness coaching business. 
+                I currently have ${students.length} students. My client retention rate is ${retentionRate}%. 
+                My main goal is to increase student engagement and attract new clients.
+                Keep the response concise, friendly, and directly actionable.
+                Start with a positive reinforcement.`;
+                
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: prompt
+                });
+        
+                insightTextEl.textContent = response.text;
+                insightTextEl.classList.add('animate-fade-in');
+        
+            } catch (error) {
+                console.error("AI Insight Error:", error);
+                insightTextEl.textContent = 'خطا در دریافت پیشنهاد. لطفاً دوباره تلاش کنید.';
+                showToast("خطا در ارتباط با سرویس هوش مصنوعی", "error");
+            } finally {
+                btn.classList.remove('is-loading');
+                btn.disabled = false;
             }
-        });
-    
-        (programData.supplements.items || []).forEach((sup: any) => {
-            const dbEntry = findSupplementInDB(sup.name);
-            if (dbEntry) {
-                addSupplementRow({ ...dbEntry, selectedDosage: sup.dosage, selectedTiming: sup.timing, notes: sup.notes });
-            }
-        });
-    
-        if (programData.nutritionPlan) {
-             const aiNutritionBtn = document.getElementById('ai-nutrition-btn') as HTMLButtonElement;
-             if(aiNutritionBtn) aiNutritionBtn.click(); // This is a trick to trigger the rendering logic
-             setTimeout(() => { // Wait for the click to process
-                currentNutritionPlanObject = programData.nutritionPlan;
-                // Manually trigger re-render of the nutrition plan in the UI based on `currentNutritionPlanObject`
-                const display = document.getElementById('nutrition-plan-display');
-                if(display) display.dispatchEvent(new CustomEvent('renderPlan'));
-             }, 100);
+            return;
         }
-    
-        (document.getElementById('coach-notes-final') as HTMLTextAreaElement).value = programData.workout.notes || '';
-        showToast("برنامه قبلی برای ویرایش بارگذاری شد.", "success");
-    };
+
+        // --- Modal close buttons ---
+        const closeModalBtn = target.closest('.close-modal-btn');
+        if (closeModalBtn) {
+            closeModal(closeModalBtn.closest('.modal'));
+            return;
+        }
+        
+        // --- Modal Overlay Click ---
+        if (target.classList.contains('modal')) {
+            closeModal(target);
+            return;
+        }
+        
+        // --- Navigation ---
+        const navLink = target.closest<HTMLElement>('.coach-nav-link');
+        if (navLink) {
+            await switchTab(navLink);
+            return;
+        }
+        
+        const actionBtn = target.closest<HTMLButtonElement>('[data-action]');
+        if (actionBtn) {
+            const action = actionBtn.dataset.action;
+            const username = actionBtn.dataset.username;
+            const templateName = actionBtn.dataset.templateName;
+
+            switch(action) {
+                case 'view-student-profile': if(username) await openStudentProfileModal(username, currentUser); break;
+                case 'add-local-student': openLocalClientModalForEdit(null, currentUser); break;
+                case 'edit-local-student': if(username) await openLocalClientModalForEdit(username, currentUser); break;
+                case 'create-program':
+                case 'edit-recent-program':
+                    const programBuilderTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="program-builder-content"]');
+                    if (programBuilderTab) {
+                        await switchTab(programBuilderTab);
+                        if(username) {
+                            if(action === 'edit-recent-program') isEditingRecentProgram = true;
+                            await renderStudentInfoForBuilder(username, currentUser);
+                            changeStep(2); // Go to step 2 automatically
+                        }
+                    }
+                    break;
+                case 'chat-with-student':
+                    const chatTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="chat-content"]');
+                    if(chatTab) {
+                        await switchTab(chatTab);
+                        const studentItem = document.querySelector<HTMLElement>(`.coach-chat-student-item[data-username="${username}"]`);
+                        if(studentItem) studentItem.click();
+                    }
+                    break;
+                case 'save-template': await saveCurrentPlanAsTemplate(); break;
+                case 'load-template':
+                     if (templateName) {
+                        const templates = await getTemplates();
+                        const templateData = templates[templateName];
+                        const programBuilderNav = mainContainer.querySelector('.coach-nav-link[data-target="program-builder-content"]') as HTMLElement;
+                        if(programBuilderNav) await switchTab(programBuilderNav);
+                        
+                        // Wait for builder to render then populate
+                        setTimeout(async () => {
+                            await populateBuilderWithTemplate(templateData);
+                            changeStep(2);
+                             showToast(`الگوی "${templateName}" بارگذاری شد.`, 'success');
+                        }, 100);
+                    }
+                    break;
+                case 'delete-template':
+                    if (templateName && confirm(`آیا از حذف الگوی "${templateName}" مطمئن هستید؟`)) {
+                        await deleteTemplate(templateName);
+                        showToast('الگو حذف شد.', 'success');
+                        await renderTemplatesTab();
+                    }
+                    break;
+            }
+             // Prevent other handlers from firing for the same click
+            return;
+        }
+        
+        // --- Program Builder specific clicks ---
+        if(target.closest('#program-builder-content')){
+            if(target.id === 'select-student-builder-btn'){
+                await openStudentSelectionModal(target, currentUser);
+            }
+            if(target.id === 'reset-builder-btn') {
+                resetProgramBuilder();
+            }
+            if(target.id === 'next-step-btn') {
+                if(currentStep < totalSteps) changeStep(currentStep + 1);
+            }
+            if(target.id === 'prev-step-btn') {
+                if(currentStep > 1) changeStep(currentStep - 1);
+            }
+            const stepperItem = target.closest<HTMLElement>('.stepper-item');
+            if (stepperItem?.dataset.step) {
+                const step = parseInt(stepperItem.dataset.step, 10);
+                if (step < currentStep || activeStudentUsername) { // Allow going back or if a student is selected
+                    changeStep(step);
+                } else {
+                    showToast('ابتدا باید یک شاگرد را انتخاب کنید.', 'warning');
+                }
+            }
+            if(target.closest('.add-exercise-btn')){
+                const dayId = (target.closest('.add-exercise-btn') as HTMLElement).dataset.dayId;
+                if(dayId) await addExerciseRow(dayId);
+            }
+            const selectionBtn = target.closest<HTMLButtonElement>('.selection-button');
+            if(selectionBtn){
+                const type = selectionBtn.dataset.type;
+                if(type === 'muscle-group'){
+                    const exercises = await getExercisesDB();
+                    openSelectionModal(Object.keys(exercises), 'انتخاب گروه عضلانی', selectionBtn);
+                } else if(type === 'exercise'){
+                    const muscleGroup = (selectionBtn.closest('.exercise-row')?.querySelector('.muscle-group-select') as HTMLElement).dataset.value;
+                    if(muscleGroup){
+                        const exercises = await getExercisesDB();
+                        openSelectionModal(exercises[muscleGroup], 'انتخاب حرکت', selectionBtn);
+                    }
+                }
+            }
+        }
+        
+        // --- Modal specific clicks ---
+        const modal = target.closest<HTMLElement>('.modal');
+        if(modal){
+            const optionBtn = target.closest<HTMLButtonElement>('.selection-option-btn');
+            if(optionBtn && currentSelectionTarget){
+                const value = optionBtn.dataset.value;
+                currentSelectionTarget.dataset.value = value;
+                currentSelectionTarget.querySelector('span')!.textContent = value || 'انتخاب کنید';
+                
+                // Handle dependent dropdowns
+                if (currentSelectionTarget.classList.contains('muscle-group-select')) {
+                    const exerciseSelect = currentSelectionTarget.closest('.exercise-row')?.querySelector('.exercise-select') as HTMLButtonElement;
+                    if (exerciseSelect) {
+                        exerciseSelect.disabled = !value;
+                        exerciseSelect.dataset.value = '';
+                        exerciseSelect.querySelector('span')!.textContent = 'انتخاب حرکت';
+                        if (value) {
+                             setTimeout(() => exerciseSelect.click(), 100);
+                        }
+                    }
+                }
+                
+                closeModal(modal);
+                currentSelectionTarget = null;
+                calculateAndDisplayVolume();
+            }
+
+            const studentOptionBtn = target.closest<HTMLButtonElement>('.student-option-btn');
+            if(studentOptionBtn && studentOptionBtn.dataset.username){
+                const username = studentOptionBtn.dataset.username;
+                if(currentSelectionTarget && currentSelectionTarget.id === 'select-student-builder-btn'){
+                    await renderStudentInfoForBuilder(username, currentUser);
+                }
+                closeModal(modal);
+                currentSelectionTarget = null;
+            }
+        }
+    });
 
     mainContainer.addEventListener('input', e => {
-        if (!(e.target instanceof HTMLInputElement)) return;
-        const target = e.target;
+        if (!(e.target instanceof HTMLElement)) return;
+        const target = e.target as HTMLInputElement;
         if (target.matches('.range-slider')) {
             const labelSpan = target.previousElementSibling?.querySelector('span');
             if (labelSpan) labelSpan.textContent = target.value;
             updateSliderTrack(target);
-            if (target.matches('.set-slider') || target.matches('.rep-slider')) {
+            
+            if (target.closest('#program-builder-content')) {
                 calculateAndDisplayVolume();
             }
         }
     });
-    
-    mainContainer.addEventListener('click', e => {
-        if (!(e.target instanceof HTMLElement)) return;
-        const target = e.target;
-        
-        const navLink = target.closest<HTMLElement>('.coach-nav-link');
-        if (navLink) {
-            switchTab(navLink);
-            return;
-        }
 
-        const closeModalBtn = target.closest('.close-modal-btn');
-        if (closeModalBtn) {
-            const modal = closeModalBtn.closest('.modal');
-            if (modal) closeModal(modal as HTMLElement);
-            return;
-        }
-        
-        const actionBtn = target.closest<HTMLButtonElement>('button[data-action]');
-        if (actionBtn) {
-            const action = actionBtn.dataset.action;
-            const username = actionBtn.dataset.username;
-            if (action === 'create-program') {
-                const programTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="program-builder-content"]');
-                if (programTab) switchTab(programTab);
-                if (username) renderStudentInfoForBuilder(username, currentUser);
-            } else if (action === 'view-student' && username) {
-                openStudentProfileModal(username, currentUser);
-            } else if (action === 'edit-recent-program' && username) {
-                const studentData = getUserData(username);
-                const latestProgram = studentData.programHistory[0];
-                const programToLoad = {
-                    workout: latestProgram.step2,
-                    supplements: { items: latestProgram.supplements || [] },
-                    nutritionPlan: latestProgram.nutritionPlan,
-                    student: studentData.step1
-                };
-                loadProgramIntoBuilder(programToLoad, username);
-                closeModal(document.getElementById('student-profile-modal'));
-            }
-            return;
-        }
+    const defaultTab = mainContainer.querySelector<HTMLElement>('.coach-nav-link');
+    if(defaultTab) await switchTab(defaultTab);
 
-        const addExerciseBtn = target.closest('.add-exercise-btn');
-        if (addExerciseBtn) {
-            const dayId = (addExerciseBtn as HTMLElement).dataset.dayId;
-            if (dayId) addExerciseRow(dayId);
-            return;
-        }
+    await buildExerciseMap();
+}
 
-        const removeExerciseBtn = target.closest('.remove-exercise-btn');
-        if (removeExerciseBtn) {
-            removeExerciseBtn.closest('.exercise-row')?.remove();
-            calculateAndDisplayVolume();
-            return;
-        }
+const populateBuilderWithTemplate = async (templateData: any) => {
+    resetProgramBuilder(); // Start from a clean slate
+    if (!templateData) return;
 
-        const supersetBtn = target.closest('.superset-btn');
-        if (supersetBtn) {
-            supersetBtn.classList.toggle('active');
-            const row = supersetBtn.closest('.exercise-row');
-            if (row) row.classList.toggle('is-superset');
-            return;
-        }
-        
-        const addSupplementBtn = target.closest('#add-supplement-btn');
-        if (addSupplementBtn) {
-            const card = addSupplementBtn.closest('.card');
-            if (!card) {
-                console.error('Could not find parent card for supplement controls.');
-                return;
-            }
-            const nameSelectBtn = card.querySelector('.supplement-name-select-btn') as HTMLElement;
-            const supplementName = nameSelectBtn?.dataset.value;
-
-            if (!supplementName) {
-                showToast('لطفا ابتدا یک مکمل را انتخاب کنید.', 'error');
-                return;
-            }
-
-            const supplementData = findSupplementInDB(supplementName);
-
-            if (supplementData) {
-                addSupplementRow(supplementData);
-                
-                const catSelectBtn = card.querySelector('.supplement-category-select-btn') as HTMLElement;
-                if(catSelectBtn) {
-                    catSelectBtn.dataset.value = '';
-                    catSelectBtn.querySelector('span')!.textContent = 'انتخاب دسته';
-                }
-                nameSelectBtn.dataset.value = '';
-                nameSelectBtn.querySelector('span')!.textContent = 'انتخاب مکمل';
-                (nameSelectBtn as HTMLButtonElement).disabled = true;
-
-            } else {
-                showToast('خطا: اطلاعات مکمل یافت نشد.', 'error');
-            }
-            return;
-        }
-
-        const removeSupplementBtn = target.closest('.remove-supplement-btn');
-        if (removeSupplementBtn) {
-            removeSupplementBtn.closest('.supplement-row')?.remove();
-            const container = document.getElementById('added-supplements-container');
-            if (container && !container.querySelector('.supplement-row')) {
-                container.innerHTML = '<p id="supplement-placeholder" class="text-text-secondary text-center p-4">مکمل‌های انتخابی در اینجا نمایش داده می‌شوند.</p>';
-            }
-            return;
-        }
-        
-        const selectionBtn = target.closest('.selection-button');
-        if (selectionBtn && selectionBtn.closest('#program-builder-main')) {
-            const type = (selectionBtn as HTMLElement).dataset.type;
-            const exerciseDB = getExercisesDB();
-            const supplementsDB = getSupplementsDB();
-            if (type === 'muscle-group') {
-                openSelectionModal(Object.keys(exerciseDB), 'انتخاب گروه عضلانی', selectionBtn as HTMLElement);
-            } else if (type === 'exercise') {
-                const row = selectionBtn.closest('.exercise-row');
-                const muscleGroup = row?.querySelector<HTMLElement>('.muscle-group-select')?.dataset.value;
-                if (muscleGroup && exerciseDB[muscleGroup]) {
-                    openSelectionModal(exerciseDB[muscleGroup], `انتخاب حرکت برای ${muscleGroup}`, selectionBtn as HTMLElement);
-                }
-            } else if (type === 'supplement-category') {
-                openSelectionModal(Object.keys(supplementsDB), 'انتخاب دسته مکمل', selectionBtn as HTMLElement);
-            } else if (type === 'supplement-name') {
-                const category = document.querySelector<HTMLElement>('.supplement-category-select-btn')?.dataset.value;
-                if (category && supplementsDB[category]) {
-                    openSelectionModal(supplementsDB[category].map((s: any) => s.name), 'انتخاب نام مکمل', selectionBtn as HTMLElement);
-                }
-            }
-            return;
-        }
-        
-        // Program Builder: Select Student
-        const selectStudentBuilderBtn = target.closest('#select-student-builder-btn');
-        if (selectStudentBuilderBtn) {
-            openStudentSelectionModal(selectStudentBuilderBtn as HTMLElement, currentUser);
-            return;
-        }
-
-        // Program Builder: Stepper Navigation
-        if (target.closest('#next-step-btn')) {
-            if (currentStep === 1 && !activeStudentUsername) {
-                showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
-                return;
-            }
-            if (currentStep < totalSteps) changeStep(currentStep + 1);
-            return;
-        }
-        if (target.closest('#prev-step-btn')) {
-            if (currentStep > 1) changeStep(currentStep - 1); // Fix: go to previous step
-            return;
-        }
-
-        const finishBtn = target.closest<HTMLButtonElement>('#finish-program-btn');
-        if (finishBtn) {
-            if (!activeStudentUsername) {
-                showToast("خطا: شاگردی انتخاب نشده است.", "error");
-                return;
-            }
-        
-            const planData = gatherPlanData();
-            if (!planData || !planData.workout || planData.workout.days.every((d: any) => d.exercises.length === 0)) {
-                showToast("برنامه تمرینی خالی است. لطفا حداقل یک حرکت اضافه کنید.", "error");
-                return;
-            }
-        
-            finishBtn.classList.add('is-loading');
-            finishBtn.disabled = true;
-        
-            setTimeout(() => {
-                const newProgram = {
-                    date: new Date().toISOString(),
-                    step2: { days: planData.workout.days, notes: planData.workout.notes },
-                    supplements: planData.supplements.items,
-                    nutritionPlan: planData.nutritionPlan
-                };
-        
-                const isLocal = activeStudentUsername!.startsWith('local_');
-                if (isLocal) {
-                    const coachData = getUserData(currentUser);
-                    const studentIndex = (coachData.localStudents || []).findIndex((s: any) => s.id === activeStudentUsername);
-                    if (studentIndex > -1) {
-                        if (!coachData.localStudents[studentIndex].programHistory) {
-                            coachData.localStudents[studentIndex].programHistory = [];
-                        }
-                        coachData.localStudents[studentIndex].programHistory.unshift(newProgram);
-                        saveUserData(currentUser, coachData);
-                        showToast(`برنامه با موفقیت برای شاگرد حضوری ${planData.student.clientName} ذخیره شد.`, 'success');
-                    }
-                } else {
-                    const studentData = getUserData(activeStudentUsername!);
-                    if (!studentData.programHistory) studentData.programHistory = [];
-                    if (isEditingRecentProgram) {
-                        studentData.programHistory[0] = newProgram;
-                    } else {
-                        studentData.programHistory.unshift(newProgram);
-                    }
-        
-                    const latestPurchase = getLatestPurchase(studentData);
-                    if (latestPurchase && !latestPurchase.fulfilled) {
-                        if (studentData.subscriptions && studentData.subscriptions.length > 0) {
-                            const subIndex = studentData.subscriptions.findIndex((s: any) => s.purchaseDate === latestPurchase.purchaseDate);
-                            if (subIndex > -1) studentData.subscriptions[subIndex].fulfilled = true;
-                        }
-                    }
-        
-                    if (!studentData.chatHistory) studentData.chatHistory = [];
-                    studentData.chatHistory.push({
-                        sender: 'coach',
-                        message: 'سلام! برنامه جدید شما آماده است. می‌توانید از بخش "برنامه من" آن را مشاهده کنید.',
-                        timestamp: new Date().toISOString()
-                    });
-        
-                    saveUserData(activeStudentUsername!, studentData);
-                    setNotification(activeStudentUsername!, 'program-content', '✨');
-                    setNotification(activeStudentUsername!, 'chat-content', '💬');
-                    showToast(`برنامه با موفقیت برای ${planData.student.clientName} ارسال شد.`, 'success');
-                }
-        
-                finishBtn.classList.remove('is-loading');
-                finishBtn.disabled = false;
-                resetProgramBuilder();
-                const studentsTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="students-content"]');
-                if (studentsTab) switchTab(studentsTab);
-            }, 500);
-            return;
-        }
-        
-        const stepperItem = target.closest<HTMLElement>('.stepper-item');
-        if (stepperItem) {
-            const step = parseInt(stepperItem.dataset.step || '1', 10);
-            if (step < currentStep || (step > 1 && activeStudentUsername)) {
-                changeStep(step);
-            } else if (step > 1 && !activeStudentUsername) {
-                 showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
-            }
-            return;
-        }
-        
-        // AI Buttons
-        const aiDraftBtn = target.closest<HTMLButtonElement>('#ai-draft-btn');
-        if (aiDraftBtn) {
-            if (!activeStudentUsername) {
-                showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
-                return;
-            }
-             const isLocal = activeStudentUsername.startsWith('local_');
-            let studentData: any;
-            if (isLocal) {
-                const coachData = getUserData(currentUser);
-                studentData = (coachData.localStudents || []).find((s:any) => s.id === activeStudentUsername);
-            } else {
-                studentData = getUserData(activeStudentUsername);
-            }
-
-            if (!studentData.step1) {
-                showToast('اطلاعات پروفایل این شاگرد کامل نیست.', 'error');
-                return;
-            }
-            aiDraftBtn.classList.add('is-loading');
-            aiDraftBtn.disabled = true;
-            generateWorkoutPlan(studentData.step1)
-                .then(planData => { if (planData) { populateBuilderWithAI(planData); } })
-                .catch(error => { console.error("AI Draft Error:", error); showToast("خطا در ارتباط با هوش مصنوعی.", 'error'); })
-                .finally(() => { aiDraftBtn.classList.remove('is-loading'); aiDraftBtn.disabled = false; });
-            return;
-        }
-
-        const aiSupplementBtn = target.closest<HTMLButtonElement>('#ai-supplement-btn');
-        if (aiSupplementBtn) {
-            if (!activeStudentUsername) {
-                showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
-                return;
-            }
-            const isLocal = activeStudentUsername.startsWith('local_');
-            let studentStep1: any;
-            if (isLocal) {
-                const coachData = getUserData(currentUser);
-                const localStudent = (coachData.localStudents || []).find((s:any) => s.id === activeStudentUsername);
-                studentStep1 = localStudent?.step1;
-            } else {
-                studentStep1 = getUserData(activeStudentUsername).step1;
-            }
-            
-            const goal = studentStep1?.trainingGoal;
-            if (!studentStep1 || !goal) {
-                showToast('هدف تمرینی شاگرد برای پیشنهاد مکمل مشخص نیست.', 'error');
-                return;
-            }
-            aiSupplementBtn.classList.add('is-loading');
-            aiSupplementBtn.disabled = true;
-            generateSupplementPlan(studentStep1, goal)
-                .then(supplements => {
-                    if (supplements) {
-                        const container = document.getElementById('added-supplements-container');
-                        const placeholder = container?.querySelector('p');
-                        if (placeholder) placeholder.remove();
-
-                        supplements.forEach(sup => {
-                            const dbEntry = findSupplementInDB(sup.name);
-                            if (dbEntry) {
-                                addSupplementRow({ ...dbEntry, selectedDosage: sup.dosage, selectedTiming: sup.timing });
-                            }
-                        });
-                        showToast('پیشنهاد مکمل با موفقیت به لیست اضافه شد.', 'success');
-                    }
-                })
-                .finally(() => { aiSupplementBtn.classList.remove('is-loading'); aiSupplementBtn.disabled = false; });
-            return;
-        }
-
-        const aiNutritionBtn = target.closest<HTMLButtonElement>('#ai-nutrition-btn');
-        if (aiNutritionBtn) {
-            if (!activeStudentUsername) {
-                showToast('لطفا ابتدا یک شاگرد را انتخاب کنید.', 'error');
-                return;
-            }
-            const isLocal = activeStudentUsername.startsWith('local_');
-            let userData: any;
-            if (isLocal) {
-                 const coachData = getUserData(currentUser);
-                 userData = (coachData.localStudents || []).find((s:any) => s.id === activeStudentUsername);
-            } else {
-                 userData = getUserData(activeStudentUsername);
-            }
-             if (!userData.step1 || !userData.step1.tdee) {
-                showToast('اطلاعات شاگرد (مخصوصا TDEE) برای تولید برنامه غذایی کامل نیست.', 'error');
-                return;
-            }
-            aiNutritionBtn.classList.add('is-loading');
-            aiNutritionBtn.disabled = true;
-            generateNutritionPlan(userData)
-                .then(plan => {
-                    if (plan) {
-                        currentNutritionPlanObject = plan;
-                        // Instead of showing a static preview, populate the manual builder
-                        const manualBuilder = document.getElementById('manual-nutrition-builder');
-                        const aiContainer = document.getElementById('ai-nutrition-container');
-                        const manualRadio = document.getElementById('nutrition-choice-manual') as HTMLInputElement;
-
-                        if (manualBuilder && aiContainer && manualRadio) {
-                            // Clear previous manual entries
-                            manualBuilder.querySelectorAll('.food-item-list').forEach(list => list.innerHTML = '');
-
-                            // Populate with AI data
-                            (plan.weeklyPlan[0].meals || []).forEach((meal: any) => {
-                                const mealCard = manualBuilder.querySelector(`.meal-card[data-meal-name="${meal.mealName}"]`);
-                                const list = mealCard?.querySelector('.food-item-list');
-                                if (list) {
-                                    (meal.options || []).forEach((opt: string) => {
-                                        const li = document.createElement('li');
-                                        li.className = 'flex justify-between items-center bg-bg-secondary p-1.5 rounded';
-                                        li.innerHTML = `
-                                            <span class="food-item-text">${sanitizeHTML(opt)}</span>
-                                            <button type="button" class="replace-food-item-btn text-blue-500/70 hover:text-blue-500" title="ویرایش/جایگزینی"><i data-lucide="refresh-cw" class="w-4 h-4 pointer-events-none"></i></button>
-                                        `;
-                                        list.appendChild(li);
-                                    });
-                                }
-                            });
-                            (manualBuilder.querySelector('#manual-nutrition-tips') as HTMLTextAreaElement).value = (plan.generalTips || []).join('\n');
-                            
-                            // Switch view to manual builder
-                            aiContainer.classList.add('hidden');
-                            manualBuilder.classList.remove('hidden');
-                            manualRadio.checked = true;
-                            window.lucide.createIcons();
-                        }
-                        showToast('برنامه غذایی با موفقیت ایجاد و آماده ویرایش است.', 'success');
-                    }
-                })
-                .finally(() => { aiNutritionBtn.classList.remove('is-loading'); aiNutritionBtn.disabled = false; });
-            return;
-        }
-
-        const savePdfBtnBuilder = target.closest('#save-program-pdf-btn-builder');
-        if (savePdfBtnBuilder) {
-            exportElement('#program-preview-for-export', 'pdf', 'FitGymPro-Program.pdf', savePdfBtnBuilder as HTMLButtonElement);
-            return;
-        }
-
-        const saveImgBtnBuilder = target.closest('#save-program-img-btn-builder');
-        if (saveImgBtnBuilder) {
-            exportElement('#program-preview-for-export', 'png', 'FitGymPro-Program.png', saveImgBtnBuilder as HTMLButtonElement);
-            return;
-        }
-
-        if (target.closest('#add-local-client-btn')) {
-            const modal = document.getElementById('local-client-modal');
-            const form = document.getElementById('local-client-form') as HTMLFormElement;
-            form.reset();
-            form.removeAttribute('data-editing-id');
-            (modal.querySelector('#local-client-modal-title') as HTMLElement).textContent = 'افزودن شاگرد حضوری';
-            openModal(modal);
-        }
-
-        const nutritionChoice = target.closest('input[name="nutrition_choice"]');
-        if (nutritionChoice) {
-            const choice = (nutritionChoice as HTMLInputElement).value;
-            const aiContainer = document.getElementById('ai-nutrition-container');
-            const manualContainer = document.getElementById('manual-nutrition-builder');
-            if (aiContainer && manualContainer) {
-                aiContainer.classList.toggle('hidden', choice !== 'ai');
-                manualContainer.classList.toggle('hidden', choice !== 'manual');
-            }
-            return;
-        }
-
-        const addFoodItemBtn = target.closest('.add-food-item-btn');
-        if (addFoodItemBtn) {
-            const input = addFoodItemBtn.previousElementSibling as HTMLInputElement;
-            const foodText = input.value.trim();
-            if (foodText) {
-                const list = addFoodItemBtn.closest('.meal-card')?.querySelector('.food-item-list');
-                if (list) {
-                    const li = document.createElement('li');
-                    li.className = 'flex justify-between items-center bg-bg-secondary p-1.5 rounded';
-                    li.innerHTML = `
-                        <span class="food-item-text">${sanitizeHTML(foodText)}</span>
-                        <button type="button" class="replace-food-item-btn text-blue-500/70 hover:text-blue-500" title="ویرایش/جایگزینی"><i data-lucide="refresh-cw" class="w-4 h-4 pointer-events-none"></i></button>
-                    `;
-                    list.appendChild(li);
-                    input.value = '';
-                    window.lucide.createIcons();
-                }
-            }
-            return;
-        }
-
-        const replaceFoodItemBtn = target.closest('.replace-food-item-btn');
-        if (replaceFoodItemBtn) {
-            const targetLi = replaceFoodItemBtn.closest('li');
-            if(targetLi) {
-                openReplacementModalFor(targetLi as HTMLLIElement);
-            }
-            return;
-        }
-
-    });
-
-    const selectionModal = document.getElementById('selection-modal');
-    selectionModal?.addEventListener('click', e => {
-        if (!(e.target instanceof HTMLElement)) return;
-        const target = e.target;
-        
-        const studentOptionBtn = target.closest('.student-option-btn');
-        if (studentOptionBtn) {
-            const username = (studentOptionBtn as HTMLElement).dataset.username;
-            if (username) {
-                renderStudentInfoForBuilder(username, currentUser);
-                closeModal(selectionModal);
-                changeStep(2);
-            }
-            return;
-        }
-
-        const selectionOptionBtn = target.closest('.selection-option-btn');
-        if (selectionOptionBtn && currentSelectionTarget) {
-            const value = (selectionOptionBtn as HTMLElement).dataset.value;
-            if (value) {
-                (currentSelectionTarget.querySelector('span') as HTMLElement).textContent = value;
-                currentSelectionTarget.dataset.value = value;
-                const type = currentSelectionTarget.dataset.type;
-
-                if (type === 'muscle-group') {
-                    const row = currentSelectionTarget.closest('.exercise-row');
-                    const exerciseSelect = row?.querySelector('.exercise-select') as HTMLButtonElement;
-                    if (exerciseSelect) {
-                        exerciseSelect.disabled = false;
-                        exerciseSelect.dataset.value = '';
-                        (exerciseSelect.querySelector('span') as HTMLElement).textContent = 'انتخاب حرکت';
-                    }
-                    if (row) (row as HTMLElement).dataset.exerciseMuscleGroup = value;
-                } else if (type === 'exercise') {
-                     const row = currentSelectionTarget.closest('.exercise-row');
-                     if(row) (row as HTMLElement).dataset.exerciseName = value;
-                } else if (type === 'supplement-category') {
-                    const nameSelect = document.querySelector('.supplement-name-select-btn') as HTMLButtonElement;
-                    if (nameSelect) {
-                        nameSelect.disabled = false;
-                        nameSelect.dataset.value = '';
-                        (nameSelect.querySelector('span') as HTMLElement).textContent = 'انتخاب مکمل';
-                    }
-                }
-                calculateAndDisplayVolume();
-            }
-            closeModal(selectionModal);
-            currentSelectionTarget = null;
-        }
-    });
-
-
-     mainContainer.addEventListener('submit', e => {
-        if (e.target && (e.target as HTMLElement).id === 'coach-profile-form') {
-            e.preventDefault();
-            const form = e.target as HTMLFormElement;
-            const freshData = getUserData(currentUser);
-            if (!freshData.step1) freshData.step1 = {};
-            if (!freshData.profile) freshData.profile = {};
-
-            freshData.step1.coachName = (form.elements.namedItem('coach-profile-name') as HTMLInputElement).value;
-            freshData.profile.specialization = (form.elements.namedItem('coach-profile-specialization') as HTMLInputElement).value;
-            freshData.profile.bio = (form.elements.namedItem('coach-profile-bio') as HTMLTextAreaElement).value;
-
-            const avatarPreview = document.getElementById('coach-profile-avatar-preview') as HTMLImageElement;
-            if (avatarPreview && avatarPreview.dataset.isNew === 'true' && avatarPreview.src.startsWith('data:image/')) {
-                freshData.profile.avatar = avatarPreview.src;
-            }
-
-            saveUserData(currentUser, freshData);
-            showToast('پروفایل با موفقیت ذخیره شد.', 'success');
-            const name = freshData.step1.coachName || currentUser;
-            const headerNameEl = mainContainer.querySelector('.flex.items-center.gap-3.bg-bg-secondary .font-bold.text-sm');
-            if (headerNameEl) headerNameEl.textContent = name;
-        }
-         if (e.target && (e.target as HTMLElement).id === 'local-client-form') {
-            e.preventDefault();
-            const form = e.target as HTMLFormElement;
-            const formData = new FormData(form);
-            const clientData: any = {
-                clientName: formData.get('clientName') as string,
-                age: parseInt(formData.get('age') as string, 10),
-                height: parseInt(formData.get('height') as string, 10),
-                weight: parseFloat(formData.get('weight') as string),
-                gender: formData.get('gender') as string,
-                contact: formData.get('contact') as string,
-                trainingGoal: formData.get('trainingGoal') as string,
-                trainingDays: parseInt(formData.get('trainingDays') as string, 10),
-                activityLevel: parseFloat(formData.get('activityLevel') as string),
-                experienceLevel: formData.get('experienceLevel') as string,
-                limitations: formData.get('limitations') as string,
-                coachNotes: formData.get('coachNotes') as string,
-            };
-
-            if (!clientData.clientName) {
-                showToast('نام شاگرد الزامی است.', 'error');
-                return;
-            }
-
-            const metrics = performMetricCalculations(clientData);
-            if (metrics && metrics.tdee) {
-                clientData.tdee = metrics.tdee;
-            }
-
-            const coachData = getUserData(currentUser);
-            if (!coachData.localStudents) coachData.localStudents = [];
-            
-            const newClient = { id: `local_${Date.now()}`, joinDate: new Date().toISOString(), step1: clientData };
-            coachData.localStudents.push(newClient);
-            saveUserData(currentUser, coachData);
-            
-            showToast(`شاگرد حضوری "${clientData.clientName}" با موفقیت اضافه شد.`, 'success');
-            closeModal(document.getElementById('local-client-modal'));
-            
-            const studentsTab = document.querySelector<HTMLElement>('.coach-nav-link[data-target="students-content"]');
-            if(studentsTab) switchTab(studentsTab);
-        }
-    });
-
-    const replacementModal = document.getElementById('replacement-modal');
-    if (replacementModal && !replacementModal.dataset.listenerAttached) {
-        replacementModal.dataset.listenerAttached = 'true';
-        replacementModal.addEventListener('click', e => {
-            const target = e.target as HTMLElement;
-            const suggestionBtn = target.closest('.suggestion-btn');
-            const justDeleteBtn = target.closest('#just-delete-btn');
-
-            if (suggestionBtn && activeReplacementTarget) {
-                const newText = suggestionBtn.textContent || '';
-                const span = activeReplacementTarget.querySelector('.food-item-text');
-                if (span) span.textContent = newText;
-                closeModal(replacementModal);
-                activeReplacementTarget = null;
-            } else if (justDeleteBtn && activeReplacementTarget) {
-                activeReplacementTarget.remove();
-                closeModal(replacementModal);
-                activeReplacementTarget = null;
-            }
-        });
+    // We don't load student data from templates to avoid confusion.
+    // The coach must select a student first.
+    // But we can show a placeholder if there was student data in the template
+    const builderStudentName = document.getElementById('builder-student-name');
+    if(builderStudentName && templateData.student?.clientName) {
+        builderStudentName.textContent = `بر اساس الگوی ${templateData.student.clientName}`;
     }
 
-    const coachProfileForm = document.getElementById('coach-profile-form');
-    if (coachProfileForm) {
-        const avatarInput = document.getElementById('coach-profile-avatar-input');
-        if(avatarInput) {
-            avatarInput.addEventListener('change', e => {
-                const file = (e.target as HTMLInputElement).files?.[0];
-                if (!file) return;
+    // Populate workout
+    for (const day of templateData.workout.days) {
+        const dayCard = Array.from(document.querySelectorAll('#step-content-2 .day-card')).find(card => card.querySelector('summary span')?.textContent.startsWith(day.name.split(':')[0]));
+        if(dayCard) {
+            (dayCard.querySelector('summary span') as HTMLElement).textContent = day.name;
+            for (const ex of day.exercises) {
+                await addExerciseRow(dayCard.id, ex);
+            }
+        }
+    }
 
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const base64String = reader.result as string;
-                    const wrapper = document.querySelector('.profile-avatar-upload');
-                    if (wrapper) {
-                        const initialsDiv = document.getElementById('coach-profile-avatar-initials');
-                        if (initialsDiv) initialsDiv.style.display = 'none';
+    // This function will be expanded to handle all parts of the template.
+};
 
-                        let previewImg = document.getElementById('coach-profile-avatar-preview') as HTMLImageElement;
-                        if (!previewImg) {
-                            previewImg = document.createElement('img');
-                            previewImg.id = 'coach-profile-avatar-preview';
-                            previewImg.alt = "Avatar Preview";
-                            previewImg.className = 'avatar-preview-img';
-                            wrapper.insertBefore(previewImg, wrapper.firstChild);
-                        }
-                        previewImg.src = base64String;
-                        previewImg.dataset.isNew = 'true';
-                    }
-                };
-                reader.readAsDataURL(file);
+const renderStudentsTab = async (coachUsername: string) => {
+    const container = document.getElementById('students-content');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
+            <div class="relative flex-grow">
+                <i data-lucide="search" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"></i>
+                <input type="search" id="students-search-input" class="input-field w-full !pr-10" placeholder="جستجوی شاگرد...">
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <div id="students-filter-chips" class="flex items-center gap-2">
+                    <span class="filter-chip active" data-filter="all">همه</span>
+                    <span class="filter-chip" data-filter="needs_plan">در انتظار</span>
+                    <span class="filter-chip" data-filter="inactive">غیرفعال</span>
+                </div>
+                <select id="students-sort-select" class="input-field !text-sm">
+                    <option value="name">مرتب‌سازی: نام</option>
+                    <option value="activity">مرتب‌سازی: آخرین فعالیت</option>
+                    <option value="join_date">مرتب‌سازی: تاریخ عضویت</option>
+                </select>
+                <button data-action="add-local-student" class="primary-button !py-2 !px-3 !text-sm"><i data-lucide="plus" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+        <div id="all-students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- Student cards will be rendered here -->
+        </div>
+    `;
+
+    const searchInput = container.querySelector('#students-search-input');
+    const filterChips = container.querySelector('#students-filter-chips');
+    const sortSelect = container.querySelector('#students-sort-select');
+
+    const updateView = async () => {
+        const allStudents = await getCoachAllStudents(coachUsername);
+        const studentDataWithDetailsPromises = allStudents.map(async (s: any) => {
+            const userData = s.isLocal ? s : await getUserData(s.username);
+            return {
+                ...s,
+                details: userData,
+                name: userData.step1?.clientName || s.username,
+                lastActivityTimestamp: new Date(getLastActivityDate(userData)).getTime()
+            };
+        });
+
+        const studentDataWithDetails = await Promise.all(studentDataWithDetailsPromises);
+
+        const filter = (filterChips?.querySelector('.filter-chip.active') as HTMLElement)?.dataset.filter || 'all';
+        const sortBy = (sortSelect as HTMLSelectElement)?.value || 'name';
+        const searchTerm = (searchInput as HTMLInputElement)?.value.toLowerCase();
+
+        let finalStudents = studentDataWithDetails.filter(s => {
+            if (searchTerm && !s.name.toLowerCase().includes(searchTerm)) return false;
+            if (filter === 'needs_plan') {
+                if (s.isLocal) return false;
+                const latestPurchase = getLatestPurchase(s.details);
+                return latestPurchase && !latestPurchase.fulfilled;
+            }
+            if (filter === 'inactive') {
+                const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+                return s.lastActivityTimestamp < oneWeekAgo;
+            }
+            return true;
+        });
+
+        finalStudents.sort((a, b) => {
+            if (sortBy === 'activity') return b.lastActivityTimestamp - a.lastActivityTimestamp;
+            if (sortBy === 'join_date') return new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime();
+            return a.name.localeCompare(b.name, 'fa');
+        });
+
+        await renderStudentCards(finalStudents, 'all-students-grid');
+    };
+
+    searchInput?.addEventListener('input', updateView);
+    sortSelect?.addEventListener('change', updateView);
+    filterChips?.addEventListener('click', e => {
+        const chip = (e.target as HTMLElement).closest('.filter-chip');
+        if (chip) {
+            filterChips.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            updateView();
+        }
+    });
+
+    await updateView();
+    window.lucide?.createIcons();
+};
+
+const openLocalClientModalForEdit = async (studentId: string | null, coachUsername: string) => {
+    const modal = document.getElementById('local-client-modal');
+    const form = document.getElementById('local-client-form') as HTMLFormElement;
+    const title = document.getElementById('local-client-modal-title');
+    if (!modal || !form || !title) return;
+
+    form.reset();
+    form.removeAttribute('data-editing-id');
+
+    if (studentId) {
+        title.textContent = 'ویرایش شاگرد حضوری';
+        const coachData = await getUserData(coachUsername);
+        const student = (coachData.localStudents || []).find((s: any) => s.id === studentId);
+        if (student) {
+            form.setAttribute('data-editing-id', studentId);
+            const { step1 } = student;
+            Object.keys(step1).forEach(key => {
+                const input = form.elements.namedItem(key);
+                if (input instanceof HTMLInputElement && input.type === 'radio') {
+                    (form.querySelector(`input[name="${key}"][value="${step1[key]}"]`) as HTMLInputElement).checked = true;
+                } else if (input instanceof HTMLElement) {
+                    (input as HTMLInputElement).value = step1[key];
+                }
             });
         }
+    } else {
+        title.textContent = 'افزودن شاگرد حضوری';
     }
-}
+    openModal(modal);
+};
