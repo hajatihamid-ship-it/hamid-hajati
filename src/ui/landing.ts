@@ -141,11 +141,12 @@ const renderCalculator = () => `
                                 <div class="macro-bar"><div id="fat-bar" class="macro-bar-inner bg-yellow-500" style="width: 0%;"></div></div>
                              </div>
                         </div>
-                        <!-- CTA Button -->
-                        <div class="text-center pt-4">
-                            <button id="get-plan-from-calc-btn" class="primary-button !bg-yellow-400 hover:!bg-yellow-500 !text-black !px-8 !py-2.5 !text-base !rounded-md animate-pulse">دریافت برنامه شخصی‌سازی شده</button>
-                        </div>
                     </div>
+                </div>
+                
+                <!-- CTA Button -->
+                <div class="text-center pt-8">
+                    <button id="get-plan-from-calc-btn" class="primary-button !bg-yellow-400 hover:!bg-yellow-500 !text-black !px-8 !py-2.5 !text-base !rounded-md animate-pulse">دریافت برنامه شخصی‌سازی شده</button>
                 </div>
             </div>
         </div>
