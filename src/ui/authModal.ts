@@ -72,8 +72,10 @@ const applyCalculatorData = async (username: string): Promise<boolean> => {
             height: parseInt(calculatorData.height, 10),
             weight: parseFloat(calculatorData.weight),
             trainingGoal: calculatorData.trainingGoal,
-            // trainingDays: parseInt(calculatorData.trainingDays, 10), // This is not part of calculator
             activityLevel: parseFloat(calculatorData.activityLevel),
+            neck: calculatorData.neck ? parseFloat(calculatorData.neck) : undefined,
+            waist: calculatorData.waist ? parseFloat(calculatorData.waist) : undefined,
+            hip: calculatorData.hip ? parseFloat(calculatorData.hip) : undefined,
         };
 
         const metrics = performMetricCalculations(step1Data);
